@@ -170,7 +170,7 @@ Deno.serve(async (req: Request) => {
     }
     const name = String(customer.name ?? "").trim().slice(0, 120);
     const phone = String(customer.phone ?? "").trim().slice(0, 40);
-    const cpf = String(customer.cpf ?? "").replace(/\D/g, "").slice(0, 11);
+    const cpf = paymentMethod === "pix" ? String(customer.cpf ?? "").replace(/\D/g, "").slice(0, 11) : "";
     const email = String(customer.email ?? "").trim().toLowerCase().slice(0, 254);
     const deliveryType = customer.deliveryType === "pickup" ? "pickup" : "delivery";
     const address = deliveryType === "pickup" ? "Retirada na Feira" : String(customer.address ?? "").trim().slice(0, 300);
@@ -220,7 +220,7 @@ Deno.serve(async (req: Request) => {
     if (paymentMethod !== "pix") {
       const orderPayload = {
         id: orderId, user_id: orderUserId, customer_name: name, customer_phone: phone,
-        customer_cpf: cpf || null, customer_email: email || null, customer_address: address,
+        customer_cpf: null, customer_email: email || null, customer_address: address,
         delivery_type: deliveryType,
         payment_method: paymentMethod === "cash" ? "Dinheiro na entrega" : "Cartão na entrega",
         items, subtotal, delivery_fee: deliveryFee, total, status: "Pedido Recebido",
