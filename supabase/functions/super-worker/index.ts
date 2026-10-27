@@ -259,7 +259,7 @@ Deno.serve(async (req: Request) => {
         description: `FeiraJá - Pedido ${orderId}`,
         payment_method_id: "pix",
         payer: { email, first_name: name.split(" ")[0], last_name: name.split(" ").slice(1).join(" ") || name.split(" ")[0], identification: { type: "CPF", number: cpf } },
-        date_of_expiration: new Date(Date.now() + 30 * 60 * 1000 + 4 * 60 * 60 * 1000).toISOString().slice(0, -1) + "-04:00",
+        date_of_expiration: new Date(Date.now() + 30 * 60 * 1000 - 4 * 60 * 60 * 1000).toISOString().slice(0, -1) + "-04:00",
         notification_url: "https://juhwdevvwstmyxyyagzh.supabase.co/functions/v1/super-worker",
         external_reference: orderId,
         metadata: { order_id: orderId },
