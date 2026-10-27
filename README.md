@@ -32,4 +32,4 @@ A URL de notificação usada pelo checkout é `https://juhwdevvwstmyxyyagzh.supa
 - O checkout limita pedidos por usuário a 5 em 10 minutos.
 
 ## Documentação legal
-Preencha os dados comerciais pendentes em `politica-privacidade.html` e `termos.html` antes de considerar as páginas prontas para publicação legal.
+As páginas de Termos de Uso e Política de Privacidade aguardam os dados comerciais do responsável. Não há links publicados para páginas legais incompletas.
