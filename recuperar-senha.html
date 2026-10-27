@@ -13,7 +13,7 @@ async function checkPasswordPwned(password){
  const hash=Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
  const response=await fetch('https://api.pwnedpasswords.com/range/'+hash.slice(0,5),{headers:{'Add-Padding':'true'},cache:'no-store'});
  if(!response.ok)throw new Error('Não foi possível verificar a senha agora.');
- return (await response.text()).split(/\\r?\\n/).some(line=>{const [suffix,count]=line.trim().split(':');return suffix===hash.slice(5)&&Number(count)>0;});
+ return (await response.text()).split(/\r?\n/).some(line=>{const [suffix,count]=line.trim().split(':');return suffix===hash.slice(5)&&Number(count)>0;});
 }
 const message = document.querySelector('#message');
 const show = (text, ok=false) => { message.textContent=text; message.className='msg show '+(ok?'ok':'err'); };
@@ -48,7 +48,8 @@ document.querySelector('#passwordForm').addEventListener('submit',async e=>{
  e.preventDefault(); if(!configured)return;
  const p=document.querySelector('#password').value,c=document.querySelector('#confirm').value;
  if(p.length<12){show('A senha precisa ter pelo menos 12 caracteres.');return;}
- if(p!==c){show('As senhas não coincidem.');return;}\n try{if(await checkPasswordPwned(p)){show('Esta senha apareceu em vazamentos conhecidos. Escolha uma senha diferente e exclusiva.');return;}}catch(err){console.warn('Verificação de senha vazada indisponível:',err);show('Não foi possível verificar se a senha apareceu em vazamentos. Tente novamente mais tarde.');return;}
+ if(p!==c){show('As senhas não coincidem.');return;}
+ try{if(await checkPasswordPwned(p)){show('Esta senha apareceu em vazamentos conhecidos. Escolha uma senha diferente e exclusiva.');return;}}catch(err){console.warn('Verificação de senha vazada indisponível:',err);show('Não foi possível verificar se a senha apareceu em vazamentos. Tente novamente mais tarde.');return;}
  const btn=document.querySelector('#saveBtn');btn.disabled=true;btn.textContent='Salvando…';
  const {error}=await supabase.auth.updateUser({password:p});
  if(error)show('Não foi possível atualizar a senha. Solicite um novo link e tente novamente.');
