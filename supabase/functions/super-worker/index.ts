@@ -128,10 +128,11 @@ Deno.serve(async (req: Request) => {
       const { data: linkedOrder, error: orderReadError } = await db.from("orders")
         .select("id,status,total,payment_id")
         .eq("id", String(verifiedPayment.external_reference))
-        .eq("payment_id", paymentIdFromNotice)
         .maybeSingle();
       if (orderReadError) return json({ error: "Falha ao conferir pedido." }, 500);
-      if (!linkedOrder) return json({ received: true, ignored: true });
+      if (!linkedOrder || (linkedOrder.payment_id && String(linkedOrder.payment_id) !== paymentIdFromNotice)) {
+        return json({ received: true, ignored: true });
+      }
       const paidAmount = Math.round(Number(verifiedPayment.transaction_amount) * 100);
       const expectedAmount = Math.round(Number(linkedOrder.total) * 100);
       if (!Number.isFinite(expectedAmount) || paidAmount !== expectedAmount) {
@@ -156,9 +157,9 @@ Deno.serve(async (req: Request) => {
         return json({ received: true, ignored: true });
       }
       const { error: updateError } = await db.from("orders")
-        .update({ status: nextStatus })
+        .update({ status: nextStatus, payment_id: paymentIdFromNotice })
         .eq("id", linkedOrder.id)
-        .eq("payment_id", paymentIdFromNotice);
+        .or("payment_id.is.null,payment_id.eq." + paymentIdFromNotice);
       if (updateError) {
         console.error("Falha ao atualizar status do pedido:", updateError.message);
         return json({ error: "Falha ao atualizar pedido." }, 500);
@@ -190,6 +191,10 @@ Deno.serve(async (req: Request) => {
     const address = deliveryType === "pickup" ? "Retirada na Feira" : String(customer.address ?? "").trim().slice(0, 300);
     if (!name || phone.replace(/\D/g, "").length < 8 || (paymentMethod === "pix" && (cpf.length !== 11 || !/^\S+@\S+\.\S+$/.test(email))) || (email && !/^\S+@\S+\.\S+$/.test(email)) || (deliveryType === "delivery" && !address)) {
       return json({ error: "Confira nome, telefone, CPF, e-mail e endereço de entrega." }, 400);
+    }
+    const accountEmail = String(authData.user.email || "").trim().toLowerCase();
+    if (paymentMethod === "pix" && accountEmail && email !== accountEmail) {
+      return json({ error: "Use o mesmo e-mail da sua conta para gerar o Pix." }, 400);
     }
 
     const qtyById = new Map<string, number>();
@@ -238,6 +243,21 @@ Deno.serve(async (req: Request) => {
       }
       return json({ order: savedOrder, id: savedOrder.id, paymentStatus: savedOrder.status });
     }
+    // Save the order before creating the Pix payment so a provider/database failure
+    // cannot leave a payment with no corresponding order record.
+    const draftOrder = {
+      id: orderId, user_id: orderUserId, customer_name: name, customer_phone: phone,
+      customer_cpf: cpf, customer_email: email, customer_address: address,
+      delivery_type: deliveryType, payment_method: "Mercado Pago Pix",
+      items, subtotal, delivery_fee: deliveryFee, total, status: "Pagamento Pendente",
+      market_checklist: items.map((item: any) => ({ id: item.id, name: item.name, qty: item.qty, bought: false })),
+    };
+    const { error: draftError } = await db.from("orders").insert(draftOrder);
+    if (draftError) {
+      console.error("Falha ao salvar pedido antes de criar Pix:", draftError.message);
+      return json({ error: "Não foi possível registrar o pedido. Nenhum Pix foi criado." }, 500);
+    }
+
     const mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
       method: "POST",
       headers: {
@@ -256,39 +276,39 @@ Deno.serve(async (req: Request) => {
     });
     const payment = await mpResponse.json();
     if (!mpResponse.ok) {
+      await db.from("orders").update({ status: "Cancelada" }).eq("id", orderId).eq("status", "Pagamento Pendente");
       console.error("Mercado Pago recusou a criação do Pix:", payment?.message ?? mpResponse.status);
-      return json({ error: "O Mercado Pago não conseguiu gerar o Pix. Confira a configuração da conta e tente novamente." }, 502);
+      return json({ error: "O Mercado Pago não conseguiu gerar o Pix. O pedido foi marcado como cancelado; tente novamente." }, 502);
     }
     const tx = payment?.point_of_interaction?.transaction_data;
-    if (!payment?.id || !tx?.qr_code) return json({ error: "O Mercado Pago não retornou os dados do Pix. Nenhum pedido foi confirmado." }, 502);
-
-    const orderPayload = {
-      id: orderId,
-      user_id: orderUserId,
-      customer_name: name,
-      customer_phone: phone,
-      customer_cpf: cpf,
-      customer_email: email,
-      customer_address: address,
-      delivery_type: deliveryType,
-      payment_method: "Mercado Pago Pix",
-      payment_id: String(payment.id),
-      pix_qr_code: tx.qr_code,
-      pix_qr_code_base64: tx.qr_code_base64 ?? null,
-      items,
-      subtotal,
-      delivery_fee: deliveryFee,
-      total,
-      status: payment.status === "approved" ? "Pagamento Confirmado" : (["rejected", "cancelled"].includes(String(payment.status)) ? "Cancelada" : "Pagamento Pendente"),
-      market_checklist: items.map((item: any) => ({ id: item.id, name: item.name, qty: item.qty, bought: false })),
-    };
-    const { data: savedOrder, error: insertError } = await db.from("orders").insert(orderPayload).select("*").single();
-    if (insertError) {
-      console.error("Falha ao salvar pedido:", insertError.message);
-      return json({ error: "O pagamento foi iniciado, mas houve uma falha ao registrar o pedido. Entre em contato com a feira com o código " + orderId }, 500);
+    if (!payment?.id || !tx?.qr_code) {
+      await db.from("orders").update({ status: "Cancelada" }).eq("id", orderId).eq("status", "Pagamento Pendente");
+      return json({ error: "O Mercado Pago não retornou os dados do Pix. O pedido foi marcado como cancelado." }, 502);
     }
+
+    const { data: savedOrder, error: savePaymentError } = await db.from("orders")
+      .update({
+        payment_id: String(payment.id),
+        pix_qr_code: tx.qr_code,
+        pix_qr_code_base64: tx.qr_code_base64 ?? null,
+      })
+      .eq("id", orderId)
+      .select("id,status,total")
+      .single();
+    if (savePaymentError || !savedOrder) {
+      console.error("Pix criado; metadados pendentes de reconciliação para o pedido:", orderId);
+      return json({ error: "O Pix foi iniciado e o pedido está salvo com o código " + orderId + ". Atualize seus pedidos ou fale com a loja se os dados do Pix não aparecerem." }, 500);
+    }
+    const initialStatus = payment.status === "approved" ? "Pagamento Confirmado" :
+      (["rejected", "cancelled"].includes(String(payment.status)) ? "Cancelada" : "Pagamento Pendente");
+    if (initialStatus !== "Pagamento Pendente") {
+      await db.from("orders").update({ status: initialStatus })
+        .eq("id", orderId).eq("status", "Pagamento Pendente");
+    }
+    const { data: finalOrder } = await db.from("orders").select("id,status,total").eq("id", orderId).single();
+    const responseOrder = finalOrder || savedOrder;
     return json({
-      order: savedOrder,
+      order: responseOrder,
       paymentId: String(payment.id),
       qrCode: tx.qr_code,
       qrCodeBase64: tx.qr_code_base64 ?? null,
