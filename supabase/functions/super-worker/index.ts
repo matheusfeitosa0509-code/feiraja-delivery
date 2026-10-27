@@ -1,4 +1,6 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+
+function isValidCpf(value: string) { const cpf = String(value || "").replace(/\D/g, ""); if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false; const calc = (base: string, factor: number) => { let sum = 0; for (const digit of base) sum += Number(digit) * factor--; const mod = (sum * 10) % 11; return mod === 10 ? 0 : mod; }; return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10]); }
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,42 +15,9 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const url = new URL(req.url);
+  const earlyNoticeType = String(url.searchParams.get("type") || url.searchParams.get("topic") || "");
+  if (earlyNoticeType && earlyNoticeType !== "payment") return json({ received: true, ignored: true });
   if (req.method === "GET") {
-    if (url.searchParams.get("repair_legacy_orders") === "1") {
-      const bearer = req.headers.get("Authorization") || "";
-      const accessToken = bearer.startsWith("Bearer ") ? bearer.slice(7) : "";
-      if (!accessToken) return json({ error: "Sessão necessária." }, 401);
-      const supabaseUrl = Deno.env.get("SUPABASE_URL");
-      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-      if (!supabaseUrl || !serviceKey) return json({ error: "Configuração interna incompleta." }, 500);
-      const authClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") || "", { auth: { persistSession: false, autoRefreshToken: false } });
-      const { data: authData, error: authError } = await authClient.auth.getUser(accessToken);
-      if (authError || !authData?.user) return json({ error: "Sessão inválida." }, 401);
-      const email = String(authData.user.email || "").trim().toLowerCase();
-      if (!email || !authData.user.email_confirmed_at || authData.user.is_anonymous) {
-        return json({ repaired: 0, skipped: true, reason: "E-mail da conta ainda não confirmado." });
-      }
-      const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-      const { data: candidates, error: candidateError } = await db.from("orders")
-        .select("id,customer_email")
-        .is("user_id", null)
-        .eq("customer_email", email)
-        .limit(100);
-      if (candidateError) return json({ error: "Não foi possível conferir pedidos antigos." }, 500);
-      let repaired = 0;
-      for (const order of candidates || []) {
-        if (String(order.customer_email || "").trim().toLowerCase() !== email) continue;
-        const { data: updated, error: updateError } = await db.from("orders")
-          .update({ user_id: authData.user.id })
-          .eq("id", order.id)
-          .is("user_id", null)
-          .select("id")
-          .maybeSingle();
-        if (updateError) return json({ error: "Falha ao vincular um pedido antigo." }, 500);
-        if (updated) repaired++;
-      }
-      return json({ repaired });
-    }
     const orderId = url.searchParams.get("order_id");
     if (!orderId || orderId.length > 100) return json({ error: "Pedido inválido." }, 400);
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -64,7 +33,8 @@ Deno.serve(async (req: Request) => {
     const { data, error } = await db.from("orders").select("id,status,user_id").eq("id", orderId).maybeSingle();
     if (error) return json({ error: "Não foi possível consultar o pedido." }, 500);
     if (!data) return json({ error: "Pedido não encontrado." }, 404);
-    const isAdmin = String(authData.user.email || "").toLowerCase() === "matheusfeitosa0509@gmail.com";
+    const { data: adminMembership } = await db.from("admin_users").select("user_id").eq("user_id", authData.user.id).maybeSingle();
+    const isAdmin = !!adminMembership;
     if (data.user_id !== authData.user.id && !isAdmin) return json({ error: "Acesso negado." }, 403);
     return json({ orderId: data.id, status: data.status });
   }
@@ -81,6 +51,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const noticeType = String(url.searchParams.get("type") || url.searchParams.get("topic") || body?.type || body?.topic || "");
     const paymentIdFromNotice = String(url.searchParams.get("data.id") || url.searchParams.get("id") || body?.data?.id || "");
+    if (noticeType && noticeType !== "payment") return json({ received: true, ignored: true });
     if (noticeType === "payment" && paymentIdFromNotice) {
       // Webhooks must be signed. Never process payment notices without the configured secret.
       const webhookSecret = Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET");
@@ -139,6 +110,10 @@ Deno.serve(async (req: Request) => {
         console.error("Valor do pagamento não corresponde ao pedido:", linkedOrder.id);
         return json({ received: true, ignored: true });
       }
+      const protectedAdministrativeStatuses = new Set(["Saiu para Entrega", "Cancelada", "Preparando", "Pronto para Retirada", "Entregue", "Preparando pedido", "Concluído", "Concluido", "Saiu para entrega"]);
+      if (incomingStatus === "approved" && protectedAdministrativeStatuses.has(String(linkedOrder.status || ""))) {
+        return json({ received: true, ignored: true, reason: "status_administrativo_preservado" });
+      }
       const statusMap: Record<string, string> = {
         approved: "Pagamento Confirmado",
         pending: "Pagamento Pendente",
@@ -188,13 +163,18 @@ Deno.serve(async (req: Request) => {
     const email = String(customer.email ?? "").trim().toLowerCase().slice(0, 254);
     const deliveryType = customer.deliveryType === "pickup" ? "pickup" : "delivery";
     const address = deliveryType === "pickup" ? "Retirada na Feira" : String(customer.address ?? "").trim().slice(0, 300);
-    if (!name || phone.replace(/\D/g, "").length < 8 || (paymentMethod === "pix" && (cpf.length !== 11 || !/^\S+@\S+\.\S+$/.test(email))) || (email && !/^\S+@\S+\.\S+$/.test(email)) || (deliveryType === "delivery" && !address)) {
+    if (!name || phone.replace(/\D/g, "").length < 8 || (paymentMethod === "pix" && (!isValidCpf(cpf) || !/^\S+@\S+\.\S+$/.test(email))) || (email && !/^\S+@\S+\.\S+$/.test(email)) || (deliveryType === "delivery" && !address)) {
       return json({ error: "Confira nome, telefone, CPF, e-mail e endereço de entrega." }, 400);
     }
     const accountEmail = String(authData.user.email || "").trim().toLowerCase();
     if (paymentMethod === "pix" && accountEmail && email !== accountEmail) {
       return json({ error: "Use o mesmo e-mail da sua conta para gerar o Pix." }, 400);
     }
+
+    if (paymentMethod === "pix" && !isValidCpf(cpf)) return json({ error: "Informe um CPF válido para gerar o Pix." }, 400);
+    const { count: recentOrderCount, error: rateLimitError } = await db.from("orders").select("id", { count: "exact", head: true }).eq("user_id", orderUserId).gte("created_at", new Date(Date.now() - 10 * 60 * 1000).toISOString());
+    if (rateLimitError) return json({ error: "Não foi possível validar o limite de pedidos. Tente novamente." }, 503);
+    if ((recentOrderCount || 0) >= 5) return json({ error: "Limite de 5 pedidos em 10 minutos atingido. Aguarde antes de tentar novamente." }, 429);
 
     const qtyById = new Map<string, number>();
     for (const item of requestedItems) {
@@ -232,7 +212,7 @@ Deno.serve(async (req: Request) => {
         customer_cpf: cpf || null, customer_email: email || null, customer_address: address,
         delivery_type: deliveryType,
         payment_method: paymentMethod === "cash" ? "Dinheiro na entrega" : "Cartão na entrega",
-        items, subtotal, delivery_fee: deliveryFee, total, status: "Pagamento Pendente",
+        items, subtotal, delivery_fee: deliveryFee, total, status: "Pedido Recebido",
         market_checklist: { notes: String(body?.notes ?? "").trim().slice(0, 1000) },
       };
       const { data: savedOrder, error: insertError } = await db.from("orders").insert(orderPayload).select("id,status,total").single();
@@ -249,7 +229,7 @@ Deno.serve(async (req: Request) => {
       customer_cpf: cpf, customer_email: email, customer_address: address,
       delivery_type: deliveryType, payment_method: "Mercado Pago Pix",
       items, subtotal, delivery_fee: deliveryFee, total, status: "Pagamento Pendente",
-      market_checklist: items.map((item: any) => ({ id: item.id, name: item.name, qty: item.qty, bought: false })),
+      market_checklist: { items: items.map((item: any) => ({ id: item.id, name: item.name, qty: item.qty, bought: false })), notes: String(body?.notes ?? "").trim().slice(0, 500) },
     };
     const { error: draftError } = await db.from("orders").insert(draftOrder);
     if (draftError) {
@@ -268,7 +248,9 @@ Deno.serve(async (req: Request) => {
         transaction_amount: total,
         description: `FeiraJá - Pedido ${orderId}`,
         payment_method_id: "pix",
-        payer: { email, first_name: name.split(" ")[0], last_name: name.split(" ").slice(1).join(" ") || name.split(" ")[0] },
+        payer: { email, first_name: name.split(" ")[0], last_name: name.split(" ").slice(1).join(" ") || name.split(" ")[0], identification: { type: "CPF", number: cpf } },
+        date_of_expiration: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+        notification_url: "https://juhwdevvwstmyxyyagzh.supabase.co/functions/v1/super-worker",
         external_reference: orderId,
         metadata: { order_id: orderId },
       }),
