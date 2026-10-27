@@ -85,7 +85,13 @@ Deno.serve(async (req: Request) => {
         );
         const digest = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(manifest));
         const expectedSignature = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
-        if (expectedSignature !== suppliedSignature) return json({ error: "Assinatura do webhook inválida." }, 401);
+        // Constant-time comparison for equal-length hexadecimal signatures.
+        let signatureDiff = expectedSignature.length ^ suppliedSignature.length;
+        const compareLength = Math.max(expectedSignature.length, suppliedSignature.length);
+        for (let i = 0; i < compareLength; i++) {
+          signatureDiff |= (expectedSignature.charCodeAt(i) || 0) ^ (suppliedSignature.charCodeAt(i) || 0);
+        }
+        if (signatureDiff !== 0) return json({ error: "Assinatura do webhook inválida." }, 401);
       }
       if (!mpToken) return json({ error: "Mercado Pago não configurado." }, 503);
       const mpCheck = await fetch("https://api.mercadopago.com/v1/payments/" + encodeURIComponent(paymentIdFromNotice), {
@@ -114,6 +120,7 @@ Deno.serve(async (req: Request) => {
         console.error("Valor do pagamento não corresponde ao pedido:", linkedOrder.id);
         return json({ received: true, ignored: true });
       }
+      const incomingStatus = String(verifiedPayment.status || "");
       const protectedAdministrativeStatuses = new Set(["saiu para entrega", "cancelada", "cancelado", "preparando", "pronto para retirada", "entregue", "preparando pedido", "concluído", "concluido", "received", "recebido"]);
       if (incomingStatus === "approved" && protectedAdministrativeStatuses.has(String(linkedOrder.status || "").trim().toLowerCase())) {
         return json({ received: true, ignored: true, reason: "status_administrativo_preservado" });
@@ -127,7 +134,6 @@ Deno.serve(async (req: Request) => {
         refunded: "Cancelada",
         charged_back: "Cancelada",
       };
-      const incomingStatus = String(verifiedPayment.status || "");
       const nextStatus = statusMap[incomingStatus];
       if (!nextStatus) return json({ received: true, ignored: true });
       // Ignore delayed non-final events after approval, but keep refunds and chargebacks visible.
@@ -253,7 +259,7 @@ Deno.serve(async (req: Request) => {
         description: `FeiraJá - Pedido ${orderId}`,
         payment_method_id: "pix",
         payer: { email, first_name: name.split(" ")[0], last_name: name.split(" ").slice(1).join(" ") || name.split(" ")[0], identification: { type: "CPF", number: cpf } },
-        date_of_expiration: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+        date_of_expiration: new Date(Date.now() + 30 * 60 * 1000 + 4 * 60 * 60 * 1000).toISOString().slice(0, -1) + "-04:00",
         notification_url: "https://juhwdevvwstmyxyyagzh.supabase.co/functions/v1/super-worker",
         external_reference: orderId,
         metadata: { order_id: orderId },
