@@ -1,16 +1,35 @@
 # FeiraJá Delivery
 
-Site estático em português com página inicial e fluxo de recuperação de senha Supabase.
+Loja estática em português com catálogo Supabase, checkout (Pix Mercado Pago, dinheiro/cartão na entrega), histórico de pedidos e painel administrativo.
 
 ## Publicação
-O workflow em `.github/workflows/pages.yml` publica a raiz do repositório no GitHub Pages a cada push na branch `main`.
+O workflow `.github/workflows/pages.yml` publica a raiz do repositório no GitHub Pages a cada push na branch `main`.
 
-URL esperada: https://matheusfeitosa0509-code.github.io/feiraja-delivery/
+- Site: https://matheusfeitosa0509-code.github.io/feiraja-delivery/
+- Loja: https://matheusfeitosa0509-code.github.io/feiraja-delivery/loja.html
+- Painel: https://matheusfeitosa0509-code.github.io/feiraja-delivery/admin.html
+- Recuperação: https://matheusfeitosa0509-code.github.io/feiraja-delivery/recuperar-senha.html
 
-## Ativar recuperação de senha
-1. No Supabase Dashboard do projeto `juhwdevvwstmyxyyagzh`, abra **Project Settings → API** e copie a chave pública **publishable** ou a chave legada **anon**.
-2. Em `recuperar-senha.html`, substitua `COLE_AQUI_SUA_CHAVE_PUBLICA_SUPABASE` pela chave pública.
-3. No Supabase, em **Authentication → URL Configuration**, configure o Site URL e inclua a URL publicada e `https://matheusfeitosa0509-code.github.io/feiraja-delivery/recuperar-senha.html` em Redirect URLs.
-4. Confirme que o provedor Email está habilitado.
+## Supabase
+Projeto: `juhwdevvwstmyxyyagzh`.
 
-Nunca use a chave `service_role` ou qualquer chave secreta no frontend.
+A chave publishable/anon é pública e pode ser usada no navegador; nunca colocar `service_role`, access token do Mercado Pago ou segredo de webhook no frontend. As políticas RLS e migrations versionadas ficam em `supabase/migrations/`.
+
+## Mercado Pago
+A Edge Function `super-worker` recebe pedidos e webhooks. A opção `verify_jwt=false` é intencional para que o Mercado Pago consiga chamar o endpoint sem JWT; a própria função valida assinatura HMAC das notificações e consulta o pagamento à API do Mercado Pago antes de atualizar o pedido.
+
+Configure em **Supabase → Edge Functions → Secrets**:
+- `MERCADO_PAGO_ACCESS_TOKEN`
+- `MERCADO_PAGO_WEBHOOK_SECRET`
+
+A URL de notificação usada pelo checkout é `https://juhwdevvwstmyxyyagzh.supabase.co/functions/v1/super-worker`. No painel do Mercado Pago, confira também se o evento **Pagamentos** está habilitado para essa URL.
+
+## Autenticação e segurança
+- A página de recuperação depende de e-mail/SMTP configurado e da URL `recuperar-senha.html` em Authentication → URL Configuration.
+- A autorização administrativa usa a tabela `public.admin_users`; a conta administrativa precisa ter associação nessa tabela.
+- As políticas RLS estão nas migrations. Não habilite acesso público de escrita às tabelas.
+- O frontend exige senha de 12 caracteres no cadastro; o login aceita senhas antigas válidas.
+- O checkout limita pedidos por usuário a 5 em 10 minutos.
+
+## Documentação legal
+Preencha os dados comerciais pendentes em `politica-privacidade.html` e `termos.html` antes de considerar as páginas prontas para publicação legal.
