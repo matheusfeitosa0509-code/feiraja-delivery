@@ -1,0 +1,42 @@
+name: Check inline JavaScript syntax
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run node --check on browser scripts
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import os from 'node:os';
+          import path from 'node:path';
+          import { spawnSync } from 'node:child_process';
+          const files = ['admin.html', 'loja.html', 'recuperar-senha.html'];
+          let index = 0;
+          for (const file of files) {
+            const html = fs.readFileSync(file, 'utf8');
+            const scripts = [...html.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)]
+              .map(match => match[1]).filter(script => script.trim());
+            if (!scripts.length) throw new Error(`No inline scripts found in ${file}`);
+            for (const script of scripts) {
+              const temp = path.join(os.tmpdir(), `feiraja-${index++}.mjs`);
+              fs.writeFileSync(temp, script, 'utf8');
+              const result = spawnSync(process.execPath, ['--check', temp], { encoding: 'utf8' });
+              if (result.status !== 0) {
+                process.stderr.write(`Syntax error in ${file}:\\n${result.stderr}`);
+                process.exit(result.status || 1);
+              }
+            }
+            console.log(`node --check OK: ${file} (${scripts.length} script(s))`);
+          }
+          NODE
