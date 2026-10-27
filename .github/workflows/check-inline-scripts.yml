@@ -27,16 +27,16 @@ jobs:
             const html = fs.readFileSync(file, 'utf8');
             const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
               .map(match => match[1]).filter(script => script.trim());
-            if (!scripts.length) throw new Error(\`No inline scripts found in \${file}\`);
+            if (!scripts.length) throw new Error('No inline scripts found in ' + file);
             for (const script of scripts) {
-              const temp = path.join(os.tmpdir(), \`feiraja-\${index++}.mjs\`);
+              const temp = path.join(os.tmpdir(), 'feiraja-' + index++ + '.mjs');
               fs.writeFileSync(temp, script, 'utf8');
               const result = spawnSync(process.execPath, ['--check', temp], { encoding: 'utf8' });
               if (result.status !== 0) {
-                process.stderr.write(\`Syntax error in \${file}:\n\${result.stderr}\`);
+                process.stderr.write('Syntax error in ' + file + ':\n' + result.stderr);
                 process.exit(result.status || 1);
               }
             }
-            console.log(\`node --check OK: \${file} (\${scripts.length} script(s))\`);
+            console.log('node --check OK: ' + file + ' (' + scripts.length + ' script(s))');
           }
           NODE
