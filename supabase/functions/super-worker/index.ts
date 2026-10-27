@@ -15,6 +15,8 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const url = new URL(req.url);
+  const earlyNoticeType = String(url.searchParams.get("type") || url.searchParams.get("topic") || "");
+  if (earlyNoticeType && earlyNoticeType !== "payment") return json({ received: true, ignored: true });
   if (req.method === "GET") {
     const orderId = url.searchParams.get("order_id");
     if (!orderId || orderId.length > 100) return json({ error: "Pedido inválido." }, 400);
