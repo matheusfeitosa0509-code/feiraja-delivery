@@ -23,7 +23,7 @@ async function checkPasswordPwned(password){
  const prefix=hash.slice(0,5), suffix=hash.slice(5);
  const response=await fetch('https://api.pwnedpasswords.com/range/'+prefix,{headers:{'Add-Padding':'true'},cache:'no-store'});
  if(!response.ok)throw new Error('Não foi possível verificar a senha agora.');
- const lines=(await response.text()).split(/\\r?\\n/);
+ const lines=(await response.text()).split(/\r?\n/);
  return lines.some(line=>{const [candidate,count]=line.trim().split(':');return candidate===suffix&&Number(count)>0;});
 }
 
