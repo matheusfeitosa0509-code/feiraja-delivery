@@ -17,6 +17,9 @@ Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
   const earlyNoticeType = String(url.searchParams.get("type") || url.searchParams.get("topic") || "");
   if (earlyNoticeType && earlyNoticeType !== "payment") return json({ received: true, ignored: true });
+  const earlyBody = req.method === "POST" ? await req.clone().json().catch(() => ({})) : {};
+  const earlyBodyType = String(earlyBody?.type || earlyBody?.topic || "");
+  if (earlyBodyType && earlyBodyType !== "payment") return json({ received: true, ignored: true });
   if (req.method === "GET") {
     const orderId = url.searchParams.get("order_id");
     if (!orderId || orderId.length > 100) return json({ error: "Pedido inválido." }, 400);
@@ -52,6 +55,7 @@ Deno.serve(async (req: Request) => {
     const noticeType = String(url.searchParams.get("type") || url.searchParams.get("topic") || body?.type || body?.topic || "");
     const paymentIdFromNotice = String(url.searchParams.get("data.id") || url.searchParams.get("id") || body?.data?.id || "");
     if (noticeType && noticeType !== "payment") return json({ received: true, ignored: true });
+    if (noticeType === "payment" && !paymentIdFromNotice) return json({ received: true, ignored: true });
     if (noticeType === "payment" && paymentIdFromNotice) {
       // Webhooks must be signed. Never process payment notices without the configured secret.
       const webhookSecret = Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET");
@@ -110,8 +114,8 @@ Deno.serve(async (req: Request) => {
         console.error("Valor do pagamento não corresponde ao pedido:", linkedOrder.id);
         return json({ received: true, ignored: true });
       }
-      const protectedAdministrativeStatuses = new Set(["Saiu para Entrega", "Cancelada", "Preparando", "Pronto para Retirada", "Entregue", "Preparando pedido", "Concluído", "Concluido", "Saiu para entrega"]);
-      if (incomingStatus === "approved" && protectedAdministrativeStatuses.has(String(linkedOrder.status || ""))) {
+      const protectedAdministrativeStatuses = new Set(["saiu para entrega", "cancelada", "cancelado", "preparando", "pronto para retirada", "entregue", "preparando pedido", "concluído", "concluido", "received", "recebido"]);
+      if (incomingStatus === "approved" && protectedAdministrativeStatuses.has(String(linkedOrder.status || "").trim().toLowerCase())) {
         return json({ received: true, ignored: true, reason: "status_administrativo_preservado" });
       }
       const statusMap: Record<string, string> = {
