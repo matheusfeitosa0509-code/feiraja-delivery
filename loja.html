@@ -85,7 +85,7 @@ if(paymentMethod==='pix'){
  resultData=await resp.json().catch(()=>({}));if(!resp.ok)error={message:resultData.error||'Não foi possível registrar o pedido.'};
 }
 btn.disabled=false;btn.textContent='Confirmar pedido';if(error){console.error(error);$('#result').textContent='Não foi possível registrar o pedido. '+(error.message||'Verifique a conexão e tente novamente.');$('#result').classList.remove('hidden');return;}
-await loadMyOrders();$('#checkoutForm').classList.add('hidden');$('#result').classList.remove('hidden');
+await loadMyOrders();cart={};persistCart();renderCart();$('#checkoutForm').classList.add('hidden');$('#result').classList.remove('hidden');
 if(paymentMethod==='pix'){
  const qr=resultData.qrCode;const base64=resultData.qrCodeBase64;const order=resultData.order||{};if(!qr){$('#result').textContent='Pedido criado, mas o Mercado Pago não retornou o QR Code. Guarde o código '+esc(order.id||'')+' e fale com a loja.';return;}
  $('#result').innerHTML='<strong>Pix gerado! 🎉</strong><p>Pedido: <b>'+esc(order.id||'')+'</b></p><p>Total: <b>'+money(Number(order.total||t.total))+'</b></p>'+(base64?'<img alt="QR Code Pix" style="display:block;width:min(260px,100%);margin:16px auto" src="data:image/png;base64,'+base64+'">':'')+'<label style="display:block;font-weight:800;margin:12px 0 6px">Pix copia e cola</label><textarea id="pixCopy" rows="4" readonly style="width:100%">'+esc(qr)+'</textarea><button id="copyPix" class="full">Copiar código Pix</button><p class="hint">Abra o app do seu banco para pagar ou copie o código acima. A confirmação é automática: após o pagamento, esta tela atualizará o status do pedido. Não feche esta janela enquanto aguarda.</p><button id="done" class="full">Concluir</button>';
