@@ -158,8 +158,7 @@ Deno.serve(async (req: Request) => {
       }
       const { error: updateError } = await db.from("orders")
         .update({ status: nextStatus, payment_id: paymentIdFromNotice })
-        .eq("id", linkedOrder.id)
-        .or("payment_id.is.null,payment_id.eq." + paymentIdFromNotice);
+        .eq("id", linkedOrder.id);
       if (updateError) {
         console.error("Falha ao atualizar status do pedido:", updateError.message);
         return json({ error: "Falha ao atualizar pedido." }, 500);
