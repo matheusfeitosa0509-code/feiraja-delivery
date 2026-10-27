@@ -132,6 +132,7 @@ Deno.serve(async (req: Request) => {
         rejected: "Cancelada",
         cancelled: "Cancelada",
         refunded: "Cancelada",
+        expired: "Cancelada",
         charged_back: "Cancelada",
       };
       const nextStatus = statusMap[incomingStatus];
