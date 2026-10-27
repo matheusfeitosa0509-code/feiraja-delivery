@@ -13,7 +13,7 @@ O workflow `.github/workflows/pages.yml` publica a raiz do repositório no GitHu
 ## Supabase
 Projeto: `juhwdevvwstmyxyyagzh`.
 
-A chave publishable/anon é pública e pode ser usada no navegador; nunca colocar `service_role`, access token do Mercado Pago ou segredo de webhook no frontend. As políticas RLS e migrations versionadas ficam em `supabase/migrations/`.
+A chave publishable/anon é pública e pode ser usada no navegador; nunca colocar `service_role`, access token do Mercado Pago ou segredo de webhook no frontend. A migration criada nesta auditoria está em `supabase/migrations/20261027212711_admin_roles_and_order_statuses.sql`. O histórico de versões aplicadas está em `supabase/migrations/README.md`; as políticas RLS atuais estão documentadas em `supabase/policies/current_rls_snapshot.sql`. Os arquivos SQL das migrations antigas não estavam no repositório e não foram reconstruídos por suposição.
 
 ## Mercado Pago
 A Edge Function `super-worker` recebe pedidos e webhooks. A opção `verify_jwt=false` é intencional para que o Mercado Pago consiga chamar o endpoint sem JWT; a própria função valida assinatura HMAC das notificações e consulta o pagamento à API do Mercado Pago antes de atualizar o pedido.
