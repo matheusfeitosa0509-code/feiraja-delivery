@@ -10,6 +10,8 @@ O workflow `.github/workflows/pages.yml` publica a raiz do repositório no GitHu
 - Painel: https://matheusfeitosa0509-code.github.io/feiraja-delivery/admin.html
 - Recuperação: https://matheusfeitosa0509-code.github.io/feiraja-delivery/recuperar-senha.html
 
+Pico.css está fixado na versão `2.1.1` nas páginas legais que o utilizam.
+
 ## Supabase
 Projeto: `juhwdevvwstmyxyyagzh`.
 
@@ -28,8 +30,11 @@ A URL de notificação usada pelo checkout é `https://juhwdevvwstmyxyyagzh.supa
 - A página de recuperação depende de e-mail/SMTP configurado e da URL `recuperar-senha.html` em Authentication → URL Configuration.
 - A autorização administrativa usa a tabela `public.admin_users`; a conta administrativa precisa ter associação nessa tabela.
 - As políticas RLS estão nas migrations. Não habilite acesso público de escrita às tabelas.
-- O frontend exige senha de 12 caracteres no cadastro; o login aceita senhas antigas válidas.
+- O cadastro exige senha mínima de 8 caracteres; o login aceita senhas antigas válidas.
 - O checkout limita pedidos por usuário a 5 em 10 minutos.
 
 ## Documentação legal
-As páginas de Termos de Uso e Política de Privacidade aguardam os dados comerciais do responsável. Não há links publicados para páginas legais incompletas.
+- Termos de Uso: https://matheusfeitosa0509-code.github.io/feiraja-delivery/termos.html
+- Política de Privacidade: https://matheusfeitosa0509-code.github.io/feiraja-delivery/politica-privacidade.html
+
+As páginas já estão publicadas. A Política de Privacidade ainda precisa ser completada com a identificação legal do responsável (nome civil/empresarial e CPF/CNPJ).
