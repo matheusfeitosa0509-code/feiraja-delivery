@@ -36,7 +36,7 @@ document.querySelector('#emailForm').addEventListener('submit',async e=>{
  const email=document.querySelector('#email').value.trim();
  const redirectTo=location.origin+location.pathname.replace(/[^/]*$/,'')+'recuperar-senha.html';
  const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo});
- if(error){ console.error('Erro ao enviar recuperação:', error); const code=error.code||''; if(error.status===429||code==='over_email_send_rate_limit') show('O Supabase atingiu o limite de envio de e-mails. Aguarde antes de tentar novamente. Para enviar a todos os usuários, configure um SMTP próprio no Supabase.'); else if(code==='email_address_not_authorized') show('O envio padrão do Supabase só permite endereços autorizados. Configure um SMTP próprio para enviar a qualquer usuário.'); else show('Não foi possível enviar o e-mail: '+(error.message||'verifique a configuração de e-mail do Supabase')+'.'); }
+ if(error){ console.error('Erro ao enviar recuperação:', error); show('Não foi possível enviar o e-mail automático. Por favor, solicite a recuperação de senha diretamente pelo nosso WhatsApp: (47) 99147-7280.'); }
  else show('Se houver uma conta cadastrada com esse e-mail, você receberá um link para redefinir a senha. Confira também o spam.',true);
  btn.disabled=false;btn.textContent='Enviar link de recuperação';
 });
