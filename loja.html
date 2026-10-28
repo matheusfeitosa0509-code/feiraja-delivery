@@ -222,7 +222,7 @@ header{background:#FFF8ED!important;color:#243832!important;border-bottom:1px so
 @media(max-width:380px){.catalog-row .product{flex-basis:154px;width:154px;min-width:154px}.catalog-category h2{font-size:18px}}
 </style></head><body>
 <div class="preview-topbar" aria-hidden="true"></div><header><a class="brand" href="./" aria-label="FeiraON"><img class="brand-logo" src="imagens/166159-removebg-preview.png" alt="FeiraON Delivery" onerror="this.onerror=null;this.src=\'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22480%22 height=%22180%22 viewBox=%220 0 480 180%22%3E%3Crect width=%22480%22 height=%22180%22 fill=%22%23eaf0e6%22/%3E%3Ctext x=%22240%22 y=%2290%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22 font-family=%22Arial,sans-serif%22 font-size=%2220%22 fill=%22%23546b59%22%3EImagem indispon%C3%ADvel%3C/text%3E%3C/svg%3E\';this.alt=\'Imagem indisponível\'"></a><button id="accountBtn" type="button">Entrar</button></header>
-<main class="wrap"><div id="accountStatus" class="status">Entre ou crie sua conta para salvar seus dados e agilizar os próximos pedidos.</div><section id="customerOrders" class="panel" style="margin:14px 0"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>📦 Meus pedidos</h2><button id="refreshOrders" type="button">Atualizar pedidos</button></div><p id="ordersMessage" class="hint">Entre na sua conta para consultar seu histórico e acompanhar o status.</p><div id="ordersList"></div></section><div class="market-promo" role="note"><span class="market-promo-icon">🌿</span><span><strong>Fresquinho todo dia</strong><small>Escolhas da feira direto para sua casa</small></span><span class="market-promo-tag">FeiraON</span></div>
+<main class="wrap"><div id="accountStatus" class="status">Entre ou crie sua conta para salvar seus dados e agilizar os próximos pedidos.</div><section id="customerOrders" class="panel" style="margin:14px 0"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>📦 Meus pedidos</h2><button id="refreshOrders" type="button">Atualizar pedidos</button></div><input id="ordersSearch" type="search" placeholder="Buscar pedido ou data" aria-label="Buscar pedido ou data" style="width:100%;margin:10px 0;padding:12px;border:1px solid var(--line);border-radius:12px"><p id="ordersMessage" class="hint">Entre na sua conta para consultar seu histórico e acompanhar o status.</p><div id="ordersList"></div></section><div class="market-promo" role="note"><span class="market-promo-icon">🌿</span><span><strong>Fresquinho todo dia</strong><small>Escolhas da feira direto para sua casa</small></span><span class="market-promo-tag">FeiraON</span></div>
 <section class="hero"><div class="hero-kicker">SUA FEIRA, DO SEU JEITO</div><h1>Sua feira fresquinha, sem complicação.</h1><p>Escolha seus produtos, monte a sacola e peça para entregar em casa.</p></section>
 <div class="tools"><input id="search" placeholder="Buscar frutas, verduras..." aria-label="Buscar produtos"><select id="sort" aria-label="Ordenar"><option value="default">Mais populares</option><option value="asc">Menor preço</option><option value="desc">Maior preço</option></select></div>
 <nav class="categories" id="categories"></nav><div class="status" id="status">Carregando produtos…</div>
@@ -268,18 +268,42 @@ async function loadProfile(){
  $('#email').value=currentUser.email||'';$('#email').readOnly=!!currentUser.email;
  await loadMyOrders();
 }
+let myOrdersCache=[];
+function normalizeOrderSearch(value){return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR').trim();}
+function renderMyOrders(){
+ const boxes=[$('#myOrdersList'),$('#ordersList')];
+ const query=normalizeOrderSearch($('#ordersSearch')?.value||'');
+ const filtered=myOrdersCache.filter(o=>{
+  const items=Array.isArray(o.items)?o.items:[];
+  const date=o.created_at?new Date(o.created_at):null;
+  const dateText=date&&!Number.isNaN(date.getTime())?[date.toLocaleDateString('pt-BR'),date.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'}),date.toLocaleString('pt-BR')].join(' '):'';
+  const text=[shortOrderNumber(o.id),o.id,items.map(i=>i.name||i.id||'Produto').join(' '),dateText].join(' ');
+  return normalizeOrderSearch(text).includes(query);
+ });
+ filtered.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+ const groups=new Map();
+ filtered.forEach(o=>{const d=o.created_at?new Date(o.created_at):null;const key=d&&!Number.isNaN(d.getTime())?d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'):'sem-data';if(!groups.has(key))groups.set(key,[]);groups.get(key).push(o);});
+ const html=filtered.length?[...groups.entries()].map(([key,orders])=>{
+  const d=orders[0].created_at?new Date(orders[0].created_at):null;
+  const title=d&&!Number.isNaN(d.getTime())?d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'}).replace(/^./,c=>c.toLocaleUpperCase('pt-BR')).replace(/\.,/,' ,').replace(' ,',','):'Data indisponível';
+  return '<section class="orders-day"><h3>'+esc(title)+'</h3>'+orders.map(o=>{const items=Array.isArray(o.items)?o.items:[];const desc=items.map(i=>esc(i.name||i.id||'Produto')+' × '+Number(i.qty||i.quantity||1)).join(', ');return '<article class="order-card"><h3>Pedido '+esc(shortOrderNumber(o.id))+'</h3><div class="hint">'+(o.created_at?new Date(o.created_at).toLocaleString('pt-BR'):'Data indisponível')+'</div><p>'+(desc||'Itens do pedido')+'</p><strong>'+money(Number(o.total||0))+'</strong><p><span class="order-status">'+esc(normalizeOrderStatus(o.status))+'</span></p><small class="hint">Pagamento: '+esc(o.payment_method||'—')+'</small></article>';}).join('')+'</section>';
+ }).join(''):'<p class="hint">Nenhum pedido encontrado</p>';
+ boxes.forEach(box=>{if(box)box.innerHTML=html;});
+ $('#ordersMessage').textContent='Mostrando '+filtered.length+' pedido(s). O status é atualizado pela loja.';
+}
+$('#ordersSearch')?.addEventListener('input',renderMyOrders);
 async function loadMyOrders(){
  const boxes=[$('#myOrdersList'),$('#ordersList')];
  const paint=html=>boxes.forEach(box=>{if(box)box.innerHTML=html});
  const {data:{session}}=await supabase.auth.getSession();
  currentUser=session?.user||null;
- if(!currentUser){paint('<p class="hint">Entre na sua conta para consultar pedidos.</p>');$('#ordersMessage').textContent='Entre na sua conta para consultar seu histórico e acompanhar o status.';return;}
+ if(!currentUser){myOrdersCache=[];paint('<p class="hint">Entre na sua conta para consultar pedidos.</p>');$('#ordersMessage').textContent='Entre na sua conta para consultar seu histórico e acompanhar o status.';return;}
  paint('<p class="hint">Carregando pedidos…</p>');
 const {data,error}=await supabase.from('orders').select('id,created_at,items,total,status,payment_method').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(50);
- if(error){paint('<p class="hint">Não foi possível carregar o histórico agora. Tente novamente.</p>');$('#ordersMessage').textContent='Não foi possível carregar os pedidos. Tente novamente.';console.warn('Histórico:',error.message);return;}
- if(!data?.length){paint('<p class="hint">Ainda não há pedidos vinculados a esta conta. Se você tem compras antigas, confirme se usou o mesmo e-mail nesta conta.</p>');$('#ordersMessage').textContent='Nenhum pedido encontrado para esta conta.';return;}
- const html=data.map(o=>{const items=Array.isArray(o.items)?o.items:[];const desc=items.map(i=>esc(i.name||i.id||'Produto')+' × '+Number(i.qty||i.quantity||1)).join(', ');return '<article class="order-card"><h3>Pedido '+esc(shortOrderNumber(o.id))+'</h3><div class="hint">'+(o.created_at?new Date(o.created_at).toLocaleString('pt-BR'):'Data indisponível')+'</div><p>'+(desc||'Itens do pedido')+'</p><strong>'+money(Number(o.total||0))+'</strong><p><span class="order-status">'+esc(normalizeOrderStatus(o.status))+'</span></p><small class="hint">Pagamento: '+esc(o.payment_method||'—')+'</small></article>';}).join('');
- paint(html);$('#ordersMessage').textContent='Mostrando '+data.length+' pedido(s). O status é atualizado pela loja.';
+ if(error){myOrdersCache=[];paint('<p class="hint">Não foi possível carregar o histórico agora. Tente novamente.</p>');$('#ordersMessage').textContent='Não foi possível carregar os pedidos. Tente novamente.';console.warn('Histórico:',error.message);return;}
+ if(!data?.length){myOrdersCache=[];paint('<p class="hint">Ainda não há pedidos vinculados a esta conta. Se você tem compras antigas, confirme se usou o mesmo e-mail nesta conta.</p>');$('#ordersMessage').textContent='Nenhum pedido encontrado para esta conta.';return;}
+ myOrdersCache=data;
+ renderMyOrders();
 }
 function updateAccountUI(){const logged=!!currentUser;$('#myOrdersBtn').classList.toggle('hidden',!logged);$('#accountBtn').textContent=logged?'Olá, '+($('#name').value.trim()||currentUser.user_metadata?.full_name||currentUser.email?.split('@')[0]||'cliente'):'Entrar';$('#accountStatus').textContent=logged?(currentUser.is_anonymous?'Seus dados estão salvos neste navegador.':'Conta conectada: '+(currentUser.email||'')+'. Seus dados serão preenchidos automaticamente.'):'Informe seus dados no checkout para agilizar as próximas compras.';$('#logoutBtn').classList.toggle('hidden',!logged);$('#authNameWrap').classList.toggle('hidden',authMode!=='signup');$('#authSubmit').textContent=authMode==='signup'?'Criar conta':'Entrar';$('#authPassword').minLength=authMode==='signup'?8:0;$('#accountTitle').textContent=authMode==='signup'?'Criar conta FeiraON':'Entrar na conta FeiraON';}
 async function load(){const status=$('#status');status.textContent='Carregando produtos…';$('#products').innerHTML='<p class="empty">Conectando ao catálogo…</p>';try{const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),10000);let response;try{response=await fetch('https://juhwdevvwstmyxyyagzh.supabase.co/rest/v1/products?select=id,name,price,category,image,available&available=eq.true&order=name.asc',{headers:{apikey:'sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',Authorization:'Bearer sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW'},signal:controller.signal,cache:'no-store'});}finally{clearTimeout(timer);}if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();products=(data||[]).map(p=>({...p,price:Number(p.price),image:p.image}));for(const id of Object.keys(cart)){if(!products.some(p=>p.id===id))delete cart[id]}persistCart();status.textContent=products.length?'Produtos disponíveis agora.':'Ainda não há produtos cadastrados.';renderCats();renderProducts();return;}catch(error){console.error('Falha ao carregar catálogo:',error);status.textContent=error.name==='AbortError'?'O catálogo demorou mais que o esperado. Toque em Recarregar para tentar novamente.':'Não foi possível carregar o catálogo. Verifique a conexão e tente novamente.';$('#products').innerHTML='<p class="empty">Não conseguimos carregar os produtos agora. <button id="retryProducts" type="button">Recarregar produtos</button></p>';$('#retryProducts').onclick=load;return;}}
