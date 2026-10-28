@@ -46,6 +46,24 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 @media(max-width:850px){.layout{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}#cartPanel{position:static}.wrap{padding:16px 13px 90px}.hero{padding:24px 20px}.hero:after{right:8px;bottom:-8px}.tools select{max-width:128px}.product img{height:clamp(115px,34vw,175px)}.pbody{padding:11px}.mobile-nav{position:fixed;z-index:8;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(4,1fr);gap:2px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:#ffffffef;backdrop-filter:blur(16px);border-top:1px solid #e4ece2;box-shadow:0 -5px 18px #18372a0c}.mobile-nav a{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 2px;text-decoration:none;color:#62766a;font-size:11px;font-weight:750}.mobile-nav a span{font-size:19px}.mobile-nav a:active,.mobile-nav a:hover{color:var(--g)}}
 @media(max-width:440px){header{padding-left:12px;padding-right:12px;gap:7px}.brand{font-size:16px}.brand:before{width:32px;height:32px;font-size:17px}header button{font-size:12px;padding:10px 11px!important}.cartbtn{white-space:nowrap}.hero{border-radius:20px}.hero h1{font-size:29px}.tools input{padding:12px}.tools select{font-size:12px;padding:10px 7px}.pbody h3{font-size:13px}.price{font-size:17px}.add{font-size:13px}}
 
+
+/* Ajuste de layout mais próximo da experiência de marketplace de delivery. */
+.wrap{display:flex;flex-direction:column;gap:0}
+#accountStatus{order:0;margin:0 0 14px!important;background:#fff;border-radius:12px}
+.hero{order:1;min-height:190px;display:flex;flex-direction:column;justify-content:center;padding:27px 30px}
+.hero h1{font-size:clamp(28px,4vw,38px);max-width:570px;letter-spacing:-1px}
+.hero p{max-width:520px}
+.tools{order:2;position:relative;margin:18px 0 8px}
+.tools input{box-shadow:0 4px 18px #18372a0b;border:1px solid #e1e9df}
+.categories{order:3;margin-bottom:4px}
+#status{order:4}
+.layout{order:5}
+#customerOrders{order:6}
+#customerOrders{margin-top:22px!important}
+@media(min-width:851px){.hero{min-height:205px}.layout{grid-template-columns:minmax(0,1fr) 300px}.grid{grid-template-columns:repeat(3,minmax(0,1fr))}.product img{height:165px}}
+@media(max-width:850px){.wrap{gap:0}.hero{min-height:180px;padding:23px 20px}.hero:after{font-size:100px;right:13px;bottom:-5px}.layout{display:flex;flex-direction:column}.layout>section{width:100%;order:0}.layout>#cartPanel{width:100%;order:1;margin-top:18px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}#customerOrders{margin-top:18px!important}}
+@media(max-width:440px){.hero{min-height:170px;padding:20px 17px}.hero h1{max-width:85%;font-size:26px}.hero p{max-width:82%;font-size:13px}.tools{gap:7px}.tools input{width:100%;flex-basis:100%}.tools select{max-width:none;width:100%;flex-basis:100%}.tools{display:flex}.product{border-radius:16px}.product img{height:clamp(120px,36vw,155px)}}
+
 </style></head><body>
 <header><a class="brand" href="./">🥬 FeiraJá Delivery</a><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button id="accountBtn" type="button">Entrar / Cadastro</button><button class="cartbtn" id="goCart">🛒 Sacola (<span id="cartCount">0</span>)</button></div></header>
 <main class="wrap"><div id="accountStatus" class="status">Entre ou crie sua conta para salvar seus dados e agilizar os próximos pedidos.</div><section id="customerOrders" class="panel" style="margin:14px 0"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>📦 Meus pedidos</h2><button id="refreshOrders" type="button">Atualizar pedidos</button></div><p id="ordersMessage" class="hint">Entre na sua conta para consultar seu histórico e acompanhar o status.</p><div id="ordersList"></div></section><section class="hero"><h1>Sua feira fresquinha, sem complicação.</h1><p>Escolha seus produtos, monte a sacola e peça para entregar em casa.</p></section>
