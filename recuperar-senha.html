@@ -22,6 +22,12 @@ let supabase;
 if(configured){supabase=createClient(SUPABASE_URL,SUPABASE_PUBLIC_KEY,{auth:{flowType:'implicit',detectSessionInUrl:true,persistSession:true,autoRefreshToken:true}});}
 else {show('A página já está preparada, mas falta inserir a chave pública (anon/publishable) do Supabase no arquivo recuperar-senha.html para ativar a recuperação. Não use service_role ou chave secreta.');}
 const emailView=document.querySelector('#emailView'), passwordView=document.querySelector('#passwordView');
+const recoveryHash=new URLSearchParams(location.hash.replace(/^#/,''));
+const recoveryError=(recoveryHash.get('error_description')||'')+' '+(recoveryHash.get('error')||'')+' '+(recoveryHash.get('error_code')||'');
+if(/otp_expired|expired|invalid|link is invalid/i.test(recoveryError)){
+ show('Este link é inválido ou venceu. Solicite outro link de recuperação.');
+ history.replaceState(null,'',location.pathname+location.search);
+}
 let recoverySessionReady=false;
 supabase.auth.onAuthStateChange(async(event,session)=>{
  if(event==='PASSWORD_RECOVERY'){
