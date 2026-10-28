@@ -64,9 +64,54 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 @media(max-width:850px){.wrap{gap:0}.hero{min-height:180px;padding:23px 20px}.hero:after{font-size:100px;right:13px;bottom:-5px}.layout{display:flex;flex-direction:column}.layout>section{width:100%;order:0}.layout>#cartPanel{width:100%;order:1;margin-top:18px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}#customerOrders{margin-top:18px!important}}
 @media(max-width:440px){.hero{min-height:170px;padding:20px 17px}.hero h1{max-width:85%;font-size:26px}.hero p{max-width:82%;font-size:13px}.tools{gap:7px}.tools input{width:100%;flex-basis:100%}.tools select{max-width:none;width:100%;flex-basis:100%}.tools{display:flex}.product{border-radius:16px}.product img{height:clamp(120px,36vw,155px)}}
 
+
+/* Marketplace polish: hierarchy, promotional strip and touch-friendly shopping cards. */
+.market-promo{order:1;display:flex;align-items:center;gap:12px;margin:0 0 14px;padding:13px 16px;background:#fff;border:1px solid #e5eee2;border-radius:16px;box-shadow:0 5px 18px #18372a08}
+.market-promo-icon{display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border-radius:13px;background:#edf7e5;font-size:23px}
+.market-promo strong,.market-promo small{display:block}
+.market-promo strong{font-size:14px;line-height:1.3;color:#18372a}
+.market-promo small{font-size:12px;line-height:1.4;color:#68786f;margin-top:3px}
+.market-promo-tag{margin-left:auto;padding:6px 9px;border-radius:999px;background:#e7f5df;color:#08794e;font-size:11px;font-weight:900}
+.hero{order:2}
+.hero-kicker{position:relative;z-index:1;width:max-content;max-width:100%;margin-bottom:10px;padding:6px 10px;border:1px solid #ffffff35;border-radius:999px;background:#ffffff15;color:#e6f8c2;font-size:10px;font-weight:900;letter-spacing:1.1px}
+.tools{order:3}
+.categories{order:4}
+#status{order:5}
+.layout{order:6}
+#customerOrders{order:7}
+#products{align-items:stretch}
+.product{display:flex;flex-direction:column;min-width:0}
+.product img{display:block;background:linear-gradient(135deg,#f0f5eb,#e3eddd)}
+.pbody{display:flex;flex:1;flex-direction:column;align-items:stretch}
+.pbody h3{flex:1}
+.add{min-height:42px;font-size:14px;font-weight:850}
+.add:active,.cartbtn:active,button:active{transform:scale(.985)}
+#categories button{flex:0 0 auto}
+#customerOrders{scroll-margin-top:88px}
+#products{scroll-margin-top:90px}
+#cartPanel{scroll-margin-top:90px}
+@media(max-width:850px){
+ .market-promo{padding:11px 12px;margin-bottom:12px}
+ .market-promo-icon{width:38px;height:38px;flex-basis:38px}
+ .hero{order:2}
+ .hero-kicker{font-size:9px;margin-bottom:9px}
+ .product{box-shadow:0 4px 15px #18372a0b}
+ .pbody{gap:3px}
+ .add{min-height:40px}
+ .mobile-nav a{min-height:48px;justify-content:center;border-radius:12px}
+ .mobile-nav a:active{background:#edf7e9}
+}
+@media(max-width:440px){
+ .market-promo strong{font-size:13px}
+ .market-promo small{font-size:11px}
+ .market-promo-tag{font-size:10px;padding:5px 7px}
+ .hero-kicker{letter-spacing:.8px}
+}
+
 </style></head><body>
 <header><a class="brand" href="./">🥬 FeiraJá Delivery</a><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button id="accountBtn" type="button">Entrar / Cadastro</button><button class="cartbtn" id="goCart">🛒 Sacola (<span id="cartCount">0</span>)</button></div></header>
-<main class="wrap"><div id="accountStatus" class="status">Entre ou crie sua conta para salvar seus dados e agilizar os próximos pedidos.</div><section id="customerOrders" class="panel" style="margin:14px 0"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>📦 Meus pedidos</h2><button id="refreshOrders" type="button">Atualizar pedidos</button></div><p id="ordersMessage" class="hint">Entre na sua conta para consultar seu histórico e acompanhar o status.</p><div id="ordersList"></div></section><section class="hero"><h1>Sua feira fresquinha, sem complicação.</h1><p>Escolha seus produtos, monte a sacola e peça para entregar em casa.</p></section>
+<main class="wrap"><div id="accountStatus" class="status">Entre ou crie sua conta para salvar seus dados e agilizar os próximos pedidos.</div><section id="customerOrders" class="panel" style="margin:14px 0"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>📦 Meus pedidos</h2><button id="refreshOrders" type="button">Atualizar pedidos</button></div><p id="ordersMessage" class="hint">Entre na sua conta para consultar seu histórico e acompanhar o status.</p><div id="ordersList"></div></section><div class="market-promo" role="note"><span class="market-promo-icon">🌿</span><span><strong>Fresquinho todo dia</strong><small>Escolhas da feira direto para sua casa</small></span><span class="market-promo-tag">FeiraJá</span></div>
+<section class="hero"><div class="hero-kicker">SUA FEIRA, DO SEU JEITO</div><h1>Sua feira fresquinha, sem complicação.</h1><p>Escolha seus produtos, monte a sacola e peça para entregar em casa.</p></section>
 <div class="tools"><input id="search" placeholder="Buscar frutas, verduras..." aria-label="Buscar produtos"><select id="sort" aria-label="Ordenar"><option value="default">Mais populares</option><option value="asc">Menor preço</option><option value="desc">Maior preço</option></select></div>
 <nav class="categories" id="categories"></nav><div class="status" id="status">Carregando produtos…</div>
 <div class="layout"><section><div class="grid" id="products"></div></section><aside class="panel" id="cartPanel"><h2>Sua sacola</h2><div id="cartItems"></div><div class="tot"><span>Produtos</span><strong id="subtotal">R$ 0,00</strong></div><div class="tot"><span>Entrega</span><strong id="fee">R$ 5,00</strong></div><div class="tot total"><span>Total</span><strong id="total">R$ 5,00</strong></div><button class="full" id="checkout">Continuar para entrega</button><p class="hint">No Pix, o QR Code e o código para copiar aparecem aqui mesmo, sem sair da loja.</p></aside></div>
