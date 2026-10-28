@@ -131,7 +131,7 @@ header{background:#C8541F;border-bottom-color:#B94A19;color:#fff}
 
 :root{--g:#1F7A6E;--ink:#243832;--mut:#68766f;--bg:#FFF8ED;--line:#EDE3D6}
 body{background:#FFF8ED;padding-bottom:90px}
-header{background:#C8541F;border-bottom:0;color:#fff;padding-top:10px;padding-bottom:10px}
+header{background:#C8541F;border-bottom:0;color:#fff;padding-top:10px;padding-bottom:10px}#accountStatus{display:none}.brand-text{font-weight:900;color:#fff;font-size:20px}
 .brand{display:flex;align-items:center;color:#fff;min-width:0}
 .brand:before{display:none}.brand-logo{display:block;width:auto;max-width:min(64vw,230px);height:54px;object-fit:contain}
 #accountBtn{background:#fff;color:#A94317;border:0;border-radius:12px;white-space:nowrap}
@@ -154,7 +154,7 @@ header{background:#C8541F;border-bottom:0;color:#fff;padding-top:10px;padding-bo
 @media(min-width:851px){.mobile-nav{max-width:600px;left:50%;right:auto;width:100%;transform:translateX(-50%);border-radius:16px 16px 0 0}.wrap{padding-bottom:30px}}
 @media(max-width:440px){header{padding-left:12px;padding-right:12px}.brand-logo{height:46px;max-width:58vw}#accountBtn{font-size:12px;padding:10px 11px}.mobile-nav .tab-button{font-size:11px}}
 </style></head><body>
-<header><a class="brand" href="./"><img class="brand-logo" src="imagens/logo-feiraon.png" alt="FeiraON Delivery"></a><button id="accountBtn" type="button">Minha conta</button></header>
+<header><a class="brand" href="./"><span class="brand-text">FeiraON Delivery</span><img class="brand-logo" src="imagens/logo-feiraon.png" alt="FeiraON Delivery" onerror="this.style.display=\'none\'"></a><button id="accountBtn" type="button">Minha conta</button></header>
 <main class="wrap"><div id="accountStatus" class="status">Entre ou crie sua conta para salvar seus dados e agilizar os próximos pedidos.</div><section id="customerOrders" class="panel" style="margin:14px 0"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>📦 Meus pedidos</h2><button id="refreshOrders" type="button">Atualizar pedidos</button></div><p id="ordersMessage" class="hint">Entre na sua conta para consultar seu histórico e acompanhar o status.</p><div id="ordersList"></div></section><div class="market-promo" role="note"><span class="market-promo-icon">🌿</span><span><strong>Fresquinho todo dia</strong><small>Escolhas da feira direto para sua casa</small></span><span class="market-promo-tag">FeiraON</span></div>
 <section class="hero"><div class="hero-kicker">SUA FEIRA, DO SEU JEITO</div><h1>Sua feira fresquinha, sem complicação.</h1><p>Escolha seus produtos, monte a sacola e peça para entregar em casa.</p></section>
 <div class="tools"><input id="search" placeholder="Buscar frutas, verduras..." aria-label="Buscar produtos"><select id="sort" aria-label="Ordenar"><option value="default">Mais populares</option><option value="asc">Menor preço</option><option value="desc">Maior preço</option></select></div>
