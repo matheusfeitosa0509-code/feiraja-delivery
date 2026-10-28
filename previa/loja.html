@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#08794e"><title>Loja — FeiraON Delivery</title>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#08794e"><title>Loja — FeiraON</title>
 <style>
 :root{--g:#08794e;--ink:#18372a;--mut:#68786f;--bg:#f5f8f2}*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink);background:var(--bg)}header{background:#fff;border-bottom:1px solid #e4ece2;position:sticky;top:0;z-index:3;padding:13px max(16px,calc((100% - 1120px)/2));display:flex;align-items:center;justify-content:space-between;gap:12px}.brand{font-size:19px;font-weight:850;color:var(--g);text-decoration:none}.cartbtn,button{border:0;border-radius:12px;background:var(--g);color:white;font-weight:800;padding:12px 16px;cursor:pointer}.wrap{max-width:1120px;margin:auto;padding:24px 16px 60px}.hero{background:#e4f4d8;border-radius:24px;padding:28px;margin-bottom:24px}.hero h1{font-size:clamp(28px,5vw,42px);margin:0 0 8px;letter-spacing:-1.5px}.hero p{margin:0;color:#526b59}.tools{display:flex;gap:10px;margin:18px 0;flex-wrap:wrap}.tools input,.tools select,input,textarea,select{padding:12px;border:1px solid #d6e2d5;border-radius:10px;font:inherit;background:white}.tools input{flex:1;min-width:180px}.categories{display:flex;gap:8px;overflow:auto;padding:4px 0 14px}.categories button{white-space:nowrap;background:#e5ede3;color:#28543d}.categories button.active{background:var(--g);color:#fff}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.product{background:#fff;border:1px solid #e4ece2;border-radius:18px;overflow:hidden}.product img{width:100%;height:150px;object-fit:contain;background:#eaf0e6}.pbody{padding:13px}.cat{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)}.pbody h3{font-size:16px;margin:6px 0}.price{font-size:18px;font-weight:850;color:var(--g);margin:8px 0}.add{width:100%;padding:10px}.empty,.status{background:#fff;border-radius:16px;padding:20px;margin:14px 0}.layout{display:grid;grid-template-columns:1fr 330px;gap:18px;align-items:start}.panel{background:#fff;border:1px solid #e4ece2;border-radius:18px;padding:18px}.panel h2{margin:0 0 12px}.cartrow{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #edf0eb;padding:12px 0}.cartrow small{display:block;color:var(--mut)}.qty{display:flex;align-items:center;gap:8px}.qty button{padding:5px 9px;border-radius:8px}.tot{display:flex;justify-content:space-between;margin:10px 0}.total{font-size:20px;font-weight:900}.full{width:100%;margin-top:12px}.modal{position:fixed;inset:0;background:#10271dcc;z-index:10;display:none;align-items:center;justify-content:center;padding:14px}.modal.open{display:flex}.dialog{background:#fff;border-radius:20px;padding:22px;width:min(100%,520px);max-height:92vh;overflow:auto}.dialog h2{margin-top:0}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}.field.fullrow{grid-column:1/-1}.field label{font-size:13px;font-weight:750}.field input,.field textarea,.field select{width:100%}.close{float:right;background:#e7eee6;color:#234d36}.hint{color:var(--mut);font-size:12px;line-height:1.5}.hidden{display:none!important}.order-card{background:#f7faf6;border:1px solid #dce9db;border-radius:12px;padding:12px;margin:10px 0}.order-card h3{font-size:14px;overflow-wrap:anywhere;margin:0 0 6px}.order-status{display:inline-block;border-radius:999px;padding:5px 9px;background:#e2f2dc;color:#175b37;font-size:12px;font-weight:800}.orders-list{max-height:320px;overflow:auto}@media(max-width:850px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{grid-template-columns:1fr}}@media(max-width:440px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.product img{height:115px}.pbody{padding:10px}.pbody h3{font-size:14px}.hero{padding:21px}.formgrid{grid-template-columns:1fr}.field.fullrow{grid-column:auto}}
 
@@ -153,8 +153,35 @@ header{background:#C8541F;border-bottom:0;color:#fff;padding-top:10px;padding-bo
 #pageOrders #customerOrders .panel{box-shadow:none}
 @media(min-width:851px){.mobile-nav{max-width:600px;left:50%;right:auto;width:100%;transform:translateX(-50%);border-radius:16px 16px 0 0}.wrap{padding-bottom:30px}}
 @media(max-width:440px){header{padding-left:12px;padding-right:12px}.brand-logo{height:46px;max-width:58vw}#accountBtn{font-size:12px;padding:10px 11px}.mobile-nav .tab-button{font-size:11px}}
-</style></head><body>
-<header><a class="brand" href="./" aria-label="FeiraON Delivery"><span class="brand-text"><span style="color:#1F7A6E">FeiraON</span> <span style="color:#C8541F">Delivery</span></span></a><button id="accountBtn" type="button">Minha conta</button></header>
+
+/* Ajustes solicitados — prévia FeiraON */
+header{background:#FFF8ED!important;color:#243832;border-bottom:1px solid #EDE3D6;padding-top:8px;padding-bottom:8px;min-height:64px}
+.brand{background:transparent!important;min-width:0}
+.brand-logo{height:46px;width:auto;max-width:min(65vw,240px);object-fit:contain}
+#accountBtn{background:#fff!important;color:#1F7A6E!important;border:1px solid #EDE3D6!important}
+.market-promo,.hero{display:none!important}
+.tools{margin-top:12px}
+.grid{grid-template-columns:minmax(0,1fr)!important;gap:12px}
+.product{display:grid;grid-template-columns:minmax(100px,34%) minmax(0,1fr);align-items:stretch;border-radius:16px;background:#fff}
+.product img{width:100%;height:100%;min-height:145px;max-height:210px;object-fit:contain!important;background:#fff;padding:8px}
+.pbody{padding:12px;min-width:0}
+.cat{color:#68766f;font-size:11px;text-transform:none;letter-spacing:0}
+.pbody h3{min-height:0;font-size:16px;line-height:1.35}
+.price{color:#1F7A6E!important;font-size:19px}
+.add{background:#C8541F!important;color:#fff!important;border-radius:11px}
+.mobile-nav{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:440px){
+ header{padding-left:12px;padding-right:12px}
+ .brand-logo{height:42px;max-width:60vw}
+ .product{grid-template-columns:minmax(95px,35%) minmax(0,1fr)}
+ .product img{min-height:130px;max-height:180px;padding:5px}
+ .pbody{padding:10px}
+ .pbody h3{font-size:14px}
+ .price{font-size:17px}
+ .add{font-size:13px;padding:10px 8px}
+}
+\n</style></head><body>
+<header><a class="brand" href="./" aria-label="FeiraON"><img class="brand-logo" src="../imagens/logo-feiraon.png" alt="FeiraON"></a><button id="accountBtn" type="button">Minha conta</button></header>
 <main class="wrap"><div id="accountStatus" class="status">Entre ou crie sua conta para salvar seus dados e agilizar os próximos pedidos.</div><section id="customerOrders" class="panel" style="margin:14px 0"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>📦 Meus pedidos</h2><button id="refreshOrders" type="button">Atualizar pedidos</button></div><p id="ordersMessage" class="hint">Entre na sua conta para consultar seu histórico e acompanhar o status.</p><div id="ordersList"></div></section><div class="market-promo" role="note"><span class="market-promo-icon">🌿</span><span><strong>Fresquinho todo dia</strong><small>Escolhas da feira direto para sua casa</small></span><span class="market-promo-tag">FeiraON</span></div>
 <section class="hero"><div class="hero-kicker">SUA FEIRA, DO SEU JEITO</div><h1>Sua feira fresquinha, sem complicação.</h1><p>Escolha seus produtos, monte a sacola e peça para entregar em casa.</p></section>
 <div class="tools"><input id="search" placeholder="Buscar frutas, verduras..." aria-label="Buscar produtos"><select id="sort" aria-label="Ordenar"><option value="default">Mais populares</option><option value="asc">Menor preço</option><option value="desc">Maior preço</option></select></div>
