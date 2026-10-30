@@ -132,7 +132,7 @@ header{background:#C8541F;border-bottom-color:#B94A19;color:#fff}
 
 :root{--g:#1F7A6E;--ink:#243832;--mut:#68766f;--bg:#FFF8ED;--line:#EDE3D6}
 body{background:#FFF8ED;padding-bottom:90px}
-header{background:#C8541F;border-bottom:0;color:#fff;padding-top:10px;padding-bottom:10px}#accountStatus{display:none}.brand-text{font-weight:900;color:#fff;font-size:20px}.preview-disabled{display:block;margin:10px 0;padding:12px;border-radius:12px;background:#FFF0E6;color:#A94317;font-weight:800;text-align:center}
+header{background:#C8541F;border-bottom:0;color:#fff;padding-top:10px;padding-bottom:10px}#accountStatus{display:block}#accountStatus.load-error{background:#FFF0E6;color:#A94317;border-color:#F2C4AA}.brand-text{font-weight:900;color:#fff;font-size:20px}.preview-disabled{display:block;margin:10px 0;padding:12px;border-radius:12px;background:#FFF0E6;color:#A94317;font-weight:800;text-align:center}
 .brand{display:flex;align-items:center;color:#fff;min-width:0}
 .brand:before{display:none}.brand-logo{display:block;width:auto;max-width:min(64vw,230px);height:54px;object-fit:contain}
 #accountBtn{background:#fff;color:#A94317;border:0;border-radius:12px;white-space:nowrap}
@@ -381,12 +381,12 @@ function persistCart(){try{localStorage.setItem('feiraja_cart_v1',JSON.stringify
 const orderStatuses=['Pedido Recebido','Pagamento Pendente','Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega','Entregue','Cancelada'];
 function normalizeOrderStatus(status){const s=String(status||'').trim().toLowerCase();if(['cancelada','cancelado','pagamento cancelado','pagamento recusado','pagamento reembolsado','pagamento contestado'].includes(s))return 'Cancelada';if(['entregue','concluído','concluido'].includes(s))return 'Entregue';if(['pronto para retirada','pronto'].includes(s))return 'Pronto para Retirada';if(['preparando','preparando pedido'].includes(s))return 'Preparando';if(['saiu para entrega'].includes(s))return 'Saiu para Entrega';if(['pedido recebido','recebido'].includes(s))return 'Pedido Recebido';if(['pagamento confirmado','pago'].includes(s))return 'Pagamento Confirmado';return 'Pagamento Pendente';}
 $('#refreshOrders').addEventListener('click',loadMyOrders);$('#refreshMyOrders').addEventListener('click',loadMyOrders);
-async function loadProfile(){
- const {data:{session}}=await supabase.auth.getSession();
- currentUser=session?.user||null;
+async function loadProfile(knownUser){
+ if(knownUser){currentUser=knownUser;}else{const {data:{session}}=await supabase.auth.getSession();currentUser=session?.user||null;}
  updateAccountUI();
  if(!currentUser){await loadMyOrders();return;}
- const {data}=await supabase.from('customer_profiles').select('*').eq('user_id',currentUser.id).maybeSingle();
+ const {data,error}=await supabase.from('customer_profiles').select('*').eq('user_id',currentUser.id).maybeSingle();
+ if(error&&knownUser)throw error;
  if(data){
   if(data.full_name&&!$('#name').value.trim())$('#name').value=data.full_name;
   if(data.phone&&!$('#phone').value.trim())$('#phone').value=data.phone;
@@ -394,22 +394,24 @@ async function loadProfile(){
   if(data.address&&!$('#address').value.trim())$('#address').value=data.address;
  }
  $('#email').value=currentUser.email||'';$('#email').readOnly=!!currentUser.email;
- await loadMyOrders();
+ if(knownUser){await loadMyOrders(currentUser);$('#accountStatus').classList.remove('load-error');updateAccountUI();}
+ else{await loadMyOrders();}
 }
-async function loadMyOrders(){
+async function loadMyOrders(knownUser){
  const boxes=[$('#myOrdersList'),$('#ordersList')];
  const paint=html=>boxes.forEach(box=>{if(box)box.innerHTML=html});
- const {data:{session}}=await supabase.auth.getSession();
- currentUser=session?.user||null;
+ let sessionUser=knownUser||null;
+ if(!sessionUser){const {data:{session}}=await supabase.auth.getSession();sessionUser=session?.user||null;}
+ currentUser=sessionUser;
  if(!currentUser){paint('<p class="hint">Entre na sua conta para consultar pedidos.</p>');$('#ordersMessage').textContent='Entre na sua conta para consultar seu histórico e acompanhar o status.';return;}
  paint('<p class="hint">Carregando pedidos…</p>');
-const {data,error}=await supabase.from('orders').select('id,created_at,items,total,status,payment_method').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(50);
- if(error){paint('<p class="hint">Não foi possível carregar o histórico agora. Tente novamente.</p>');$('#ordersMessage').textContent='Não foi possível carregar os pedidos. Tente novamente.';console.warn('Histórico:',error.message);return;}
+ const {data,error}=await supabase.from('orders').select('id,created_at,items,total,status,payment_method').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(50);
+ if(error){paint('<p class="hint">Não foi possível carregar o histórico agora. Tente novamente.</p>');$('#ordersMessage').textContent='Não foi possível carregar os pedidos. Tente novamente.';console.warn('Histórico:',error.message);if(knownUser)throw error;return;}
  if(!data?.length){paint('<p class="hint">Ainda não há pedidos vinculados a esta conta. Se você tem compras antigas, confirme se usou o mesmo e-mail nesta conta.</p>');$('#ordersMessage').textContent='Nenhum pedido encontrado para esta conta.';return;}
  const html=data.map(o=>{const items=Array.isArray(o.items)?o.items:[];const desc=items.map(i=>esc(i.name||i.id||'Produto')+' × '+Number(i.qty||i.quantity||1)).join(', ');return '<article class="order-card"><h3>Pedido '+esc(shortOrderNumber(o.id))+'</h3><div class="hint">'+(o.created_at?new Date(o.created_at).toLocaleString('pt-BR'):'Data indisponível')+'</div><p>'+(desc||'Itens do pedido')+'</p><strong>'+money(Number(o.total||0))+'</strong><p><span class="order-status">'+esc(normalizeOrderStatus(o.status))+'</span></p><small class="hint">Pagamento: '+esc(o.payment_method||'—')+'</small></article>';}).join('');
  paint(html);$('#ordersMessage').textContent='Mostrando '+data.length+' pedido(s). O status é atualizado pela loja.';
 }
-function updateAccountUI(){const logged=!!currentUser;$('#myOrdersBtn').classList.toggle('hidden',!logged);$('#accountBtn').textContent=logged?'Minha conta':'Entrar / Cadastro';$('#accountStatus').textContent=logged?(currentUser.is_anonymous?'Seus dados estão salvos neste navegador.':'Conta conectada: '+(currentUser.email||'')+'. Seus dados serão preenchidos automaticamente.'):'Informe seus dados no checkout para agilizar as próximas compras.';$('#logoutBtn').classList.toggle('hidden',!logged);$('#authNameWrap').classList.toggle('hidden',authMode!=='signup');$('#authSubmit').textContent=authMode==='signup'?'Criar conta':'Entrar';$('#authPassword').minLength=authMode==='signup'?8:0;$('#accountTitle').textContent=authMode==='signup'?'Criar conta FeiraON':'Entrar na conta FeiraON';}
+function updateAccountUI(){const logged=!!currentUser;$('#myOrdersBtn').classList.toggle('hidden',!logged);$('#accountBtn').textContent=logged?'Minha conta':'Entrar / Cadastro';const status=$('#accountStatus');if(!status.classList.contains('load-error'))status.textContent=logged?(currentUser.is_anonymous?'Seus dados estão salvos neste navegador.':'Conta conectada. Seus dados serão preenchidos automaticamente.'):'Informe seus dados no checkout para agilizar as próximas compras.';$('#logoutBtn').classList.toggle('hidden',!logged);$('#authNameWrap').classList.toggle('hidden',authMode!=='signup');$('#authSubmit').textContent=authMode==='signup'?'Criar conta':'Entrar';$('#authPassword').minLength=authMode==='signup'?8:0;$('#accountTitle').textContent=authMode==='signup'?'Criar conta FeiraON':'Entrar na conta FeiraON';}
 async function load(){const status=$('#status');status.textContent='Carregando produtos…';$('#products').innerHTML='<p class="empty">Conectando ao catálogo…</p>';try{const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),10000);let response;try{response=await fetch('https://juhwdevvwstmyxyyagzh.supabase.co/rest/v1/products?select=id,name,price,category,image,available&available=eq.true&order=name.asc',{headers:{apikey:'sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',Authorization:'Bearer sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW'},signal:controller.signal,cache:'no-store'});}finally{clearTimeout(timer);}if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();products=(data||[]).map(p=>({...p,price:Number(p.price),image:typeof p.image==='string'&&p.image.startsWith('imagens/produtos/')?'../'+p.image:p.image}));for(const id of Object.keys(cart)){if(!products.some(p=>p.id===id))delete cart[id]}persistCart();status.textContent=products.length?'Produtos disponíveis agora.':'Ainda não há produtos cadastrados.';renderCats();renderProducts();return;}catch(error){console.error('Falha ao carregar catálogo:',error);status.textContent=error.name==='AbortError'?'O catálogo demorou mais que o esperado. Toque em Recarregar para tentar novamente.':'Não foi possível carregar o catálogo. Verifique a conexão e tente novamente.';$('#products').innerHTML='<p class="empty">Não conseguimos carregar os produtos agora. <button id="retryProducts" type="button">Recarregar produtos</button></p>';$('#retryProducts').onclick=load;return;}}
 function alphaCompare(a,b){return String(a??'').localeCompare(String(b??''),'pt-BR',{sensitivity:'base',ignorePunctuation:false});}function renderCats(){const cats=['Todos',...[...new Set(products.map(p=>p.category).filter(Boolean))].sort(alphaCompare)];$('#categories').innerHTML=cats.map(c=>'<button class="'+(c===category?'active':'')+'" data-cat="'+esc(c)+'">'+esc(c)+'</button>').join('');$('#categories').querySelectorAll('button').forEach(b=>b.onclick=()=>{category=b.dataset.cat;renderCats();if($('#search').value.trim()){ $('#search').value='';renderProducts();}const target=category==='Todos'?$('#products'):Array.from(document.querySelectorAll('.catalog-category')).find(s=>s.dataset.category===category);if(target)target.scrollIntoView({behavior:'smooth',block:'start'});});}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -478,6 +480,7 @@ $('#accountBtn').onclick=()=>{if(currentUser){authMode='profile';$('#authNameWra
     return;
    }
    currentUser=session.user||user;
+   $('#accountStatus').classList.remove('load-error');
    updateAccountUI();
    $('#accountModal').classList.remove('open');
    $('#authMessage').classList.add('hidden');
@@ -486,6 +489,8 @@ $('#accountBtn').onclick=()=>{if(currentUser){authMode='profile';$('#authNameWra
     resumeCheckoutIfReady();
    }catch(err){
     console.warn('Login confirmado, mas não foi possível carregar os dados:',err);
+    $('#accountStatus').textContent='Você entrou, mas não foi possível carregar seus dados. Recarregue a página.';
+    $('#accountStatus').classList.add('load-error');$('#accountStatus').scrollIntoView({behavior:'smooth',block:'start'});
     $('#authMessage').textContent='Você entrou, mas não foi possível carregar seus dados. Recarregue a página.';
     $('#authMessage').classList.remove('hidden');
    }
