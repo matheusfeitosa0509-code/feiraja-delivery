@@ -485,7 +485,7 @@ $('#accountBtn').onclick=()=>{if(currentUser){authMode='profile';$('#authNameWra
    $('#accountModal').classList.remove('open');
    $('#authMessage').classList.add('hidden');
    try{
-    await loadProfile();
+    await loadProfile(currentUser);
     resumeCheckoutIfReady();
    }catch(err){
     console.warn('Login confirmado, mas não foi possível carregar os dados:',err);
