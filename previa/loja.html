@@ -308,20 +308,8 @@ body.preview-modal-open{overflow:hidden!important;overscroll-behavior:none!impor
 @media(max-width:850px){.modal{padding-left:8px!important;padding-right:8px!important}.modal .dialog{width:100%!important;border-radius:18px 18px 0 0!important}}
 
 
-/* Prévia v7: corrigir largura real dos modais e empilhamento sobre o rodapé. */
-.site-footer{position:relative!important;z-index:0!important}
-.modal{position:fixed!important;left:0!important;right:0!important;top:0!important;bottom:var(--preview-nav-height,76px)!important;width:100vw!important;max-width:none!important;box-sizing:border-box!important;z-index:2147483000!important;padding:calc(env(safe-area-inset-top) + 8px) 12px calc(env(safe-area-inset-bottom) + 12px)!important;align-items:flex-start!important;justify-content:center!important;overflow-y:auto!important;overflow-x:hidden!important}
-.modal .dialog{box-sizing:border-box!important;flex:0 0 auto!important;width:calc(100vw - 24px)!important;max-width:520px!important;min-width:0!important;margin-left:auto!important;margin-right:auto!important;max-height:calc(var(--preview-vvh,100dvh) - var(--preview-nav-height,76px) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px)!important}
-#accountModal .dialog{width:calc(100vw - 24px)!important;max-width:520px!important;min-width:0!important}
-#modal .dialog{width:calc(100vw - 24px)!important;max-width:520px!important;min-width:0!important}
-#checkoutForm .field,#checkoutForm .field input,#checkoutForm .field textarea,#checkoutForm .field select{box-sizing:border-box!important;min-width:0!important;max-width:100%!important}
-#checkoutForm .field input,#checkoutForm .field textarea,#checkoutForm .field select{width:100%!important}
-#accountModal .dialog input,#accountModal .dialog textarea,#accountModal .dialog select{box-sizing:border-box!important;min-width:0!important;max-width:100%!important;width:100%!important}
-@media(min-width:544px){.modal .dialog,#accountModal .dialog,#modal .dialog{width:min(calc(100vw - 24px),520px)!important}}
-
-
 /* Prévia v8: layout responsivo sem 100vw; rodapé em fluxo normal e oculto durante modal. */
-html,body{max-width:100%;overflow-x:clip}
+html,body{max-width:100%}
 .site-footer{
  position:static!important;
  float:none!important;
