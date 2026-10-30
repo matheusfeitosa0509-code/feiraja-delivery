@@ -109,7 +109,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 }
 
 
-/* Prévia FeiraON: paleta solicitada */
+/* FeiraON: paleta solicitada */
 :root{--g:#1F7A6E;--ink:#243832;--mut:#68766f;--bg:#FFF8ED;--line:#EDE3D6;--orange:#C8541F}
 body{background:#FFF8ED}
 header{background:#C8541F;border-bottom-color:#B94A19;color:#fff}
@@ -220,7 +220,115 @@ header{background:#FFF8ED!important;color:#243832!important;border-bottom:1px so
 #products.search-results .price{font-size:17px;color:#1F7A6E!important;margin:4px 0}
 #products.search-results .add{background:#C8541F!important;color:#fff!important;border-radius:10px;padding:9px;min-height:38px}
 @media(max-width:380px){.catalog-row .product{flex-basis:154px;width:154px;min-width:154px}.catalog-category h2{font-size:18px}}
-</style></head><body>
+</style>
+<style>
+/* Ajustes de rolagem e teclado dos modais */
+:root{--modal-vvh:100dvh}
+body.modal-scroll-locked{overflow:hidden!important;overscroll-behavior:none}
+#modal{z-index:1000;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);overscroll-behavior:contain;align-items:center}
+#modal.open{display:flex}
+#modal .dialog{display:flex;flex-direction:column;width:min(100%,520px);height:auto;max-height:min(100dvh,var(--modal-vvh));max-height:min(100dvh,var(--modal-vvh));overflow:hidden;padding:0;border-radius:18px 18px 0 0;overscroll-behavior:contain}
+#modal .dialog>h2,#modal .dialog>.close,#modal .dialog>p.hint{flex:0 0 auto;margin-left:18px;margin-right:18px}
+#modal .dialog>h2{margin-top:14px;margin-bottom:6px}
+#modal .dialog>.close{align-self:flex-end;margin-top:10px;margin-bottom:0}
+#modal .dialog>p.hint{margin-top:0;margin-bottom:10px}
+#checkoutForm{display:flex;flex:1 1 auto;flex-direction:column;min-height:0;overflow:hidden}
+#checkoutForm .checkout-fields{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding:0 18px 12px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-padding:16px}
+#checkoutForm .formgrid{grid-template-columns:minmax(0,1fr);gap:0}
+#checkoutForm .field,#checkoutForm .field.fullrow{grid-column:1/-1;min-width:0}
+#checkoutForm .field input,#checkoutForm .field textarea,#checkoutForm .field select{min-height:44px}
+#checkoutForm .checkout-footer{position:relative;z-index:2;flex:0 0 auto;padding:10px 18px calc(12px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #EDE3D6;box-shadow:0 -6px 16px #2438320b}
+#checkoutForm .checkout-footer .tot{margin:0 0 8px;font-size:15px}
+#checkoutForm .checkout-footer .tot strong{font-size:20px}
+#checkoutForm .checkout-footer #submitOrder{width:100%;min-height:48px;margin:0}
+#checkoutForm .checkout-footer .hint{margin:7px 0 0;font-size:11px;line-height:1.35}
+#modal.open~.mobile-nav{visibility:hidden;pointer-events:none}
+@media(max-width:479px){
+ #modal{padding:env(safe-area-inset-top) 0 0}
+ #modal .dialog{width:100%;max-width:none;max-height:min(100dvh,var(--modal-vvh));border-radius:18px 18px 0 0}
+ #checkoutForm .checkout-fields{padding-left:14px;padding-right:14px}
+ #checkoutForm .checkout-footer{padding-left:14px;padding-right:14px}
+}
+@media(min-width:480px){
+ #modal{padding:12px}
+ #modal .dialog{border-radius:18px}
+}
+@media(max-height:500px){
+ #modal .dialog>h2{margin-top:8px}
+ #modal .dialog>.close{margin-top:6px}
+ #modal .dialog>p.hint{margin-bottom:6px}
+ #checkoutForm .checkout-footer{padding-top:6px;padding-bottom:calc(7px + env(safe-area-inset-bottom))}
+ #checkoutForm .checkout-footer .hint{display:none}
+.modal{padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom);overscroll-behavior:contain;}
+.modal.open{display:flex;}
+.modal .dialog{box-sizing:border-box;max-height:min(92vh,var(--modal-vvh));max-height:min(calc(var(--modal-vvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 8px),var(--modal-vvh));overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-padding:16px;min-height:0;}
+#accountModal{z-index:1100;align-items:flex-start;justify-content:center;padding-top:calc(env(safe-area-inset-top) + 8px);padding-bottom:calc(env(safe-area-inset-bottom) + 8px);}
+#accountModal .dialog{display:block;width:min(100%,520px);max-height:calc(var(--modal-vvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px);padding:18px 16px;}
+#accountModal .dialog .close{position:sticky;top:0;float:right;z-index:3;margin:-4px -2px 8px 8px;}
+#accountModal #authForm{clear:both;}
+#accountModal #authSubmit,#accountModal #authToggle,#accountModal #forgotBtn,#accountModal #myOrdersBtn,#accountModal #refreshMyOrders,#accountModal #logoutBtn{min-height:46px;}
+#modal{z-index:1000;}
+#modal .dialog{display:flex;flex-direction:column;width:min(100%,520px);max-height:calc(var(--modal-vvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 8px);padding:0;overflow:hidden;border-radius:18px 18px 0 0;}
+#modal .dialog>h2,#modal .dialog>.close,#modal .dialog>p.hint{flex:0 0 auto;margin-left:14px;margin-right:14px;}
+#modal .dialog>h2{margin-top:12px;margin-bottom:6px;}
+#modal .dialog>.close{align-self:flex-end;margin-top:8px;margin-bottom:0;}
+#modal .dialog>p.hint{margin-top:0;margin-bottom:8px;}
+#checkoutForm{display:flex;flex:1 1 auto;flex-direction:column;min-height:0;overflow:hidden;}
+#checkoutForm .checkout-fields{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding:0 14px 12px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-padding:16px;}
+#checkoutForm .formgrid{grid-template-columns:minmax(0,1fr);gap:0;}
+#checkoutForm .field,#checkoutForm .field.fullrow{grid-column:1/-1;min-width:0;}
+#checkoutForm .field input,#checkoutForm .field textarea,#checkoutForm .field select{min-height:44px;}
+#checkoutForm .checkout-footer{position:relative;z-index:2;flex:0 0 auto;padding:8px 14px calc(10px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #EDE3D6;box-shadow:0 -6px 16px #2438320b;}
+#checkoutForm .checkout-footer .tot{margin:0 0 6px;font-size:15px;}
+#checkoutForm .checkout-footer .tot strong{font-size:20px;}
+#checkoutForm .checkout-footer #submitOrder{width:100%;min-height:48px;margin:0;}
+#checkoutForm .checkout-footer .hint{margin:6px 0 0;font-size:11px;line-height:1.3;}
+body.modal-scroll-locked{overflow:hidden!important;overscroll-behavior:none;}
+@media(max-width:479px){.modal{padding-left:0;padding-right:0;}#accountModal .dialog{width:100%;border-radius:18px 18px 0 0;}#modal .dialog{width:100%;max-width:none;border-radius:18px 18px 0 0;} }
+@media(min-width:480px){#accountModal{padding:12px;}#accountModal .dialog,#modal .dialog{border-radius:18px;}}
+@media(max-height:520px){#accountModal .dialog{padding-top:10px;padding-bottom:10px;}#modal .dialog>h2{margin-top:7px;}#modal .dialog>.close{margin-top:4px;}#checkoutForm .checkout-footer{padding-top:5px;padding-bottom:calc(6px + env(safe-area-inset-bottom));}#checkoutForm .checkout-footer .hint{display:none;}}
+:root{--modal-vvh:100dvh;--modal-nav-height:76px}
+.mobile-nav{z-index:20!important}
+.modal{position:fixed!important;inset:0 0 var(--modal-nav-height) 0!important;z-index:1000!important;padding:calc(env(safe-area-inset-top) + 8px) 12px calc(env(safe-area-inset-bottom) + 12px)!important;align-items:flex-start!important;justify-content:center!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch}
+.modal.open{display:flex!important}
+.modal .dialog{box-sizing:border-box!important;width:min(100%,520px)!important;max-height:calc(var(--modal-vvh) - var(--modal-nav-height) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px)!important;min-height:0!important;overscroll-behavior:contain!important;scroll-padding:20px!important;-webkit-overflow-scrolling:touch!important}
+#accountModal .dialog{display:block!important;overflow-x:hidden!important;overflow-y:auto!important;padding-bottom:max(96px,calc(var(--modal-nav-height) + env(safe-area-inset-bottom) + 24px))!important}
+#modal .dialog{display:flex!important;flex-direction:column!important;overflow:hidden!important;padding-bottom:0!important}
+#checkoutForm{min-height:0!important;overflow:hidden!important}
+#checkoutForm .checkout-fields{min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important;padding-bottom:24px!important;scroll-padding-bottom:28px!important}
+#checkoutForm .checkout-footer{flex:0 0 auto!important;padding-bottom:max(18px,calc(env(safe-area-inset-bottom) + 14px))!important}
+#accountModal #authForm{padding-bottom:8px}
+#accountModal #authSubmit,#accountModal #authToggle,#accountModal #forgotBtn,#accountModal #myOrdersBtn,#accountModal #refreshMyOrders,#accountModal #logoutBtn{min-height:46px}
+body.modal-scroll-locked{overflow:hidden!important;overscroll-behavior:none!important}
+@media(max-width:850px){.modal{padding-left:8px!important;padding-right:8px!important}.modal .dialog{width:100%!important;border-radius:18px 18px 0 0!important}}
+.modal{
+ position:fixed!important;inset:0 0 var(--modal-nav-height,76px) 0!important;
+ left:0!important;right:0!important;top:0!important;bottom:var(--modal-nav-height,76px)!important;
+ width:auto!important;max-width:none!important;box-sizing:border-box!important;
+ display:none;align-items:center!important;justify-content:center!important;
+ padding:calc(env(safe-area-inset-top) + 8px) 12px calc(env(safe-area-inset-bottom) + 12px)!important;
+ overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain!important;
+ -webkit-overflow-scrolling:touch!important;z-index:2147483000!important;
+}
+.modal.open{display:flex!important}
+.modal .dialog{
+ box-sizing:border-box!important;flex:0 1 520px!important;width:100%!important;max-width:520px!important;
+ min-width:0!important;margin:0 auto!important;
+ max-height:calc(var(--modal-vvh,100dvh) - var(--modal-nav-height,76px) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px)!important;
+ overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain!important;
+ -webkit-overflow-scrolling:touch!important;
+}
+#accountModal .dialog{display:block!important;flex:0 1 520px!important;width:100%!important;max-width:520px!important;min-width:0!important}
+#modal .dialog{display:flex!important;flex:0 1 520px!important;flex-direction:column!important;width:100%!important;max-width:520px!important;min-width:0!important;overflow:hidden!important;padding-bottom:0!important}
+#checkoutForm,#checkoutForm .checkout-fields{min-width:0!important;max-width:100%!important}
+#checkoutForm .checkout-fields{overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important}
+#checkoutForm .field,#checkoutForm .field input,#checkoutForm .field textarea,#checkoutForm .field select{box-sizing:border-box!important;min-width:0!important;max-width:100%!important}
+#checkoutForm .field input,#checkoutForm .field textarea,#checkoutForm .field select{width:100%!important}
+@media(max-width:479px){.modal{padding-left:12px!important;padding-right:12px!important}.modal .dialog,#accountModal .dialog,#modal .dialog{width:100%!important;max-width:520px!important;border-radius:18px 18px 0 0!important}}
+@media(min-width:480px){.modal .dialog,#accountModal .dialog,#modal .dialog{border-radius:18px!important}}
+@media(max-height:520px){.modal{align-items:flex-start!important}.modal .dialog{max-height:calc(var(--modal-vvh,100dvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px)!important}}
+</style>
+</head><body>
 <div class="preview-topbar" aria-hidden="true"></div><header><a class="brand" href="./" aria-label="FeiraON"><img class="brand-logo" src="imagens/166159-removebg-preview.png" alt="FeiraON Delivery" onerror="this.onerror=null;this.src=\'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22480%22 height=%22180%22 viewBox=%220 0 480 180%22%3E%3Crect width=%22480%22 height=%22180%22 fill=%22%23eaf0e6%22/%3E%3Ctext x=%22240%22 y=%2290%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22 font-family=%22Arial,sans-serif%22 font-size=%2220%22 fill=%22%23546b59%22%3EImagem indispon%C3%ADvel%3C/text%3E%3C/svg%3E\';this.alt=\'Imagem indisponível\'"></a><button id="accountBtn" type="button">Entrar</button></header>
 <main class="wrap"><div id="accountStatus" class="status">Entre ou crie sua conta para salvar seus dados e agilizar os próximos pedidos.</div><section id="customerOrders" class="panel" style="margin:14px 0"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>📦 Meus pedidos</h2><button id="refreshOrders" type="button">Atualizar pedidos</button></div><input id="ordersSearch" type="search" placeholder="Buscar pedido ou data" aria-label="Buscar pedido ou data" style="width:100%;margin:10px 0;padding:12px;border:1px solid var(--line);border-radius:12px"><p id="ordersMessage" class="hint">Entre na sua conta para consultar seu histórico e acompanhar o status.</p><div id="ordersList"></div></section><div class="market-promo" role="note"><span class="market-promo-icon">🌿</span><span><strong>Fresquinho todo dia</strong><small>Escolhas da feira direto para sua casa</small></span><span class="market-promo-tag">FeiraON</span></div>
 <section class="hero"><div class="hero-kicker">SUA FEIRA, DO SEU JEITO</div><h1>Sua feira fresquinha, sem complicação.</h1><p>Escolha seus produtos, monte a sacola e peça para entregar em casa.</p></section>
@@ -230,7 +338,7 @@ header{background:#FFF8ED!important;color:#243832!important;border-bottom:1px so
 </main>
 <nav class="mobile-nav" aria-label="Navegação principal"><button type="button" class="tab-button active" data-page="products"><span>▦</span>Produtos</button><button type="button" class="tab-button" data-page="cart"><span>🛒</span>Carrinho <b id="tabCartCount">0</b></button><button type="button" class="tab-button" data-page="orders"><span>▤</span>Pedidos</button></nav>
 <div class="modal" id="accountModal"><div class="dialog"><button class="close" id="accountClose">Fechar ✕</button><h2 id="accountTitle">Conta FeiraON</h2><p class="hint">Seus dados ficam salvos com segurança no seu perfil.</p><form id="authForm"><div class="field"><label for="authEmail">E-mail *</label><input id="authEmail" type="email" required autocomplete="email"></div><div class="field" id="authNameWrap"><label for="authName">Nome completo *</label><input id="authName" maxlength="120" autocomplete="name"></div><div class="field"><label for="authPassword">Senha (mínimo 8 caracteres) *</label><input id="authPassword" type="password" required autocomplete="current-password"></div><button id="authSubmit" class="full">Criar conta</button></form><button id="authToggle" class="full" type="button">Já tenho conta — entrar</button><button id="forgotBtn" class="full" type="button">Esqueci minha senha</button><button id="myOrdersBtn" class="full hidden" type="button">📦 Meus pedidos</button><div id="myOrders" class="hidden"><p class="hint">Histórico de compras e status atualizado pela loja.</p><div id="myOrdersList" class="orders-list"></div><button id="refreshMyOrders" class="full" type="button">Atualizar pedidos</button></div><button id="logoutBtn" class="full hidden" type="button">Sair da conta</button><div id="authMessage" class="status hidden"></div><p class="hint">Para recuperar sua senha, use o e-mail cadastrado. Não use senha de outros serviços.</p></div></div>
-<div class="modal" id="modal"><div class="dialog"><button class="close" id="close">Fechar ✕</button><h2>Finalizar pedido</h2><p class="hint">Preencha seus dados para enviarmos o pedido à loja.</p><form id="checkoutForm"><div class="formgrid"><div class="field fullrow"><label for="name">Nome completo *</label><input id="name" required maxlength="120" autocomplete="name"></div><div class="field"><label for="phone">WhatsApp / telefone *</label><input id="phone" required maxlength="30" autocomplete="tel" placeholder="(47) 99147-7280"></div><div class="field cpffield"><label for="cpf">CPF <span id="cpfRequiredHint">(obrigatório para pagamento via Pix)</span></label><input id="cpf" inputmode="numeric" maxlength="14" autocomplete="off" placeholder="000.000.000-00"></div><div class="field pixfield"><label for="email">E-mail para o Pix *</label><input id="email" type="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" required></div><div class="field"><label for="delivery">Recebimento *</label><select id="delivery"><option value="delivery">Entrega em casa</option><option value="pickup">Retirar no local</option></select></div><div class="field fullrow"><label for="address">Endereço completo *</label><textarea id="address" required rows="2" maxlength="500" placeholder="Rua, número, bairro e ponto de referência"></textarea></div><div class="field fullrow"><label for="payment">Forma de pagamento *</label><select id="payment"><option value="pix">PIX instantâneo (QR Code no app)</option><option value="cash">Dinheiro na entrega/retirada</option><option value="card_on_delivery">Cartão na entrega (se disponível)</option></select></div><div class="field fullrow"><label for="notes">Observações</label><textarea id="notes" rows="2" maxlength="500" placeholder="Ex.: fruta mais madura, portão azul…"></textarea></div></div><div class="tot"><span>Total estimado</span><strong id="modalTotal">R$ 0,00</strong></div><button class="full" id="submitOrder">Confirmar pedido</button><p class="hint">Ao confirmar, seus dados serão usados para organizar esta entrega. Não informe senhas nem dados de cartão.</p></form><div id="result" class="status hidden"></div></div></div>
+<div class="modal" id="modal"><div class="dialog"><button class="close" id="close">Fechar ✕</button><h2>Finalizar pedido</h2><p class="hint">Preencha seus dados para enviarmos o pedido à loja.</p><form id="checkoutForm"><div class="checkout-fields"><div class="formgrid"><div class="field fullrow"><label for="name">Nome completo *</label><input id="name" required maxlength="120" autocomplete="name"></div><div class="field"><label for="phone">WhatsApp / telefone *</label><input id="phone" required maxlength="30" autocomplete="tel" placeholder="(47) 99147-7280"></div><div class="field cpffield"><label for="cpf">CPF <span id="cpfRequiredHint">(obrigatório para pagamento via Pix)</span></label><input id="cpf" inputmode="numeric" maxlength="14" autocomplete="off" placeholder="000.000.000-00"></div><div class="field pixfield"><label for="email">E-mail para o Pix *</label><input id="email" type="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" required></div><div class="field"><label for="delivery">Recebimento *</label><select id="delivery"><option value="delivery">Entrega em casa</option><option value="pickup">Retirar no local</option></select></div><div class="field fullrow"><label for="address">Endereço completo *</label><textarea id="address" required rows="2" maxlength="500" placeholder="Rua, número, bairro e ponto de referência"></textarea></div><div class="field fullrow"><label for="payment">Forma de pagamento *</label><select id="payment"><option value="pix">PIX instantâneo (QR Code no app)</option><option value="cash">Dinheiro na entrega/retirada</option><option value="card_on_delivery">Cartão na entrega (se disponível)</option></select></div><div class="field fullrow"><label for="notes">Observações</label><textarea id="notes" rows="2" maxlength="500" placeholder="Ex.: fruta mais madura, portão azul…"></textarea></div></div></div><div class="checkout-footer"><div class="tot"><span>Total estimado</span><strong id="modalTotal">R$ 0,00</strong></div><button type="submit" class="full" id="submitOrder">Confirmar pedido</button><p class="hint">Ao confirmar, seus dados serão usados para organizar esta entrega. Não informe senhas nem dados de cartão.</p></div></form><div id="result" class="status hidden"></div></div></div>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 const supabase=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW');
@@ -361,5 +469,42 @@ function setupAppTabs(){
  }
  document.querySelectorAll('.tab-button').forEach(el=>el.addEventListener('click',()=>showPage(el.dataset.page)));
 }
-setupAppTabs();document.title='FeiraON — Prévia';load();renderCart();loadProfile();
+setupAppTabs();document.title='FeiraON';load();renderCart();loadProfile();
+</script>
+<script>
+(()=>{
+ const modals=[...document.querySelectorAll('#accountModal,#modal')];
+ const nav=document.querySelector('.mobile-nav');
+ if(!modals.length)return;
+ let savedScrollY=0,locked=false;
+ const setViewportMetrics=()=>{
+  const vv=window.visualViewport;
+  const h=vv?.height||window.innerHeight;
+  document.documentElement.style.setProperty('--modal-vvh',Math.max(1,h)+'px');
+  const navHeight=nav&&getComputedStyle(nav).display!=='none'?nav.getBoundingClientRect().height:0;
+  document.documentElement.style.setProperty('--modal-nav-height',Math.max(0,navHeight)+'px');
+ };
+ const anyOpen=()=>modals.some(m=>m.classList.contains('open'));
+ const lockBackground=()=>{if(locked)return;locked=true;savedScrollY=window.scrollY||window.pageYOffset||0;document.body.classList.add('modal-scroll-locked');document.body.style.position='fixed';document.body.style.top=(-savedScrollY)+'px';document.body.style.left='0';document.body.style.right='0';document.body.style.width='100%';};
+ const unlockBackground=()=>{if(!locked)return;locked=false;document.body.classList.remove('modal-scroll-locked');document.body.style.position='';document.body.style.top='';document.body.style.left='';document.body.style.right='';document.body.style.width='';window.scrollTo(0,savedScrollY);};
+ const sync=()=>{setViewportMetrics();if(anyOpen())lockBackground();else unlockBackground();};
+ const scrollFocusedField=(modal,field)=>{
+  if(!modal.classList.contains('open'))return;
+  const scroller=modal.id==='modal'?(modal.querySelector('.checkout-fields')):modal.querySelector('.dialog');
+  if(!scroller)return;
+  const a=field.getBoundingClientRect(),b=scroller.getBoundingClientRect();
+  if(a.bottom>b.bottom-20)scroller.scrollTop+=a.bottom-(b.bottom-20);
+  else if(a.top<b.top+20)scroller.scrollTop-=b.top+20-a.top;
+ };
+ modals.forEach(modal=>{
+  new MutationObserver(sync).observe(modal,{attributes:true,attributeFilter:['class']});
+  modal.addEventListener('focusin',e=>{const field=e.target;if(!field.matches('input,textarea,select,button'))return;setTimeout(()=>scrollFocusedField(modal,field),180);setTimeout(()=>scrollFocusedField(modal,field),400);});
+ });
+ window.addEventListener('resize',setViewportMetrics,{passive:true});
+ window.visualViewport?.addEventListener('resize',setViewportMetrics,{passive:true});
+ window.visualViewport?.addEventListener('scroll',setViewportMetrics,{passive:true});
+ window.addEventListener('orientationchange',()=>setTimeout(setViewportMetrics,200),{passive:true});
+ if(nav&&window.ResizeObserver)new ResizeObserver(setViewportMetrics).observe(nav);
+ setViewportMetrics();sync();
+})();;
 </script><footer class="site-footer" style="max-width:1120px;margin:0 auto;padding:20px 16px 32px;text-align:center;color:#68786f;font-size:13px;line-height:1.8"><a href="./">Início</a> · <a href="./politica-privacidade.html">Política de Privacidade</a> · <a href="./termos.html">Termos de Uso</a></footer></body></html>
