@@ -23,4 +23,4 @@ jobs:
         run: deno --version
 
       - name: Verificar super-worker
-        run: deno check supabase/functions/super-worker/index.ts
+        run: deno check supabase/functions/super-worker/index.ts supabase/functions/asaas-webhook/index.ts
