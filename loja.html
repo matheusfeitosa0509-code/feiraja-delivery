@@ -328,6 +328,20 @@ body.modal-scroll-locked{overflow:hidden!important;overscroll-behavior:none!impo
 @media(max-width:479px){.modal{padding-left:12px!important;padding-right:12px!important}.modal .dialog,#accountModal .dialog,#modal .dialog{width:100%!important;max-width:520px!important;border-radius:18px 18px 0 0!important}}
 @media(min-width:480px){.modal .dialog,#accountModal .dialog,#modal .dialog{border-radius:18px!important}}
 @media(max-height:520px){.modal{align-items:flex-start!important}.modal .dialog{max-height:calc(var(--modal-vvh,100dvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px)!important}}
+
+
+/* Correção localizada: permite rolar o resultado do Pix sem alterar a rolagem do formulário. */
+#modal #result{
+ flex:0 1 auto!important;
+ min-height:0!important;
+ max-height:calc(var(--modal-vvh,100dvh) - var(--modal-nav-height,76px) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 180px)!important;
+ overflow-y:auto!important;
+ overflow-x:hidden!important;
+ overscroll-behavior:contain!important;
+ -webkit-overflow-scrolling:touch!important;
+ padding-bottom:calc(24px + env(safe-area-inset-bottom))!important;
+ scroll-padding-bottom:calc(24px + env(safe-area-inset-bottom))!important;
+}
 </style>
 </head><body>
 <div class="preview-topbar" aria-hidden="true"></div><header><a class="brand" href="./" aria-label="FeiraON"><img class="brand-logo" src="imagens/166159-removebg-preview.png" alt="FeiraON Delivery" onerror="this.onerror=null;this.src=\'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22480%22 height=%22180%22 viewBox=%220 0 480 180%22%3E%3Crect width=%22480%22 height=%22180%22 fill=%22%23eaf0e6%22/%3E%3Ctext x=%22240%22 y=%2290%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22 font-family=%22Arial,sans-serif%22 font-size=%2220%22 fill=%22%23546b59%22%3EImagem indispon%C3%ADvel%3C/text%3E%3C/svg%3E\';this.alt=\'Imagem indisponível\'"></a><button id="accountBtn" type="button">Entrar</button></header>
