@@ -1,0 +1,19 @@
+name: Deno check Order 73 (test branch)
+
+on:
+  push:
+    branches:
+      - ci/deno-check-order73
+
+jobs:
+  deno-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout test branch
+        uses: actions/checkout@v4
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Check Asaas and super-worker functions
+        run: deno check supabase/functions/super-worker/index.ts supabase/functions/asaas-webhook/index.ts
