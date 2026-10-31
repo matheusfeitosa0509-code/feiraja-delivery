@@ -90,8 +90,16 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Falha ao consultar pedido." }, 500);
   }
   if (!order || String(order.payment_provider || "") !== "asaas" ||
-      String(order.payment_id || "") !== paymentId ||
       String(order.id || "") !== externalReference) {
+    return json({ received: true, ignored: true });
+  }
+  // The checkout creates the order before the Asaas charge is linked. Do not
+  // acknowledge a paid event during that short race: Asaas must retry delivery.
+  if (!String(order.payment_id || "")) {
+    console.error("Cobrança Asaas ainda não vinculada; solicitando nova entrega:", order.id);
+    return json({ error: "Cobrança ainda não vinculada ao pedido." }, 503);
+  }
+  if (String(order.payment_id) !== paymentId) {
     return json({ received: true, ignored: true });
   }
 
