@@ -95,36 +95,40 @@ Deno.serve(async (req: Request) => {
   }
   const normalizedStatus = String(order.status || "").trim().toLowerCase();
   const isCancelledOrder = normalizedStatus === "cancelada" || normalizedStatus === "cancelado";
-  if (isCancelledOrder) {
-    return json({ received: true, ignored: true, reason: "pedido_cancelado" });
+  const storedPaymentId = String(order.payment_id || "");
+
+  // Cancelled orders without a stored charge, or with a different charge, are never changed.
+  if (isCancelledOrder && !storedPaymentId) {
+    return json({ received: true, ignored: true, reason: "pedido_cancelado_sem_payment_id" });
+  }
+  if (isCancelledOrder && storedPaymentId !== paymentId) {
+    return json({ received: true, ignored: true, reason: "pedido_cancelado_payment_id_diferente" });
   }
 
-  // A short missing-payment_id window is expected while checkout links the charge.
-  // After ten minutes, acknowledge for manual review without linking or mutating anything.
-  if (!String(order.payment_id || "")) {
-    if (normalizedStatus === "pagamento pendente") {
-      const createdAtMs = Date.parse(String(order.created_at || ""));
-      const ageMs = Date.now() - createdAtMs;
-      if (Number.isFinite(createdAtMs) && ageMs >= 10 * 60 * 1000) {
-        const rawOrderId = String(order.id || "");
-        const maskedOrderId = rawOrderId.length > 7
-          ? rawOrderId.slice(0, 3) + "***" + rawOrderId.slice(-4)
-          : "***";
-        console.warn(
-          "Pedido Asaas pendente sem payment_id há pelo menos 10 minutos; revisão manual necessária. Pedido:",
-          maskedOrderId,
-          "Cobrança:",
-          paymentId,
-        );
-        return json({ received: true, ignored: true, reason: "payment_id_missing_stale_order" });
-      }
+  // Give checkout ten minutes to link the charge. After that, acknowledge for manual
+  // review without linking or mutating the order, regardless of its non-cancelled status.
+  if (!storedPaymentId) {
+    const createdAtMs = Date.parse(String(order.created_at || ""));
+    const ageMs = Date.now() - createdAtMs;
+    if (Number.isFinite(createdAtMs) && ageMs >= 10 * 60 * 1000) {
+      const rawOrderId = String(order.id || "");
+      const maskedOrderId = rawOrderId.length > 7
+        ? rawOrderId.slice(0, 3) + "***" + rawOrderId.slice(-4)
+        : "***";
+      console.warn(
+        "Pedido Asaas sem payment_id há pelo menos 10 minutos; revisão manual necessária. Pedido:",
+        maskedOrderId,
+        "Cobrança:",
+        paymentId,
+      );
+      return json({ received: true, ignored: true, reason: "payment_id_missing_stale_order" });
     }
     console.error("Cobrança Asaas ainda não vinculada; solicitando nova entrega:", String(order.id || "").length > 7
       ? String(order.id).slice(0, 3) + "***" + String(order.id).slice(-4)
       : "***");
     return json({ error: "Cobrança ainda não vinculada ao pedido." }, 503);
   }
-  if (String(order.payment_id) !== paymentId) {
+  if (storedPaymentId !== paymentId) {
     return json({ received: true, ignored: true });
   }
 
@@ -137,6 +141,19 @@ Deno.serve(async (req: Request) => {
     return json({ received: true, ignored: true });
   }
 
+  if (isCancelledOrder) {
+    const rawOrderId = String(order.id || "");
+    const maskedOrderId = rawOrderId.length > 7
+      ? rawOrderId.slice(0, 3) + "***" + rawOrderId.slice(-4)
+      : "***";
+    console.warn(
+      "Pagamento Asaas recebido para pedido cancelado; restauração validada por ID e valor. Pedido:",
+      maskedOrderId,
+      "Cobrança:",
+      paymentId,
+    );
+  }
+
   if (normalizedStatus === "pagamento confirmado") {
     return json({ received: true, ignored: true, reason: "pagamento_ja_confirmado" });
   }
@@ -144,11 +161,6 @@ Deno.serve(async (req: Request) => {
   if (protectedAdministrativeStatuses.has(normalizedStatus)) {
     return json({ received: true, ignored: true, reason: "status_administrativo_preservado" });
   }
-  // Like super-worker v24, a cancelled order can only be restored for its exact stored payment ID.
-  if (isCancelledOrder && String(order.payment_id || "") !== paymentId) {
-    return json({ received: true, ignored: true });
-  }
-
   const { data: updatedOrder, error: updateError } = await db.from("orders")
     .update({ status: "Pagamento Confirmado" })
     .eq("id", order.id)
