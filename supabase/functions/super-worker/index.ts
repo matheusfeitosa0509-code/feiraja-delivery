@@ -344,10 +344,10 @@ Deno.serve(async (req: Request) => {
           });
           if (response.ok) return true;
           console.error("Não foi possível confirmar a exclusão da cobrança Asaas:", orderId, response.status);
-          return false;
+          throw new Error("Falha ao excluir cobrança Asaas.");
         } catch {
-          console.error("Falha de rede ao excluir cobrança Asaas:", orderId);
-          return false;
+          console.error("Falha ao confirmar exclusão da cobrança Asaas:", orderId);
+          throw new Error("Não foi possível confirmar a exclusão da cobrança Asaas.");
         }
       };
       const { data: profile, error: profileReadError } = await db.from("customer_profiles")
@@ -717,7 +717,11 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Não foi possível confirmar o cancelamento do pedido. Contate a loja para revisão." }, 500);
       }
       console.error("Falha inesperada reconciliada; pedido Asaas cancelado após confirmação:", context.orderId);
-      return json({ error: "O processamento falhou. A cobrança foi removida e o pedido foi cancelado." }, 500);
+      return json({
+        error: context.paymentId || context.paymentRequestStarted
+          ? "O processamento falhou. A cobrança foi removida e o pedido foi cancelado."
+          : "O processamento falhou. O pedido foi cancelado.",
+      }, 500);
     }
     console.error("Erro interno super-worker; falha não detalhada.");
     return json({ error: "Erro interno ao processar o pedido. Tente novamente." }, 500);
