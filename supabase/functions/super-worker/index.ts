@@ -69,6 +69,17 @@ Deno.serve(async (req: Request) => {
   }
   if (req.method !== "POST") return json({ error: "Método não permitido." }, 405);
 
+  let asaasFailureContext: {
+    db: any;
+    orderId: string;
+    total: number;
+    baseUrl: string;
+    paymentId: string;
+    customerId: string;
+    paymentRequestStarted: boolean;
+    paymentRequestResolved: boolean;
+  } | null = null;
+
   try {
     const mpToken = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN");
 
@@ -289,6 +300,12 @@ Deno.serve(async (req: Request) => {
       console.error("Falha ao salvar pedido antes de criar Pix:", draftError.message);
       return json({ error: "Não foi possível registrar o pedido. Nenhum Pix foi criado." }, 500);
     }
+    if (asaasEnabled) {
+      asaasFailureContext = {
+        db, orderId, total, baseUrl: "", paymentId: "", customerId: "",
+        paymentRequestStarted: false, paymentRequestResolved: false,
+      };
+    }
 
     if (asaasEnabled) {
       const cancelPendingOrder = async () => {
@@ -313,6 +330,7 @@ Deno.serve(async (req: Request) => {
           return json({ error: "Configuração de URL do Asaas inválida. O pedido foi cancelado." }, 503);
         }
         asaasBaseUrl = configuredBase.origin;
+        if (asaasFailureContext) asaasFailureContext.baseUrl = asaasBaseUrl;
       } catch {
         await cancelPendingOrder();
         return json({ error: "Configuração de URL do Asaas inválida. O pedido foi cancelado." }, 503);
@@ -419,6 +437,7 @@ Deno.serve(async (req: Request) => {
         }
       }
 
+      if (asaasFailureContext) asaasFailureContext.customerId = asaasCustomerId;
       const { data: savedProfile, error: profileSaveError } = await db.from("customer_profiles")
         .upsert({ user_id: orderUserId, asaas_customer_id: asaasCustomerId, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
         .select("user_id").maybeSingle();
@@ -437,12 +456,14 @@ Deno.serve(async (req: Request) => {
         externalReference: orderId,
       };
       let createPaymentResponse: Response;
+      if (asaasFailureContext) asaasFailureContext.paymentRequestStarted = true;
       try {
         createPaymentResponse = await fetch(asaasBaseUrl + "/v3/payments", {
           method: "POST",
           headers: asaasHeaders,
           body: JSON.stringify(paymentPayload),
         });
+        if (asaasFailureContext) asaasFailureContext.paymentRequestResolved = !createPaymentResponse.ok;
       } catch {
         // The request outcome may be ambiguous. Reconcile by the unique externalReference before cancelling.
         try {
@@ -461,16 +482,23 @@ Deno.serve(async (req: Request) => {
           if (recoveredPayment?.id) {
             createPaymentResponse = new Response(JSON.stringify(recoveredPayment), { status: 200 });
           } else {
-            await cancelPendingOrder();
-            return json({ error: "Não foi possível confirmar a criação da cobrança Asaas. O pedido foi cancelado." }, 502);
+            console.error("Criação da cobrança Asaas inconclusiva; pedido mantido para reconciliação:", orderId);
+            return json({ error: "Não foi possível confirmar se a cobrança foi criada. O pedido permanece pendente para revisão; não tente pagar novamente." }, 502);
           }
         } catch {
-          await cancelPendingOrder();
-          return json({ error: "Não foi possível confirmar a criação da cobrança Asaas. O pedido foi cancelado." }, 502);
+          console.error("Falha ao reconciliar cobrança Asaas após resposta inconclusiva:", orderId);
+          return json({ error: "Não foi possível confirmar se a cobrança foi criada. O pedido permanece pendente para revisão; não tente pagar novamente." }, 502);
         }
       }
 
       const asaasPayment = await createPaymentResponse.json().catch(() => ({}));
+      if (createPaymentResponse.ok && !asaasPayment?.id) {
+        throw new Error("Resposta inconclusiva ao criar cobrança Asaas.");
+      }
+      if (asaasFailureContext && asaasPayment?.id) {
+        asaasFailureContext.paymentId = String(asaasPayment.id);
+        asaasFailureContext.paymentRequestResolved = true;
+      }
       if (!createPaymentResponse.ok || !asaasPayment?.id ||
           String(asaasPayment?.externalReference || "") !== orderId ||
           String(asaasPayment?.billingType || "").toUpperCase() !== "PIX" ||
@@ -489,6 +517,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const asaasPaymentId = String(asaasPayment.id);
+      if (asaasFailureContext) asaasFailureContext.paymentId = asaasPaymentId;
       const { data: linkedAsaasOrder, error: paymentLinkError } = await db.from("orders")
         .update({ payment_id: asaasPaymentId, payment_provider: "asaas", payment_method: "Asaas Pix" })
         .eq("id", orderId).eq("status", "Pagamento Pendente")
@@ -605,8 +634,92 @@ Deno.serve(async (req: Request) => {
       qrCodeBase64: tx.qr_code_base64 ?? null,
       paymentStatus: payment.status,
     });
-  } catch (error) {
-    console.error("Erro interno super-worker:", error instanceof Error ? error.message : "unknown");
+  } catch {
+    if (asaasFailureContext) {
+      const context = asaasFailureContext;
+      const { data: currentOrder, error: orderReadError } = await context.db.from("orders")
+        .select("id,status,payment_id").eq("id", context.orderId).maybeSingle();
+      if (orderReadError || !currentOrder) {
+        console.error("Falha inesperada; não foi possível consultar o pedido para reconciliação Asaas:", context.orderId);
+        return json({ error: "O processamento falhou e não foi possível confirmar o estado do pedido. Contate a loja." }, 500);
+      }
+      if (String(currentOrder.status || "") !== "Pagamento Pendente") {
+        console.error("Falha inesperada após mudança de estado do pedido; estado preservado:", context.orderId);
+        return json({ error: "O processamento foi interrompido e o estado atual do pedido foi preservado. Consulte seus pedidos ou contate a loja." }, 500);
+      }
+
+      const apiKey = Deno.env.get("ASAAS_API_KEY") || "";
+      if (context.paymentId) {
+        if (!apiKey || !context.baseUrl) {
+          console.error("Não foi possível reconciliar cobrança Asaas após falha inesperada:", context.orderId);
+          return json({ error: "Não foi possível confirmar a limpeza da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 500);
+        }
+        try {
+          const deleteResponse = await fetch(context.baseUrl + "/v3/payments/" + encodeURIComponent(context.paymentId), {
+            method: "DELETE",
+            headers: { access_token: apiKey, Accept: "application/json" },
+          });
+          if (!deleteResponse.ok) {
+            console.error("Falha ao excluir cobrança durante reconciliação Asaas:", context.orderId, deleteResponse.status);
+            return json({ error: "Não foi possível confirmar a limpeza da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 500);
+          }
+        } catch {
+          console.error("Falha de rede ao excluir cobrança durante reconciliação Asaas:", context.orderId);
+          return json({ error: "Não foi possível confirmar a limpeza da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 500);
+        }
+      } else if (context.paymentRequestStarted && !context.paymentRequestResolved) {
+        // The create-payment outcome is ambiguous. Do not cancel without finding and
+        // safely deleting the charge, because the provider may have accepted the POST.
+        if (!apiKey || !context.baseUrl) {
+          return json({ error: "Não foi possível reconciliar a cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 500);
+        }
+        try {
+          const lookupUrl = new URL(context.baseUrl + "/v3/payments");
+          lookupUrl.searchParams.set("externalReference", context.orderId);
+          lookupUrl.searchParams.set("limit", "100");
+          const lookupResponse = await fetch(lookupUrl, {
+            method: "GET", headers: { access_token: apiKey, Accept: "application/json" },
+          });
+          if (!lookupResponse.ok) {
+            console.error("Falha ao consultar cobrança durante reconciliação Asaas:", context.orderId, lookupResponse.status);
+            return json({ error: "Não foi possível reconciliar a cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 500);
+          }
+          const lookupData = await lookupResponse.json().catch(() => ({}));
+          const candidate = Array.isArray(lookupData?.data) ? lookupData.data.find((item: any) =>
+            String(item?.externalReference || "") === context.orderId &&
+            String(item?.billingType || "").toUpperCase() === "PIX" &&
+            Math.round(Number(item?.value) * 100) === Math.round(context.total * 100) &&
+            (!context.customerId || String(item?.customer || "") === context.customerId)
+          ) : null;
+          if (!candidate?.id) {
+            console.error("Cobrança Asaas inconclusiva; pedido mantido para reconciliação manual:", context.orderId);
+            return json({ error: "Não foi possível confirmar se a cobrança foi criada. O pedido permanece pendente para revisão; não tente pagar novamente." }, 500);
+          }
+          const deleteResponse = await fetch(context.baseUrl + "/v3/payments/" + encodeURIComponent(String(candidate.id)), {
+            method: "DELETE", headers: { access_token: apiKey, Accept: "application/json" },
+          });
+          if (!deleteResponse.ok) {
+            console.error("Falha ao excluir cobrança reconciliada Asaas:", context.orderId, deleteResponse.status);
+            return json({ error: "Não foi possível confirmar a limpeza da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 500);
+          }
+        } catch {
+          console.error("Falha ao reconciliar cobrança Asaas após erro inesperado:", context.orderId);
+          return json({ error: "Não foi possível reconciliar a cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 500);
+        }
+      }
+
+      const { data: cancelledOrder, error: cancelError } = await context.db.from("orders")
+        .update({ status: "Cancelada" })
+        .eq("id", context.orderId).eq("status", "Pagamento Pendente")
+        .select("id").maybeSingle();
+      if (cancelError || !cancelledOrder) {
+        console.error("Falha inesperada; não foi possível confirmar cancelamento Asaas:", context.orderId);
+        return json({ error: "Não foi possível confirmar o cancelamento do pedido. Contate a loja para revisão." }, 500);
+      }
+      console.error("Falha inesperada reconciliada; pedido Asaas cancelado após confirmação:", context.orderId);
+      return json({ error: "O processamento falhou. A cobrança foi removida e o pedido foi cancelado." }, 500);
+    }
+    console.error("Erro interno super-worker; falha não detalhada.");
     return json({ error: "Erro interno ao processar o pedido. Tente novamente." }, 500);
   }
 });
