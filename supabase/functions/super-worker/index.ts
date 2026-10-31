@@ -319,6 +319,19 @@ Deno.serve(async (req: Request) => {
       }
 
       const asaasHeaders = { access_token: asaasApiKey, "Content-Type": "application/json", Accept: "application/json" };
+      const deleteAsaasPayment = async (paymentId: string): Promise<boolean> => {
+        try {
+          const response = await fetch(asaasBaseUrl + "/v3/payments/" + encodeURIComponent(paymentId), {
+            method: "DELETE", headers: asaasHeaders,
+          });
+          if (response.ok) return true;
+          console.error("Não foi possível confirmar a exclusão da cobrança Asaas:", orderId, response.status);
+          return false;
+        } catch {
+          console.error("Falha de rede ao excluir cobrança Asaas:", orderId);
+          return false;
+        }
+      };
       const { data: profile, error: profileReadError } = await db.from("customer_profiles")
         .select("asaas_customer_id").eq("user_id", orderUserId).maybeSingle();
       if (profileReadError) {
@@ -465,11 +478,10 @@ Deno.serve(async (req: Request) => {
           !Number.isFinite(Number(asaasPayment?.value)) ||
           Math.round(Number(asaasPayment.value) * 100) !== Math.round(total * 100)) {
         if (asaasPayment?.id) {
-          try {
-            await fetch(asaasBaseUrl + "/v3/payments/" + encodeURIComponent(String(asaasPayment.id)), {
-              method: "DELETE", headers: asaasHeaders,
-            });
-          } catch { /* Best-effort cleanup; do not expose provider details to the client. */ }
+          const deleted = await deleteAsaasPayment(String(asaasPayment.id));
+          if (!deleted) {
+            return json({ error: "Não foi possível confirmar a remoção da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 502);
+          }
         }
         await cancelPendingOrder();
         console.error("Asaas não confirmou os dados esperados da cobrança:", createPaymentResponse.status);
@@ -482,11 +494,10 @@ Deno.serve(async (req: Request) => {
         .eq("id", orderId).eq("status", "Pagamento Pendente")
         .select("id").maybeSingle();
       if (paymentLinkError || !linkedAsaasOrder) {
-        try {
-          await fetch(asaasBaseUrl + "/v3/payments/" + encodeURIComponent(asaasPaymentId), {
-            method: "DELETE", headers: asaasHeaders,
-          });
-        } catch { /* Best-effort cleanup; do not expose provider details to the client. */ }
+        const deleted = await deleteAsaasPayment(asaasPaymentId);
+        if (!deleted) {
+          return json({ error: "Não foi possível confirmar a remoção da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 502);
+        }
         await cancelPendingOrder();
         console.error("Falha ao vincular cobrança Asaas ao pedido:", orderId);
         return json({ error: "Não foi possível vincular a cobrança ao pedido. O pedido foi cancelado." }, 500);
@@ -504,11 +515,10 @@ Deno.serve(async (req: Request) => {
       const qrCode = String(pixQr?.payload || "");
       const qrCodeBase64 = String(pixQr?.encodedImage || "");
       if (!qrResponse.ok || !qrCode || !qrCodeBase64) {
-        try {
-          await fetch(asaasBaseUrl + "/v3/payments/" + encodeURIComponent(asaasPaymentId), {
-            method: "DELETE", headers: asaasHeaders,
-          });
-        } catch { /* Best-effort cleanup; the order is still cancelled below. */ }
+        const deleted = await deleteAsaasPayment(asaasPaymentId);
+        if (!deleted) {
+          return json({ error: "Não foi possível confirmar a remoção da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 502);
+        }
         await cancelPendingOrder();
         console.error("Asaas não retornou os dados do QR Pix:", orderId, qrResponse.status);
         return json({ error: "O Asaas não retornou os dados do Pix. O pedido foi cancelado." }, 502);
@@ -519,11 +529,10 @@ Deno.serve(async (req: Request) => {
         .eq("id", orderId).eq("status", "Pagamento Pendente")
         .select("id,status,total").maybeSingle();
       if (saveAsaasQrError || !savedAsaasOrder) {
-        try {
-          await fetch(asaasBaseUrl + "/v3/payments/" + encodeURIComponent(asaasPaymentId), {
-            method: "DELETE", headers: asaasHeaders,
-          });
-        } catch { /* Best-effort cleanup; do not expose provider details to the client. */ }
+        const deleted = await deleteAsaasPayment(asaasPaymentId);
+        if (!deleted) {
+          return json({ error: "Não foi possível confirmar a remoção da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 502);
+        }
         await cancelPendingOrder();
         console.error("Falha ao salvar QR Pix Asaas:", orderId);
         return json({ error: "Não foi possível salvar os dados do Pix. O pedido foi cancelado." }, 500);
