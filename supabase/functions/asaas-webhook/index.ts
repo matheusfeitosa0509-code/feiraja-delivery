@@ -115,13 +115,8 @@ Deno.serve(async (req: Request) => {
     const createdAtMs = Date.parse(String(order.created_at || ""));
     const ageMs = Date.now() - createdAtMs;
     if (Number.isFinite(createdAtMs) && ageMs >= 10 * 60 * 1000) {
-      const rawOrderId = String(order.id || "");
-      const maskedOrderId = rawOrderId.length > 7
-        ? rawOrderId.slice(0, 3) + "***" + rawOrderId.slice(-4)
-        : "***";
       console.warn(
         "Pedido Asaas sem payment_id há pelo menos 10 minutos; revisão manual necessária. Pedido:",
-        maskedOrderId,
         "charge_id_present:",
         Boolean(paymentId),
       );
@@ -142,10 +137,6 @@ Deno.serve(async (req: Request) => {
   }
 
   if (isCancelledOrder) {
-    const rawOrderId = String(order.id || "");
-    const maskedOrderId = rawOrderId.length > 7
-      ? rawOrderId.slice(0, 3) + "***" + rawOrderId.slice(-4)
-      : "***";
     console.warn(
       "Pagamento Asaas recebido para pedido cancelado; restauração validada por ID e valor.",
       "charge_id_present:",
