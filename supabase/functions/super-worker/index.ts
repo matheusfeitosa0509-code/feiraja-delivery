@@ -292,9 +292,15 @@ Deno.serve(async (req: Request) => {
 
     if (asaasEnabled) {
       const cancelPendingOrder = async () => {
-        const { error } = await db.from("orders").update({ status: "Cancelada" })
-          .eq("id", orderId).eq("status", "Pagamento Pendente");
-        if (error) console.error("Falha ao cancelar pedido pendente após falha Asaas:", orderId);
+        const { data: cancelledOrder, error } = await db.from("orders")
+          .update({ status: "Cancelada" })
+          .eq("id", orderId).eq("status", "Pagamento Pendente")
+          .select("id").maybeSingle();
+        if (error || !cancelledOrder) {
+          console.error("Não foi possível confirmar o cancelamento do pedido Asaas:", orderId);
+          throw new Error("Não foi possível confirmar o cancelamento do pedido Asaas.");
+        }
+        return true;
       };
 
       let asaasBaseUrl: string;
