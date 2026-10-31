@@ -541,11 +541,6 @@ Deno.serve(async (req: Request) => {
           !Number.isFinite(Number(asaasPayment?.value)) ||
           Math.round(Number(asaasPayment.value) * 100) !== Math.round(total * 100)) {
         const firstProviderError = Array.isArray(asaasPayment?.errors) ? asaasPayment.errors[0] : null;
-        const rawProviderCode = firstProviderError?.code ?? asaasPayment?.code;
-        const providerErrorCode = typeof rawProviderCode === "string" &&
-          /^[A-Za-z0-9_.-]{1,80}$/.test(rawProviderCode)
-          ? rawProviderCode
-          : null;
         const rawProviderMessage = firstProviderError?.description ??
           firstProviderError?.message ?? asaasPayment?.message ?? asaasPayment?.description;
         const safeTechnicalWords = new Set([
@@ -576,7 +571,7 @@ Deno.serve(async (req: Request) => {
         console.error("Falha na criação/validação da cobrança Asaas:", {
           stage: "create_payment",
           http_status: createPaymentResponse.status,
-          provider_error_code: providerErrorCode,
+          provider_error_code_omitted: true,
           provider_error_message: providerErrorMessage || null,
           charge_id_present: Boolean(asaasPayment?.id),
         });
