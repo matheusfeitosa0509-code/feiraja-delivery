@@ -409,6 +409,10 @@ Deno.serve(async (req: Request) => {
         if (matchingCustomer?.id) {
           asaasCustomerId = String(matchingCustomer.id);
         } else {
+          const mobilePhoneDigits = phone.replace(/\D/g, "");
+          const mobilePhone = mobilePhoneDigits.length > 11 && mobilePhoneDigits.startsWith("55")
+            ? mobilePhoneDigits.slice(2)
+            : mobilePhoneDigits;
           let createCustomerResponse: Response;
           try {
             createCustomerResponse = await fetch(asaasBaseUrl + "/v3/customers", {
@@ -418,7 +422,7 @@ Deno.serve(async (req: Request) => {
                 name,
                 cpfCnpj: cpf,
                 email,
-                mobilePhone: phone.replace(/\D/g, ""),
+                mobilePhone,
                 externalReference: orderUserId,
                 notificationDisabled: true,
               }),
@@ -634,7 +638,7 @@ Deno.serve(async (req: Request) => {
       qrCodeBase64: tx.qr_code_base64 ?? null,
       paymentStatus: payment.status,
     });
-  } catch {
+  } catch (error) {
     if (asaasFailureContext) {
       const context = asaasFailureContext;
       const { data: currentOrder, error: orderReadError } = await context.db.from("orders")
@@ -723,7 +727,11 @@ Deno.serve(async (req: Request) => {
           : "O processamento falhou. O pedido foi cancelado.",
       }, 500);
     }
-    console.error("Erro interno super-worker; falha não detalhada.");
+    if (asaasFailureContext) {
+      console.error("Erro interno super-worker; falha não detalhada.");
+    } else {
+      console.error("Erro interno super-worker:", error instanceof Error ? error.message : "unknown");
+    }
     return json({ error: "Erro interno ao processar o pedido. Tente novamente." }, 500);
   }
 });
