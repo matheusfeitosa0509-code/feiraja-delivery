@@ -314,9 +314,16 @@ Deno.serve(async (req: Request) => {
           .eq("id", orderId).eq("status", "Pagamento Pendente")
           .select("id").maybeSingle();
         if (error || !cancelledOrder) {
-          console.error("Não foi possível confirmar o cancelamento do pedido Asaas:", orderId);
+          console.error("Resultado do cancelamento do pedido Asaas:", {
+            stage: "cancel_order",
+            cancel_result: "failed",
+          });
           throw new Error("Não foi possível confirmar o cancelamento do pedido Asaas.");
         }
+        console.info("Resultado do cancelamento do pedido Asaas:", {
+          stage: "cancel_order",
+          cancel_result: "confirmed",
+        });
         return true;
       };
 
@@ -338,17 +345,35 @@ Deno.serve(async (req: Request) => {
 
       const asaasHeaders = { access_token: asaasApiKey, "Content-Type": "application/json", Accept: "application/json" };
       const deleteAsaasPayment = async (paymentId: string): Promise<boolean> => {
+        let response: Response;
         try {
-          const response = await fetch(asaasBaseUrl + "/v3/payments/" + encodeURIComponent(paymentId), {
+          response = await fetch(asaasBaseUrl + "/v3/payments/" + encodeURIComponent(paymentId), {
             method: "DELETE", headers: asaasHeaders,
           });
-          if (response.ok) return true;
-          console.error("Não foi possível confirmar a exclusão da cobrança Asaas:", orderId, response.status);
-          throw new Error("Falha ao excluir cobrança Asaas.");
         } catch {
-          console.error("Falha ao confirmar exclusão da cobrança Asaas:", orderId);
+          console.error("Resultado da exclusão da cobrança Asaas:", {
+            stage: "delete_payment",
+            charge_id_present: true,
+            delete_result: "inconclusive",
+          });
           throw new Error("Não foi possível confirmar a exclusão da cobrança Asaas.");
         }
+        if (response.ok) {
+          console.info("Resultado da exclusão da cobrança Asaas:", {
+            stage: "delete_payment",
+            http_status: response.status,
+            charge_id_present: true,
+            delete_result: "confirmed",
+          });
+          return true;
+        }
+        console.error("Resultado da exclusão da cobrança Asaas:", {
+          stage: "delete_payment",
+          http_status: response.status,
+          charge_id_present: true,
+          delete_result: "failed",
+        });
+        throw new Error("Não foi possível confirmar a exclusão da cobrança Asaas.");
       };
       const { data: profile, error: profileReadError } = await db.from("customer_profiles")
         .select("asaas_customer_id").eq("user_id", orderUserId).maybeSingle();
@@ -495,7 +520,13 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      const asaasPayment = await createPaymentResponse.json().catch(() => ({}));
+      const createPaymentResponseText = await createPaymentResponse.text().catch(() => "");
+      let asaasPayment: any = {};
+      try {
+        asaasPayment = createPaymentResponseText ? JSON.parse(createPaymentResponseText) : {};
+      } catch {
+        asaasPayment = {};
+      }
       if (createPaymentResponse.ok && !asaasPayment?.id) {
         throw new Error("Resposta inconclusiva ao criar cobrança Asaas.");
       }
@@ -509,6 +540,35 @@ Deno.serve(async (req: Request) => {
           String(asaasPayment?.customer || "") !== asaasCustomerId ||
           !Number.isFinite(Number(asaasPayment?.value)) ||
           Math.round(Number(asaasPayment.value) * 100) !== Math.round(total * 100)) {
+        const firstProviderError = Array.isArray(asaasPayment?.errors) ? asaasPayment.errors[0] : null;
+        const rawProviderCode = firstProviderError?.code ?? asaasPayment?.code ?? asaasPayment?.error;
+        const providerErrorCode = typeof rawProviderCode === "string" &&
+          /^[A-Za-z0-9_.-]{1,80}$/.test(rawProviderCode)
+          ? rawProviderCode
+          : null;
+        const rawProviderMessage = firstProviderError?.description ??
+          firstProviderError?.message ?? asaasPayment?.message ?? asaasPayment?.description;
+        const providerErrorMessage = typeof rawProviderMessage === "string"
+          ? rawProviderMessage
+              .replace(/[\r\n\t]+/g, " ")
+              .replace(/\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b/g, "[email]")
+              .replace(/\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/g, "[documento]")
+              .replace(/\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/g, "[documento]")
+              .replace(/\b(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?9?\d{4}[-\s]?\d{4}\b/g, "[telefone]")
+              .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi, "[id]")
+              .replace(/\b(?:access[_ -]?token|authorization|api[_ -]?key|secret|password)\b\s*[:=]\s*[^\s,;]+/gi, "[credencial omitida]")
+              .replace(/\b[A-Za-z0-9_-]{32,}\b/g, "[valor omitido]")
+              .replace(/\b\d{8,}\b/g, "[numero omitido]")
+              .slice(0, 240)
+              .trim()
+          : "";
+        console.error("Falha na criação/validação da cobrança Asaas:", {
+          stage: "create_payment",
+          http_status: createPaymentResponse.status,
+          provider_error_code: providerErrorCode,
+          provider_error_message: providerErrorMessage || null,
+          charge_id_present: Boolean(asaasPayment?.id),
+        });
         if (asaasPayment?.id) {
           const deleted = await deleteAsaasPayment(String(asaasPayment.id));
           if (!deleted) {
@@ -516,7 +576,6 @@ Deno.serve(async (req: Request) => {
           }
         }
         await cancelPendingOrder();
-        console.error("Asaas não confirmou os dados esperados da cobrança:", createPaymentResponse.status);
         return json({ error: "Não foi possível criar a cobrança Pix Asaas. O pedido foi cancelado." }, 502);
       }
 
@@ -664,11 +723,26 @@ Deno.serve(async (req: Request) => {
             headers: { access_token: apiKey, Accept: "application/json" },
           });
           if (!deleteResponse.ok) {
-            console.error("Falha ao excluir cobrança durante reconciliação Asaas:", context.orderId, deleteResponse.status);
+            console.error("Resultado da exclusão na reconciliação Asaas:", {
+              stage: "reconcile_delete_payment",
+              http_status: deleteResponse.status,
+              charge_id_present: true,
+              delete_result: "failed",
+            });
             return json({ error: "Não foi possível confirmar a limpeza da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 500);
           }
+          console.info("Resultado da exclusão na reconciliação Asaas:", {
+            stage: "reconcile_delete_payment",
+            http_status: deleteResponse.status,
+            charge_id_present: true,
+            delete_result: "confirmed",
+          });
         } catch {
-          console.error("Falha de rede ao excluir cobrança durante reconciliação Asaas:", context.orderId);
+          console.error("Resultado da exclusão na reconciliação Asaas:", {
+            stage: "reconcile_delete_payment",
+            charge_id_present: true,
+            delete_result: "inconclusive",
+          });
           return json({ error: "Não foi possível confirmar a limpeza da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 500);
         }
       } else if (context.paymentRequestStarted && !context.paymentRequestResolved) {
@@ -703,11 +777,26 @@ Deno.serve(async (req: Request) => {
             method: "DELETE", headers: { access_token: apiKey, Accept: "application/json" },
           });
           if (!deleteResponse.ok) {
-            console.error("Falha ao excluir cobrança reconciliada Asaas:", context.orderId, deleteResponse.status);
+            console.error("Resultado da exclusão da cobrança reconciliada Asaas:", {
+              stage: "reconcile_delete_payment",
+              http_status: deleteResponse.status,
+              charge_id_present: true,
+              delete_result: "failed",
+            });
             return json({ error: "Não foi possível confirmar a limpeza da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 500);
           }
+          console.info("Resultado da exclusão da cobrança reconciliada Asaas:", {
+            stage: "reconcile_delete_payment",
+            http_status: deleteResponse.status,
+            charge_id_present: true,
+            delete_result: "confirmed",
+          });
         } catch {
-          console.error("Falha ao reconciliar cobrança Asaas após erro inesperado:", context.orderId);
+          console.error("Resultado da exclusão da cobrança reconciliada Asaas:", {
+            stage: "reconcile_delete_payment",
+            charge_id_present: true,
+            delete_result: "inconclusive",
+          });
           return json({ error: "Não foi possível reconciliar a cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 500);
         }
       }
@@ -717,10 +806,16 @@ Deno.serve(async (req: Request) => {
         .eq("id", context.orderId).eq("status", "Pagamento Pendente")
         .select("id").maybeSingle();
       if (cancelError || !cancelledOrder) {
-        console.error("Falha inesperada; não foi possível confirmar cancelamento Asaas:", context.orderId);
+        console.error("Resultado do cancelamento do pedido na reconciliação Asaas:", {
+          stage: "reconcile_cancel_order",
+          cancel_result: "failed",
+        });
         return json({ error: "Não foi possível confirmar o cancelamento do pedido. Contate a loja para revisão." }, 500);
       }
-      console.error("Falha inesperada reconciliada; pedido Asaas cancelado após confirmação:", context.orderId);
+      console.info("Resultado do cancelamento do pedido na reconciliação Asaas:", {
+        stage: "reconcile_cancel_order",
+        cancel_result: "confirmed",
+      });
       return json({
         error: context.paymentId || context.paymentRequestStarted
           ? "O processamento falhou. A cobrança foi removida e o pedido foi cancelado."
