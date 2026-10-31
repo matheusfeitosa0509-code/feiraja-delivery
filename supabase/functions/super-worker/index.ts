@@ -458,16 +458,24 @@ Deno.serve(async (req: Request) => {
           String(asaasPayment?.customer || "") !== asaasCustomerId ||
           !Number.isFinite(Number(asaasPayment?.value)) ||
           Math.round(Number(asaasPayment.value) * 100) !== Math.round(total * 100)) {
+        if (asaasPayment?.id) {
+          try {
+            await fetch(asaasBaseUrl + "/v3/payments/" + encodeURIComponent(String(asaasPayment.id)), {
+              method: "DELETE", headers: asaasHeaders,
+            });
+          } catch { /* Best-effort cleanup; do not expose provider details to the client. */ }
+        }
         await cancelPendingOrder();
         console.error("Asaas não confirmou os dados esperados da cobrança:", createPaymentResponse.status);
         return json({ error: "Não foi possível criar a cobrança Pix Asaas. O pedido foi cancelado." }, 502);
       }
 
       const asaasPaymentId = String(asaasPayment.id);
-      const { error: paymentLinkError } = await db.from("orders")
+      const { data: linkedAsaasOrder, error: paymentLinkError } = await db.from("orders")
         .update({ payment_id: asaasPaymentId, payment_provider: "asaas", payment_method: "Asaas Pix" })
-        .eq("id", orderId).eq("status", "Pagamento Pendente");
-      if (paymentLinkError) {
+        .eq("id", orderId).eq("status", "Pagamento Pendente")
+        .select("id").maybeSingle();
+      if (paymentLinkError || !linkedAsaasOrder) {
         try {
           await fetch(asaasBaseUrl + "/v3/payments/" + encodeURIComponent(asaasPaymentId), {
             method: "DELETE", headers: asaasHeaders,
