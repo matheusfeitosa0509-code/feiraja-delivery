@@ -556,7 +556,7 @@ Deno.serve(async (req: Request) => {
               .replace(/\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/g, "[documento]")
               .replace(/\b(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?9?\d{4}[-\s]?\d{4}\b/g, "[telefone]")
               .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi, "[id]")
-              .replace(/\b(?:access[_ -]?token|authorization|api[_ -]?key|secret|password)\b\s*[:=]\s*[^\s,;]+/gi, "[credencial omitida]")
+              .replace(/\b(?:access[_ -]?token|authorization|api[_ -]?key|token|secret|password)\b\s*[:=]\s*[^\s,;]+/gi, "[credencial omitida]")
               .replace(/\b[A-Za-z0-9_-]{32,}\b/g, "[valor omitido]")
               .replace(/\b\d{8,}\b/g, "[numero omitido]")
               .slice(0, 240)
