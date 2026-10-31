@@ -155,13 +155,25 @@ Deno.serve(async (req: Request) => {
       asaasBaseUrl + "/v3/payments/" + encodeURIComponent(paymentId),
       { method: "GET", headers: { access_token: apiKey, Accept: "application/json" } },
     );
-    if (verificationResponse.status >= 500) {
+    if (verificationResponse.status === 408 ||
+        verificationResponse.status === 429 ||
+        verificationResponse.status >= 500) {
       console.error("Consulta Asaas temporariamente indisponível.", { http_status: verificationResponse.status });
       return json({ error: "Não foi possível validar a cobrança." }, 503);
     }
-    if (!verificationResponse.ok) {
+    if (verificationResponse.status === 401 || verificationResponse.status === 403) {
+      console.error("Consulta Asaas: credencial ou configuração Asaas inválida.", {
+        http_status: verificationResponse.status,
+      });
+      return json({ error: "Não foi possível validar a cobrança." }, 503);
+    }
+    if (verificationResponse.status >= 400 && verificationResponse.status < 500) {
       console.warn("Consulta Asaas recusada sem confirmação do pedido.", { http_status: verificationResponse.status });
       return json({ received: true, ignored: true, reason: "consulta_permanentemente_recusada" });
+    }
+    if (!verificationResponse.ok) {
+      console.error("Consulta Asaas falhou sem confirmação do pedido.", { http_status: verificationResponse.status });
+      return json({ error: "Não foi possível validar a cobrança." }, 503);
     }
     verifiedPayment = await verificationResponse.json();
   } catch {
