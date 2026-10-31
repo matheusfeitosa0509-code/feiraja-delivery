@@ -129,11 +129,52 @@ Deno.serve(async (req: Request) => {
     return json({ received: true, ignored: true });
   }
 
+  const rawBaseUrl = Deno.env.get("ASAAS_BASE_URL");
+  const apiKey = Deno.env.get("ASAAS_API_KEY") || "";
+  if (!rawBaseUrl || !rawBaseUrl.trim() || !apiKey) {
+    return json({ error: "Não foi possível validar a cobrança." }, 503);
+  }
+
+  let asaasBaseUrl: string;
+  try {
+    const configuredBase = new URL(rawBaseUrl);
+    if (configuredBase.protocol !== "https:" ||
+        !["api.asaas.com", "api-sandbox.asaas.com"].includes(configuredBase.hostname) ||
+        configuredBase.pathname !== "/" || configuredBase.search || configuredBase.hash) {
+      return json({ error: "Não foi possível validar a cobrança." }, 503);
+    }
+    asaasBaseUrl = configuredBase.origin;
+  } catch {
+    return json({ error: "Não foi possível validar a cobrança." }, 503);
+  }
+
+  let verifiedPayment: any;
+  try {
+    const verificationResponse = await fetch(
+      asaasBaseUrl + "/v3/payments/" + encodeURIComponent(paymentId),
+      { method: "GET", headers: { access_token: apiKey, Accept: "application/json" } },
+    );
+    if (!verificationResponse.ok) {
+      return json({ error: "Não foi possível validar a cobrança." }, 503);
+    }
+    verifiedPayment = await verificationResponse.json();
+  } catch {
+    return json({ error: "Não foi possível validar a cobrança." }, 503);
+  }
+
+  const verifiedStatus = String(verifiedPayment?.status || "").toUpperCase();
+  const verifiedValue = Number(verifiedPayment?.value);
   const expectedCents = Math.round(Number(order.total) * 100);
   const paidCents = Math.round(paymentValue * 100);
-  if (!Number.isFinite(expectedCents) || expectedCents <= 0 || paidCents !== expectedCents) {
-    console.error("Valor do webhook Asaas não corresponde ao pedido.");
-    return json({ received: true, ignored: true });
+  const verifiedCents = Math.round(verifiedValue * 100);
+  if (String(verifiedPayment?.id || "") !== paymentId ||
+      String(verifiedPayment?.externalReference || "") !== externalReference ||
+      String(verifiedPayment?.billingType || "").toUpperCase() !== "PIX" ||
+      !["RECEIVED", "CONFIRMED"].includes(verifiedStatus) ||
+      !Number.isFinite(expectedCents) || expectedCents <= 0 ||
+      !Number.isFinite(paidCents) || paidCents !== expectedCents ||
+      !Number.isFinite(verifiedCents) || verifiedCents !== expectedCents) {
+    return json({ error: "Não foi possível validar a cobrança." }, 503);
   }
 
   if (isCancelledOrder) {
