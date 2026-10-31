@@ -223,7 +223,7 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Use o mesmo e-mail da sua conta para gerar o Pix." }, 400);
     }
 
-    if (paymentMethod === "pix" && !validPixDocument) return json({ error: "Informe um CPF ou CNPJ válido para gerar o Pix." }, 400);
+    if (paymentMethod === "pix" && !validPixDocument) return json({ error: asaasEnabled ? "Informe um CPF ou CNPJ válido para gerar o Pix." : "Informe um CPF válido para gerar o Pix." }, 400);
     const { count: recentOrderCount, error: rateLimitError } = await db.from("orders").select("id", { count: "exact", head: true }).eq("user_id", orderUserId).gte("created_at", new Date(Date.now() - 10 * 60 * 1000).toISOString());
     if (rateLimitError) return json({ error: "Não foi possível validar o limite de pedidos. Tente novamente." }, 503);
     if ((recentOrderCount || 0) >= 5) return json({ error: "Limite de 5 pedidos em 10 minutos atingido. Aguarde antes de tentar novamente." }, 429);
