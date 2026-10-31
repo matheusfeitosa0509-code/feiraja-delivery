@@ -548,17 +548,28 @@ Deno.serve(async (req: Request) => {
           : null;
         const rawProviderMessage = firstProviderError?.description ??
           firstProviderError?.message ?? asaasPayment?.message ?? asaasPayment?.description;
+        const safeTechnicalWords = new Set([
+          "invalid", "error", "request", "customer", "payment", "billingtype", "pix", "value",
+          "amount", "duedate", "externalreference", "required", "missing", "field", "format",
+          "not", "found", "exists", "already", "registered", "unsupported", "validation",
+          "minimum", "maximum", "greater", "less", "than", "zero", "limit", "exceeded",
+          "permission", "denied", "unauthorized", "account", "document", "cpf", "cnpj",
+          "email", "phone", "date", "description", "reference", "type", "status", "code",
+          "data", "cannot", "must", "be", "provided", "is", "are", "failed", "duplicate",
+          "conflict", "unique", "wallet", "insufficient", "funds", "bank", "name", "address",
+          "tax", "id", "total", "due", "valid", "empty", "null", "unknown", "no", "unavailable",
+          "please", "check", "does", "match", "mismatch", "incorrect", "allowed", "only",
+          "accepted", "length", "too", "long", "short", "parameter", "parameters", "operation",
+          "positive", "negative", "invalid_action", "invalid_field", "invalid_value",
+          "missing_field", "duplicate_payment", "already_exists", "not_found", "bad_request",
+          "internal_error", "customer_not_found", "payment_not_found", "payment_method",
+          "due_date", "billing_type", "unauthorized_access", "not_allowed",
+        ]);
         const providerErrorMessage = typeof rawProviderMessage === "string"
           ? rawProviderMessage
-              .replace(/[\r\n\t]+/g, " ")
-              .replace(/\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b/g, "[email]")
-              .replace(/\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/g, "[documento]")
-              .replace(/\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/g, "[documento]")
-              .replace(/\b(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?9?\d{4}[-\s]?\d{4}\b/g, "[telefone]")
-              .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi, "[id]")
-              .replace(/\b(?:access[_ -]?token|authorization|api[_ -]?key|token|secret|password)\b\s*[:=]\s*[^\s,;]+/gi, "[credencial omitida]")
-              .replace(/\b[A-Za-z0-9_-]{32,}\b/g, "[valor omitido]")
-              .replace(/\b\d{8,}\b/g, "[numero omitido]")
+              .split(/[^A-Za-z_]+/)
+              .filter((word) => safeTechnicalWords.has(word.toLowerCase()))
+              .join(" ")
               .slice(0, 240)
               .trim()
           : "";
