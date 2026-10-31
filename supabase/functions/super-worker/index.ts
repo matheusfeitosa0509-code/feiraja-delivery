@@ -268,6 +268,36 @@ Deno.serve(async (req: Request) => {
     const total = Math.round((subtotal + deliveryFee) * 100) / 100;
     if (!Number.isFinite(total) || total <= 0 || total > 100000) return json({ error: "Valor total inválido." }, 400);
 
+    let asaasBaseUrl = "";
+    if (asaasEnabled) {
+      try {
+        const rawBaseUrl = Deno.env.get("ASAAS_BASE_URL");
+        if (!rawBaseUrl || !rawBaseUrl.trim()) return json({ error: "Integração Asaas indisponível." }, 503);
+        const configuredBase = new URL(rawBaseUrl);
+        if (configuredBase.protocol !== "https:" ||
+            !["api.asaas.com", "api-sandbox.asaas.com"].includes(configuredBase.hostname) ||
+            configuredBase.pathname !== "/" || configuredBase.search || configuredBase.hash) {
+          return json({ error: "Integração Asaas indisponível." }, 503);
+        }
+        asaasBaseUrl = configuredBase.origin;
+      } catch {
+        return json({ error: "Integração Asaas indisponível." }, 503);
+      }
+
+      const { data: pendingSameAmount, error: pendingSameAmountError } = await db.from("orders")
+        .select("id")
+        .eq("user_id", orderUserId)
+        .eq("payment_provider", "asaas")
+        .eq("status", "Pagamento Pendente")
+        .eq("total", total)
+        .gte("created_at", new Date(Date.now() - 10 * 60 * 1000).toISOString())
+        .limit(1);
+      if (pendingSameAmountError) return json({ error: "Não foi possível verificar um Pix Asaas pendente. Tente novamente." }, 503);
+      if (pendingSameAmount?.length) {
+        return json({ error: "Você já tem um Pix Asaas pendente desse valor. Confira seus pedidos antes de tentar novamente." }, 409);
+      }
+    }
+
     const orderId = `FEIRA-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
     if (paymentMethod !== "pix") {
       const orderPayload = {
@@ -327,24 +357,7 @@ Deno.serve(async (req: Request) => {
         return true;
       };
 
-      let asaasBaseUrl: string;
-      try {
-        const rawBaseUrl = Deno.env.get("ASAAS_BASE_URL");
-        if (!rawBaseUrl || !rawBaseUrl.trim()) {
-          return json({ error: "Integração Asaas indisponível." }, 503);
-        }
-        const configuredBase = new URL(rawBaseUrl);
-        if (configuredBase.protocol !== "https:" ||
-            !["api.asaas.com", "api-sandbox.asaas.com"].includes(configuredBase.hostname) ||
-            configuredBase.pathname !== "/" || configuredBase.search || configuredBase.hash) {
-          return json({ error: "Integração Asaas indisponível." }, 503);
-        }
-        asaasBaseUrl = configuredBase.origin;
-        if (asaasFailureContext) asaasFailureContext.baseUrl = asaasBaseUrl;
-      } catch {
-        return json({ error: "Integração Asaas indisponível." }, 503);
-      }
-
+      if (asaasFailureContext) asaasFailureContext.baseUrl = asaasBaseUrl;
       const asaasHeaders = { access_token: asaasApiKey, "Content-Type": "application/json", Accept: "application/json" };
       const deleteAsaasPayment = async (paymentId: string): Promise<boolean> => {
         let response: Response;
@@ -488,6 +501,7 @@ Deno.serve(async (req: Request) => {
       };
       let createPaymentResponse: Response;
       if (asaasFailureContext) asaasFailureContext.paymentRequestStarted = true;
+      // If reconciliation stays inconclusive, keep the order as "Pagamento Pendente" for manual review; do not retry payment blindly.
       const reconcileCreatedPayment = async (): Promise<any | null> => {
         try {
           const reconcileUrl = new URL(asaasBaseUrl + "/v3/payments");
