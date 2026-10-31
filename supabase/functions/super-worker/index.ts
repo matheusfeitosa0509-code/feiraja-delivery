@@ -414,7 +414,7 @@ Deno.serve(async (req: Request) => {
         billingType: "PIX",
         value: Number(total.toFixed(2)),
         dueDate: nextManausDueDate(),
-        description: \`Feira On Delivery - Pedido \${orderId}\`,
+        description: `Feira On Delivery - Pedido ${orderId}`,
         externalReference: orderId,
       };
       let createPaymentResponse: Response;
