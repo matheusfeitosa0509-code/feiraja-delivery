@@ -329,18 +329,20 @@ Deno.serve(async (req: Request) => {
 
       let asaasBaseUrl: string;
       try {
-        const configuredBase = new URL(Deno.env.get("ASAAS_BASE_URL") || "https://api.asaas.com");
+        const rawBaseUrl = Deno.env.get("ASAAS_BASE_URL");
+        if (!rawBaseUrl || !rawBaseUrl.trim()) {
+          return json({ error: "Integração Asaas indisponível." }, 503);
+        }
+        const configuredBase = new URL(rawBaseUrl);
         if (configuredBase.protocol !== "https:" ||
             !["api.asaas.com", "api-sandbox.asaas.com"].includes(configuredBase.hostname) ||
             configuredBase.pathname !== "/" || configuredBase.search || configuredBase.hash) {
-          await cancelPendingOrder();
-          return json({ error: "Configuração de URL do Asaas inválida. O pedido foi cancelado." }, 503);
+          return json({ error: "Integração Asaas indisponível." }, 503);
         }
         asaasBaseUrl = configuredBase.origin;
         if (asaasFailureContext) asaasFailureContext.baseUrl = asaasBaseUrl;
       } catch {
-        await cancelPendingOrder();
-        return json({ error: "Configuração de URL do Asaas inválida. O pedido foi cancelado." }, 503);
+        return json({ error: "Integração Asaas indisponível." }, 503);
       }
 
       const asaasHeaders = { access_token: asaasApiKey, "Content-Type": "application/json", Accept: "application/json" };
@@ -486,37 +488,52 @@ Deno.serve(async (req: Request) => {
       };
       let createPaymentResponse: Response;
       if (asaasFailureContext) asaasFailureContext.paymentRequestStarted = true;
-      try {
-        createPaymentResponse = await fetch(asaasBaseUrl + "/v3/payments", {
-          method: "POST",
-          headers: asaasHeaders,
-          body: JSON.stringify(paymentPayload),
-        });
-        if (asaasFailureContext) asaasFailureContext.paymentRequestResolved = !createPaymentResponse.ok;
-      } catch {
-        // The request outcome may be ambiguous. Reconcile by the unique externalReference before cancelling.
+      const reconcileCreatedPayment = async (): Promise<any | null> => {
         try {
           const reconcileUrl = new URL(asaasBaseUrl + "/v3/payments");
           reconcileUrl.searchParams.set("externalReference", orderId);
           reconcileUrl.searchParams.set("limit", "100");
           const reconcileResponse = await fetch(reconcileUrl, { method: "GET", headers: asaasHeaders });
-          const reconcileData = reconcileResponse.ok ? await reconcileResponse.json().catch(() => ({})) : {};
-          const recoveredPayment = Array.isArray(reconcileData?.data)
+          if (!reconcileResponse.ok) return null;
+          const reconcileData = await reconcileResponse.json().catch(() => ({}));
+          return Array.isArray(reconcileData?.data)
             ? reconcileData.data.find((candidate: any) =>
                 String(candidate?.externalReference || "") === orderId &&
                 String(candidate?.billingType || "").toUpperCase() === "PIX" &&
                 String(candidate?.customer || "") === asaasCustomerId &&
                 Math.round(Number(candidate?.value) * 100) === Math.round(total * 100))
             : null;
+        } catch {
+          return null;
+        }
+      };
+      try {
+        createPaymentResponse = await fetch(asaasBaseUrl + "/v3/payments", {
+          method: "POST",
+          headers: asaasHeaders,
+          body: JSON.stringify(paymentPayload),
+        });
+        if (createPaymentResponse.status >= 400 && createPaymentResponse.status < 500) {
+          // A 4xx response is a definitive rejection; the order may be cancelled below.
+          if (asaasFailureContext) asaasFailureContext.paymentRequestResolved = true;
+        } else if (!createPaymentResponse.ok) {
+          // A 5xx or other non-definitive response may follow a successful charge creation.
+          const recoveredPayment = await reconcileCreatedPayment();
           if (recoveredPayment?.id) {
             createPaymentResponse = new Response(JSON.stringify(recoveredPayment), { status: 200 });
           } else {
             console.error("Criação da cobrança Asaas inconclusiva; pedido mantido para reconciliação.");
-            return json({ error: "Não foi possível confirmar se a cobrança foi criada. O pedido permanece pendente para revisão; não tente pagar novamente." }, 502);
+            return json({ error: "Não foi possível confirmar se a cobrança foi criada. O pedido permanece pendente para nova tentativa de reconciliação." }, 503);
           }
-        } catch {
+        }
+      } catch {
+        // Network errors/timeouts are ambiguous. Never cancel until reconciliation succeeds.
+        const recoveredPayment = await reconcileCreatedPayment();
+        if (recoveredPayment?.id) {
+          createPaymentResponse = new Response(JSON.stringify(recoveredPayment), { status: 200 });
+        } else {
           console.error("Falha ao reconciliar cobrança Asaas após resposta inconclusiva.");
-          return json({ error: "Não foi possível confirmar se a cobrança foi criada. O pedido permanece pendente para revisão; não tente pagar novamente." }, 502);
+          return json({ error: "Não foi possível confirmar se a cobrança foi criada. O pedido permanece pendente para nova tentativa de reconciliação." }, 503);
         }
       }
 
@@ -828,11 +845,7 @@ Deno.serve(async (req: Request) => {
           : "O processamento falhou. O pedido foi cancelado.",
       }, 500);
     }
-    if (asaasFailureContext) {
-      console.error("Erro interno super-worker; falha não detalhada.");
-    } else {
-      console.error("Erro interno super-worker:", error instanceof Error ? error.message : "unknown");
-    }
+    console.error("Erro interno super-worker:", error instanceof Error ? error.message : "unknown");
     return json({ error: "Erro interno ao processar o pedido. Tente novamente." }, 500);
   }
 });
