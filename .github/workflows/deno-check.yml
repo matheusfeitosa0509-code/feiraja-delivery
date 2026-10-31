@@ -1,0 +1,26 @@
+name: Deno Check — super-worker
+
+on:
+  push:
+    branches: [ci/deno-check-order69]
+
+permissions:
+  contents: read
+
+jobs:
+  deno-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Instalar Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Verificar versão do Deno
+        run: deno --version
+
+      - name: Verificar super-worker
+        run: deno check supabase/functions/super-worker/index.ts
