@@ -37,7 +37,8 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   if (Deno.env.get("ASAAS_ENABLED") !== "true") {
-    return json({ error: "Integração Asaas temporariamente desativada." }, 503);
+    console.info("Webhook Asaas ignorado: integração desativada.");
+    return json({ received: true, ignored: true });
   }
 
   const expectedToken = Deno.env.get("ASAAS_WEBHOOK_AUTH_TOKEN");
@@ -154,8 +155,13 @@ Deno.serve(async (req: Request) => {
       asaasBaseUrl + "/v3/payments/" + encodeURIComponent(paymentId),
       { method: "GET", headers: { access_token: apiKey, Accept: "application/json" } },
     );
-    if (!verificationResponse.ok) {
+    if (verificationResponse.status >= 500) {
+      console.error("Consulta Asaas temporariamente indisponível.", { http_status: verificationResponse.status });
       return json({ error: "Não foi possível validar a cobrança." }, 503);
+    }
+    if (!verificationResponse.ok) {
+      console.warn("Consulta Asaas recusada sem confirmação do pedido.", { http_status: verificationResponse.status });
+      return json({ received: true, ignored: true, reason: "consulta_permanentemente_recusada" });
     }
     verifiedPayment = await verificationResponse.json();
   } catch {
@@ -174,7 +180,14 @@ Deno.serve(async (req: Request) => {
       !Number.isFinite(expectedCents) || expectedCents <= 0 ||
       !Number.isFinite(paidCents) || paidCents !== expectedCents ||
       !Number.isFinite(verifiedCents) || verifiedCents !== expectedCents) {
-    return json({ error: "Não foi possível validar a cobrança." }, 503);
+    const mismatch = String(verifiedPayment?.id || "") !== paymentId ? "id_divergente" :
+      String(verifiedPayment?.externalReference || "") !== externalReference ? "referencia_divergente" :
+      String(verifiedPayment?.billingType || "").toUpperCase() !== "PIX" ? "tipo_divergente" :
+      !["RECEIVED", "CONFIRMED"].includes(verifiedStatus) ? "status_nao_aceito" :
+      (!Number.isFinite(expectedCents) || expectedCents <= 0 || !Number.isFinite(paidCents) || paidCents !== expectedCents ||
+        !Number.isFinite(verifiedCents) || verifiedCents !== expectedCents) ? "valor_divergente" : "dados_divergentes";
+    console.warn("Webhook Asaas ignorado após consulta bem-sucedida: divergência permanente.", { mismatch });
+    return json({ received: true, ignored: true, reason: "divergencia_permanente" });
   }
 
   if (isCancelledOrder) {
