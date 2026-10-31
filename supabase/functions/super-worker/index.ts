@@ -121,9 +121,19 @@ Deno.serve(async (req: Request) => {
         return json({ received: true, ignored: true });
       }
       const incomingStatus = String(verifiedPayment.status || "");
+      const normalizedOrderStatus = String(linkedOrder.status || "").trim().toLowerCase();
       const protectedAdministrativeStatuses = new Set(["saiu para entrega", "cancelada", "cancelado", "preparando", "pronto para retirada", "entregue", "preparando pedido", "concluído", "concluido", "received", "recebido"]);
-      if (incomingStatus === "approved" && protectedAdministrativeStatuses.has(String(linkedOrder.status || "").trim().toLowerCase())) {
+      const isCancelledOrder = normalizedOrderStatus === "cancelada" || normalizedOrderStatus === "cancelado";
+      const paymentIdMatches = String(linkedOrder.payment_id || "") === paymentIdFromNotice;
+      // Only a verified approval for this exact payment may restore a cancelled Pix order.
+      if (incomingStatus === "approved" && isCancelledOrder && paymentIdMatches) {
+        // Continue to the existing status map, which sets "Pagamento Confirmado".
+      } else if (incomingStatus === "approved" && protectedAdministrativeStatuses.has(normalizedOrderStatus)) {
         return json({ received: true, ignored: true, reason: "status_administrativo_preservado" });
+      }
+      // Make repeated approval notifications idempotent.
+      if (incomingStatus === "approved" && normalizedOrderStatus === "pagamento confirmado") {
+        return json({ received: true, ignored: true, reason: "pagamento_ja_confirmado" });
       }
       const statusMap: Record<string, string> = {
         approved: "Pagamento Confirmado",
