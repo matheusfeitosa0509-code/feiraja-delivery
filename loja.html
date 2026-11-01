@@ -764,7 +764,43 @@ header{background:#f6f4ea!important;border-bottom:1px solid var(--line)!importan
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-</head><body>
+<style>
+/* PARTE 2 — acabamento visual seletivo inspirado na prévia v3; sem alterar fluxos de compra. */
+:root{--preview-green:#2f6a14;--preview-green-light:#7fb237;--preview-cream:#f6f4ea;--preview-ink:#1d2a12}
+body{background:var(--preview-cream)}
+header{background:#fff;box-shadow:0 3px 16px rgba(29,42,18,.07)}
+.preview-topbar{height:5px;background:#202820}
+.search-row{position:sticky;top:0;z-index:20;background:rgba(246,244,234,.96);backdrop-filter:blur(12px);padding:10px 0;border-bottom:1px solid #e4e7d6}
+.categories{scrollbar-width:none}
+.categories::-webkit-scrollbar{display:none}
+.catalog-category{scroll-margin-top:110px}
+.catalog-category>h2{display:flex;align-items:center;gap:9px;color:#1d2a12;font-size:clamp(17px,2.5vw,22px);font-weight:800;margin:22px 0 12px}
+.catalog-category>h2:before{content:"";width:5px;height:22px;border-radius:9px;background:#7fb237}
+.catalog-row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(150px,1fr);grid-template-rows:1fr;gap:12px;overflow-x:auto;padding:2px 2px 12px;scroll-snap-type:x proximity}
+.catalog-row>.product{min-width:0;scroll-snap-align:start}
+.product{border:1px solid #e4e7d6;border-radius:18px;box-shadow:0 5px 16px rgba(29,42,18,.055);overflow:hidden}
+.product img{object-fit:contain;background:#fff}
+.product .pbody{padding:12px}
+.product .add,.product-qty button{background:#2f6a14;color:#fff;border-radius:12px}
+.mobile-nav{position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:50;border-radius:20px;box-shadow:0 10px 35px rgba(0,0,0,.18);background:#202820;color:#fff}
+.mobile-nav .tab-button{color:#e8efe4}
+.mobile-nav .tab-button.active{color:#d8f4a7}
+#cartbar{bottom:calc(82px + env(safe-area-inset-bottom));border-radius:16px;box-shadow:0 8px 26px rgba(0,0,0,.16)}
+.moto-enter{animation:motoEnter 1.15s cubic-bezier(.2,.75,.25,1) both}
+.moto-bob{transform-box:fill-box;transform-origin:center;animation:motoBob 1.8s ease-in-out infinite}
+@keyframes motoEnter{from{transform:translateX(65px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes motoBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+.legal-modal{position:fixed;inset:0;z-index:1200;background:rgba(13,24,14,.56);display:none;align-items:flex-end;justify-content:center;padding:14px}
+.legal-modal.open{display:flex}
+.legal-dialog{width:min(100%,760px);max-height:min(84dvh,850px);overflow:auto;background:#fff;border-radius:22px;padding:20px;color:#1d2a12;box-shadow:0 18px 55px rgba(0,0,0,.22)}
+.legal-dialog-head{position:sticky;top:-20px;background:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0 14px;border-bottom:1px solid #e4e7d6;margin-bottom:14px}
+.legal-dialog h2{margin:0;font-size:22px}
+.legal-dialog h3{font-size:16px;margin:20px 0 6px}
+.legal-dialog p{line-height:1.65;font-size:14px}
+.legal-close{border:0;border-radius:12px;padding:10px 14px;background:#202820;color:#fff}
+.legal-footer{padding-bottom:120px}
+@media(min-width:800px){.legal-modal{align-items:center}.catalog-row{grid-auto-columns:minmax(180px,220px)}.mobile-nav{left:50%;right:auto;width:min(560px,calc(100% - 24px));transform:translateX(-50%)}}
+</style></head><body>
 <div class="preview-topbar" aria-hidden="true"></div><header><a class="brand" href="./" aria-label="FeiraOn Delivery"><img class="brand-logo" src="imagens/166159-removebg-preview.png" alt="FeiraOn Delivery" onerror="this.onerror=null;this.src=\'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22480%22 height=%22180%22 viewBox=%220 0 480 180%22%3E%3Crect width=%22480%22 height=%22180%22 fill=%22%23eaf0e6%22/%3E%3Ctext x=%22240%22 y=%2290%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22 font-family=%22Arial,sans-serif%22 font-size=%2220%22 fill=%22%23546b59%22%3EImagem indispon%C3%ADvel%3C/text%3E%3C/svg%3E\';this.alt=\'Imagem indisponível\'"></a><button id="accountBtn" type="button">Entrar</button></header>
 <main class="wrap"><div id="accountStatus" class="status">Entre ou crie sua conta para salvar seus dados e agilizar os próximos pedidos.</div><section id="customerOrders" class="panel" style="margin:14px 0"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>📦 Meus pedidos</h2><button id="refreshOrders" type="button">Atualizar pedidos</button></div><input id="ordersSearch" type="search" placeholder="Buscar pedido ou data" aria-label="Buscar pedido ou data" style="width:100%;margin:10px 0;padding:12px;border:1px solid var(--line);border-radius:12px"><p id="ordersMessage" class="hint">Entre na sua conta para consultar seu histórico e acompanhar o status.</p><div id="ordersList"></div></section><div class="market-promo" role="note"><span class="market-promo-icon">🌿</span><span><strong>Fresquinho todo dia</strong><small>Escolhas da feira direto para sua casa</small></span><span class="market-promo-tag">FeiraOn Delivery</span></div>
 <section class="hero"><div class="hero-kicker">SUA FEIRA, DO SEU JEITO</div><h1>Sua feira fresquinha, sem complicação.</h1><p>Escolha seus produtos, monte a sacola e peça para entregar em casa.</p></section>
@@ -995,7 +1031,7 @@ setupAppTabs();document.title='FeiraOn';load();renderCart();loadProfile();
  sync();
 })();
 </script>
-<footer class="site-footer" style="max-width:1120px;margin:0 auto;padding:20px 16px 32px;text-align:center;color:#68786f;font-size:13px;line-height:1.8"><a href="./">Início</a> · <a href="./politica-privacidade.html">Política de Privacidade</a> · <a href="./termos.html">Termos de Uso</a> · <a href="https://wa.me/559294444989">WhatsApp +55 92 9444-4989</a> · <a href="mailto:feiraondelivery2026@gmail.com">feiraondelivery2026@gmail.com</a></footer><script>
+<footer class="site-footer" style="max-width:1120px;margin:0 auto;padding:20px 16px 32px;text-align:center;color:#68786f;font-size:13px;line-height:1.8"><a href="./">Início</a> · <a href="#privacidade" data-legal-page="privacidade">Política de Privacidade</a> · <a href="#termos" data-legal-page="termos">Termos de Uso</a> · <a href="#entregas" data-legal-page="entregas">Entregas e trocas</a> · <a href="https://wa.me/559294444989">WhatsApp +55 92 9444-4989</a> · <a href="mailto:feiraondelivery2026@gmail.com">feiraondelivery2026@gmail.com</a></footer><script>
 /* Ordem 90 — cartões visuais alimentados pelas opções reais dos selects existentes. */
 (()=>{
  const enhance=(id,title)=>{
@@ -1006,6 +1042,45 @@ setupAppTabs();document.title='FeiraOn';load();renderCart();loadProfile();
   select.insertAdjacentElement('afterend',group);select.classList.add('choice-select-native');select.dataset.cardUi='1';select.addEventListener('change',sync);sync();
  };
  enhance('delivery','Opções de recebimento');enhance('payment','Opções de pagamento');
+})();
+</script>
+
+<div class="legal-modal" id="legalModal" aria-hidden="true"><section class="legal-dialog" role="dialog" aria-modal="true" aria-labelledby="legalModalTitle"><div class="legal-dialog-head"><h2 id="legalModalTitle">Informações da loja</h2><button type="button" class="legal-close" id="legalModalClose">Fechar ✕</button></div><div id="legalModalContent"></div></section></div>
+
+<script>
+/* Documentos legais internos: texto seguro, sem placeholders visíveis. */
+(()=>{const modal=document.getElementById('legalModal');if(!modal)return;
+const fallback='Consulte pelo WhatsApp';
+const legalData={responsavel:'Dr Alimentos',cnpj:'65.414.756/0001-22',whatsapp:'+55 92 9444-4989',email:'feiraondelivery2026@gmail.com',provedorPix:'Mercado Pago',provedor:'Supabase',endereco:fallback,horarios:'6h às 13h',prazo:fallback};
+const docs={
+termos:{title:'Termos de uso',sections:[
+['Última atualização','01/11/2026'],
+['1. Quem somos','Feira On Delivery é um serviço de entrega de produtos de feira em Manaus/AM. Responsável: '+legalData.responsavel+', CNPJ '+legalData.cnpj+'.'],
+['2. Pedidos','O pedido depende da confirmação pela loja e da disponibilidade dos produtos. Preços e disponibilidade podem mudar.'],
+['3. Entrega e pedido mínimo','O pedido mínimo é de R$ 30,00 em produtos para entrega. A taxa de entrega é R$ 15,00. Para retirada no local, não há taxa nem pedido mínimo.'],
+['4. Pagamentos','O Pix é processado pelo Mercado Pago. Dinheiro e cartão na entrega/retirada dependem das opções exibidas no checkout.'],
+['5. Atendimento','WhatsApp: '+legalData.whatsapp+'. E-mail: '+legalData.email+'.']
+]},
+privacidade:{title:'Política de privacidade',sections:[
+['Última atualização','01/11/2026'],
+['1. Responsável','Responsável: '+legalData.responsavel+', CNPJ '+legalData.cnpj+', Manaus/AM.'],
+['2. Dados utilizados','Podemos tratar nome, telefone, endereço, e-mail, CPF quando necessário ao Pix, dados do pedido e informações técnicas essenciais para manter o serviço.'],
+['3. Finalidades','Usamos os dados para processar pedidos, organizar entrega ou retirada, confirmar pagamentos, manter o histórico e responder ao cliente.'],
+['4. Serviços envolvidos','O serviço utiliza Supabase para autenticação e armazenamento e Mercado Pago para processamento do Pix.'],
+['5. Atendimento e solicitações','Para dúvidas sobre privacidade, fale pelo WhatsApp '+legalData.whatsapp+' ou pelo e-mail '+legalData.email+'.']
+]},
+entregas:{title:'Entregas e trocas',sections:[
+['1. Área e taxa','Atendimento em Manaus/AM. A taxa de entrega é R$ 15,00 e o pedido mínimo de produtos para entrega é R$ 30,00. A retirada é gratuita e não exige pedido mínimo.'],
+['2. Endereço e horário','Endereço de retirada: '+legalData.endereco+'. Horário informado: '+legalData.horarios+'. Confirme os detalhes pelo WhatsApp '+legalData.whatsapp+'.'],
+['3. Recebimento','Confira o endereço informado e mantenha um contato disponível para combinar a entrega.'],
+['4. Problemas com produtos','Informe qualquer problema pelo WhatsApp '+legalData.whatsapp+' assim que possível; prazo específico: '+legalData.prazo+'.'],
+['5. Contato','WhatsApp: '+legalData.whatsapp+'. E-mail: '+legalData.email+'.']
+]}
+};
+function close(){modal.classList.remove('open');modal.setAttribute('aria-hidden','true')}
+function open(key){const doc=docs[key];if(!doc)return;document.getElementById('legalModalTitle').textContent=doc.title;const box=document.getElementById('legalModalContent');box.replaceChildren();for(const [heading,body] of doc.sections){const h=document.createElement('h3');h.textContent=heading;const p=document.createElement('p');p.textContent=String(body).replace(/Consulte pelo WhatsApp|Consulte pelo WhatsApp/g,fallback);box.append(h,p)}modal.classList.add('open');modal.setAttribute('aria-hidden','false')}
+document.querySelectorAll('[data-legal-page]').forEach(a=>{a.addEventListener('click',e=>{const key=a.getAttribute('data-legal-page');if(docs[key]){e.preventDefault();open(key)}})});
+document.getElementById('legalModalClose').addEventListener('click',close);modal.addEventListener('click',e=>{if(e.target===modal)close()});document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
 })();
 </script>
 </body></html>
