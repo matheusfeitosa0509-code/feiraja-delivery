@@ -287,7 +287,7 @@ body>.site-footer,body>footer.site-footer,.preview-footer{display:none!important
 #pageProducts.active{padding-bottom:calc(168px + env(safe-area-inset-bottom))!important}
 .product .pbody{padding-bottom:8px!important}
 .product .product-qty{margin-top:8px!important}
-.lhero .moto{bottom:16px!important}
+.lhero .moto{bottom:12px!important}
 .order-status-top{background:linear-gradient(120deg,#2f6a14,#7fb237)!important;color:#fff!important}
 .order-status-top b,.order-status-top .order-subtitle{color:#fff!important}
 .tl li>div small{display:block!important;font-size:11px!important;color:var(--mut)!important;line-height:1.35!important;margin-top:3px!important}
@@ -402,7 +402,7 @@ async function loadProfile(knownUser){
   if(data.cpf&&!$('#cpf').value.trim())$('#cpf').value=data.cpf;
   if(data.address&&!$('#address').value.trim())$('#address').value=data.address;if(data.address)$('#homeAddress').textContent=data.address;
  }
- $('#email').value=currentUser.email||'';$('#email').readOnly=!!currentUser.email;const homeAddress=$('#homeAddress');if(homeAddress)homeAddress.textContent=$('#address').value.trim()||'Informe no pagamento';
+ $('#email').value=currentUser.email||'';$('#email').readOnly=!!currentUser.email;const homeAddress=$('#homeAddress');if(homeAddress)homeAddress.textContent=$('#address').value.trim()||'Informe no pagamento';const addressChoice=$('#addressChoiceText');if(addressChoice){const address=$('#address').value.trim();addressChoice.textContent=address?'Casa · '+address:'Informe seu endereço';}
  if(knownUser){await loadMyOrders(currentUser);$('#accountStatus').classList.remove('load-error');updateAccountUI();}
  else{await loadMyOrders();}
 }
