@@ -549,6 +549,15 @@ header{background:#f6f4ea!important;border-bottom:1px solid var(--line)!importan
 #accountModal .dialog{padding:0 24px 24px;border-radius:28px 28px 20px 20px;max-height:calc(var(--modal-vvh,100vh) - 24px);overflow:auto}#accountModal .dialog:before{content:"Feira On Delivery\A Tudo da feira,\Adireto na sua porta.";display:block;white-space:pre;line-height:1.3;margin:0 -24px 0;padding:50px 24px 60px;min-height:220px;background:linear-gradient(150deg,#2f6a14,#7fb237);color:#fff;font-size:25px;font-weight:800;border-radius:0 0 24px 24px}#accountModal #accountClose{float:right;position:relative;margin-top:-44px;z-index:1;background:#ffffff!important;color:#2f6a14!important}#accountModal #accountTitle{font-size:24px;margin:22px 0 6px}#accountModal .dialog .hint{font-size:13px}#accountModal .field input{height:54px;border-radius:14px}#accountModal .full{min-height:54px;border-radius:16px;background:#2f6a14!important;color:#fff!important}#accountModal #authToggle,#accountModal #forgotBtn,#accountModal #myOrdersBtn{background:#fff!important;color:#2f6a14!important;border:1px solid #2f6a14}#accountModal .close{background:#fff!important;color:#2f6a14!important}
 #modal .dialog{border-radius:24px;padding:20px;background:#f6f4ea}#modal .checkout-fields{padding-bottom:10px}#modal .field{padding:10px 12px;background:#fff;border:1px solid var(--line);border-radius:15px}#modal .field input,#modal .field select,#modal .field textarea{border:0;border-radius:8px;padding:7px 0;box-shadow:none}#modal .field label{font-size:14px;color:var(--mut)}#modal #submitOrder{background:#0f8f7e!important;border-radius:16px;min-height:54px}
 @media(max-width:440px){.wrap{padding:12px 12px 130px!important}#pageProducts .catalog-row{gap:9px}#pageProducts .product img{height:clamp(112px,34vw,145px)}#pageProducts .pbody{padding:10px}#pageProducts .pbody h3{font-size:13px}#pageProducts .price{font-size:17px}#pageProducts .product-action .add{font-size:13px;padding:0 9px!important}#pageProducts .product-action .product-qty button{width:34px;min-width:34px}#pageCart #cartPanel{padding:12px}#pageCart .cartrow-info strong{font-size:13px}#pageCart .qty button{width:30px;min-width:30px}#accountModal .dialog{padding-left:20px;padding-right:20px}#accountModal .dialog:before{margin-left:-20px;margin-right:-20px;padding-left:20px;padding-right:20px}#accountModal #accountTitle{font-size:22px}}
+
+/* Opções de checkout em cartões clicáveis; os selects originais continuam como fonte de estado. */
+#modal .choice-select-native{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+#modal .choice-cards{display:grid;gap:9px;margin-top:8px}
+#modal .choice-card{display:flex;align-items:center;gap:11px;width:100%;min-height:60px;padding:12px 14px;background:#fff!important;color:#1d2a12!important;border:1.5px solid #e4e7d6!important;border-radius:16px!important;text-align:left;font-size:14px;font-weight:750;box-shadow:none!important}
+#modal .choice-card.selected{border-color:#2f6a14!important;background:#f1f8e6!important}
+#modal .choice-radio{width:22px;height:22px;flex:0 0 22px;border:2px solid #b7bfa3;border-radius:50%;display:block}
+#modal .choice-card.selected .choice-radio{border:7px solid #2f6a14}
+#modal #submitOrder{position:sticky;bottom:0;z-index:2;box-shadow:0 -8px 18px #f6f4eadd}
 </style>
 </head><body>
 <div class="preview-topbar" aria-hidden="true"></div><header><a class="brand" href="./" aria-label="FeiraOn Delivery"><img class="brand-logo" src="imagens/166159-removebg-preview.png" alt="FeiraOn Delivery" onerror="this.onerror=null;this.src=\'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22480%22 height=%22180%22 viewBox=%220 0 480 180%22%3E%3Crect width=%22480%22 height=%22180%22 fill=%22%23eaf0e6%22/%3E%3Ctext x=%22240%22 y=%2290%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22 font-family=%22Arial,sans-serif%22 font-size=%2220%22 fill=%22%23546b59%22%3EImagem indispon%C3%ADvel%3C/text%3E%3C/svg%3E\';this.alt=\'Imagem indisponível\'"></a><button id="accountBtn" type="button">Entrar</button></header>
@@ -780,4 +789,17 @@ setupAppTabs();document.title='FeiraOn';load();renderCart();loadProfile();
  sync();
 })();
 </script>
-<footer class="site-footer" style="max-width:1120px;margin:0 auto;padding:20px 16px 32px;text-align:center;color:#68786f;font-size:13px;line-height:1.8"><a href="./">Início</a> · <a href="./politica-privacidade.html">Política de Privacidade</a> · <a href="./termos.html">Termos de Uso</a> · <a href="https://wa.me/559294444989">WhatsApp +55 92 9444-4989</a> · <a href="mailto:feiraondelivery2026@gmail.com">feiraondelivery2026@gmail.com</a></footer></body></html>
+<footer class="site-footer" style="max-width:1120px;margin:0 auto;padding:20px 16px 32px;text-align:center;color:#68786f;font-size:13px;line-height:1.8"><a href="./">Início</a> · <a href="./politica-privacidade.html">Política de Privacidade</a> · <a href="./termos.html">Termos de Uso</a> · <a href="https://wa.me/559294444989">WhatsApp +55 92 9444-4989</a> · <a href="mailto:feiraondelivery2026@gmail.com">feiraondelivery2026@gmail.com</a></footer><script>
+/* Ordem 90 — cartões visuais alimentados pelas opções reais dos selects existentes. */
+(()=>{
+ const enhance=(id,title)=>{
+  const select=document.getElementById(id);if(!select||select.dataset.cardUi==='1')return;
+  const group=document.createElement('div');group.className='choice-cards';group.setAttribute('role','group');group.setAttribute('aria-label',title);group.dataset.ordem90OptionCards='1';
+  const sync=()=>group.querySelectorAll('button[data-value]').forEach(button=>{const active=button.dataset.value===select.value;button.classList.toggle('selected',active);button.setAttribute('aria-pressed',String(active));});
+  [...select.options].forEach(option=>{const button=document.createElement('button');button.type='button';button.className='choice-card';button.dataset.value=option.value;button.innerHTML='<span class="choice-radio" aria-hidden="true"></span><span class="choice-label"></span>';button.querySelector('.choice-label').textContent=option.textContent;button.addEventListener('click',()=>{select.value=option.value;select.dispatchEvent(new Event('change',{bubbles:true}));sync();});group.appendChild(button);});
+  select.insertAdjacentElement('afterend',group);select.classList.add('choice-select-native');select.dataset.cardUi='1';select.addEventListener('change',sync);sync();
+ };
+ enhance('delivery','Opções de recebimento');enhance('payment','Opções de pagamento');
+})();
+</script>
+</body></html>
