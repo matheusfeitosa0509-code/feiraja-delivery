@@ -701,7 +701,17 @@ setupAppTabs();document.title='FeiraOn';load();renderCart();loadProfile();
  bar.addEventListener('click',()=>cartTab.click());
  new MutationObserver(sync).observe(countSource,{childList:true,characterData:true,subtree:true});
  new MutationObserver(sync).observe(totalSource,{childList:true,characterData:true,subtree:true});
- new MutationObserver(mutations=>{if(mutations.some(m=>(m.type==='attributes'&&m.target.classList?.contains('app-page'))||(m.type==='childList'&&[...m.addedNodes].some(n=>n.nodeType===1&&(n.matches('.app-page')||n.querySelector('.app-page')))))sync();}).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+ new MutationObserver(mutations=>{
+   const pageChange=mutations.some(m=>{
+    if(m.type==='attributes')return m.target.classList?.contains('app-page');
+    if(m.type!=='childList')return false;
+    return [...m.addedNodes].some(node=>{
+     if(node.nodeType!==1)return false;
+     return node.matches('.app-page')||!!node.querySelector('.app-page');
+    });
+   });
+   if(pageChange)sync();
+  }).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
  sync();
 })();
 </script>
