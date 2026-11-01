@@ -31,9 +31,9 @@ function nextManausDueDate() {
 function sanitizeAsaasLogValue(value: unknown): string | null {
   if (typeof value !== "string" && typeof value !== "number") return null;
   const sanitized = String(value)
-    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi, "[REDACTED_EMAIL]")
-    .replace(/(?<!\\d)\\+?(?:\\d[\\s()./-]*){9,14}\\d(?![\\s()./-]*\\d)/g, (match) => {
-      const digitCount = (match.match(/\\d/g) || []).length;
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[REDACTED_EMAIL]")
+    .replace(/(?<!\d)\+?(?:\d[\s()./-]*){9,14}\d(?![\s()./-]*\d)/g, (match) => {
+      const digitCount = (match.match(/\d/g) || []).length;
       return digitCount >= 10 && digitCount <= 15 ? "[REDACTED_NUMBER]" : match;
     });
   return sanitized.slice(0, 200);
