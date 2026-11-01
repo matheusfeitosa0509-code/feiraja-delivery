@@ -42,7 +42,7 @@ document.querySelector('#emailForm').addEventListener('submit',async e=>{
  const email=document.querySelector('#email').value.trim();
  const redirectTo=location.origin+location.pathname.replace(/[^/]*$/,'')+'recuperar-senha.html';
  const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo});
- if(error){ console.error('Erro ao enviar recuperação:', error); show('Não foi possível enviar o e-mail automático. Por favor, solicite a recuperação de senha diretamente pelo nosso WhatsApp: (47) 99147-7280.'); }
+ if(error){ console.error('Erro ao enviar recuperação:', error); show('Não foi possível enviar o e-mail automático. Por favor, solicite a recuperação de senha diretamente pelo nosso WhatsApp: +55 92 9444-4989.'); }
  else show('Se houver uma conta cadastrada com esse e-mail, você receberá um link para redefinir a senha. Confira também o spam.',true);
  btn.disabled=false;btn.textContent='Enviar link de recuperação';
 });
