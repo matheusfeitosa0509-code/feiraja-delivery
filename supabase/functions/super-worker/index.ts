@@ -28,6 +28,17 @@ function nextManausDueDate() {
   return localDate.toISOString().slice(0, 10);
 }
 
+function sanitizeAsaasLogValue(value: unknown): string | null {
+  if (typeof value !== "string" && typeof value !== "number") return null;
+  const sanitized = String(value)
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi, "[REDACTED_EMAIL]")
+    .replace(/(?<!\\d)\\+?(?:\\d[\\s()./-]*){9,14}\\d(?![\\s()./-]*\\d)/g, (match) => {
+      const digitCount = (match.match(/\\d/g) || []).length;
+      return digitCount >= 10 && digitCount <= 15 ? "[REDACTED_NUMBER]" : match;
+    });
+  return sanitized.slice(0, 200);
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -553,8 +564,12 @@ Deno.serve(async (req: Request) => {
 
       const createPaymentResponseText = await createPaymentResponse.text().catch(() => "");
       let asaasPayment: any = {};
+      let asaasResponseJsonValid = false;
       try {
-        asaasPayment = createPaymentResponseText ? JSON.parse(createPaymentResponseText) : {};
+        if (createPaymentResponseText) {
+          asaasPayment = JSON.parse(createPaymentResponseText);
+          asaasResponseJsonValid = true;
+        }
       } catch {
         asaasPayment = {};
       }
@@ -599,13 +614,27 @@ Deno.serve(async (req: Request) => {
               .slice(0, 240)
               .trim()
           : "";
-        console.error("Falha na criação/validação da cobrança Asaas:", {
-          stage: "create_payment",
-          http_status: createPaymentResponse.status,
-          provider_error_code_omitted: true,
-          provider_error_message: providerErrorMessage || null,
-          charge_id_present: Boolean(asaasPayment?.id),
-        });
+        if (createPaymentResponse.status >= 400 && createPaymentResponse.status < 500) {
+          const diagnostic: Record<string, unknown> = {
+            stage: "create_payment",
+            http_status: createPaymentResponse.status,
+          };
+          if (asaasResponseJsonValid && Array.isArray(asaasPayment?.errors)) {
+            diagnostic.errors = asaasPayment.errors.map((item: any) => ({
+              code: sanitizeAsaasLogValue(item?.code),
+              description: sanitizeAsaasLogValue(item?.description),
+            }));
+          }
+          console.error("Falha na criação da cobrança Asaas:", diagnostic);
+        } else {
+          console.error("Falha na criação/validação da cobrança Asaas:", {
+            stage: "create_payment",
+            http_status: createPaymentResponse.status,
+            provider_error_code_omitted: true,
+            provider_error_message: providerErrorMessage || null,
+            charge_id_present: Boolean(asaasPayment?.id),
+          });
+        }
         if (asaasPayment?.id) {
           const deleted = await deleteAsaasPayment(String(asaasPayment.id));
           if (!deleted) {
