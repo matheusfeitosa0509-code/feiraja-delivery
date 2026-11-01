@@ -390,6 +390,9 @@ body:has(#modal.open){padding-bottom:0!important}
 #accountModal #browseFirst{display:block!important}
 @media (prefers-reduced-motion:reduce){#accountModal .moto-enter,#accountModal .moto-bob,#accountModal .wheel,#accountModal .road{animation:none!important;transform:none!important}#accountModal .moto{left:50%;right:auto;transform:translateX(-50%)!important}}
 
+</style><style>
+.legal-footer{margin:24px 0 0;padding:18px 4px calc(112px + env(safe-area-inset-bottom));border-top:1px solid var(--line);text-align:center;color:var(--mut);font-size:12px;line-height:1.8}.legal-footer .legal-links{display:flex;flex-wrap:wrap;justify-content:center;gap:5px 8px;margin-bottom:8px}.legal-footer a,.legal-agreement a{color:var(--g);font-weight:700;text-decoration:underline;text-underline-offset:2px}.legal-footer .legal-brand{font-weight:800;color:var(--ink)}.legal-agreement{font-size:11px;line-height:1.5;text-align:center;margin:9px 0 2px;color:var(--mut)}
+#legalModal{position:fixed;inset:0;z-index:60;display:none;align-items:stretch;justify-content:center;background:var(--bg)}#legalModal.open{display:flex}#legalModal .legal-dialog{width:100%;max-width:520px;min-height:100dvh;max-height:100dvh;display:flex;flex-direction:column;background:var(--bg);overflow:hidden}.legal-header{flex:none;display:flex;align-items:center;gap:12px;padding:calc(12px + env(safe-area-inset-top)) 18px 12px;border-bottom:1px solid var(--line);background:#fff}.legal-back{width:42px;height:42px;border:0;border-radius:50%;background:var(--soft);color:var(--ink);font-size:28px;line-height:1}.legal-header h2{margin:0;font-size:19px}.legal-content{overflow-y:auto;overscroll-behavior:contain;padding:18px 20px calc(110px + env(safe-area-inset-bottom));line-height:1.65}.legal-content .legal-updated{margin:0 0 18px;color:var(--mut);font-size:12px}.legal-section{margin:0 0 20px}.legal-section h3{font-size:16px;line-height:1.35;margin:0 0 7px;color:var(--ink)}.legal-section p{font-size:14px;line-height:1.7;margin:0;white-space:pre-line}body:has(#legalModal.open) .mobile-nav{display:none!important}.auth-screen .sheet{padding-bottom:calc(112px + env(safe-area-inset-bottom))}.checkout-screen .checkout-page{padding-bottom:calc(230px + env(safe-area-inset-bottom))}.checkout-screen .checkout-footer{padding-bottom:calc(18px + env(safe-area-inset-bottom))}
 </style></head><body>
 <main class="wrap">
  <section id="pageHome" class="app-page active" aria-label="Produtos">
@@ -437,7 +440,8 @@ body:has(#modal.open){padding-bottom:0!important}
  <div class="forgot-row"><button id="forgotBtn" class="link" type="button">Esqueci a senha</button></div>
  <div class="auth-actions"><button id="authSubmit" class="btn" type="submit">Entrar</button><div id="authMessage" class="sm hidden" role="status"></div><button id="authToggle" class="btn alt" type="button">Criar conta</button><button id="browseFirst" class="btn alt" type="button">Ver os produtos primeiro</button><button id="myOrdersBtn" class="btn alt hidden" type="button">Meus pedidos</button></div></form>
  <div id="myOrders" class="hidden"><p class="sm">Histórico de compras e status atualizado pela loja.</p><div id="myOrdersList"></div><button id="refreshMyOrders" class="btn alt full" type="button">Atualizar pedidos</button></div>
- <button id="logoutBtn" class="btn alt full hidden" type="button">Sair da conta</button><p class="terms sm">Ao continuar você aceita os <a href="#" class="link">Termos de uso</a>.</p>
+ <button id="logoutBtn" class="btn alt full hidden" type="button">Sair da conta</button><p class="terms sm">Ao continuar você aceita os <a href="#termos" class="link" data-legal-page="termos">Termos de uso</a> e a <a href="#privacidade" class="link" data-legal-page="privacidade">Política de privacidade</a>.</p>
+ <footer class="legal-footer" aria-label="Informações e documentos da loja"><nav class="legal-links"><a href="#termos" data-legal-page="termos">Termos de uso</a><span>·</span><a href="#privacidade" data-legal-page="privacidade">Política de privacidade</a><span>·</span><a href="#entregas" data-legal-page="entregas">Entregas e trocas</a></nav><div class="legal-brand">Feira On Delivery · Manaus, AM</div><div>Contato: <a href="https://wa.me/559294444989" target="_blank" rel="noopener noreferrer">+55 92 9444-4989</a> · <a href="mailto:feiraondelivery2026@gmail.com">feiraondelivery2026@gmail.com</a></div><div id="legalDocumentLine">CNPJ/CPF: <span id="legalDocumentValue">65.414.756/0001-22</span></div></footer>
  </div></div></div>
 <div class="modal checkout-screen" id="modal"><div class="dialog"><button class="close" id="close" type="button" aria-label="Voltar">‹</button><div class="checkout-page"><h1>Finalizar</h1><p class="sm">Confira seus dados, a entrega e o pagamento.</p>
  <form id="checkoutForm"><div class="checkout-fields"><div class="formgrid">
@@ -449,13 +453,48 @@ body:has(#modal.open){padding-bottom:0!important}
   <div class="field fullrow choice-group"><div class="step-ttl">Entrega</div><label class="opt sel" for="deliveryDelivery"><input class="choice-radio" id="deliveryDelivery" type="radio" name="deliveryChoice" checked><span class="r"></span><span><b>Entrega em casa</b></span><span class="end">R$ 15,00</span></label><label class="opt" for="deliveryPickup"><input class="choice-radio" id="deliveryPickup" type="radio" name="deliveryChoice"><span class="r"></span><span><b>Retirar no local</b></span><span class="end">Grátis</span></label><select id="delivery" aria-label="Recebimento"><option value="delivery">Entrega em casa</option><option value="pickup">Retirar no local</option></select></div>
   <div class="field fullrow choice-group"><div class="step-ttl">Pagamento</div><label class="opt sel" for="payPix"><input class="choice-radio" id="payPix" type="radio" name="paymentChoice" checked><span class="r"></span><span><b>Pix</b><span class="s">Pagamento instantâneo</span></span></label><label class="opt" for="payCash"><input class="choice-radio" id="payCash" type="radio" name="paymentChoice"><span class="r"></span><span><b>Dinheiro na entrega</b></span></label><label class="opt" for="payCard"><input class="choice-radio" id="payCard" type="radio" name="paymentChoice"><span class="r"></span><span><b>Cartão na entrega</b></span></label><select id="payment" aria-label="Forma de pagamento"><option value="pix">Pix instantâneo</option><option value="cash">Dinheiro na entrega/retirada</option><option value="card_on_delivery">Cartão na entrega (se disponível)</option></select></div>
   <div class="field fullrow notes-row"><label class="sr-only" for="notes">Observação (opcional)</label><input id="notes" maxlength="500" placeholder="Observação (opcional)"></div>
- </div></div><div class="checkout-footer"><div class="checkout-total"><span>Total</span><strong id="modalTotal">R$ 0,00</strong></div><p id="minimumCheckoutNotice" class="sm hidden" role="status"></p><p id="previewConfirmNotice" class="sm hidden" role="status">Prévia: compra desativada</p><button type="submit" class="btn pix" id="submitOrder">Pagar com Pix · R$ 15,00</button><p class="sm">O CPF é solicitado apenas para pagamento via Pix.</p></div></form>
+ </div></div><div class="checkout-footer"><div class="checkout-total"><span>Total</span><strong id="modalTotal">R$ 0,00</strong></div><p id="minimumCheckoutNotice" class="sm hidden" role="status"></p><p id="previewConfirmNotice" class="sm hidden" role="status">Prévia: compra desativada</p><button type="submit" class="btn pix" id="submitOrder">Pagar com Pix · R$ 15,00</button><p class="legal-agreement">Ao finalizar você concorda com os <a href="#termos" data-legal-page="termos">Termos de uso</a> e a <a href="#privacidade" data-legal-page="privacidade">Política de privacidade</a>.</p><p class="sm">O CPF é solicitado apenas para pagamento via Pix.</p></div></form>
  <div id="result" class="status hidden"></div></div></div></div>
-<footer class="preview-footer" aria-hidden="true"></footer></body>
+<section id="legalModal" role="dialog" aria-modal="true" aria-labelledby="legalTitle" aria-hidden="true"><div class="legal-dialog"><header class="legal-header"><button id="legalBack" class="legal-back" type="button" aria-label="Voltar">‹</button><h2 id="legalTitle">Termos de uso</h2></header><div id="legalContent" class="legal-content" tabindex="0"></div></div></section><footer class="preview-footer" aria-hidden="true"></footer></body>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 const supabase=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW');
 const $=s=>document.querySelector(s), money=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n);
+
+const LEGAL_DATA={responsavel:'Dr Alimentos',documento:'65.414.756/0001-22',whatsapp:'+55 92 9444-4989',email:'feiraondelivery2026@gmail.com',provedorPix:'Mercado Pago',provedor:'Supabase',endereco:'ENDERECO_AQUI',horarios:'6h às 13h',data:'01/11/2026',prazoHoras:'PRAZO_HORAS_AQUI'};
+const TERMOS_TEXTO=[
+ {heading:'Última atualização',body:LEGAL_DATA.data},
+ {heading:'1. Quem somos',body:'Feira On Delivery é um serviço de entrega de produtos de feira em Manaus/AM. Responsável: '+LEGAL_DATA.responsavel+'.'},
+ {heading:'2. Pedidos',body:'O pedido só é confirmado após o pagamento via Pix ou a confirmação pela loja. Preços e disponibilidade podem mudar sem aviso.'},
+ {heading:'3. Entrega e pedido mínimo',body:'Pedido mínimo de R$ 30,00 em produtos para entrega. Taxa de entrega de R$ 15,00 para toda Manaus. A retirada no local é gratuita e não tem pedido mínimo.'},
+ {heading:'4. Pagamento',body:'Aceitamos Pix, dinheiro na entrega e cartão na entrega.'},
+ {heading:'5. Produtos frescos',body:'Pequenas variações de tamanho, cor e peso são normais. Itens vendidos por peso podem ter ajuste de valor.'},
+ {heading:'6. Prazos',body:'Os prazos de entrega são estimados e podem variar por trânsito, clima ou demanda.'},
+ {heading:'7. Cadastro',body:'A pessoa é responsável pelos dados informados e pela guarda de sua senha.'},
+ {heading:'8. Foro',body:'Fica eleito o foro de Manaus/AM.'}
+];
+const PRIVACIDADE_TEXTO=[
+ {heading:'Última atualização',body:LEGAL_DATA.data},
+ {heading:'1. Dados coletados',body:'Nome, e-mail, telefone/WhatsApp, endereço, CPF (somente para pagamento via Pix) e histórico de pedidos.'},
+ {heading:'2. Finalidade',body:'Processar e entregar pedidos, gerar a cobrança Pix, dar atendimento e entrar em contato sobre o pedido.'},
+ {heading:'3. Compartilhamento',body:'Compartilhamos dados apenas com quem for necessário para o serviço: provedor de pagamento ('+LEGAL_DATA.provedorPix+'), autenticação e banco de dados ('+LEGAL_DATA.provedor+') e entregador. Não vendemos dados pessoais.'},
+ {heading:'4. Seus direitos (LGPD)',body:'Você pode acessar, corrigir e excluir seus dados e revogar o consentimento pelo contato '+LEGAL_DATA.whatsapp+' / '+LEGAL_DATA.email+'.'},
+ {heading:'5. Armazenamento',body:'Os dados ficam guardados pelo tempo necessário ao serviço e a obrigações legais.'},
+ {heading:'6. Segurança',body:'Adotamos medidas razoáveis de proteção, mas nenhum sistema é totalmente seguro.'},
+ {heading:'7. Atualizações',body:'Esta política pode mudar. A data da última versão fica no topo.'}
+];
+const ENTREGAS_TEXTO=[
+ {heading:'1. Área e taxa',body:'Entregamos em toda Manaus, com taxa de R$ 15,00. Retirada no local: '+LEGAL_DATA.endereco+', horários: '+LEGAL_DATA.horarios+'.'},
+ {heading:'2. Recebimento',body:'Confira o endereço e esteja disponível. Se ninguém receber, podem ser feitas novas tentativas, com custo.'},
+ {heading:'3. Problema com o produto',body:'Avise em até '+LEGAL_DATA.prazoHoras+' horas pelo WhatsApp, com foto. Fazemos a troca ou o reembolso do item afetado.'},
+ {heading:'4. Cancelamento',body:'Antes da separação do pedido, sem custo. Depois disso, pode haver cobrança parcial.'}
+];
+const LEGAL_PAGES={termos:{title:'Termos de uso',sections:TERMOS_TEXTO},privacidade:{title:'Política de privacidade',sections:PRIVACIDADE_TEXTO},entregas:{title:'Entregas e trocas',sections:ENTREGAS_TEXTO}};
+function renderLegalPage(key){const page=LEGAL_PAGES[key];if(!page)return;$('#legalTitle').textContent=page.title;const content=$('#legalContent');content.replaceChildren();page.sections.forEach(section=>{const article=document.createElement('section');article.className='legal-section';if(section.heading==='Última atualização'){const updated=document.createElement('p');updated.className='legal-updated';updated.textContent=section.heading+': '+section.body;article.append(updated);}else{const heading=document.createElement('h3');heading.textContent=section.heading;const body=document.createElement('p');body.textContent=section.body;article.append(heading,body);}content.append(article);});$('#legalModal').classList.add('open');$('#legalModal').setAttribute('aria-hidden','false');$('#legalContent').scrollTop=0;$('#legalBack').focus();}
+document.addEventListener('click',event=>{const link=event.target.closest('[data-legal-page]');if(link){event.preventDefault();renderLegalPage(link.dataset.legalPage);}});
+$('#legalBack').addEventListener('click',()=>{$('#legalModal').classList.remove('open');$('#legalModal').setAttribute('aria-hidden','true');});
+if(!LEGAL_DATA.documento){$('#legalDocumentLine').hidden=true;}else $('#legalDocumentValue').textContent=LEGAL_DATA.documento;
+
 const previewWindowTest=true;
 // Proteção complementar no navegador: consulta k-anonymity (somente prefixo SHA-1) ao serviço Pwned Passwords.
 // A proteção nativa do Supabase continua recomendada; esta checagem não substitui validação no servidor.
