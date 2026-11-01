@@ -395,16 +395,121 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 @media(max-width:440px){header{padding-left:12px!important;padding-right:12px!important}.brand-logo{height:42px!important;max-width:58vw!important}.hero{padding:20px 16px;min-height:150px}.hero h1{font-size:26px;max-width:84%}.hero p{font-size:13px;max-width:84%}.catalog-row{gap:10px}.catalog-row .product img{height:100px!important;min-height:100px!important;max-height:100px!important;padding:6px}.catalog-row .pbody{padding:9px}.catalog-row .pbody h3{font-size:13px}.catalog-row .price{font-size:16px}.catalog-row .add{font-size:13px;padding:8px 5px}.mobile-nav .tab-button{font-size:13px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
 
+
+/* Ordem 87 — estrutura visual da loja; sem alterar scripts existentes. */
+:root{--store-green:#2f6a14;--store-green-soft:#e6efd3;--store-ink:#1d2a12;--store-muted:#44503a;--store-line:#e4e7d6;--store-cream:#f6f4ea}
+body{background:var(--store-cream);color:var(--store-ink)}
+header{background:#fffdf8!important;border-bottom:1px solid var(--store-line)!important}
+.wrap{padding-top:14px;padding-bottom:190px}
+#accountStatus{font-size:13px}
+.market-promo{margin-bottom:8px;padding:8px 12px;border-radius:12px}
+.market-promo-icon{width:32px;height:32px;flex-basis:32px;font-size:18px}
+.market-promo strong{font-size:13px}
+.market-promo small{font-size:13px}
+.market-promo-tag{font-size:11px}
+.hero{min-height:0!important;padding:14px 18px!important;margin:0 0 12px!important;border-radius:16px!important;box-shadow:none!important}
+.hero-kicker{font-size:10px!important;padding:4px 8px!important;margin-bottom:6px!important}
+.hero h1{font-size:clamp(21px,4vw,28px)!important;line-height:1.15!important;letter-spacing:-.4px!important;margin:0 0 5px!important}
+.hero p{font-size:13px!important;line-height:1.4!important;max-width:85%}
+.hero:after{font-size:clamp(42px,10vw,74px)!important;right:10px!important;opacity:.16!important}
+.tools{display:flex;align-items:stretch;gap:9px;margin:10px 0!important;flex-wrap:nowrap}
+.search-field{display:flex;align-items:center;gap:9px;min-width:0;flex:1;background:#fff;border:1px solid var(--store-line);border-radius:14px;padding:0 12px;box-shadow:0 3px 10px rgba(29,42,18,.04)}
+.search-field svg{width:20px;height:20px;flex:0 0 20px;fill:none;stroke:var(--store-muted);stroke-width:2;stroke-linecap:round}
+.tools .search-field input{width:100%;min-width:0;flex:1;border:0!important;box-shadow:none!important;outline:0;padding:12px 0!important;background:transparent!important;font-size:15px}
+.sort-field{display:flex;flex-direction:column;justify-content:center;gap:2px;flex:0 0 142px;min-width:0;padding:5px 9px;border:1px solid var(--store-line);border-radius:12px;background:#fff}
+.sort-field>span{font-size:13px;color:var(--store-muted);line-height:1.2}
+.tools .sort-field select{width:100%;min-width:0;border:0!important;padding:2px 0!important;background:transparent!important;font-size:13px;font-weight:700;color:var(--store-ink);box-shadow:none}
+.categories{padding:3px 0 10px!important;gap:7px!important}
+.categories button{min-height:44px;padding:0 14px!important;border-radius:22px!important;font-size:13px!important}
+#status{margin:6px 0 12px!important;padding:10px 12px!important;font-size:13px!important}
+.catalog-category{margin-bottom:18px!important;scroll-margin-top:84px}
+.catalog-category h2{font-size:16px!important;margin:0 0 8px!important}
+.catalog-row{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+.catalog-row .product,#products.search-results .product{min-width:0;border:1px solid var(--store-line)!important;border-radius:16px!important;background:#fff!important;box-shadow:0 3px 12px rgba(29,42,18,.045)!important}
+.catalog-row .product img,#products.search-results .product img{height:108px!important;min-height:108px!important;max-height:108px!important;padding:7px!important;object-fit:contain!important;background:#fbfaf5!important}
+.catalog-row .pbody,#products.search-results .pbody{display:flex;flex:1;flex-direction:column;gap:4px;padding:10px!important;min-width:0}
+.catalog-row .pbody h3,#products.search-results .pbody h3{font-size:14px!important;line-height:1.32!important;min-height:0!important;margin:0!important;overflow-wrap:anywhere}
+.catalog-row .price,#products.search-results .price{font-size:17px!important;line-height:1.25;margin:3px 0 5px!important;color:var(--store-green)!important}
+.catalog-row .product-action,#products.search-results .product-action{display:flex;justify-content:flex-end;width:100%;margin-top:auto}
+.catalog-row .add,#products.search-results .add{width:auto!important;min-width:92px;min-height:44px!important;padding:8px 12px!important;border-radius:11px!important;font-size:13px!important;white-space:nowrap}
+.catalog-row .product-qty,#products.search-results .product-qty{width:auto;max-width:132px;margin-left:auto;min-height:44px!important;border-radius:11px!important;background:var(--store-green-soft)!important}
+.catalog-row .product-qty button,#products.search-results .product-qty button{min-width:44px;min-height:44px!important;padding:6px!important;background:var(--store-green)!important}
+.catalog-row .product-qty strong,#products.search-results .product-qty strong{min-width:24px;color:var(--store-green)!important}
+.layout{display:block!important}
+.layout>section{width:100%}
+#pageCart .panel{max-width:760px!important;margin:0 auto!important;padding:16px!important}
+#pageCart #cartPanel h2{margin-bottom:12px}
+#pageCart #cartItems{margin-bottom:14px}
+#pageCart .cartrow{align-items:center;gap:12px;padding:12px 0!important;border-bottom:1px solid #edf0e4}
+#pageCart .cartrow>div:first-child{flex:1;min-width:0}
+#pageCart .cartrow strong{font-size:14px;line-height:1.35;display:block}
+#pageCart .cartrow small{font-size:13px;line-height:1.4;margin-top:3px}
+#pageCart .qty{gap:3px}
+#pageCart .qty button{min-width:44px!important;min-height:44px!important;border-radius:11px!important;background:var(--store-green-soft)!important;color:var(--store-green)!important;font-size:20px!important}
+#pageCart .tot{margin:6px 0;padding:7px 10px;background:#fbfaf5;border-radius:9px;font-size:14px}
+#pageCart .tot.total{padding:12px;background:#edf4e4;border:1px solid #dce7cb;font-size:17px;color:var(--store-ink)}
+#pageCart #checkout{position:fixed;z-index:19;left:50%;bottom:calc(76px + env(safe-area-inset-bottom) + 10px);transform:translateX(-50%);width:min(760px,calc(100% - 24px));min-height:52px!important;margin:0!important;border-radius:14px!important;box-shadow:0 5px 18px rgba(29,42,18,.18)}
+#pageCart .tot.total{position:fixed;z-index:19;left:50%;bottom:calc(76px + env(safe-area-inset-bottom) + 70px);transform:translateX(-50%);width:min(760px,calc(100% - 24px));box-shadow:0 4px 14px rgba(29,42,18,.07)}
+#pageCart{padding-bottom:190px}
+#pageCart #cartPanel .hint{font-size:13px}
+#modal #delivery,#modal #payment{min-height:54px!important;padding:12px 14px!important;border:1px solid var(--store-line)!important;border-radius:14px!important;background:#fff!important;font-size:15px!important;font-weight:700}
+#modal .field:has(#delivery),#modal .field:has(#payment){padding:10px 12px;border:1px solid var(--store-line);border-radius:16px;background:#fff;gap:7px}
+#modal .field:has(#delivery) label,#modal .field:has(#payment) label{font-size:13px;color:var(--store-muted)}
+#modal .checkout-footer{background:#fffdf8}
+#modal .checkout-footer .tot{font-size:14px}
+#modal .checkout-footer #submitOrder{min-height:48px}
+#pageOrders #customerOrders{margin:0!important}
+#pageOrders #ordersList .order-card{position:relative;margin:12px 0!important;padding:14px 14px 14px 20px!important;border-left:3px solid var(--store-green)!important;border-radius:12px!important;box-shadow:none!important}
+#pageOrders #ordersList .order-status{font-size:13px!important;padding:6px 10px!important}
+#pageOrders #ordersMessage{font-size:13px}
+.mobile-nav{grid-template-columns:repeat(3,minmax(0,1fr))!important;min-height:64px}
+.mobile-nav .tab-button{min-height:48px!important;gap:4px!important;padding:5px 4px!important;font-size:13px!important}
+.mobile-nav .tab-button>span{display:grid;place-items:center;width:24px;height:24px;font-size:0!important}
+.mobile-nav .tab-button>span svg{display:block;width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.mobile-nav .tab-button b#tabCartCount{font-size:11px!important;min-width:18px;height:18px}
+.cart-floating-bar{position:fixed;z-index:18;left:50%;bottom:calc(76px + env(safe-area-inset-bottom) + 8px);transform:translateX(-50%);display:flex;align-items:center;justify-content:space-between;gap:12px;width:min(760px,calc(100% - 24px));min-height:56px;padding:0 16px;border:0;border-radius:16px;background:#1d2a12!important;color:#fff!important;box-shadow:0 8px 22px rgba(0,0,0,.24);font-size:14px;text-align:left}
+.cart-floating-bar[hidden]{display:none!important}
+.cart-floating-count{font-size:13px;font-weight:800;white-space:nowrap}
+.cart-floating-action{display:flex;align-items:center;gap:6px;font-weight:800;white-space:nowrap}
+.cart-floating-action strong{color:#e6efd3}
+.cart-floating-action svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.site-footer a,.site-footer a:visited{color:var(--store-green);text-decoration:none;font-weight:650}
+.site-footer a:hover{text-decoration:underline}
+@media(min-width:851px){
+ .catalog-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+ .catalog-row .product img,#products.search-results .product img{height:130px!important;min-height:130px!important;max-height:130px!important}
+}
+@media(max-width:440px){
+ .wrap{padding-left:12px;padding-right:12px;padding-bottom:200px}
+ header{padding-left:12px!important;padding-right:12px!important}
+ .brand-logo{max-width:55vw!important}
+ .tools{gap:7px}
+ .sort-field{flex-basis:118px;padding:5px 7px}
+ .sort-field>span{font-size:13px}
+ .tools .search-field input{font-size:14px}
+ .catalog-row{gap:9px!important}
+ .catalog-row .product img,#products.search-results .product img{height:96px!important;min-height:96px!important;max-height:96px!important;padding:5px!important}
+ .catalog-row .pbody,#products.search-results .pbody{padding:8px!important}
+ .catalog-row .pbody h3,#products.search-results .pbody h3{font-size:13px!important}
+ .catalog-row .price,#products.search-results .price{font-size:16px!important}
+ .catalog-row .add,#products.search-results .add{min-width:82px;padding:7px 8px!important;font-size:13px!important}
+ .cart-floating-bar{min-height:54px;padding:0 13px;font-size:13px}
+ .cart-floating-count{font-size:12px}
+ .cart-floating-action{gap:4px}
+}
+@media(prefers-reduced-motion:reduce){.cart-floating-bar,button{transition:none!important}}
+
 </style>
 </head><body>
 <div class="preview-topbar" aria-hidden="true"></div><header><a class="brand" href="./" aria-label="FeiraOn Delivery"><img class="brand-logo" src="imagens/166159-removebg-preview.png" alt="FeiraOn Delivery" onerror="this.onerror=null;this.src=\'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22480%22 height=%22180%22 viewBox=%220 0 480 180%22%3E%3Crect width=%22480%22 height=%22180%22 fill=%22%23eaf0e6%22/%3E%3Ctext x=%22240%22 y=%2290%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22 font-family=%22Arial,sans-serif%22 font-size=%2220%22 fill=%22%23546b59%22%3EImagem indispon%C3%ADvel%3C/text%3E%3C/svg%3E\';this.alt=\'Imagem indisponível\'"></a><button id="accountBtn" type="button">Entrar</button></header>
 <main class="wrap"><div id="accountStatus" class="status">Entre ou crie sua conta para salvar seus dados e agilizar os próximos pedidos.</div><section id="customerOrders" class="panel" style="margin:14px 0"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>📦 Meus pedidos</h2><button id="refreshOrders" type="button">Atualizar pedidos</button></div><input id="ordersSearch" type="search" placeholder="Buscar pedido ou data" aria-label="Buscar pedido ou data" style="width:100%;margin:10px 0;padding:12px;border:1px solid var(--line);border-radius:12px"><p id="ordersMessage" class="hint">Entre na sua conta para consultar seu histórico e acompanhar o status.</p><div id="ordersList"></div></section><div class="market-promo" role="note"><span class="market-promo-icon">🌿</span><span><strong>Fresquinho todo dia</strong><small>Escolhas da feira direto para sua casa</small></span><span class="market-promo-tag">FeiraOn Delivery</span></div>
 <section class="hero"><div class="hero-kicker">SUA FEIRA, DO SEU JEITO</div><h1>Sua feira fresquinha, sem complicação.</h1><p>Escolha seus produtos, monte a sacola e peça para entregar em casa.</p></section>
-<div class="tools"><input id="search" placeholder="Buscar frutas, verduras..." aria-label="Buscar produtos"><select id="sort" aria-label="Ordenar"><option value="default">Mais populares</option><option value="asc">Menor preço</option><option value="desc">Maior preço</option></select></div>
+<div class="tools"><label class="search-field" for="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg><input id="search" placeholder="Buscar frutas, verduras..." aria-label="Buscar produtos"></label><label class="sort-field"><span>Mais populares</span><select id="sort" aria-label="Ordenar"><option value="default">Mais populares</option><option value="asc">Menor preço</option><option value="desc">Maior preço</option></select></label></div>
 <nav class="categories" id="categories"></nav><div class="status" id="status">Carregando produtos…</div>
 <div class="layout"><section><div class="grid" id="products"></div></section><aside class="panel" id="cartPanel"><h2>Sua sacola</h2><div id="cartItems"></div><div class="tot"><span>Produtos</span><strong id="subtotal">R$ 0,00</strong></div><div class="tot"><span>Entrega</span><strong id="fee">R$ 5,00</strong></div><div class="tot total"><span>Total</span><strong id="total">R$ 5,00</strong></div><button class="full" id="checkout" type="button">Finalizar compra</button><p class="hint">No Pix, o QR Code e o código para copiar aparecem aqui mesmo, sem sair da loja.</p></aside></div>
 </main>
-<nav class="mobile-nav" aria-label="Navegação principal"><button type="button" class="tab-button active" data-page="products"><span>▦</span>Produtos</button><button type="button" class="tab-button" data-page="cart"><span>🛒</span>Carrinho <b id="tabCartCount">0</b></button><button type="button" class="tab-button" data-page="orders"><span>▤</span>Pedidos</button></nav>
+<nav class="mobile-nav" aria-label="Navegação principal"><button type="button" class="tab-button active" data-page="products"><span aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"></rect><rect x="14" y="4" width="6" height="6" rx="1"></rect><rect x="4" y="14" width="6" height="6" rx="1"></rect><rect x="14" y="14" width="6" height="6" rx="1"></rect></svg></span>Produtos</button><button type="button" class="tab-button" data-page="cart"><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.2 10.5a2 2 0 0 0 2 1.5h8.6a2 2 0 0 0 2-1.5L22 8H6"></path><circle cx="10" cy="20" r="1"></circle><circle cx="18" cy="20" r="1"></circle></svg></span>Carrinho <b id="tabCartCount">0</b></button><button type="button" class="tab-button" data-page="orders"><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"></path><path d="M9 8h6M9 12h6"></path></svg></span>Pedidos</button></nav>
+<button type="button" class="cart-floating-bar" data-cart-floating hidden aria-label="Ver carrinho"><span class="cart-floating-count" data-cart-count>0 itens</span><span class="cart-floating-action">Ver carrinho · <strong data-cart-total>R$ 0,00</strong><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span></button>
 <div class="modal" id="accountModal"><div class="dialog"><button class="close" id="accountClose">Fechar ✕</button><h2 id="accountTitle">Conta FeiraOn Delivery</h2><p class="hint">Seus dados ficam salvos com segurança no seu perfil.</p><form id="authForm"><div class="field"><label for="authEmail">E-mail *</label><input id="authEmail" type="email" required autocomplete="email"></div><div class="field" id="authNameWrap"><label for="authName">Nome completo *</label><input id="authName" maxlength="120" autocomplete="name"></div><div class="field"><label for="authPassword">Senha (mínimo 8 caracteres) *</label><input id="authPassword" type="password" required autocomplete="current-password"></div><button id="authSubmit" class="full">Criar conta</button></form><button id="authToggle" class="full" type="button">Já tenho conta — entrar</button><button id="forgotBtn" class="full" type="button">Esqueci minha senha</button><button id="myOrdersBtn" class="full hidden" type="button">📦 Meus pedidos</button><div id="myOrders" class="hidden"><p class="hint">Histórico de compras e status atualizado pela loja.</p><div id="myOrdersList" class="orders-list"></div><button id="refreshMyOrders" class="full" type="button">Atualizar pedidos</button></div><button id="logoutBtn" class="full hidden" type="button">Sair da conta</button><div id="authMessage" class="status hidden"></div><p class="hint">Para recuperar sua senha, use o e-mail cadastrado. Não use senha de outros serviços.</p></div></div>
 <div class="modal" id="modal"><div class="dialog"><button class="close" id="close">Fechar ✕</button><h2>Finalizar pedido</h2><p class="hint">Preencha seus dados para enviarmos o pedido à loja.</p><form id="checkoutForm"><div class="checkout-fields"><div class="formgrid"><div class="field fullrow"><label for="name">Nome completo *</label><input id="name" required maxlength="120" autocomplete="name"></div><div class="field"><label for="phone">WhatsApp / telefone *</label><input id="phone" required maxlength="30" autocomplete="tel" placeholder="+55 92 9444-4989"></div><div class="field cpffield"><label for="cpf">CPF <span id="cpfRequiredHint">(obrigatório para pagamento via Pix)</span></label><input id="cpf" inputmode="numeric" maxlength="14" autocomplete="off" placeholder="000.000.000-00"></div><div class="field pixfield"><label for="email">E-mail para o Pix *</label><input id="email" type="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" required></div><div class="field"><label for="delivery">Recebimento *</label><select id="delivery"><option value="delivery">Entrega em casa</option><option value="pickup">Retirar no local</option></select></div><div class="field fullrow"><label for="address">Endereço completo *</label><textarea id="address" required rows="2" maxlength="500" placeholder="Rua, número, bairro e ponto de referência"></textarea></div><div class="field fullrow"><label for="payment">Forma de pagamento *</label><select id="payment"><option value="pix">PIX instantâneo (QR Code no app)</option><option value="cash">Dinheiro na entrega/retirada</option><option value="card_on_delivery">Cartão na entrega (se disponível)</option></select></div><div class="field fullrow"><label for="notes">Observações</label><textarea id="notes" rows="2" maxlength="500" placeholder="Ex.: fruta mais madura, portão azul…"></textarea></div></div></div><div class="checkout-footer"><div class="tot"><span>Total estimado</span><strong id="modalTotal">R$ 0,00</strong></div><button type="submit" class="full" id="submitOrder">Confirmar pedido</button><p class="hint">Ao confirmar, seus dados serão usados para organizar esta entrega. Não informe senhas nem dados de cartão.</p></div></form><div id="result" class="status hidden"></div></div></div>
 <script type="module">
@@ -575,4 +680,29 @@ setupAppTabs();document.title='FeiraOn';load();renderCart();loadProfile();
  if(nav&&window.ResizeObserver)new ResizeObserver(setViewportMetrics).observe(nav);
  setViewportMetrics();sync();
 })();;
-</script><footer class="site-footer" style="max-width:1120px;margin:0 auto;padding:20px 16px 32px;text-align:center;color:#68786f;font-size:13px;line-height:1.8"><a href="./">Início</a> · <a href="./politica-privacidade.html">Política de Privacidade</a> · <a href="./termos.html">Termos de Uso</a> · <a href="https://wa.me/559294444989">WhatsApp +55 92 9444-4989</a> · <a href="mailto:feiraondelivery2026@gmail.com">feiraondelivery2026@gmail.com</a></footer></body></html>
+</script>
+<script>
+/* Ordem 87 — barra isolada: somente lê os valores já exibidos pela loja. */
+(()=>{
+ const bar=document.querySelector('[data-cart-floating]');
+ const countOut=bar?.querySelector('[data-cart-count]');
+ const totalOut=bar?.querySelector('[data-cart-total]');
+ const countSource=document.getElementById('tabCartCount');
+ const totalSource=document.getElementById('total');
+ const cartTab=document.querySelector('.tab-button[data-page="cart"]');
+ if(!bar||!countOut||!totalOut||!countSource||!totalSource||!cartTab)return;
+ const sync=()=>{
+  const count=Math.max(0,Number((countSource.textContent||'0').trim())||0);
+  countOut.textContent=count+' '+(count===1?'item':'itens');
+  totalOut.textContent=(totalSource.textContent||'R$ 0,00').trim();
+  const productsPage=document.getElementById('pageProducts');
+  bar.hidden=count===0||!productsPage||!productsPage.classList.contains('active');
+ };
+ bar.addEventListener('click',()=>cartTab.click());
+ new MutationObserver(sync).observe(countSource,{childList:true,characterData:true,subtree:true});
+ new MutationObserver(sync).observe(totalSource,{childList:true,characterData:true,subtree:true});
+ new MutationObserver(sync).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+ sync();
+})();
+</script>
+<footer class="site-footer" style="max-width:1120px;margin:0 auto;padding:20px 16px 32px;text-align:center;color:#68786f;font-size:13px;line-height:1.8"><a href="./">Início</a> · <a href="./politica-privacidade.html">Política de Privacidade</a> · <a href="./termos.html">Termos de Uso</a> · <a href="https://wa.me/559294444989">WhatsApp +55 92 9444-4989</a> · <a href="mailto:feiraondelivery2026@gmail.com">feiraondelivery2026@gmail.com</a></footer></body></html>
