@@ -348,10 +348,52 @@ body:has(#modal.open){padding-bottom:0!important}
 .lhero .moto{left:50%!important;right:auto!important;bottom:6px!important;width:200px!important;height:120px!important;margin-left:-100px!important;transform:none!important;animation:none!important;overflow:visible!important}
 @media(max-width:380px){#cartbar:not(.hide):not([hidden]){width:calc(100% - 24px)!important}.mobile-nav{width:calc(100% - 24px)!important}}
 
+
+/* Prévia v3 — fileiras horizontais, busca fixa, estados de sessão e moto animada */
+#pageHome .home-top,#homeTopAddress{display:none!important}
+#pageHome .home-search{position:sticky;top:0;z-index:20;background:var(--bg);padding:8px 0 10px;border-radius:0;box-shadow:0 5px 0 var(--bg);margin:0 0 4px}
+#pageHome.active{padding-top:0!important;padding-bottom:calc(180px + env(safe-area-inset-bottom,0px))!important}
+#homeProductSections{margin-top:8px!important}
+.home-category-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:22px 0 10px;padding:0 16px}
+.home-category-heading h2{margin:0!important;font-size:17px}
+.home-view-all{flex:0 0 auto;border:0;background:transparent;padding:4px 0}
+.home-catalog-category{margin:0 0 8px!important;scroll-margin-top:72px}
+.home-catalog-category .catalog-row{display:flex!important;gap:12px;overflow-x:auto;scroll-snap-type:x proximity;padding:0 16px 8px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.home-catalog-category .catalog-row::-webkit-scrollbar{display:none}
+.home-catalog-category .catalog-row>.product{flex:0 0 150px!important;width:150px;min-width:150px;scroll-snap-align:start}
+.home-catalog-category .product h3{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.7em}
+#homeProductSections.search-mode .home-catalog-category .catalog-row,
+#homeProductSections.category-detail .home-catalog-category.category-expanded .catalog-row{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;overflow:visible;padding:0 16px 8px}
+#homeProductSections.search-mode .home-catalog-category .catalog-row>.product,
+#homeProductSections.category-detail .home-catalog-category.category-expanded .catalog-row>.product{width:auto;min-width:0;flex:initial!important}
+#homeProductSections.category-detail .home-catalog-category:not(.category-expanded){display:none!important}
+#homeProductSections.category-detail .home-catalog-category.category-expanded .home-category-heading{position:sticky;top:68px;z-index:10;background:var(--bg);padding-top:8px;padding-bottom:8px}
+#homeProductSections.search-mode .home-catalog-category{margin-bottom:10px!important}
+#accountModal .lhero{height:250px!important;padding-bottom:36px!important}
+#accountModal .moto{position:absolute;left:50%;right:auto;bottom:18px;transform:translateX(-50%);width:200px;height:120px;overflow:visible;animation:none}
+#accountModal .moto-enter{transform-box:fill-box;transform-origin:center;animation:moto-enter 1.2s ease-out forwards}
+#accountModal .moto-bob{animation:moto-bob .6s ease-in-out 1.2s infinite}
+#accountModal .wheel{transform-box:fill-box;transform-origin:center;animation:wheel-spin .8s linear infinite}
+#accountModal .road{animation:road-run .8s linear infinite}
+@keyframes moto-enter{from{transform:translateX(120%)}to{transform:translateX(0)}}
+@keyframes moto-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+@keyframes wheel-spin{from{transform:rotate(0deg)}to{transform:rotate(-360deg)}}
+@keyframes road-run{from{stroke-dashoffset:0}to{stroke-dashoffset:-20}}
+#accountModal .sheet{margin-top:-18px!important;position:relative;z-index:2}
+#accountModal #authMessage{color:#b42318;background:#fff1f0;border-radius:10px;padding:8px 10px;margin:-2px 0 4px;font-size:13px}
+#accountModal #authMessage.hidden{display:none!important}
+#accountModal #authNameWrap{display:none!important}
+#accountModal.session-logged-in #accountTitle,#accountModal.session-logged-in #loginIntro,#accountModal.session-logged-in .terms{display:none!important}
+#accountModal #authForm.session-logged-in .field,#accountModal #authForm.session-logged-in .forgot-row{display:none!important}
+#accountModal #authForm.session-logged-in #authSubmit,#accountModal #authForm.session-logged-in #authToggle{display:none!important}
+#accountModal #myOrdersBtn.hidden,#accountModal #logoutBtn.hidden{display:none!important}
+#accountModal #browseFirst{display:block!important}
+@media (prefers-reduced-motion:reduce){#accountModal .moto-enter,#accountModal .moto-bob,#accountModal .wheel,#accountModal .road{animation:none!important;transform:none!important}#accountModal .moto{left:50%;right:auto;transform:translateX(-50%)!important}}
+
 </style></head><body>
 <main class="wrap">
  <section id="pageHome" class="app-page active" aria-label="Produtos">
-  <div class="home-top"><div class="home-address"><span class="sm">Entregar em</span><strong id="homeAddress">Informe no pagamento</strong></div><button class="icon-button" type="button" data-go-page="Orders" aria-label="Notificações"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button></div>
+  <div class="home-top" id="homeTopAddress" aria-hidden="true"><div class="home-address"><span class="sm">Entregar em</span><strong id="homeAddress">Informe no pagamento</strong></div><button class="icon-button" type="button" data-go-page="Orders" aria-label="Notificações"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button></div>
   <div class="search home-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="homeSearch" placeholder="Buscar produtos da feira…" aria-label="Buscar produtos da feira"></div>
   <section class="home-hero" hidden><b>Entrega na porta</b><p>Produtos da feira direto para você, com praticidade e cuidado.</p><div class="home-hero-seals"><span>Taxa R$ 5,00</span><span>Retirada grátis</span></div></section>
   <div class="home-section-title" hidden><b>Categorias</b><button type="button" class="link" data-go-page="products">Ver tudo</button></div>
@@ -387,15 +429,15 @@ body:has(#modal.open){padding-bottom:0!important}
  <button id="accountBtn" type="button" class="tab-button" data-page="Account" aria-label="Conta"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Conta</button>
 </nav>
 <div class="modal auth-screen" id="accountModal"><div class="dialog"><button class="close" id="accountClose" type="button" aria-label="Fechar">×</button><div class="lhero"><div class="login-brand">Feira On Delivery</div><div class="login-sub">Tudo da feira, direto na sua porta.</div>
-<svg class="moto" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ilustração de entrega"><path d="M8 112H192" stroke="#fff" stroke-width="3" stroke-dasharray="5 5"/><rect x="112" y="14" width="56" height="40" rx="8" fill="#fbbf24" stroke="#1f3d12" stroke-width="4"/><path d="M124 28h32M124 38h32" stroke="#1f3d12" stroke-width="4" stroke-linecap="round"/><path d="M96 60h62l-10 24H86z" fill="#fff" stroke="#1f3d12" stroke-width="4" stroke-linejoin="round"/><rect x="96" y="52" width="34" height="9" rx="4.5" fill="#1f3d12"/><path d="M48 88L68 38h14" stroke="#fff" stroke-width="7" stroke-linecap="round" fill="none"/><path d="M62 32h20" stroke="#1f3d12" stroke-width="6" stroke-linecap="round"/><path d="M70 84h26" stroke="#fff" stroke-width="7" stroke-linecap="round"/><circle cx="46" cy="94" r="17" fill="#fff" stroke="#1f3d12" stroke-width="7"/><circle cx="154" cy="94" r="17" fill="#fff" stroke="#1f3d12" stroke-width="7"/><circle cx="46" cy="94" r="4" fill="#1f3d12"/><circle cx="154" cy="94" r="4" fill="#1f3d12"/></svg></div><div class="sheet">
+<svg class="moto" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ilustração de entrega"><path class="road" d="M8 112H192" stroke="#fff" stroke-width="3" stroke-dasharray="5 5"/><g class="moto-enter"><g class="moto-bob"><rect x="112" y="14" width="56" height="40" rx="8" fill="#fbbf24" stroke="#1f3d12" stroke-width="4"/><path d="M124 28h32M124 38h32" stroke="#1f3d12" stroke-width="4" stroke-linecap="round"/><path d="M96 60h62l-10 24H86z" fill="#fff" stroke="#1f3d12" stroke-width="4" stroke-linejoin="round"/><rect x="96" y="52" width="34" height="9" rx="4.5" fill="#1f3d12"/><path d="M48 88L68 38h14" stroke="#fff" stroke-width="7" stroke-linecap="round" fill="none"/><path d="M62 32h20" stroke="#1f3d12" stroke-width="6" stroke-linecap="round"/><path d="M70 84h26" stroke="#fff" stroke-width="7" stroke-linecap="round"/><g class="wheel" transform-box="fill-box" transform-origin="center"><circle cx="46" cy="94" r="17" fill="#fff" stroke="#1f3d12" stroke-width="7"/><line x1="46" y1="78" x2="46" y2="110" stroke="#1f3d12" stroke-width="4"/></g><g class="wheel" transform-box="fill-box" transform-origin="center"><circle cx="154" cy="94" r="17" fill="#fff" stroke="#1f3d12" stroke-width="7"/><line x1="154" y1="78" x2="154" y2="110" stroke="#1f3d12" stroke-width="4"/></g></g></g></svg></div><div class="sheet">
  <h2 id="accountTitle" style="margin:0 0 6px;font-size:24px">Entre na sua conta</h2><p id="loginIntro" class="sm" style="margin:0 0 18px">Use seu e-mail e senha, como hoje.</p>
  <form id="authForm"><div class="field"><label class="lbl" for="authEmail">E-mail</label><input class="in" id="authEmail" type="email" required autocomplete="email" placeholder="voce@email.com"></div>
  <div class="field" id="authNameWrap"><label class="lbl" for="authName">Nome completo</label><input class="in" id="authName" maxlength="120" autocomplete="name"></div>
  <div class="field"><label class="lbl" for="authPassword">Senha</label><input class="in" id="authPassword" type="password" required autocomplete="current-password" minlength="8"></div>
  <div class="forgot-row"><button id="forgotBtn" class="link" type="button">Esqueci a senha</button></div>
- <div class="auth-actions"><button id="authSubmit" class="btn" type="submit">Entrar</button><button id="authToggle" class="btn alt" type="button">Criar conta</button><button id="browseFirst" class="btn alt" type="button">Ver os produtos primeiro</button><button id="myOrdersBtn" class="btn alt hidden" type="button">Meus pedidos</button></div></form>
+ <div class="auth-actions"><button id="authSubmit" class="btn" type="submit">Entrar</button><div id="authMessage" class="sm hidden" role="status"></div><button id="authToggle" class="btn alt" type="button">Criar conta</button><button id="browseFirst" class="btn alt" type="button">Ver os produtos primeiro</button><button id="myOrdersBtn" class="btn alt hidden" type="button">Meus pedidos</button></div></form>
  <div id="myOrders" class="hidden"><p class="sm">Histórico de compras e status atualizado pela loja.</p><div id="myOrdersList"></div><button id="refreshMyOrders" class="btn alt full" type="button">Atualizar pedidos</button></div>
- <button id="logoutBtn" class="btn alt full hidden" type="button">Sair da conta</button><div id="authMessage" class="sm hidden" role="status"></div><p class="terms sm">Ao continuar você aceita os <a href="#" class="link">Termos de uso</a>.</p>
+ <button id="logoutBtn" class="btn alt full hidden" type="button">Sair da conta</button><p class="terms sm">Ao continuar você aceita os <a href="#" class="link">Termos de uso</a>.</p>
  </div></div></div>
 <div class="modal checkout-screen" id="modal"><div class="dialog"><button class="close" id="close" type="button" aria-label="Voltar">‹</button><div class="checkout-page"><h1>Finalizar</h1><p class="sm">Confira seus dados, a entrega e o pagamento.</p>
  <form id="checkoutForm"><div class="checkout-fields"><div class="formgrid">
@@ -466,7 +508,7 @@ async function loadMyOrders(knownUser){
  const html=data.map(o=>{const items=Array.isArray(o.items)?o.items:[];const desc=items.map(i=>esc(i.name||i.id||'Produto')+' × '+Number(i.qty||i.quantity||1)).join(', ');const st=normalizeOrderStatus(o.status);const top=st==='Pagamento Confirmado'?['Pedido confirmado','Pago via Pix · '+money(Number(o.total||0))]:st==='Preparando'?['Separando seu pedido','Avisamos quando sair para entrega.']:st==='Saiu para Entrega'?['Saiu para entrega','']:st==='Entregue'?['Entregue','']:['Aguardando pagamento',''];return '<article class="order-card"><div class="order-status-top"><div><b>'+esc(top[0])+'</b><div class="order-subtitle">'+esc(top[1])+'</div></div></div><h3>Pedido '+esc(shortOrderNumber(o.id))+'</h3><div class="sm">'+(o.created_at?new Date(o.created_at).toLocaleString('pt-BR'):'Data indisponível')+'</div><p class="sm order-items-desc">'+(desc||'Itens do pedido')+'</p>'+timeline(o.status)+'<small class="sm">Pagamento: '+esc(o.payment_method||'—')+'</small><div class="order-actions"><a class="btn wa" href="https://wa.me/559294444989" target="_blank" rel="noopener">Falar no WhatsApp</a><button class="btn alt" type="button" data-toggle-items>Ver itens</button></div></article>';}).join('');
  paint(html);document.querySelectorAll('[data-toggle-items]').forEach(b=>b.onclick=()=>{const p=b.closest('.order-card').querySelector('.order-items-desc');p.classList.toggle('hidden');b.textContent=p.classList.contains('hidden')?'Ver itens':'Ocultar itens';});$('#ordersMessage').textContent='Mostrando '+data.length+' pedido(s). O status é atualizado pela loja.';
 }
-function updateAccountUI(){const logged=!!currentUser;$('#myOrdersBtn').classList.toggle('hidden',!logged);$('#accountBtn').setAttribute('aria-label','Conta');const status=$('#accountStatus');if(status)status.textContent='';$('#logoutBtn').classList.toggle('hidden',!logged);$('#authNameWrap').classList.toggle('hidden',authMode!=='signup');$('#authSubmit').textContent=authMode==='signup'?'Criar conta':'Entrar';$('#authPassword').minLength=authMode==='signup'?8:0;$('#accountTitle').textContent=authMode==='signup'?'Criar conta':'Entre na sua conta';$('#loginIntro').textContent=authMode==='signup'?'Informe seus dados para criar sua conta.':'Use seu e-mail e senha, como hoje.';$('#authToggle').textContent=authMode==='signup'?'Já tenho conta — entrar':'Criar conta';}
+function updateAccountUI(){const logged=!!currentUser;$('#myOrdersBtn').classList.toggle('hidden',!logged);$('#accountBtn').setAttribute('aria-label','Conta');const status=$('#accountStatus');if(status)status.textContent='';$('#logoutBtn').classList.toggle('hidden',!logged);$('#accountModal').classList.toggle('session-logged-in',logged);$('#authForm').classList.toggle('session-logged-in',logged);$('#authEmail').disabled=logged;$('#authPassword').disabled=logged;$('#authEmail').classList.toggle('hidden',logged);$('#authPassword').classList.toggle('hidden',logged);$('#authNameWrap').classList.toggle('hidden',logged||authMode!=='signup');$('#forgotBtn').classList.toggle('hidden',logged);$('#authSubmit').classList.toggle('hidden',logged);$('#authToggle').classList.toggle('hidden',logged);$('#authMessage').classList.add('hidden');$('#authSubmit').textContent=authMode==='signup'?'Criar conta':'Entrar';$('#authPassword').minLength=authMode==='signup'?8:0;$('#accountTitle').textContent=logged?'Sua conta':(authMode==='signup'?'Criar conta':'Entre na sua conta');$('#loginIntro').textContent=logged?'Sua conta está conectada.':(authMode==='signup'?'Informe seus dados para criar sua conta.':'Use seu e-mail e senha, como hoje.');$('#authToggle').textContent=authMode==='signup'?'Já tenho conta — entrar':'Criar conta';}
 async function load(){const status=$('#status');status.textContent='Carregando produtos…';$('#products').innerHTML='<p class="empty">Conectando ao catálogo…</p>';try{const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),10000);let response;try{response=await fetch('https://juhwdevvwstmyxyyagzh.supabase.co/rest/v1/products?select=id,name,price,category,image,available&available=eq.true&order=name.asc',{headers:{apikey:'sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',Authorization:'Bearer sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW'},signal:controller.signal,cache:'no-store'});}finally{clearTimeout(timer);}if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();products=(data||[]).map(p=>({...p,price:Number(p.price),image:typeof p.image==='string'&&p.image.startsWith('imagens/produtos/')?'../'+p.image:p.image}));for(const id of Object.keys(cart)){if(!products.some(p=>p.id===id))delete cart[id]}persistCart();status.textContent=products.length?'Catálogo carregado.':'Ainda não há produtos cadastrados.';renderCats();renderProducts();return;}catch(error){console.error('Falha ao carregar catálogo:',error);status.textContent=error.name==='AbortError'?'O catálogo demorou mais que o esperado. Toque em Recarregar para tentar novamente.':'Não foi possível carregar o catálogo. Verifique a conexão e tente novamente.';$('#products').innerHTML='<p class="empty">Não conseguimos carregar os produtos agora. <button id="retryProducts" type="button">Recarregar produtos</button></p>';$('#retryProducts').onclick=load;return;}}
 function alphaCompare(a,b){return String(a??'').localeCompare(String(b??''),'pt-BR',{sensitivity:'base',ignorePunctuation:false});}function renderCats(){const cats=['Todos',...[...new Set(products.map(p=>p.category||'Outros'))].sort(alphaCompare)];$('#categories').innerHTML=cats.map(c=>'<button type="button" class="chip '+(c===category?'active':'')+'" data-cat="'+esc(c)+'">'+esc(c)+'</button>').join('');$('#categories').querySelectorAll('button').forEach(b=>b.onclick=()=>{category=b.dataset.cat;if($('#search').value.trim())$('#search').value='';renderCats();renderProducts();});}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -516,6 +558,7 @@ $('#accountBtn').onclick=()=>{if(currentUser){authMode='profile';$('#authNameWra
    return;
   }
   if(result.error){
+   if(authMode==='login'){currentUser=null;updateAccountUI();}
    $('#authMessage').textContent=result.error.message;
    $('#authMessage').classList.remove('hidden');
    return;
@@ -524,7 +567,7 @@ $('#accountBtn').onclick=()=>{if(currentUser){authMode='profile';$('#authNameWra
    const session=result.data?.session;
    const user=result.data?.user;
    if(!session||!user){
-    $('#authMessage').textContent='Não foi possível confirmar o login. Tente novamente.';
+    currentUser=null;updateAccountUI();$('#authMessage').textContent='Não foi possível confirmar o login. Tente novamente.';
     $('#authMessage').classList.remove('hidden');
     return;
    }
@@ -587,16 +630,35 @@ if(paymentMethod==='pix'){
 });
 
 function showAppPage(page){if(page==='Products')page='Home';if(page==='Account'){if(currentUser){authMode='profile';$('#authNameWrap').classList.remove('hidden');$('#authEmail').value=currentUser.email||'';$('#authEmail').disabled=true;$('#authPassword').classList.add('hidden');$('#authSubmit').classList.add('hidden');$('#authToggle').classList.add('hidden');$('#forgotBtn').classList.add('hidden');openPreviewModal('accountModal');}else{authMode='login';$('#authNameWrap').classList.add('hidden');$('#authEmail').disabled=false;$('#authPassword').classList.remove('hidden');$('#authSubmit').classList.remove('hidden');$('#authToggle').classList.remove('hidden');$('#forgotBtn').classList.remove('hidden');$('#browseFirst').classList.remove('hidden');updateAccountUI();openPreviewModal('accountModal');}}document.querySelectorAll('.app-page').forEach(el=>el.classList.toggle('active',el.id==='page'+page));document.querySelectorAll('.tab-button').forEach(el=>el.classList.toggle('active',el.dataset.page===page.replace(/^page/,'')));window.scrollTo({top:0,behavior:'auto'});syncCartbarVisibility();if(page==='Orders')loadMyOrders();if(page==='Cart')renderCart();}
-function setupAppTabs(){document.querySelectorAll('.tab-button').forEach(el=>el.addEventListener('click',()=>showAppPage(el.dataset.page)));document.querySelectorAll('[data-go-page]').forEach(el=>el.addEventListener('click',()=>showAppPage(el.dataset.goPage==='home'?'Home':el.dataset.goPage[0].toUpperCase()+el.dataset.goPage.slice(1))));$('#homeSearch').addEventListener('input',()=>{const q=$('#homeSearch').value.trim().toLocaleLowerCase('pt-BR');$('#search').value=$('#homeSearch').value;renderProducts();$('#homeProductSections').querySelectorAll('.home-catalog-category').forEach(section=>{let visible=0;section.querySelectorAll('.product').forEach(card=>{const match=card.textContent.toLocaleLowerCase('pt-BR').includes(q);card.hidden=!match;if(match)visible++;});section.hidden=visible===0;});});$('#repeatOrderButton').textContent='Repetir';$('#repeatOrderButton').addEventListener('click',()=>{const items=window.__lastRealOrderItems||[];if(!items.length)return;let added=false;for(const item of items){const p=products.find(x=>String(x.id)===String(item.id))||products.find(x=>x.name.toLowerCase()===String(item.name||'').toLowerCase());if(p){cart[p.id]=Math.min(100,(cart[p.id]||0)+Number(item.qty||item.quantity||1));added=true;}}if(added){persistCart();renderCart();renderProducts();showAppPage('Cart');}});}
+function setupAppTabs(){document.querySelectorAll('.tab-button').forEach(el=>el.addEventListener('click',()=>showAppPage(el.dataset.page)));document.querySelectorAll('[data-go-page]').forEach(el=>el.addEventListener('click',()=>showAppPage(el.dataset.goPage==='home'?'Home':el.dataset.goPage[0].toUpperCase()+el.dataset.goPage.slice(1))));$('#homeSearch').addEventListener('input',()=>{const value=$('#homeSearch').value;$('#search').value=value;renderProducts();renderHomeProductSections();});$('#repeatOrderButton').textContent='Repetir';$('#repeatOrderButton').addEventListener('click',()=>{const items=window.__lastRealOrderItems||[];if(!items.length)return;let added=false;for(const item of items){const p=products.find(x=>String(x.id)===String(item.id))||products.find(x=>x.name.toLowerCase()===String(item.name||'').toLowerCase());if(p){cart[p.id]=Math.min(100,(cart[p.id]||0)+Number(item.qty||item.quantity||1));added=true;}}if(added){persistCart();renderCart();renderProducts();showAppPage('Cart');}});}
 function renderHomeProductSections(){
  const root=$('#homeProductSections');if(!root)return;
  const groups=[['Farinhas e derivados',p=>/farinh|goma|tapioca|derivado/i.test(String(p.category||'')+' '+String(p.name||''))],['Frutas',p=>/frut/i.test(String(p.category||''))],['Mercearia',p=>/mercear/i.test(String(p.category||''))],['Verduras e legumes',p=>/verdura|legume|hortali/i.test(String(p.category||''))]];
- const image=p=>'<img loading="lazy" decoding="async" src="'+esc(p.image||'')+'" alt="'+esc(p.name)+'" onerror="this.onerror=null;this.style.visibility=\'hidden\';this.parentElement.classList.add(\'image-missing\')">';
+ const image=p=>'<img loading="lazy" decoding="async" src="'+esc(p.image||'')+'" alt="'+esc(p.name)+'" onerror="this.onerror=null;this.style.visibility=\\'hidden\\';this.parentElement.classList.add(\\'image-missing\\')">';
  const card=p=>'<article class="product">'+image(p)+'<div class="pbody"><h3>'+esc(p.name)+'</h3><div class="price">'+money(p.price)+'</div><div class="product-qty">'+((cart[p.id]||0)>0?'<button type="button" data-home-card-change="'+esc(p.id)+'" data-d="-1" aria-label="Diminuir quantidade">−</button><strong>'+Number(cart[p.id])+'</strong><button type="button" data-home-card-change="'+esc(p.id)+'" data-d="1" aria-label="Aumentar quantidade">+</button>':'<button type="button" class="add" data-home-add="'+esc(p.id)+'" aria-label="Adicionar '+esc(p.name)+'">+</button>')+'</div></div></article>';
- root.innerHTML=groups.map(([cat,matches])=>'<section class="catalog-category home-catalog-category" data-home-product-category="'+esc(cat)+'"><h2>'+esc(cat)+'</h2><div class="catalog-row">'+products.filter(matches).map(card).join('')+'</div></section>').join('');
+ const q=$('#homeSearch')?.value.trim().toLocaleLowerCase('pt-BR')||'';
+ root.classList.toggle('search-mode',!!q);
+ root.innerHTML=groups.map(([cat,matches],index)=>{
+  const items=products.filter(matches);
+  const visible=items.filter(p=>(String(p.name||'')+' '+String(p.category||'')).toLocaleLowerCase('pt-BR').includes(q));
+  return '<section class="catalog-category home-catalog-category" data-home-product-category="'+esc(cat)+'" data-category-index="'+index+'" '+(visible.length?'':'hidden')+'><header class="home-category-heading"><h2>'+esc(cat)+'</h2><button type="button" class="link home-view-all" data-view-category="'+index+'">Ver todos</button></header><div class="catalog-row">'+(q?visible:items).map(card).join('')+'</div></section>';
+ }).join('');
  root.querySelectorAll('[data-home-add]').forEach(b=>b.onclick=()=>add(b.dataset.homeAdd));
  root.querySelectorAll('[data-home-card-change]').forEach(b=>b.onclick=()=>change(b.dataset.homeCardChange,Number(b.dataset.d)));
- const q=$('#homeSearch')?.value.trim().toLocaleLowerCase('pt-BR')||'';root.querySelectorAll('.home-catalog-category').forEach(section=>{let visible=0;section.querySelectorAll('.product').forEach(item=>{const match=item.textContent.toLocaleLowerCase('pt-BR').includes(q);item.hidden=!match;if(match)visible++;});section.hidden=visible===0;});
+ root.querySelectorAll('[data-view-category]').forEach(b=>b.onclick=()=>{
+  const section=b.closest('.home-catalog-category');
+  if(root.classList.contains('category-detail')){
+   root.classList.remove('category-detail');
+   root.querySelectorAll('.home-catalog-category').forEach(el=>{el.hidden=false;el.classList.remove('category-expanded');});
+   root.querySelectorAll('[data-view-category]').forEach(btn=>btn.textContent='Ver todos');
+   const searchValue=$('#homeSearch')?.value.trim().toLocaleLowerCase('pt-BR')||'';
+   root.querySelectorAll('.home-catalog-category').forEach(el=>{if(searchValue){let count=0;el.querySelectorAll('.product').forEach(card=>{const match=card.textContent.toLocaleLowerCase('pt-BR').includes(searchValue);card.hidden=!match;if(match)count++;});el.hidden=count===0;}});
+  }else{
+   root.classList.add('category-detail');
+   root.querySelectorAll('.home-catalog-category').forEach(el=>{el.hidden=el!==section;el.classList.toggle('category-expanded',el===section);});
+   b.textContent='Voltar';
+  }
+ });
  syncCartbarVisibility();
 }
 function syncCartbarVisibility(){const bar=$('#cartbar');if(!bar)return;const home=$('#pageHome')?.classList.contains('active');bar.hidden=!home||bar.classList.contains('hide');}
