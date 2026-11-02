@@ -462,70 +462,6 @@ try {
   }
 } catch (_) {}
 </script>
-</head><body>
-<header class="app-header" aria-label="Feira On Delivery"><a class="brand" href="#" aria-label="Feira On Delivery">Feira On Delivery<small>Tudo da feira, direto na sua porta</small></a></header>
-<main class="wrap">
- <section id="pageHome" class="app-page active" aria-label="Produtos">
-  <div class="home-top" id="homeTopAddress" aria-hidden="true"><div class="home-address"><span class="sm">Entregar em</span><strong id="homeAddress">Informe no pagamento</strong></div><button class="icon-button" type="button" data-go-page="Orders" aria-label="Notificações"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button></div>
-  <div class="search home-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="homeSearch" placeholder="Buscar produtos da feira…" aria-label="Buscar produtos da feira"></div>
-  <section class="home-hero" hidden><b>Entrega na porta</b><p>Produtos da feira direto para você, com praticidade e cuidado.</p><div class="home-hero-seals"><span>Taxa R$ 15,00</span><span>Retirada grátis</span></div></section>
-  <div class="home-section-title" hidden><b>Categorias</b><button type="button" class="link" data-go-page="products">Ver tudo</button></div>
-  <div id="homeCategories" class="real-categories" hidden></div>
-  <section id="repeatOrder" class="repeat-section" hidden><div class="home-section-title repeat-heading"><b>Pedir de novo</b></div><div class="again"><div class="repeat-copy"><b id="repeatOrderTitle">Último pedido</b><div id="repeatOrderItems" class="sm"></div></div><button type="button" id="repeatOrderButton">Repetir</button></div></section>
-  <section id="homeProductSections" aria-label="Produtos por categoria" class="home-product-sections"></section>
- </section>
- <section id="pageProducts" class="app-page" aria-label="Produtos">
-  <div class="products-top"><button class="back-button" type="button" data-go-page="home" aria-label="Voltar">‹</button><h1>Produtos</h1></div>
-  <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="search" placeholder="Buscar manga, farinha, goma…" aria-label="Buscar produtos"></div>
-  <select id="sort" aria-label="Ordenar produtos" class="hidden" tabindex="-1" aria-hidden="true"><option value="default">Padrão</option><option value="asc">Menor preço</option><option value="desc">Maior preço</option></select>
-  <nav id="categories" class="chips" aria-label="Categorias de produtos"></nav>
-  <div id="status" class="sr" role="status">Carregando produtos…</div>
-  <div id="products" class="product-grid"></div>
- </section>
- <button id="cartbar" class="cartbar hide" type="button"><span id="cartbarCount">0 itens</span><strong>Ver carrinho · <span id="cartbarTotal">R$ 0,00</span></strong></button>
- <section id="pageCart" class="app-page" aria-label="Carrinho">
-  <div class="products-top"><button class="back-button" type="button" data-go-page="home" aria-label="Voltar">‹</button><h1>Carrinho</h1></div>
-  <aside class="panel" id="cartPanel"><div id="cartItems"></div>
-  <div class="sum"><div class="tot"><span>Subtotal</span><strong id="subtotal">R$ 0,00</strong></div><div><span>Taxa</span><strong id="fee">R$ 15,00</strong></div><div class="tot grand"><span>Total</span><strong id="total">R$ 15,00</strong></div></div>
-  <p id="minimumOrderNotice" class="sm hidden" role="status"></p><p class="sm">Retirada no local é grátis; entrega custa R$ 15,00.</p></aside>
-  <div class="cart-footer"><button class="btn full" id="checkout" type="button">Continuar · R$ 15,00</button></div>
- </section>
- <section id="pageOrders" class="app-page" aria-label="Pedidos">
-  <section id="customerOrders" class="panel"><div class="home-section-title" style="margin-top:0"><b>Meus pedidos</b><button id="refreshOrders" class="link" type="button">Atualizar</button></div>
-  <input id="ordersSearch" class="hidden" type="search" aria-label="Buscar pedidos"><p id="ordersMessage" class="sm">Entre na sua conta para consultar seu histórico.</p><div id="ordersList"></div></section>
- </section>
-</main>
-<nav class="mobile-nav" aria-label="Navegação principal">
- <button type="button" class="tab-button active" data-page="Home"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z"/></svg>Produtos</button>
- <button type="button" class="tab-button" data-page="Cart"><svg viewBox="0 0 24 24"><path d="M3 4h3l2.5 11h10L21 7H7"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg><i class="badge"></i>Carrinho <b id="tabCartCount">0</b></button>
- <button type="button" class="tab-button" data-page="Orders"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Pedidos</button>
- <span id="accountStatus" class="sm hidden" aria-live="polite"></span><button id="accountBtn" type="button" class="tab-button" data-page="Account" aria-label="Conta"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Conta</button>
-</nav>
-<div class="modal auth-screen" id="accountModal"><div class="dialog"><button class="close" id="accountClose" type="button" aria-label="Fechar">×</button><div class="lhero"><div class="login-brand">Feira On Delivery</div><div class="login-sub">Tudo da feira, direto na sua porta.</div>
-<svg class="moto" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ilustração de entrega"><path class="road" d="M8 112H192" stroke="#fff" stroke-width="3" stroke-dasharray="5 5"/><g class="moto-enter"><g class="moto-bob"><rect x="112" y="14" width="56" height="40" rx="8" fill="#fbbf24" stroke="#1f3d12" stroke-width="4"/><path d="M124 28h32M124 38h32" stroke="#1f3d12" stroke-width="4" stroke-linecap="round"/><path d="M96 60h62l-10 24H86z" fill="#fff" stroke="#1f3d12" stroke-width="4" stroke-linejoin="round"/><rect x="96" y="52" width="34" height="9" rx="4.5" fill="#1f3d12"/><path d="M48 88L68 38h14" stroke="#fff" stroke-width="7" stroke-linecap="round" fill="none"/><path d="M62 32h20" stroke="#1f3d12" stroke-width="6" stroke-linecap="round"/><path d="M70 84h26" stroke="#fff" stroke-width="7" stroke-linecap="round"/><g class="wheel" transform-box="fill-box" transform-origin="center"><circle cx="46" cy="94" r="17" fill="#fff" stroke="#1f3d12" stroke-width="7"/><line x1="46" y1="78" x2="46" y2="110" stroke="#1f3d12" stroke-width="4"/></g><g class="wheel" transform-box="fill-box" transform-origin="center"><circle cx="154" cy="94" r="17" fill="#fff" stroke="#1f3d12" stroke-width="7"/><line x1="154" y1="78" x2="154" y2="110" stroke="#1f3d12" stroke-width="4"/></g></g></g></svg></div><div class="sheet">
- <h2 id="accountTitle" style="margin:0 0 6px;font-size:24px">Entre na sua conta</h2><p id="loginIntro" class="sm" style="margin:0 0 18px">Use seu e-mail e senha, como hoje.</p>
- <form id="authForm"><div class="field"><label class="lbl" for="authEmail">E-mail</label><input class="in" id="authEmail" type="email" required autocomplete="email" placeholder="voce@email.com"></div>
- <div class="field" id="authNameWrap"><label class="lbl" for="authName">Nome completo</label><input class="in" id="authName" maxlength="120" autocomplete="name"></div>
- <div class="field"><label class="lbl" for="authPassword">Senha</label><input class="in" id="authPassword" type="password" required autocomplete="current-password" minlength="8"></div>
- <div class="forgot-row"><button id="forgotBtn" class="link" type="button">Esqueci a senha</button></div>
- <div class="auth-actions"><button id="authSubmit" class="btn" type="submit">Entrar</button><div id="authMessage" class="sm hidden" role="status"></div><button id="authToggle" class="btn alt" type="button">Criar conta</button><button id="browseFirst" class="btn alt" type="button">Ver os produtos primeiro</button><button id="myOrdersBtn" class="btn alt hidden" type="button">Meus pedidos</button></div></form>
- <div id="myOrders" class="hidden"><p class="sm">Histórico de compras e status atualizado pela loja.</p><div id="myOrdersList"></div><button id="refreshMyOrders" class="btn alt full" type="button">Atualizar pedidos</button></div>
- <button id="logoutBtn" class="btn alt full hidden" type="button">Sair da conta</button><p class="terms sm">Ao continuar você aceita os <a href="#termos" class="link" data-legal-page="termos">Termos de uso</a> e a <a href="#privacidade" class="link" data-legal-page="privacidade">Política de privacidade</a>.</p>
- <footer class="legal-footer" aria-label="Informações e documentos da loja"><nav class="legal-links"><a href="#termos" data-legal-page="termos">Termos de uso</a><span>·</span><a href="#privacidade" data-legal-page="privacidade">Política de privacidade</a><span>·</span><a href="#entregas" data-legal-page="entregas">Entregas e trocas</a></nav><div class="legal-brand">Feira On Delivery · Manaus, AM</div><div>Contato: <a href="https://wa.me/559294444989" target="_blank" rel="noopener noreferrer">+55 92 9444-4989</a> · <a href="mailto:feiraondelivery2026@gmail.com">feiraondelivery2026@gmail.com</a></div><div id="legalDocumentLine">CNPJ/CPF: <span id="legalDocumentValue">65.414.756/0001-22</span></div></footer>
- </div></div></div>
-<div class="modal checkout-screen" id="modal"><div class="dialog"><button class="close" id="close" type="button" aria-label="Voltar">‹</button><div class="checkout-page"><h1>Finalizar</h1><p class="sm">Confira seus dados, a entrega e o pagamento.</p>
- <form id="checkoutForm"><div class="checkout-fields"><div class="formgrid">
-  <div class="field fullrow"><label for="name">Nome completo *</label><input id="name" required maxlength="120" autocomplete="name"></div>
-  <div class="field"><label for="phone">WhatsApp / telefone *</label><input id="phone" required maxlength="30" autocomplete="tel" placeholder="+55 92 9444-4989"></div>
-  <div class="field pixfield cpffield"><label for="cpf">CPF <span id="cpfRequiredHint">(obrigatório para Pix)</span></label><input id="cpf" inputmode="numeric" maxlength="14" autocomplete="off" placeholder="000.000.000-00"></div>
-  <div class="field pixfield"><label for="email">E-mail *</label><input id="email" type="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" required></div>
-  <div class="field fullrow choice-group"><div class="step-ttl">Entregar em</div><div class="address-choice opt sel"><span class="r"></span><div class="address-choice-copy"><b>Casa</b><span class="s" id="addressChoiceText">Informe seu endereço</span><label class="sr-only" for="address">Endereço completo *</label><textarea id="address" required rows="2" maxlength="500" placeholder="Rua, número, bairro e ponto de referência"></textarea></div></div></div>
-  <div class="field fullrow choice-group"><div class="step-ttl">Entrega</div><label class="opt sel" for="deliveryDelivery"><input class="choice-radio" id="deliveryDelivery" type="radio" name="deliveryChoice" checked><span class="r"></span><span><b>Entrega em casa</b></span><span class="end">R$ 15,00</span></label><label class="opt" for="deliveryPickup"><input class="choice-radio" id="deliveryPickup" type="radio" name="deliveryChoice"><span class="r"></span><span><b>Retirar no local</b></span><span class="end">Grátis</span></label><select id="delivery" aria-label="Recebimento"><option value="delivery">Entrega em casa</option><option value="pickup">Retirar no local</option></select></div>
-  <div class="field fullrow choice-group"><div class="step-ttl">Pagamento</div><label class="opt sel" for="payPix"><input class="choice-radio" id="payPix" type="radio" name="paymentChoice" checked><span class="r"></span><span><b>Pix</b><span class="s">Pagamento instantâneo</span></span></label><label class="opt" for="payCash"><input class="choice-radio" id="payCash" type="radio" name="paymentChoice"><span class="r"></span><span><b>Dinheiro na entrega</b></span></label><label class="opt" for="payCard"><input class="choice-radio" id="payCard" type="radio" name="paymentChoice"><span class="r"></span><span><b>Cartão na entrega</b></span></label><select id="payment" aria-label="Forma de pagamento"><option value="pix">Pix instantâneo</option><option value="cash">Dinheiro na entrega/retirada</option><option value="card_on_delivery">Cartão na entrega (se disponível)</option></select></div>
-  <div class="field fullrow notes-row"><label class="sr-only" for="notes">Observação (opcional)</label><input id="notes" maxlength="500" placeholder="Observação (opcional)"></div>
- </div></div><div class="checkout-footer"><div class="checkout-total"><span>Total</span><strong id="modalTotal">R$ 0,00</strong></div><p id="minimumCheckoutNotice" class="sm hidden" role="status"></p><button type="submit" class="btn pix" id="submitOrder">Pagar com Pix · R$ 15,00</button><p class="legal-agreement">Ao finalizar você concorda com os <a href="#termos" data-legal-page="termos">Termos de uso</a> e a <a href="#privacidade" data-legal-page="privacidade">Política de privacidade</a>.</p><p class="sm">O CPF é solicitado apenas para pagamento via Pix.</p></div></form>
- <div id="result" class="status hidden"></div></div></div></div>
-<section id="legalModal" role="dialog" aria-modal="true" aria-labelledby="legalTitle" aria-hidden="true"><div class="legal-dialog"><header class="legal-header"><button id="legalBack" class="legal-back" type="button" aria-label="Voltar">‹</button><h2 id="legalTitle">Termos de uso</h2></header><div id="legalContent" class="legal-content" tabindex="0"></div></div></section><footer class="preview-footer" aria-hidden="true"></footer></body>
 <script id="pwaInstallScript">
 (()=>{
  'use strict';
@@ -598,15 +534,84 @@ try {
   window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredPrompt=event;if(!hasBeenShown)scheduleShow();});
   window.addEventListener('appinstalled',()=>{deferredPrompt=null;hideCard();});
  }else scheduleShow();
- const observer=new MutationObserver(()=>{
-  if(modalIsOpen()){if(card&&!card.hidden)hideCard();if(showTimer){clearTimeout(showTimer);showTimer=null;}}
-  else if(!hasBeenShown&&!dismissedForThisLoad&&!isStandalone()&&!recentlyDismissed()&&eligibleMode())scheduleShow();
- });
- modalIds.forEach(id=>{const el=document.getElementById(id);if(el)observer.observe(el,{attributes:true,attributeFilter:['class']});});
+ const observeModals=()=>{
+  const observer=new MutationObserver(()=>{
+   if(modalIsOpen()){if(card&&!card.hidden)hideCard();if(showTimer){clearTimeout(showTimer);showTimer=null;}}
+   else if(!hasBeenShown&&!dismissedForThisLoad&&!isStandalone()&&!recentlyDismissed()&&eligibleMode())scheduleShow();
+  });
+  modalIds.forEach(id=>{const el=document.getElementById(id);if(el)observer.observe(el,{attributes:true,attributeFilter:['class']});});
+  if(modalIsOpen()&&showTimer){clearTimeout(showTimer);showTimer=null;}
+ };
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',observeModals,{once:true});
+ else observeModals();
  window.addEventListener('resize',updateCardPosition,{passive:true});
  window.addEventListener('orientationchange',updateCardPosition,{passive:true});
 })();
 </script>
+</head><body>
+<header class="app-header" aria-label="Feira On Delivery"><a class="brand" href="#" aria-label="Feira On Delivery">Feira On Delivery<small>Tudo da feira, direto na sua porta</small></a></header>
+<main class="wrap">
+ <section id="pageHome" class="app-page active" aria-label="Produtos">
+  <div class="home-top" id="homeTopAddress" aria-hidden="true"><div class="home-address"><span class="sm">Entregar em</span><strong id="homeAddress">Informe no pagamento</strong></div><button class="icon-button" type="button" data-go-page="Orders" aria-label="Notificações"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button></div>
+  <div class="search home-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="homeSearch" placeholder="Buscar produtos da feira…" aria-label="Buscar produtos da feira"></div>
+  <section class="home-hero" hidden><b>Entrega na porta</b><p>Produtos da feira direto para você, com praticidade e cuidado.</p><div class="home-hero-seals"><span>Taxa R$ 15,00</span><span>Retirada grátis</span></div></section>
+  <div class="home-section-title" hidden><b>Categorias</b><button type="button" class="link" data-go-page="products">Ver tudo</button></div>
+  <div id="homeCategories" class="real-categories" hidden></div>
+  <section id="repeatOrder" class="repeat-section" hidden><div class="home-section-title repeat-heading"><b>Pedir de novo</b></div><div class="again"><div class="repeat-copy"><b id="repeatOrderTitle">Último pedido</b><div id="repeatOrderItems" class="sm"></div></div><button type="button" id="repeatOrderButton">Repetir</button></div></section>
+  <section id="homeProductSections" aria-label="Produtos por categoria" class="home-product-sections"></section>
+ </section>
+ <section id="pageProducts" class="app-page" aria-label="Produtos">
+  <div class="products-top"><button class="back-button" type="button" data-go-page="home" aria-label="Voltar">‹</button><h1>Produtos</h1></div>
+  <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="search" placeholder="Buscar manga, farinha, goma…" aria-label="Buscar produtos"></div>
+  <select id="sort" aria-label="Ordenar produtos" class="hidden" tabindex="-1" aria-hidden="true"><option value="default">Padrão</option><option value="asc">Menor preço</option><option value="desc">Maior preço</option></select>
+  <nav id="categories" class="chips" aria-label="Categorias de produtos"></nav>
+  <div id="status" class="sr" role="status">Carregando produtos…</div>
+  <div id="products" class="product-grid"></div>
+ </section>
+ <button id="cartbar" class="cartbar hide" type="button"><span id="cartbarCount">0 itens</span><strong>Ver carrinho · <span id="cartbarTotal">R$ 0,00</span></strong></button>
+ <section id="pageCart" class="app-page" aria-label="Carrinho">
+  <div class="products-top"><button class="back-button" type="button" data-go-page="home" aria-label="Voltar">‹</button><h1>Carrinho</h1></div>
+  <aside class="panel" id="cartPanel"><div id="cartItems"></div>
+  <div class="sum"><div class="tot"><span>Subtotal</span><strong id="subtotal">R$ 0,00</strong></div><div><span>Taxa</span><strong id="fee">R$ 15,00</strong></div><div class="tot grand"><span>Total</span><strong id="total">R$ 15,00</strong></div></div>
+  <p id="minimumOrderNotice" class="sm hidden" role="status"></p><p class="sm">Retirada no local é grátis; entrega custa R$ 15,00.</p></aside>
+  <div class="cart-footer"><button class="btn full" id="checkout" type="button">Continuar · R$ 15,00</button></div>
+ </section>
+ <section id="pageOrders" class="app-page" aria-label="Pedidos">
+  <section id="customerOrders" class="panel"><div class="home-section-title" style="margin-top:0"><b>Meus pedidos</b><button id="refreshOrders" class="link" type="button">Atualizar</button></div>
+  <input id="ordersSearch" class="hidden" type="search" aria-label="Buscar pedidos"><p id="ordersMessage" class="sm">Entre na sua conta para consultar seu histórico.</p><div id="ordersList"></div></section>
+ </section>
+</main>
+<nav class="mobile-nav" aria-label="Navegação principal">
+ <button type="button" class="tab-button active" data-page="Home"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z"/></svg>Produtos</button>
+ <button type="button" class="tab-button" data-page="Cart"><svg viewBox="0 0 24 24"><path d="M3 4h3l2.5 11h10L21 7H7"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg><i class="badge"></i>Carrinho <b id="tabCartCount">0</b></button>
+ <button type="button" class="tab-button" data-page="Orders"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Pedidos</button>
+ <span id="accountStatus" class="sm hidden" aria-live="polite"></span><button id="accountBtn" type="button" class="tab-button" data-page="Account" aria-label="Conta"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Conta</button>
+</nav>
+<div class="modal auth-screen" id="accountModal"><div class="dialog"><button class="close" id="accountClose" type="button" aria-label="Fechar">×</button><div class="lhero"><div class="login-brand">Feira On Delivery</div><div class="login-sub">Tudo da feira, direto na sua porta.</div>
+<svg class="moto" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ilustração de entrega"><path class="road" d="M8 112H192" stroke="#fff" stroke-width="3" stroke-dasharray="5 5"/><g class="moto-enter"><g class="moto-bob"><rect x="112" y="14" width="56" height="40" rx="8" fill="#fbbf24" stroke="#1f3d12" stroke-width="4"/><path d="M124 28h32M124 38h32" stroke="#1f3d12" stroke-width="4" stroke-linecap="round"/><path d="M96 60h62l-10 24H86z" fill="#fff" stroke="#1f3d12" stroke-width="4" stroke-linejoin="round"/><rect x="96" y="52" width="34" height="9" rx="4.5" fill="#1f3d12"/><path d="M48 88L68 38h14" stroke="#fff" stroke-width="7" stroke-linecap="round" fill="none"/><path d="M62 32h20" stroke="#1f3d12" stroke-width="6" stroke-linecap="round"/><path d="M70 84h26" stroke="#fff" stroke-width="7" stroke-linecap="round"/><g class="wheel" transform-box="fill-box" transform-origin="center"><circle cx="46" cy="94" r="17" fill="#fff" stroke="#1f3d12" stroke-width="7"/><line x1="46" y1="78" x2="46" y2="110" stroke="#1f3d12" stroke-width="4"/></g><g class="wheel" transform-box="fill-box" transform-origin="center"><circle cx="154" cy="94" r="17" fill="#fff" stroke="#1f3d12" stroke-width="7"/><line x1="154" y1="78" x2="154" y2="110" stroke="#1f3d12" stroke-width="4"/></g></g></g></svg></div><div class="sheet">
+ <h2 id="accountTitle" style="margin:0 0 6px;font-size:24px">Entre na sua conta</h2><p id="loginIntro" class="sm" style="margin:0 0 18px">Use seu e-mail e senha, como hoje.</p>
+ <form id="authForm"><div class="field"><label class="lbl" for="authEmail">E-mail</label><input class="in" id="authEmail" type="email" required autocomplete="email" placeholder="voce@email.com"></div>
+ <div class="field" id="authNameWrap"><label class="lbl" for="authName">Nome completo</label><input class="in" id="authName" maxlength="120" autocomplete="name"></div>
+ <div class="field"><label class="lbl" for="authPassword">Senha</label><input class="in" id="authPassword" type="password" required autocomplete="current-password" minlength="8"></div>
+ <div class="forgot-row"><button id="forgotBtn" class="link" type="button">Esqueci a senha</button></div>
+ <div class="auth-actions"><button id="authSubmit" class="btn" type="submit">Entrar</button><div id="authMessage" class="sm hidden" role="status"></div><button id="authToggle" class="btn alt" type="button">Criar conta</button><button id="browseFirst" class="btn alt" type="button">Ver os produtos primeiro</button><button id="myOrdersBtn" class="btn alt hidden" type="button">Meus pedidos</button></div></form>
+ <div id="myOrders" class="hidden"><p class="sm">Histórico de compras e status atualizado pela loja.</p><div id="myOrdersList"></div><button id="refreshMyOrders" class="btn alt full" type="button">Atualizar pedidos</button></div>
+ <button id="logoutBtn" class="btn alt full hidden" type="button">Sair da conta</button><p class="terms sm">Ao continuar você aceita os <a href="#termos" class="link" data-legal-page="termos">Termos de uso</a> e a <a href="#privacidade" class="link" data-legal-page="privacidade">Política de privacidade</a>.</p>
+ <footer class="legal-footer" aria-label="Informações e documentos da loja"><nav class="legal-links"><a href="#termos" data-legal-page="termos">Termos de uso</a><span>·</span><a href="#privacidade" data-legal-page="privacidade">Política de privacidade</a><span>·</span><a href="#entregas" data-legal-page="entregas">Entregas e trocas</a></nav><div class="legal-brand">Feira On Delivery · Manaus, AM</div><div>Contato: <a href="https://wa.me/559294444989" target="_blank" rel="noopener noreferrer">+55 92 9444-4989</a> · <a href="mailto:feiraondelivery2026@gmail.com">feiraondelivery2026@gmail.com</a></div><div id="legalDocumentLine">CNPJ/CPF: <span id="legalDocumentValue">65.414.756/0001-22</span></div></footer>
+ </div></div></div>
+<div class="modal checkout-screen" id="modal"><div class="dialog"><button class="close" id="close" type="button" aria-label="Voltar">‹</button><div class="checkout-page"><h1>Finalizar</h1><p class="sm">Confira seus dados, a entrega e o pagamento.</p>
+ <form id="checkoutForm"><div class="checkout-fields"><div class="formgrid">
+  <div class="field fullrow"><label for="name">Nome completo *</label><input id="name" required maxlength="120" autocomplete="name"></div>
+  <div class="field"><label for="phone">WhatsApp / telefone *</label><input id="phone" required maxlength="30" autocomplete="tel" placeholder="+55 92 9444-4989"></div>
+  <div class="field pixfield cpffield"><label for="cpf">CPF <span id="cpfRequiredHint">(obrigatório para Pix)</span></label><input id="cpf" inputmode="numeric" maxlength="14" autocomplete="off" placeholder="000.000.000-00"></div>
+  <div class="field pixfield"><label for="email">E-mail *</label><input id="email" type="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" required></div>
+  <div class="field fullrow choice-group"><div class="step-ttl">Entregar em</div><div class="address-choice opt sel"><span class="r"></span><div class="address-choice-copy"><b>Casa</b><span class="s" id="addressChoiceText">Informe seu endereço</span><label class="sr-only" for="address">Endereço completo *</label><textarea id="address" required rows="2" maxlength="500" placeholder="Rua, número, bairro e ponto de referência"></textarea></div></div></div>
+  <div class="field fullrow choice-group"><div class="step-ttl">Entrega</div><label class="opt sel" for="deliveryDelivery"><input class="choice-radio" id="deliveryDelivery" type="radio" name="deliveryChoice" checked><span class="r"></span><span><b>Entrega em casa</b></span><span class="end">R$ 15,00</span></label><label class="opt" for="deliveryPickup"><input class="choice-radio" id="deliveryPickup" type="radio" name="deliveryChoice"><span class="r"></span><span><b>Retirar no local</b></span><span class="end">Grátis</span></label><select id="delivery" aria-label="Recebimento"><option value="delivery">Entrega em casa</option><option value="pickup">Retirar no local</option></select></div>
+  <div class="field fullrow choice-group"><div class="step-ttl">Pagamento</div><label class="opt sel" for="payPix"><input class="choice-radio" id="payPix" type="radio" name="paymentChoice" checked><span class="r"></span><span><b>Pix</b><span class="s">Pagamento instantâneo</span></span></label><label class="opt" for="payCash"><input class="choice-radio" id="payCash" type="radio" name="paymentChoice"><span class="r"></span><span><b>Dinheiro na entrega</b></span></label><label class="opt" for="payCard"><input class="choice-radio" id="payCard" type="radio" name="paymentChoice"><span class="r"></span><span><b>Cartão na entrega</b></span></label><select id="payment" aria-label="Forma de pagamento"><option value="pix">Pix instantâneo</option><option value="cash">Dinheiro na entrega/retirada</option><option value="card_on_delivery">Cartão na entrega (se disponível)</option></select></div>
+  <div class="field fullrow notes-row"><label class="sr-only" for="notes">Observação (opcional)</label><input id="notes" maxlength="500" placeholder="Observação (opcional)"></div>
+ </div></div><div class="checkout-footer"><div class="checkout-total"><span>Total</span><strong id="modalTotal">R$ 0,00</strong></div><p id="minimumCheckoutNotice" class="sm hidden" role="status"></p><button type="submit" class="btn pix" id="submitOrder">Pagar com Pix · R$ 15,00</button><p class="legal-agreement">Ao finalizar você concorda com os <a href="#termos" data-legal-page="termos">Termos de uso</a> e a <a href="#privacidade" data-legal-page="privacidade">Política de privacidade</a>.</p><p class="sm">O CPF é solicitado apenas para pagamento via Pix.</p></div></form>
+ <div id="result" class="status hidden"></div></div></div></div>
+<section id="legalModal" role="dialog" aria-modal="true" aria-labelledby="legalTitle" aria-hidden="true"><div class="legal-dialog"><header class="legal-header"><button id="legalBack" class="legal-back" type="button" aria-label="Voltar">‹</button><h2 id="legalTitle">Termos de uso</h2></header><div id="legalContent" class="legal-content" tabindex="0"></div></div></section><footer class="preview-footer" aria-hidden="true"></footer></body>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 const supabase=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW');
