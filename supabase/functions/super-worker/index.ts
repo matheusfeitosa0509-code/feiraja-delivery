@@ -275,7 +275,8 @@ Deno.serve(async (req: Request) => {
       price: Number(p.price), qty: qtyById.get(p.id)!,
     }));
     const subtotal = Math.round(items.reduce((sum: number, item: any) => sum + item.price * item.qty, 0) * 100) / 100;
-    const deliveryFee = deliveryType === "delivery" ? 5 : 0;
+    if (deliveryType === "delivery" && subtotal < 30) return json({ error: "Pedido mínimo de R$ 30,00 em produtos para entrega em casa." }, 400);
+    const deliveryFee = deliveryType === "delivery" ? 15 : 0;
     const total = Math.round((subtotal + deliveryFee) * 100) / 100;
     if (!Number.isFinite(total) || total <= 0 || total > 100000) return json({ error: "Valor total inválido." }, 400);
 
