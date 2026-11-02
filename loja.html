@@ -439,6 +439,17 @@ body:has(#pixStatus) .cartbar{display:none!important}
 #legalModal{position:fixed;inset:0;z-index:60;display:none;align-items:stretch;justify-content:center;background:var(--bg)}#legalModal.open{display:flex}#legalModal .legal-dialog{width:100%;max-width:520px;min-height:100dvh;max-height:100dvh;display:flex;flex-direction:column;background:var(--bg);overflow:hidden}.legal-header{flex:none;display:flex;align-items:center;gap:12px;padding:calc(12px + env(safe-area-inset-top)) 18px 12px;border-bottom:1px solid var(--line);background:#fff}.legal-back{width:42px;height:42px;border:0;border-radius:50%;background:var(--soft);color:var(--ink);font-size:28px;line-height:1}.legal-header h2{margin:0;font-size:19px}.legal-content{overflow-y:auto;overscroll-behavior:contain;padding:18px 20px calc(110px + env(safe-area-inset-bottom));line-height:1.65}.legal-content .legal-updated{margin:0 0 18px;color:var(--mut);font-size:12px}.legal-section{margin:0 0 20px}.legal-section h3{font-size:16px;line-height:1.35;margin:0 0 7px;color:var(--ink)}.legal-section p{font-size:14px;line-height:1.7;margin:0;white-space:pre-line}body:has(#legalModal.open) .mobile-nav{display:none!important}.auth-screen .sheet{padding-bottom:calc(112px + env(safe-area-inset-bottom))}.checkout-screen .checkout-page{padding-bottom:calc(230px + env(safe-area-inset-bottom))}.checkout-screen .checkout-footer{padding-bottom:calc(18px + env(safe-area-inset-bottom))}
 </style><link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#2f6a14">
+<style id="pwaInstallStyles">
+#pwaInstallCard{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);width:min(calc(100% - 28px),440px);z-index:35;display:flex;align-items:flex-start;gap:12px;padding:14px;border:1px solid #d7e4ca;border-radius:18px;background:#fff;color:#1d2a12;box-shadow:0 8px 28px rgba(20,34,13,.22);font:500 14px/1.45 'Plus Jakarta Sans',system-ui,sans-serif}
+#pwaInstallCard[hidden]{display:none!important}
+#pwaInstallCard .pwaInstallText{flex:1;min-width:0}
+#pwaInstallCard .pwaInstallTitle{display:block;margin:0 0 4px;font-size:15px;font-weight:800}
+#pwaInstallCard .pwaInstallActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+#pwaInstallCard .pwaInstallInstall{border:0;border-radius:11px;background:#2f6a14;color:#fff;font:inherit;font-size:14px;font-weight:800;padding:10px 14px;min-height:40px}
+#pwaInstallCard .pwaInstallDismiss{border:1px solid #d7e4ca;border-radius:11px;background:#fff;color:#34432a;font:inherit;font-size:13px;font-weight:700;padding:9px 12px;min-height:40px}
+#pwaInstallCard .pwaInstallClose{flex:none;width:34px;height:34px;margin:-4px -4px 0 0;border:0;border-radius:10px;background:#f2f6ed;color:#34432a;font-size:22px;line-height:1}
+@media(min-width:700px){#pwaInstallCard{width:min(calc(100% - 40px),440px)}}
+</style>
 <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Feira On">
@@ -515,6 +526,87 @@ try {
  </div></div><div class="checkout-footer"><div class="checkout-total"><span>Total</span><strong id="modalTotal">R$ 0,00</strong></div><p id="minimumCheckoutNotice" class="sm hidden" role="status"></p><button type="submit" class="btn pix" id="submitOrder">Pagar com Pix · R$ 15,00</button><p class="legal-agreement">Ao finalizar você concorda com os <a href="#termos" data-legal-page="termos">Termos de uso</a> e a <a href="#privacidade" data-legal-page="privacidade">Política de privacidade</a>.</p><p class="sm">O CPF é solicitado apenas para pagamento via Pix.</p></div></form>
  <div id="result" class="status hidden"></div></div></div></div>
 <section id="legalModal" role="dialog" aria-modal="true" aria-labelledby="legalTitle" aria-hidden="true"><div class="legal-dialog"><header class="legal-header"><button id="legalBack" class="legal-back" type="button" aria-label="Voltar">‹</button><h2 id="legalTitle">Termos de uso</h2></header><div id="legalContent" class="legal-content" tabindex="0"></div></div></section><footer class="preview-footer" aria-hidden="true"></footer></body>
+<script id="pwaInstallScript">
+(()=>{
+ 'use strict';
+ const key='pwaInstallDismissedAt';
+ const cardId='pwaInstallCard';
+ const iosInstruction='Para instalar: toque em Compartilhar e depois em Adicionar à Tela de Início. Funciona no Safari.';
+ const ua=navigator.userAgent||'';
+ const isIOS=/iPad|iPhone|iPod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+ const isIOSOtherBrowser=isIOS&&(/CriOS|FxiOS|EdgiOS|OPiOS|DdgA|DuckDuckGo|YaBrowser/i.test(ua)||!/Safari/i.test(ua));
+ const isStandalone=()=>window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+ let deferredPrompt=null,hasBeenShown=false,dismissedForThisLoad=false,showTimer=null,card=null;
+ const modalIds=['modal','accountModal','legalModal'];
+ const modalIsOpen=()=>modalIds.some(id=>{
+  const el=document.getElementById(id);
+  return !!el&&el.classList.contains('open')&&getComputedStyle(el).display!=='none';
+ });
+ const recentlyDismissed=()=>{
+  try{const value=localStorage.getItem(key);if(!value)return false;const timestamp=Number(value);return Number.isFinite(timestamp)&&timestamp>0&&(Date.now()-timestamp)<7*24*60*60*1000;}
+  catch(_){return false;}
+ };
+ const saveDismissal=()=>{try{localStorage.setItem(key,String(Date.now()));}catch(_){dismissedForThisLoad=true;}};
+ const updateCardPosition=()=>{
+  if(!card||card.hidden)return;
+  const candidates=['#cartbar','.mobile-nav'].map(selector=>document.querySelector(selector)).filter(el=>{
+   if(!el||el.hidden)return false;
+   const style=getComputedStyle(el),rect=el.getBoundingClientRect();
+   return style.display!=='none'&&style.visibility!=='hidden'&&rect.height>0&&rect.top<window.innerHeight;
+  });
+  if(candidates.length){const top=Math.min(...candidates.map(el=>el.getBoundingClientRect().top));card.style.bottom=Math.max(12,window.innerHeight-top+12)+'px';}
+  else card.style.bottom='calc(env(safe-area-inset-bottom, 0px) + 24px)';
+ };
+ const hideCard=()=>{if(showTimer){clearTimeout(showTimer);showTimer=null;}if(card)card.hidden=true;};
+ const dismiss=()=>{saveDismissal();hideCard();};
+ const createCard=mode=>{
+  if(!card){card=document.createElement('aside');card.id=cardId;card.setAttribute('aria-label','Instalar Feira On Delivery');card.hidden=true;document.body.appendChild(card);}
+  card.replaceChildren();
+  const text=document.createElement('div');text.className='pwaInstallText';
+  const title=document.createElement('strong');title.className='pwaInstallTitle';title.textContent='Tenha a Feira On Delivery no seu dispositivo';text.appendChild(title);
+  const message=document.createElement('div');
+  if(mode==='ios-safari')message.textContent=iosInstruction;
+  else if(mode==='ios-other')message.textContent='Para instalar, abra esta loja no Safari e toque em Compartilhar > Adicionar à Tela de Início.';
+  else message.textContent='Adicione a loja à tela inicial para abrir como um app.';
+  text.appendChild(message);
+  if(mode==='android'){
+   const installActions=document.createElement('div');installActions.className='pwaInstallActions';
+   const install=document.createElement('button');install.type='button';install.className='pwaInstallInstall';install.textContent='Instalar';
+   install.addEventListener('click',async()=>{
+    const promptEvent=deferredPrompt;if(!promptEvent)return;
+    deferredPrompt=null;install.disabled=true;
+    try{await promptEvent.prompt();await promptEvent.userChoice;}catch(_){}
+    hideCard();
+   });
+   installActions.appendChild(install);text.appendChild(installActions);
+  }
+  const actions=document.createElement('div');actions.className='pwaInstallActions';
+  const dismissButton=document.createElement('button');dismissButton.type='button';dismissButton.className='pwaInstallDismiss';dismissButton.textContent='Agora não';dismissButton.addEventListener('click',dismiss);actions.appendChild(dismissButton);text.appendChild(actions);
+  const close=document.createElement('button');close.type='button';close.className='pwaInstallClose';close.setAttribute('aria-label','Fechar aviso de instalação');close.textContent='×';close.addEventListener('click',dismiss);
+  card.append(text,close);return card;
+ };
+ const eligibleMode=()=>isIOS?(isIOSOtherBrowser?'ios-other':'ios-safari'):(deferredPrompt?'android':null);
+ const showIfAllowed=()=>{
+  showTimer=null;
+  if(hasBeenShown||dismissedForThisLoad||recentlyDismissed()||isStandalone()||modalIsOpen())return;
+  const mode=eligibleMode();if(!mode)return;
+  createCard(mode);card.hidden=false;hasBeenShown=true;updateCardPosition();
+ };
+ const scheduleShow=()=>{if(showTimer)clearTimeout(showTimer);showTimer=setTimeout(showIfAllowed,3000);};
+ if(isStandalone()||recentlyDismissed())return;
+ if(!isIOS){
+  window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredPrompt=event;if(!hasBeenShown)scheduleShow();});
+  window.addEventListener('appinstalled',()=>{deferredPrompt=null;hideCard();});
+ }else scheduleShow();
+ const observer=new MutationObserver(()=>{
+  if(modalIsOpen()){if(card&&!card.hidden)hideCard();if(showTimer){clearTimeout(showTimer);showTimer=null;}}
+  else if(!hasBeenShown&&!dismissedForThisLoad&&!isStandalone()&&!recentlyDismissed()&&eligibleMode())scheduleShow();
+ });
+ modalIds.forEach(id=>{const el=document.getElementById(id);if(el)observer.observe(el,{attributes:true,attributeFilter:['class']});});
+ window.addEventListener('resize',updateCardPosition,{passive:true});
+ window.addEventListener('orientationchange',updateCardPosition,{passive:true});
+})();
+</script>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 const supabase=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW');
@@ -802,175 +894,4 @@ try{setupAppTabs();}catch(error){console.error('Falha isolada na navegação da 
  setViewportMetrics();sync();
 })();;
 
-</script>
-<style id="pwaInstallStyles">
-#pwaInstallCard{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);width:min(calc(100% - 28px),440px);z-index:35;display:flex;align-items:flex-start;gap:12px;padding:14px;border:1px solid #d7e4ca;border-radius:18px;background:#fff;color:#1d2a12;box-shadow:0 8px 28px rgba(20,34,13,.22);font:500 14px/1.45 'Plus Jakarta Sans',system-ui,sans-serif}
-#pwaInstallCard[hidden]{display:none!important}
-#pwaInstallCard .pwaInstallText{flex:1;min-width:0}
-#pwaInstallCard .pwaInstallTitle{display:block;margin:0 0 4px;font-size:15px;font-weight:800}
-#pwaInstallCard .pwaInstallActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
-#pwaInstallCard .pwaInstallInstall{border:0;border-radius:11px;background:#2f6a14;color:#fff;font:inherit;font-size:14px;font-weight:800;padding:10px 14px;min-height:40px}
-#pwaInstallCard .pwaInstallDismiss{border:1px solid #d7e4ca;border-radius:11px;background:#fff;color:#34432a;font:inherit;font-size:13px;font-weight:700;padding:9px 12px;min-height:40px}
-#pwaInstallCard .pwaInstallClose{flex:none;width:34px;height:34px;margin:-4px -4px 0 0;border:0;border-radius:10px;background:#f2f6ed;color:#34432a;font-size:22px;line-height:1}
-@media(min-width:700px){#pwaInstallCard{width:min(calc(100% - 40px),440px)}}
-</style>
-<script id="pwaInstallScript">
-(()=>{
- 'use strict';
- const key='pwaInstallDismissedAt';
- const cardId='pwaInstallCard';
- const iosInstruction='Para instalar: toque em Compartilhar e depois em Adicionar à Tela de Início. Funciona no Safari.';
- const ua=navigator.userAgent||'';
- const isIOS=/iPad|iPhone|iPod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
- const isIOSOtherBrowser=isIOS&&(/CriOS|FxiOS|EdgiOS|OPiOS|DdgA|DuckDuckGo|YaBrowser/i.test(ua)||!/Safari/i.test(ua));
- const isStandalone=()=>window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
- let deferredPrompt=null;
- let hasBeenShown=false;
- let dismissedForThisLoad=false;
- let showTimer=null;
- let card=null;
- const modalIds=['modal','accountModal','legalModal'];
- const modalIsOpen=()=>modalIds.some(id=>{
-  const el=document.getElementById(id);
-  return !!el&&el.classList.contains('open')&&getComputedStyle(el).display!=='none';
- });
- const recentlyDismissed=()=>{
-  try{
-   const value=localStorage.getItem(key);
-   if(!value)return false;
-   const timestamp=Number(value);
-   return Number.isFinite(timestamp)&&timestamp>0&&(Date.now()-timestamp)<7*24*60*60*1000;
-  }catch(_){return false;}
- };
- const saveDismissal=()=>{
-  try{localStorage.setItem(key,String(Date.now()));}
-  catch(_){dismissedForThisLoad=true;}
- };
- const updateCardPosition=()=>{
-  if(!card||card.hidden)return;
-  const candidates=['#cartbar','.mobile-nav'].map(selector=>document.querySelector(selector)).filter(el=>{
-   if(!el||el.hidden)return false;
-   const style=getComputedStyle(el);
-   const rect=el.getBoundingClientRect();
-   return style.display!=='none'&&style.visibility!=='hidden'&&rect.height>0&&rect.top<window.innerHeight;
-  });
-  if(candidates.length){
-   const top=Math.min(...candidates.map(el=>el.getBoundingClientRect().top));
-   card.style.bottom=Math.max(12,window.innerHeight-top+12)+'px';
-  }else{
-   card.style.bottom='calc(env(safe-area-inset-bottom, 0px) + 24px)';
-  }
- };
- const hideCard=()=>{
-  if(showTimer){clearTimeout(showTimer);showTimer=null;}
-  if(card)card.hidden=true;
- };
- const dismiss=()=>{
-  saveDismissal();
-  hideCard();
- };
- const createCard=(mode)=>{
-  if(!card){
-   card=document.createElement('aside');
-   card.id=cardId;
-   card.setAttribute('aria-label','Instalar Feira On Delivery');
-   card.hidden=true;
-   document.body.appendChild(card);
-  }
-  card.replaceChildren();
-  const text=document.createElement('div');
-  text.className='pwaInstallText';
-  const title=document.createElement('strong');
-  title.className='pwaInstallTitle';
-  title.textContent='Tenha a Feira On Delivery no seu dispositivo';
-  text.appendChild(title);
-  const message=document.createElement('div');
-  if(mode==='ios-safari')message.textContent=iosInstruction;
-  else if(mode==='ios-other')message.textContent='Para instalar, abra esta loja no Safari e toque em Compartilhar > Adicionar à Tela de Início.';
-  else message.textContent='Adicione a loja à tela inicial para abrir como um app.';
-  text.appendChild(message);
-  if(mode==='android'){
-   const installActions=document.createElement('div');
-   installActions.className='pwaInstallActions';
-   const install=document.createElement('button');
-   install.type='button';
-   install.className='pwaInstallInstall';
-   install.textContent='Instalar';
-   install.addEventListener('click',async()=>{
-    const promptEvent=deferredPrompt;
-    if(!promptEvent)return;
-    deferredPrompt=null;
-    install.disabled=true;
-    try{await promptEvent.prompt();await promptEvent.userChoice;}catch(_){}
-    hideCard();
-   });
-   installActions.appendChild(install);
-   text.appendChild(installActions);
-  }
-  const actions=document.createElement('div');
-  actions.className='pwaInstallActions';
-  const dismissButton=document.createElement('button');
-  dismissButton.type='button';
-  dismissButton.className='pwaInstallDismiss';
-  dismissButton.textContent='Agora não';
-  dismissButton.addEventListener('click',dismiss);
-  actions.appendChild(dismissButton);
-  text.appendChild(actions);
-  const close=document.createElement('button');
-  close.type='button';
-  close.className='pwaInstallClose';
-  close.setAttribute('aria-label','Fechar aviso de instalação');
-  close.textContent='×';
-  close.addEventListener('click',dismiss);
-  card.append(text,close);
-  return card;
- };
- const eligibleMode=()=>{
-  if(isIOS)return isIOSOtherBrowser?'ios-other':'ios-safari';
-  return deferredPrompt?'android':null;
- };
- const showIfAllowed=()=>{
-  showTimer=null;
-  if(hasBeenShown||dismissedForThisLoad||recentlyDismissed()||isStandalone()||modalIsOpen())return;
-  const mode=eligibleMode();
-  if(!mode)return;
-  createCard(mode);
-  card.hidden=false;
-  hasBeenShown=true;
-  updateCardPosition();
- };
- const scheduleShow=()=>{
-  if(showTimer)clearTimeout(showTimer);
-  showTimer=setTimeout(showIfAllowed,3000);
- };
- if(isStandalone()||recentlyDismissed())return;
- if(!isIOS){
-  window.addEventListener('beforeinstallprompt',event=>{
-   event.preventDefault();
-   deferredPrompt=event;
-   if(!hasBeenShown)scheduleShow();
-  });
-  window.addEventListener('appinstalled',()=>{
-   deferredPrompt=null;
-   hideCard();
-  });
- }else{
-  scheduleShow();
- }
- const observer=new MutationObserver(()=>{
-  if(modalIsOpen()){
-   if(card&&!card.hidden)hideCard();
-   if(showTimer){clearTimeout(showTimer);showTimer=null;}
-  }else if(!hasBeenShown&&!dismissedForThisLoad&&!isStandalone()&&!recentlyDismissed()){
-   if(eligibleMode())scheduleShow();
-  }
- });
- modalIds.forEach(id=>{
-  const el=document.getElementById(id);
-  if(el)observer.observe(el,{attributes:true,attributeFilter:['class']});
- });
- window.addEventListener('resize',updateCardPosition,{passive:true});
- window.addEventListener('orientationchange',updateCardPosition,{passive:true});
-})();
-</script>
-<footer class="site-footer" style="max-width:1120px;margin:0 auto;padding:20px 16px 32px;text-align:center;color:#68786f;font-size:13px;line-height:1.8"><a href="./">Início</a> · <a href="./politica-privacidade.html">Política de Privacidade</a> · <a href="./termos.html">Termos de Uso</a> · <a href="https://wa.me/559294444989">WhatsApp +55 92 9444-4989</a> · <a href="mailto:feiraondelivery2026@gmail.com">feiraondelivery2026@gmail.com</a></footer></body></html>
+</script><footer class="site-footer" style="max-width:1120px;margin:0 auto;padding:20px 16px 32px;text-align:center;color:#68786f;font-size:13px;line-height:1.8"><a href="./">Início</a> · <a href="./politica-privacidade.html">Política de Privacidade</a> · <a href="./termos.html">Termos de Uso</a> · <a href="https://wa.me/559294444989">WhatsApp +55 92 9444-4989</a> · <a href="mailto:feiraondelivery2026@gmail.com">feiraondelivery2026@gmail.com</a></footer></body></html>
