@@ -437,7 +437,21 @@ body:has(#pixStatus) .cartbar{display:none!important}
 </style><style>
 .legal-footer{margin:24px 0 0;padding:18px 4px calc(112px + env(safe-area-inset-bottom));border-top:1px solid var(--line);text-align:center;color:var(--mut);font-size:12px;line-height:1.8}.legal-footer .legal-links{display:flex;flex-wrap:wrap;justify-content:center;gap:5px 8px;margin-bottom:8px}.legal-footer a,.legal-agreement a{color:var(--g);font-weight:700;text-decoration:underline;text-underline-offset:2px}.legal-footer .legal-brand{font-weight:800;color:var(--ink)}.legal-agreement{font-size:11px;line-height:1.5;text-align:center;margin:9px 0 2px;color:var(--mut)}
 #legalModal{position:fixed;inset:0;z-index:60;display:none;align-items:stretch;justify-content:center;background:var(--bg)}#legalModal.open{display:flex}#legalModal .legal-dialog{width:100%;max-width:520px;min-height:100dvh;max-height:100dvh;display:flex;flex-direction:column;background:var(--bg);overflow:hidden}.legal-header{flex:none;display:flex;align-items:center;gap:12px;padding:calc(12px + env(safe-area-inset-top)) 18px 12px;border-bottom:1px solid var(--line);background:#fff}.legal-back{width:42px;height:42px;border:0;border-radius:50%;background:var(--soft);color:var(--ink);font-size:28px;line-height:1}.legal-header h2{margin:0;font-size:19px}.legal-content{overflow-y:auto;overscroll-behavior:contain;padding:18px 20px calc(110px + env(safe-area-inset-bottom));line-height:1.65}.legal-content .legal-updated{margin:0 0 18px;color:var(--mut);font-size:12px}.legal-section{margin:0 0 20px}.legal-section h3{font-size:16px;line-height:1.35;margin:0 0 7px;color:var(--ink)}.legal-section p{font-size:14px;line-height:1.7;margin:0;white-space:pre-line}body:has(#legalModal.open) .mobile-nav{display:none!important}.auth-screen .sheet{padding-bottom:calc(112px + env(safe-area-inset-bottom))}.checkout-screen .checkout-page{padding-bottom:calc(230px + env(safe-area-inset-bottom))}.checkout-screen .checkout-footer{padding-bottom:calc(18px + env(safe-area-inset-bottom))}
-</style></head><body>
+</style><link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#2f6a14">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Feira On">
+<script>
+try {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      try { navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(function () {}); } catch (_) {}
+    });
+  }
+} catch (_) {}
+</script>
+</head><body>
 <header class="app-header" aria-label="Feira On Delivery"><a class="brand" href="#" aria-label="Feira On Delivery">Feira On Delivery<small>Tudo da feira, direto na sua porta</small></a></header>
 <main class="wrap">
  <section id="pageHome" class="app-page active" aria-label="Produtos">
