@@ -54,7 +54,9 @@ small{color:var(--muted);display:block;margin-top:5px;line-height:1.4}
   <label for="newProductPrice">Novo preço (R$)</label>
   <input id="newProductPrice" inputmode="decimal" placeholder="Ex.: 12,50">
   <small>Informe um valor maior que zero. Você pode usar vírgula ou ponto nos centavos.</small>
-  <button id="btnUpdatePrice" type="button" disabled>Atualizar preço</button>
+  <button id="btnUpdatePrice" type="button" disabled>Pré-visualizar alteração</button>
+  <div id="pricePreview" role="status" aria-live="polite"></div>
+  <button id="btnConfirmPrice" type="button" class="sec hide">Confirmar e salvar preço</button>
   <div id="priceMsg" role="status" aria-live="polite"></div>
 </section>
 
@@ -141,40 +143,142 @@ async function loadPriceProducts(){
   if(priceProducts.length)showPriceMessage('Selecione um produto para consultar ou alterar o preço.');
   else showPriceMessage('Nenhum produto disponível foi encontrado.','err');
 }
-$('priceSearch').addEventListener('input',renderPriceProducts);
-$('priceProduct').addEventListener('change',()=>{
-  const product=priceProducts.find(p=>p.id===$('priceProduct').value);
-  $('newProductPrice').value=product?String(product.price).replace('.',','):'';
-  $('btnUpdatePrice').disabled=!product;
-  showPriceMessage(product?'Preço atual: R$ '+Number(product.price).toFixed(2).replace('.',','):'');
-});
-$('btnUpdatePrice').addEventListener('click',async()=>{
-  const id=$('priceProduct').value;
+function formatPrice(value){return Number(value).toFixed(2).replace('.',',');}
+function resetPricePreview(){
+  $('pricePreview').textContent='';
+  $('btnConfirmPrice').classList.add('hide');
+  $('btnConfirmPrice').disabled=true;
+  $('btnUpdatePrice').disabled=!$('priceProduct').value;
+}
+function calculatePriceChange(currentPrice,currentOldPrice,newPrice){
+  let nextOldPrice;
+  if(newPrice===currentPrice)return {same:true,oldPrice:currentOldPrice};
+  if(newPrice<currentPrice){
+    nextOldPrice=currentOldPrice!==null&&currentOldPrice>currentPrice?currentOldPrice:currentPrice;
+  }else{
+    nextOldPrice=currentOldPrice!==null&&newPrice<currentOldPrice?currentOldPrice:null;
+  }
+  return {same:false,oldPrice:nextOldPrice};
+}
+function readNewPrice(){
   const raw=$('newProductPrice').value.trim();
-  if(!id){showPriceMessage('Selecione um produto.','err');return}
   if(!raw||!/^[0-9]+([.,][0-9]{1,2})?$/.test(raw)){
-    showPriceMessage('Digite um preço numérico válido, usando vírgula ou ponto.','err');return;
+    showPriceMessage('Digite um preço numérico válido, usando vírgula ou ponto.','err');return null;
   }
   const price=Number(raw.replace(',','.'));
-  if(!Number.isFinite(price)||price<=0){showPriceMessage('O preço deve ser maior que zero.','err');return}
-  const button=$('btnUpdatePrice');
-  button.disabled=true;button.textContent='Salvando…';
-  showPriceMessage('Atualizando preço…');
-  const {data,error}=await db.from('products').update({price}).eq('id',id).select('id,name,price');
-  button.textContent='Atualizar preço';
-  button.disabled=false;
-  if(error){showPriceMessage('Não foi possível atualizar: '+error.message,'err');return}
-  if(!data||data.length===0){
-    showPriceMessage('Nenhuma linha foi atualizada. Verifique a permissão de administrador ou se o produto está indisponível.','err');return;
+  if(!Number.isFinite(price)||price<=0){
+    showPriceMessage('O preço deve ser maior que zero.','err');return null;
   }
-  const updated=data[0];
-  const product=priceProducts.find(p=>p.id===updated.id);
-  if(product)product.price=Number(updated.price);
-  renderPriceProducts();
-  $('priceProduct').value=updated.id;
-  $('newProductPrice').value=String(updated.price).replace('.',',');
-  $('btnUpdatePrice').disabled=false;
-  showPriceMessage('Preço de "'+updated.name+'" atualizado para R$ '+Number(updated.price).toFixed(2).replace('.',',')+'.','ok');
+  return Math.round(price*100)/100;
+}
+async function fetchCurrentPriceProduct(id){
+  const {data,error}=await db.from('products').select('id,name,price,old_price').eq('id',id).maybeSingle();
+  if(error)throw error;
+  if(!data)throw new Error('Produto não encontrado ou sem permissão para leitura.');
+  return {...data,price:Math.round(Number(data.price)*100)/100,old_price:data.old_price==null?null:Math.round(Number(data.old_price)*100)/100};
+}
+function showPricePreview(product,newPrice,change){
+  if(change.same){
+    $('pricePreview').textContent='';
+    $('btnConfirmPrice').classList.add('hide');
+    showPriceMessage('Preço igual ao atual. Nenhuma alteração foi gravada.','');
+    return;
+  }
+  if(newPrice<product.price){
+    $('pricePreview').textContent='De R$ '+formatPrice(product.price)+' por R$ '+formatPrice(newPrice)+' (desconto de R$ '+formatPrice(product.price-newPrice)+').';
+  }else{
+    $('pricePreview').textContent='Novo preço: R$ '+formatPrice(newPrice)+'.';
+  }
+  $('btnConfirmPrice').classList.remove('hide');
+  $('btnConfirmPrice').disabled=false;
+  showPriceMessage('Confira a prévia e confirme para salvar.');
+}
+$('priceSearch').addEventListener('input',()=>{
+  renderPriceProducts();resetPricePreview();
+});
+$('priceProduct').addEventListener('change',()=>{
+  const product=priceProducts.find(p=>p.id===$('priceProduct').value);
+  $('newProductPrice').value=product?formatPrice(product.price):'';
+  resetPricePreview();
+  showPriceMessage(product?'Preço atual na lista: R$ '+formatPrice(product.price)+'. A prévia consultará novamente o banco.':'');
+});
+$('newProductPrice').addEventListener('input',resetPricePreview);
+$('btnUpdatePrice').addEventListener('click',async()=>{
+  const id=$('priceProduct').value;
+  const newPrice=readNewPrice();
+  if(!id){showPriceMessage('Selecione um produto.','err');return}
+  if(newPrice===null)return;
+  const button=$('btnUpdatePrice');
+  button.disabled=true;button.textContent='Consultando…';
+  resetPricePreview();
+  try{
+    const product=await fetchCurrentPriceProduct(id);
+    const change=calculatePriceChange(product.price,product.old_price,newPrice);
+    if(change.same){showPricePreview(product,newPrice,change);return}
+    showPricePreview(product,newPrice,change);
+    $('btnConfirmPrice').dataset.productId=id;
+    $('btnConfirmPrice').dataset.previewPrice=String(newPrice);
+    $('btnConfirmPrice').dataset.previewCurrent=String(product.price);
+    $('btnConfirmPrice').dataset.previewOld=product.old_price===null?'null':String(product.old_price);
+  }catch(error){
+    showPriceMessage('Não foi possível consultar o preço atual: '+error.message,'err');
+  }finally{
+    button.textContent='Pré-visualizar alteração';
+    button.disabled=!$('priceProduct').value;
+  }
+});
+$('btnConfirmPrice').addEventListener('click',async()=>{
+  const id=$('priceProduct').value;
+  const newPrice=readNewPrice();
+  if(!id||newPrice===null)return;
+  if($('btnConfirmPrice').dataset.productId!==id||$('btnConfirmPrice').dataset.previewPrice!==String(newPrice)){
+    resetPricePreview();showPriceMessage('A prévia mudou. Gere uma nova prévia antes de confirmar.','err');return;
+  }
+  const confirmButton=$('btnConfirmPrice');
+  const previewCurrent=confirmButton.dataset.previewCurrent;
+  const previewOld=confirmButton.dataset.previewOld;
+  confirmButton.disabled=true;confirmButton.textContent='Reconsultando…';
+  $('btnUpdatePrice').disabled=true;
+  try{
+    // Reconsulta imediatamente antes do UPDATE; a lista local nunca define o preço-base.
+    const current=await fetchCurrentPriceProduct(id);
+    if(String(current.price)!==previewCurrent||(current.old_price===null?'null':String(current.old_price))!==previewOld){
+      const refreshed=calculatePriceChange(current.price,current.old_price,newPrice);
+      showPricePreview(current,newPrice,refreshed);
+      confirmButton.dataset.previewCurrent=String(current.price);
+      confirmButton.dataset.previewOld=current.old_price===null?'null':String(current.old_price);
+      showPriceMessage('O preço do produto mudou desde a prévia. Confira a prévia atualizada e confirme novamente.','err');
+      return;
+    }
+    const change=calculatePriceChange(current.price,current.old_price,newPrice);
+    if(change.same){
+      resetPricePreview();showPriceMessage('Preço igual ao atual. Nenhuma alteração foi gravada.','');
+      return;
+    }
+    const {data,error}=await db.from('products')
+      .update({price:newPrice,old_price:change.oldPrice})
+      .eq('id',id)
+      .select('id,name,price,old_price');
+    if(error)throw error;
+    if(!data||data.length===0){
+      showPriceMessage('Nenhuma linha foi atualizada. Verifique a permissão de administrador ou se o produto está indisponível.','err');return;
+    }
+    const updated=data[0];
+    const cached=priceProducts.find(p=>p.id===updated.id);
+    if(cached)cached.price=Number(updated.price);
+    renderPriceProducts();
+    $('priceProduct').value=updated.id;
+    $('newProductPrice').value=formatPrice(updated.price);
+    $('pricePreview').textContent='';
+    confirmButton.classList.add('hide');
+    showPriceMessage('Preço de "'+updated.name+'" atualizado para R$ '+formatPrice(updated.price)+'.','ok');
+  }catch(error){
+    showPriceMessage('Não foi possível atualizar: '+error.message,'err');
+  }finally{
+    confirmButton.textContent='Confirmar e salvar preço';
+    confirmButton.disabled=false;
+    $('btnUpdatePrice').disabled=!$('priceProduct').value;
+  }
 });
 db.auth.onAuthStateChange((event,session)=>{
   if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session)loadPriceProducts();
