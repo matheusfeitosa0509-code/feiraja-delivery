@@ -43,7 +43,7 @@ small{color:var(--muted);display:block;margin-top:5px;line-height:1.4}
 </div>
 
 <!-- Área independente para alteração de preço; não modifica o cadastro existente. -->
-<section id="priceEditor" style="border-top:1px solid var(--line);margin-top:24px;padding-top:20px">
+<section id="priceEditor" class="card hide" style="border-top:1px solid var(--line);margin-top:24px;padding-top:20px">
   <h1>💲 Alterar preço</h1>
   <label for="priceSearch">Buscar produto pelo nome</label>
   <input id="priceSearch" type="search" placeholder="Digite o nome do produto">
@@ -129,9 +129,10 @@ function renderPriceProducts(){
 }
 async function loadPriceProducts(){
   const {data:{session}}=await db.auth.getSession();
-  if(!session)return;
+  if(!session){$('priceEditor').classList.add('hide');return}
   const {data:membership,error:membershipError}=await db.from('admin_users').select('user_id').eq('user_id',session.user.id).maybeSingle();
-  if(membershipError||!membership)return;
+  if(membershipError||!membership){$('priceEditor').classList.add('hide');return}
+  $('priceEditor').classList.remove('hide');
   showPriceMessage('Carregando produtos…');
   const {data,error}=await db.from('products').select('id,name,price,available').eq('available',true).order('name');
   if(error){showPriceMessage('Não foi possível carregar os produtos: '+error.message,'err');return}
@@ -177,7 +178,7 @@ $('btnUpdatePrice').addEventListener('click',async()=>{
 });
 db.auth.onAuthStateChange((event,session)=>{
   if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session)loadPriceProducts();
-  if(event==='SIGNED_OUT'){priceProducts=[];$('priceProduct').innerHTML='<option value="">Entre como administrador</option>';$('btnUpdatePrice').disabled=true;}
+  if(event==='SIGNED_OUT'){$('priceEditor').classList.add('hide');priceProducts=[];$('priceProduct').innerHTML='<option value="">Entre como administrador</option>';$('btnUpdatePrice').disabled=true;}
 });
 
 show();
