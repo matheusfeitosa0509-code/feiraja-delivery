@@ -42,6 +42,22 @@ small{color:var(--muted);display:block;margin-top:5px;line-height:1.4}
 <div id="msg"></div>
 </div>
 
+<!-- Área independente para alteração de preço; não modifica o cadastro existente. -->
+<section id="priceEditor" style="border-top:1px solid var(--line);margin-top:24px;padding-top:20px">
+  <h1>💲 Alterar preço</h1>
+  <label for="priceSearch">Buscar produto pelo nome</label>
+  <input id="priceSearch" type="search" placeholder="Digite o nome do produto">
+  <label for="priceProduct">Selecionar produto</label>
+  <select id="priceProduct">
+    <option value="">Carregando produtos…</option>
+  </select>
+  <label for="newProductPrice">Novo preço (R$)</label>
+  <input id="newProductPrice" inputmode="decimal" placeholder="Ex.: 12,50">
+  <small>Informe um valor maior que zero. Você pode usar vírgula ou ponto nos centavos.</small>
+  <button id="btnUpdatePrice" type="button" disabled>Atualizar preço</button>
+  <div id="priceMsg" role="status" aria-live="polite"></div>
+</section>
+
 <script type="module">
 import{createClient}from'https://esm.sh/@supabase/supabase-js@2.57.4';
 const db=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',{auth:{persistSession:true,autoRefreshToken:true}});
@@ -91,21 +107,7 @@ $('btnSave').onclick=async()=>{
   $('btnSave').disabled=false;
   ['name','price','pid','imgfile'].forEach(i=>{$(i).value=''});delete $('imgfile').dataset.touched;
 };
-<!-- Área independente para alteração de preço; não modifica o cadastro existente. -->
-<section id="priceEditor" style="border-top:1px solid var(--line);margin-top:24px;padding-top:20px">
-  <h1>💲 Alterar preço</h1>
-  <label for="priceSearch">Buscar produto pelo nome</label>
-  <input id="priceSearch" type="search" placeholder="Digite o nome do produto">
-  <label for="priceProduct">Selecionar produto</label>
-  <select id="priceProduct">
-    <option value="">Carregando produtos…</option>
-  </select>
-  <label for="newProductPrice">Novo preço (R$)</label>
-  <input id="newProductPrice" inputmode="decimal" placeholder="Ex.: 12,50">
-  <small>Informe um valor maior que zero. Você pode usar vírgula ou ponto nos centavos.</small>
-  <button id="btnUpdatePrice" type="button" disabled>Atualizar preço</button>
-  <div id="priceMsg" role="status" aria-live="polite"></div>
-</section>
+
 
 /* Editor isolado de preço. O cadastro acima permanece inalterado. */
 let priceProducts=[];
