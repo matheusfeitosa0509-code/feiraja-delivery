@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Cadastrar produto — FeiraOn</title>
+<style>
+:root{--green:#1F7A6E;--ink:#18372a;--muted:#68786f;--paper:#f6f8f5;--line:#dce8d9}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:var(--paper);color:var(--ink);padding:16px}
+.card{max-width:460px;margin:0 auto 16px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:20px}
+h1{font-size:20px;margin:0 0 14px}label{display:block;font-weight:700;font-size:14px;margin:14px 0 6px}
+input,select{width:100%;padding:13px;border:1px solid var(--line);border-radius:12px;font-size:16px;background:#fff}
+button{width:100%;margin-top:18px;padding:14px;border:0;border-radius:13px;background:var(--green);color:#fff;font-weight:800;font-size:16px}
+button.sec{background:#edf5e9;color:var(--green)}button:disabled{opacity:.6}
+small{color:var(--muted);display:block;margin-top:5px;line-height:1.4}
+#msg{margin-top:14px;font-size:14px;line-height:1.5;white-space:pre-wrap}.ok{color:#1b6b2a}.err{color:#b3261e}
+.hide{display:none}
+</style></head>
+<body>
+<div class="card" id="loginBox">
+<h1>🔐 Entrar</h1>
+<label>E-mail</label><input id="email" type="email" autocomplete="username">
+<label>Senha</label><input id="password" type="password" autocomplete="current-password">
+<button id="btnLogin">Entrar</button>
+<div id="loginMsg" class="err"></div>
+</div>
+
+<div class="card hide" id="formBox">
+<h1>➕ Novo produto</h1>
+<label>Nome</label><input id="name" placeholder="Ex.: Farinha de Ova com Caroço 1kg">
+<label>Preço (R$)</label><input id="price" inputmode="decimal" placeholder="Ex.: 12,50">
+<label>Categoria</label>
+<select id="category">
+<option>Farinhas e derivados</option><option>Frutas</option><option>Mercearia</option><option>Verduras e legumes</option>
+</select>
+<label>Nome do arquivo da foto</label><input id="imgfile" placeholder="farinha-ova-caroco-1kg.jpg">
+<small>A foto precisa estar (ou ser enviada) em imagens/produtos/ no GitHub, com este mesmo nome. Se deixar em branco, será sugerido pelo nome + .jpg.</small>
+<label>ID do produto</label><input id="pid">
+<small>Gerado automaticamente (padrão feiraja_nome_do_produto). Precisa ser único.</small>
+<button id="btnSave">Salvar produto</button>
+<button class="sec" id="btnOut">Sair</button>
+<div id="msg"></div>
+</div>
+
+<script type="module">
+import{createClient}from'https://esm.sh/@supabase/supabase-js@2.57.4';
+const db=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',{auth:{persistSession:true,autoRefreshToken:true}});
+const $=id=>document.getElementById(id);
+const slug=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+function makeId(name){const s=slug(name).replace(/-/g,'_');return s?'feiraja_'+s:''}
+function say(t,c){$('msg').textContent=t;$('msg').className=c||''}
+function setIn(v){$('loginBox').classList.toggle('hide',v);$('formBox').classList.toggle('hide',!v)}
+
+async function show(){
+  const{data:{session}}=await db.auth.getSession();
+  if(!session){setIn(false);return}
+  const{data:m,error}=await db.from('admin_users').select('user_id').eq('user_id',session.user.id).maybeSingle();
+  if(error||!m){await db.auth.signOut();setIn(false);$('loginMsg').textContent='Esta conta não tem autorização de administrador.';return}
+  setIn(true);
+}
+$('btnLogin').onclick=async()=>{
+  $('loginMsg').textContent='Entrando…';
+  const{error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
+  if(error){$('loginMsg').textContent='Falha no login: '+error.message;return}
+  $('loginMsg').textContent='';await show();
+};
+$('btnOut').onclick=async()=>{await db.auth.signOut();setIn(false)};
+$('name').addEventListener('input',()=>{
+  $('pid').value=makeId($('name').value);
+  if(!$('imgfile').dataset.touched){const s=slug($('name').value);$('imgfile').value=s?s+'.jpg':''}
+});
+$('imgfile').addEventListener('input',()=>{$('imgfile').dataset.touched='1'});
+
+$('btnSave').onclick=async()=>{
+  const name=$('name').value.trim();
+  const price=parseFloat($('price').value.replace(',','.'));
+  const category=$('category').value;
+  const id=$('pid').value.trim();
+  let f=$('imgfile').value.trim();
+  if(!name||!id||!(price>0)){say('Preencha nome e preço válidos.','err');return}
+  if(f&&!/^[a-z0-9-]+\.(jpg|jpeg|png|webp)$/.test(f)){say('Nome da foto inválido: use minúsculas, sem acentos/espaços, com .jpg/.png/.webp.','err');return}
+  const image=f?'imagens/produtos/'+f:null;
+  $('btnSave').disabled=true;say('Salvando…');
+  const{error}=await db.from('products').insert({id,name,price,category,image,available:true});
+  if(error){
+    say(error.code==='23505'?'Já existe um produto com este ID. Altere o campo ID.':'Erro: '+error.message,'err');
+    $('btnSave').disabled=false;return;
+  }
+  const{data}=await db.from('products').select('id,name,price,category,image,available').eq('id',id).maybeSingle();
+  say('✅ Produto salvo!\n'+(data?JSON.stringify(data,null,1):'(salvo, mas não consegui reler)')+'\n\nLembrete: a foto deve existir em '+(image||'(sem foto)'),'ok');
+  $('btnSave').disabled=false;
+  ['name','price','pid','imgfile'].forEach(i=>{$(i).value=''});delete $('imgfile').dataset.touched;
+};
+show();
+</script>
+</body></html>
