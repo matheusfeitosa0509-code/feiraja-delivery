@@ -42,6 +42,22 @@ small{color:var(--muted);display:block;margin-top:5px;line-height:1.4}
 <div id="msg"></div>
 </div>
 
+<!-- Área independente para alteração de preço; não modifica o cadastro existente. -->
+<section id="priceEditor" class="card hide" style="border-top:1px solid var(--line);margin-top:24px;padding-top:20px">
+  <h1>💲 Alterar preço</h1>
+  <label for="priceSearch">Buscar produto pelo nome</label>
+  <input id="priceSearch" type="search" placeholder="Digite o nome do produto">
+  <label for="priceProduct">Selecionar produto</label>
+  <select id="priceProduct">
+    <option value="">Carregando produtos…</option>
+  </select>
+  <label for="newProductPrice">Novo preço (R$)</label>
+  <input id="newProductPrice" inputmode="decimal" placeholder="Ex.: 12,50">
+  <small>Informe um valor maior que zero. Você pode usar vírgula ou ponto nos centavos.</small>
+  <button id="btnUpdatePrice" type="button" disabled>Atualizar preço</button>
+  <div id="priceMsg" role="status" aria-live="polite"></div>
+</section>
+
 <script type="module">
 import{createClient}from'https://esm.sh/@supabase/supabase-js@2.57.4';
 const db=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',{auth:{persistSession:true,autoRefreshToken:true}});
@@ -91,6 +107,80 @@ $('btnSave').onclick=async()=>{
   $('btnSave').disabled=false;
   ['name','price','pid','imgfile'].forEach(i=>{$(i).value=''});delete $('imgfile').dataset.touched;
 };
+
+
+/* Editor isolado de preço. O cadastro acima permanece inalterado. */
+let priceProducts=[];
+function showPriceMessage(message,kind=''){
+  $('priceMsg').textContent=message;
+  $('priceMsg').className=kind;
+}
+function renderPriceProducts(){
+  const term=$('priceSearch').value.trim().toLocaleLowerCase('pt-BR');
+  const previous=$('priceProduct').value;
+  const filtered=priceProducts.filter(p=>p.name.toLocaleLowerCase('pt-BR').includes(term));
+  const select=$('priceProduct');
+  select.replaceChildren(new Option('Selecione um produto',''));
+  filtered.forEach(p=>select.add(new Option(p.name+' — R$ '+Number(p.price).toFixed(2).replace('.',','),p.id)));
+  if(filtered.some(p=>p.id===previous))$('priceProduct').value=previous;
+  $('btnUpdatePrice').disabled=!$('priceProduct').value;
+  if(!filtered.length)showPriceMessage('Nenhum produto disponível corresponde à busca.','err');
+  else if(!$('priceProduct').value)$('newProductPrice').value='';
+}
+async function loadPriceProducts(){
+  const {data:{session}}=await db.auth.getSession();
+  if(!session){$('priceEditor').classList.add('hide');return}
+  const {data:membership,error:membershipError}=await db.from('admin_users').select('user_id').eq('user_id',session.user.id).maybeSingle();
+  if(membershipError||!membership){$('priceEditor').classList.add('hide');return}
+  $('priceEditor').classList.remove('hide');
+  showPriceMessage('Carregando produtos…');
+  const {data,error}=await db.from('products').select('id,name,price,available').eq('available',true).order('name');
+  if(error){showPriceMessage('Não foi possível carregar os produtos: '+error.message,'err');return}
+  priceProducts=data||[];
+  renderPriceProducts();
+  if(priceProducts.length)showPriceMessage('Selecione um produto para consultar ou alterar o preço.');
+  else showPriceMessage('Nenhum produto disponível foi encontrado.','err');
+}
+$('priceSearch').addEventListener('input',renderPriceProducts);
+$('priceProduct').addEventListener('change',()=>{
+  const product=priceProducts.find(p=>p.id===$('priceProduct').value);
+  $('newProductPrice').value=product?String(product.price).replace('.',','):'';
+  $('btnUpdatePrice').disabled=!product;
+  showPriceMessage(product?'Preço atual: R$ '+Number(product.price).toFixed(2).replace('.',','):'');
+});
+$('btnUpdatePrice').addEventListener('click',async()=>{
+  const id=$('priceProduct').value;
+  const raw=$('newProductPrice').value.trim();
+  if(!id){showPriceMessage('Selecione um produto.','err');return}
+  if(!raw||!/^[0-9]+([.,][0-9]{1,2})?$/.test(raw)){
+    showPriceMessage('Digite um preço numérico válido, usando vírgula ou ponto.','err');return;
+  }
+  const price=Number(raw.replace(',','.'));
+  if(!Number.isFinite(price)||price<=0){showPriceMessage('O preço deve ser maior que zero.','err');return}
+  const button=$('btnUpdatePrice');
+  button.disabled=true;button.textContent='Salvando…';
+  showPriceMessage('Atualizando preço…');
+  const {data,error}=await db.from('products').update({price}).eq('id',id).select('id,name,price');
+  button.textContent='Atualizar preço';
+  button.disabled=false;
+  if(error){showPriceMessage('Não foi possível atualizar: '+error.message,'err');return}
+  if(!data||data.length===0){
+    showPriceMessage('Nenhuma linha foi atualizada. Verifique a permissão de administrador ou se o produto está indisponível.','err');return;
+  }
+  const updated=data[0];
+  const product=priceProducts.find(p=>p.id===updated.id);
+  if(product)product.price=Number(updated.price);
+  renderPriceProducts();
+  $('priceProduct').value=updated.id;
+  $('newProductPrice').value=String(updated.price).replace('.',',');
+  $('btnUpdatePrice').disabled=false;
+  showPriceMessage('Preço de "'+updated.name+'" atualizado para R$ '+Number(updated.price).toFixed(2).replace('.',',')+'.','ok');
+});
+db.auth.onAuthStateChange((event,session)=>{
+  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session)loadPriceProducts();
+  if(event==='SIGNED_OUT'){$('priceEditor').classList.add('hide');priceProducts=[];$('priceProduct').innerHTML='<option value="">Entre como administrador</option>';$('btnUpdatePrice').disabled=true;}
+});
+
 show();
 </script>
 </body></html>
