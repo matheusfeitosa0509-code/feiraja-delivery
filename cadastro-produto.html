@@ -117,8 +117,9 @@ function renderPriceProducts(){
   const term=$('priceSearch').value.trim().toLocaleLowerCase('pt-BR');
   const previous=$('priceProduct').value;
   const filtered=priceProducts.filter(p=>p.name.toLocaleLowerCase('pt-BR').includes(term));
-  $('priceProduct').innerHTML='<option value="">Selecione um produto</option>'+
-    filtered.map(p=>'<option value="'+p.id+'">'+p.name+' — R$ '+Number(p.price).toFixed(2).replace('.',',')+'</option>').join('');
+  const select=$('priceProduct');
+  select.replaceChildren(new Option('Selecione um produto',''));
+  filtered.forEach(p=>select.add(new Option(p.name+' — R$ '+Number(p.price).toFixed(2).replace('.',','),p.id)));
   if(filtered.some(p=>p.id===previous))$('priceProduct').value=previous;
   $('btnUpdatePrice').disabled=!$('priceProduct').value;
   if(!filtered.length)showPriceMessage('Nenhum produto disponível corresponde à busca.','err');
@@ -173,7 +174,7 @@ $('btnUpdatePrice').addEventListener('click',async()=>{
   showPriceMessage('Preço de "'+updated.name+'" atualizado para R$ '+Number(updated.price).toFixed(2).replace('.',',')+'.','ok');
 });
 db.auth.onAuthStateChange((event,session)=>{
-  if(event==='SIGNED_IN'&&session)loadPriceProducts();
+  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session)loadPriceProducts();
   if(event==='SIGNED_OUT'){priceProducts=[];$('priceProduct').innerHTML='<option value="">Entre como administrador</option>';$('btnUpdatePrice').disabled=true;}
 });
 
