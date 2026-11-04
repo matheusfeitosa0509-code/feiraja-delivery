@@ -103,15 +103,15 @@ jobs:
       - name: Implantar asaas-saque-validacao
         if: inputs.function == 'asaas-saque-validacao'
         run: |
-          supabase functions deploy asaas-saque-validacao \\
-            --project-ref \"$SUPABASE_PROJECT_REF\" \\
+          supabase functions deploy asaas-saque-validacao \
+            --project-ref "$SUPABASE_PROJECT_REF" \
             --no-verify-jwt
 
       - name: Implantar expire-pix
         if: inputs.function == 'expire-pix'
         run: |
-          supabase functions deploy expire-pix \\
-            --project-ref \"$SUPABASE_PROJECT_REF\"
+          supabase functions deploy expire-pix \
+            --project-ref "$SUPABASE_PROJECT_REF"
 
       - name: Registrar SHA implantado
         if: success()
