@@ -382,13 +382,15 @@ $('btnPreviewProductEdit').addEventListener('click',async()=>{
   try{image=productImageValue($('editProductImage').value);}
   catch(error){productEditMessage(error.message,'err');return}
   const button=$('btnPreviewProductEdit');
-  button.disabled=true;button.textContent='Validando imagem…';
+  button.disabled=true;button.textContent='Consultando…';
   try{
-    await validateProductImage(image);
-    button.textContent='Consultando…';
     const {data,error}=await db.from('products').select('id,name,image').eq('id',id).maybeSingle();
     if(error)throw error;
     if(!data)throw new Error('Produto não encontrado ou sem permissão para leitura.');
+    if(image!==(data.image||'')){
+      button.textContent='Validando imagem…';
+      await validateProductImage(image);
+    }
     const changes={};
     if(name!==data.name)changes.name=name;
     if(image!==(data.image||''))changes.image=image||null;
