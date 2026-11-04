@@ -60,6 +60,32 @@ small{color:var(--muted);display:block;margin-top:5px;line-height:1.4}
   <div id="priceMsg" role="status" aria-live="polite"></div>
 </section>
 
+<!-- Editor independente de nome e imagem de produtos existentes. -->
+<section id="productEdit" class="card hide" style="border-top:1px solid var(--line);margin-top:24px;padding-top:20px">
+  <h1>✏️ Editar nome e imagem</h1>
+  <label for="editProductSelect">Selecionar produto</label>
+  <select id="editProductSelect"><option value="">Carregando produtos…</option></select>
+  <label for="editProductName">Nome do produto</label>
+  <input id="editProductName" type="text" maxlength="160" placeholder="Nome do produto">
+  <label for="editProductImage">Caminho da imagem ou URL</label>
+  <input id="editProductImage" type="text" placeholder="imagens/produtos/produto.jpg ou https://...">
+  <small>Use o caminho já utilizado pelo catálogo (imagens/produtos/...) ou uma URL HTTP/HTTPS. A imagem não é enviada por este formulário; o arquivo precisa já estar publicado ou acessível pela URL.</small>
+  <div style="display:flex;gap:12px;align-items:center;margin-top:14px">
+    <div style="flex:1;min-width:0">
+      <strong>Imagem atual</strong>
+      <img id="editImageCurrent" alt="Imagem atual do produto" style="display:block;width:100%;height:130px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:10px">
+    </div>
+    <div style="flex:1;min-width:0">
+      <strong>Nova imagem</strong>
+      <img id="editImageNext" alt="Prévia da nova imagem" style="display:block;width:100%;height:130px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:10px">
+    </div>
+  </div>
+  <div id="editProductPreview" role="status" aria-live="polite" style="margin-top:14px;white-space:pre-wrap"></div>
+  <button id="btnPreviewProductEdit" type="button" disabled>Pré-visualizar alteração</button>
+  <button id="btnConfirmProductEdit" type="button" class="sec hide" disabled>Confirmar e salvar</button>
+  <div id="editProductMsg" role="status" aria-live="polite"></div>
+</section>
+
 <script type="module">
 import{createClient}from'https://esm.sh/@supabase/supabase-js@2.57.4';
 const db=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',{auth:{persistSession:true,autoRefreshToken:true}});
@@ -280,9 +306,149 @@ $('btnConfirmPrice').addEventListener('click',async()=>{
     $('btnUpdatePrice').disabled=!$('priceProduct').value;
   }
 });
+
+// Editor isolado de nome e imagem; não compartilha estado nem funções com o editor de preço.
+let editableProducts=[];
+let productEditSnapshot=null;
+function productEditMessage(message,kind=''){
+  $('editProductMsg').textContent=message;
+  $('editProductMsg').className=kind;
+}
+function productImageValue(value){
+  const raw=String(value||'').trim();
+  if(!raw)return '';
+  if(/^https?:\/\//i.test(raw))return raw;
+  if(raw.startsWith('imagens/produtos/')&&!raw.includes(' ')&&!raw.includes(String.fromCharCode(92)))return raw;
+  throw new Error('Imagem inválida. Use imagens/produtos/nome-do-arquivo.jpg ou uma URL HTTP/HTTPS.');
+}
+function productImagePreview(img,value){
+  const src=String(value||'').trim();
+  img.onerror=()=>{img.removeAttribute('src');img.alt='Não foi possível carregar esta imagem';};
+  if(src)img.src=src;else img.removeAttribute('src');
+}
+function validateProductImage(src){
+  if(!src)return Promise.resolve();
+  return new Promise((resolve,reject)=>{
+    const probe=new Image();
+    probe.onload=()=>probe.naturalWidth>0?resolve():reject(new Error('A imagem não carregou corretamente. Confira o caminho ou URL.'));
+    probe.onerror=()=>reject(new Error('A imagem não carregou na prévia. Confira o caminho ou URL antes de confirmar.'));
+    probe.src=src;
+  });
+}
+function resetProductEditPreview(){
+  productEditSnapshot=null;
+  $('editProductPreview').textContent='';
+  $('btnConfirmProductEdit').classList.add('hide');
+  $('btnConfirmProductEdit').disabled=true;
+  $('btnPreviewProductEdit').disabled=!$('editProductSelect').value;
+}
+async function loadEditableProducts(){
+  const {data:{session}}=await db.auth.getSession();
+  if(!session){$('productEdit').classList.add('hide');return}
+  const {data:membership,error:membershipError}=await db.from('admin_users').select('user_id').eq('user_id',session.user.id).maybeSingle();
+  if(membershipError||!membership){$('productEdit').classList.add('hide');return}
+  $('productEdit').classList.remove('hide');
+  productEditMessage('Carregando produtos…');
+  // A política SELECT atual permite listar somente produtos disponíveis.
+  const {data,error}=await db.from('products').select('id,name,image,available').eq('available',true).order('name');
+  if(error){productEditMessage('Não foi possível carregar os produtos: '+error.message,'err');return}
+  editableProducts=data||[];
+  const select=$('editProductSelect');
+  select.replaceChildren(new Option('Selecione um produto',''));
+  editableProducts.forEach(p=>select.add(new Option(p.name,p.id)));
+  productEditMessage(editableProducts.length?'Selecione um produto para editar o nome e/ou a imagem.':'Nenhum produto disponível foi encontrado.',editableProducts.length?'':'err');
+}
+$('editProductSelect').addEventListener('change',()=>{
+  resetProductEditPreview();
+  const product=editableProducts.find(p=>p.id===$('editProductSelect').value);
+  $('editProductName').value=product?.name||'';
+  $('editProductImage').value=product?.image||'';
+  productImagePreview($('editImageCurrent'),product?.image||'');
+  productImagePreview($('editImageNext'),product?.image||'');
+  productEditMessage(product?'Produto carregado. Altere o nome ou caminho da imagem.':'');
+});
+$('editProductName').addEventListener('input',resetProductEditPreview);
+$('editProductImage').addEventListener('input',()=>{
+  resetProductEditPreview();
+  try{productImagePreview($('editImageNext'),productImageValue($('editProductImage').value));}
+  catch(error){$('editImageNext').removeAttribute('src');}
+});
+$('btnPreviewProductEdit').addEventListener('click',async()=>{
+  const id=$('editProductSelect').value;
+  const name=$('editProductName').value.trim();
+  if(!id){productEditMessage('Selecione um produto.','err');return}
+  if(!name){productEditMessage('O nome não pode ficar vazio.','err');return}
+  let image;
+  try{image=productImageValue($('editProductImage').value);}
+  catch(error){productEditMessage(error.message,'err');return}
+  const button=$('btnPreviewProductEdit');
+  button.disabled=true;button.textContent='Consultando…';
+  try{
+    const {data,error}=await db.from('products').select('id,name,image').eq('id',id).maybeSingle();
+    if(error)throw error;
+    if(!data)throw new Error('Produto não encontrado ou sem permissão para leitura.');
+    if(image!==(data.image||'')){
+      button.textContent='Validando imagem…';
+      await validateProductImage(image);
+    }
+    const changes={};
+    if(name!==data.name)changes.name=name;
+    if(image!==(data.image||''))changes.image=image||null;
+    if(!Object.keys(changes).length){
+      resetProductEditPreview();
+      productEditMessage('Nenhuma alteração detectada. Nada foi salvo.');
+      return;
+    }
+    productEditSnapshot={id,before:{name:data.name,image:data.image||''},after:{name,image:image||''},changes};
+    $('editProductPreview').textContent=
+      'ANTES\nNome: '+(data.name||'(vazio)')+'\nImagem: '+(data.image||'(sem imagem)')+
+      '\n\nDEPOIS\nNome: '+name+'\nImagem: '+(image||'(sem imagem)');
+    $('btnConfirmProductEdit').classList.remove('hide');
+    $('btnConfirmProductEdit').disabled=false;
+    productEditMessage('Confira o antes e o depois. A gravação só ocorrerá após sua confirmação.');
+  }catch(error){
+    productEditMessage('Não foi possível preparar a prévia: '+error.message,'err');
+  }finally{
+    button.textContent='Pré-visualizar alteração';
+    button.disabled=!$('editProductSelect').value;
+  }
+});
+$('btnConfirmProductEdit').addEventListener('click',async()=>{
+  const snapshot=productEditSnapshot;
+  if(!snapshot)return;
+  const button=$('btnConfirmProductEdit');
+  button.disabled=true;button.textContent='Reconsultando…';
+  $('btnPreviewProductEdit').disabled=true;
+  try{
+    const {data:current,error:readError}=await db.from('products').select('id,name,image').eq('id',snapshot.id).maybeSingle();
+    if(readError)throw readError;
+    if(!current)throw new Error('Produto não encontrado ou sem permissão para leitura.');
+    if(current.name!==snapshot.before.name||(current.image||'')!==snapshot.before.image){
+      resetProductEditPreview();
+      throw new Error('O produto foi alterado desde a prévia. Carregue novamente e gere outra prévia.');
+    }
+    const {data,error}=await db.from('products').update(snapshot.changes).eq('id',snapshot.id).select('id,name,image');
+    if(error)throw error;
+    if(!data||data.length!==1)throw new Error('Nenhuma linha foi atualizada. Verifique a autorização administrativa.');
+    const updated=data[0];
+    const cached=editableProducts.find(p=>p.id===updated.id);
+    if(cached){cached.name=updated.name;cached.image=updated.image;}
+    await loadEditableProducts();
+    $('editProductSelect').value=updated.id;
+    $('editProductSelect').dispatchEvent(new Event('change'));
+    productEditMessage('Produto atualizado com sucesso.','ok');
+  }catch(error){
+    productEditMessage('Não foi possível salvar nome/imagem: '+error.message,'err');
+  }finally{
+    button.textContent='Confirmar e salvar';
+    if(productEditSnapshot)button.disabled=false;
+    $('btnPreviewProductEdit').disabled=!$('editProductSelect').value;
+  }
+});
+
 db.auth.onAuthStateChange((event,session)=>{
-  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session)loadPriceProducts();
-  if(event==='SIGNED_OUT'){$('priceEditor').classList.add('hide');priceProducts=[];$('priceProduct').innerHTML='<option value="">Entre como administrador</option>';$('btnUpdatePrice').disabled=true;}
+  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){loadPriceProducts();loadEditableProducts();}
+  if(event==='SIGNED_OUT'){$('priceEditor').classList.add('hide');priceProducts=[];$('priceProduct').innerHTML='<option value="">Entre como administrador</option>';$('btnUpdatePrice').disabled=true;$('productEdit').classList.add('hide');editableProducts=[];}
 });
 
 show();
