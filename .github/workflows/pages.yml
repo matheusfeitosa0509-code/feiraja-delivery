@@ -21,11 +21,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Prepare site-only artifact
         run: |
-          mkdir -p _site/previa
-          cp -a ./*.html ./turnstile.js ./icons ./imagens ./previa ./manifest.json ./sw.js _site/
-          cp ./index.html _site/previa/index.html
-          sed -i 's#src="./imagens/166159-removebg-preview.png"#src="../imagens/166159-removebg-preview.png"#' _site/previa/index.html
-          cp ./recuperar-senha.html _site/previa/recuperar-senha.html
+          cp -a ./index.html ./admin.html ./cadastro-produto.html ./loja.html ./politica-privacidade.html ./recuperar-senha.html ./termos.html ./turnstile.js ./icons ./imagens ./manifest.json ./sw.js _site/
           rm -f _site/imagens/produtos/leia.txt
       - name: Configure Pages
         uses: actions/configure-pages@v5
