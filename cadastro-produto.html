@@ -325,14 +325,19 @@ function productEditMessage(message,kind=''){
 function productImageValue(value){
   const raw=String(value||'').trim();
   if(!raw)return '';
-  if(/^https?:\/\//i.test(raw))return raw;
-  if(raw.startsWith('imagens/produtos/')&&!raw.includes(' ')&&!raw.includes(String.fromCharCode(92)))return raw;
-  throw new Error('Imagem inválida. Use imagens/produtos/nome-do-arquivo.jpg ou uma URL HTTP/HTTPS.');
+  if(/^https:\/\//i.test(raw)){
+    let parsed;
+    try{parsed=new URL(raw);}catch{throw new Error('URL de imagem inválida.');}
+    if(parsed.protocol==='https:'&&parsed.hostname&&!parsed.username&&!parsed.password)return parsed.href;
+  }
+  if(raw.startsWith('imagens/produtos/')&&!/\s/.test(raw)&&!raw.includes('?')&&!raw.includes('#')&&!raw.includes(String.fromCharCode(92))&&!raw.split('/').some(part=>part==='.'||part==='..'))return raw;
+  throw new Error('Imagem inválida. Use imagens/produtos/nome-do-arquivo.jpg ou uma URL HTTPS.');
 }
 function productImagePreview(img,value){
-  const src=String(value||'').trim();
+  let src='';
+  try{src=productImageValue(value);}catch(error){img.removeAttribute('src');img.alt='Imagem inválida';return;}
   img.onerror=()=>{img.removeAttribute('src');img.alt='Não foi possível carregar esta imagem';};
-  if(src)img.src=src;else img.removeAttribute('src');
+  if(src)img.setAttribute('src',src);else img.removeAttribute('src');
 }
 function validateProductImage(src){
   if(!src)return Promise.resolve();
@@ -456,7 +461,7 @@ $('btnConfirmProductEdit').addEventListener('click',async()=>{
 
 db.auth.onAuthStateChange((event,session)=>{
   if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){loadPriceProducts();loadEditableProducts();}
-  if(event==='SIGNED_OUT'){$('priceEditor').classList.add('hide');priceProducts=[];$('priceProduct').innerHTML='<option value="">Entre como administrador</option>';$('btnUpdatePrice').disabled=true;$('productEdit').classList.add('hide');editableProducts=[];}
+  if(event==='SIGNED_OUT'){$('priceEditor').classList.add('hide');priceProducts=[];$('priceProduct').replaceChildren(new Option('Entre como administrador',''));$('btnUpdatePrice').disabled=true;$('productEdit').classList.add('hide');editableProducts=[];}
 });
 
 show();
