@@ -21,7 +21,7 @@ small{color:var(--muted);display:block;margin-top:5px;line-height:1.4}
 <h1>🔐 Entrar</h1>
 <label>E-mail</label><input id="email" type="email" autocomplete="username">
 <label>Senha</label><input id="password" type="password" autocomplete="current-password">
-<div id="productAdminTurnstile" style="margin:12px 0;min-height:65px"></div><small id="productAdminCaptchaMessage" role="status">Conclua a verificação de segurança para habilitar o envio.</small>
+<div id="productAdminTurnstile" style="margin:12px 0;min-height:65px"></div><small id="productAdminCaptchaMessage" role="status">Conclua a verificação ou envie sem token se ela falhar.</small><button id="productAdminCaptchaRetry" type="button" hidden class="sec" style="margin-top:4px;padding:8px 12px;width:auto">Tentar de novo</button>
 <button id="btnLogin" disabled>Entrar</button>
 <div id="loginMsg" class="err"></div>
 </div>
@@ -104,14 +104,13 @@ async function show(){
   if(error||!m){await db.auth.signOut();setIn(false);$('loginMsg').textContent='Esta conta não tem autorização de administrador.';return}
   setIn(true);
 }
-const productAdminCaptcha=window.FeiraTurnstile.create({containerId:'productAdminTurnstile',buttonId:'btnLogin',messageId:'productAdminCaptchaMessage'});
+const productAdminCaptcha=window.FeiraTurnstile.create({containerId:'productAdminTurnstile',buttonId:'btnLogin',messageId:'productAdminCaptchaMessage',retryButtonId:'productAdminCaptchaRetry'});
 $('loginBox').addEventListener('focusin',()=>productAdminCaptcha.init());
 $('btnLogin').onclick=async()=>{
   const captchaToken=productAdminCaptcha.getToken();
-  if(!captchaToken){$('loginMsg').textContent='Conclua a verificação de segurança antes de continuar.';return;}
   $('btnLogin').disabled=true;$('loginMsg').textContent='Entrando…';
   try{
-    const{error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value,options:{captchaToken}});
+    const{error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value,options:{...(captchaToken?{captchaToken}:{})}});
     if(error){$('loginMsg').textContent='Falha no login: '+error.message;return}
     $('loginMsg').textContent='';await show();
   }catch(error){$('loginMsg').textContent='Não foi possível concluir o login. Verifique sua conexão e tente novamente.';}
