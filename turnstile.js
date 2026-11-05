@@ -22,8 +22,10 @@
   function setMessage(value){message.textContent=value;}
   function setRequired(value){
    required=!!value;container.hidden=!required;
-   if(!required){token='';setMessage('');}
-   else if(!token)setMessage('Conclua a verificação de segurança para habilitar o envio.');
+   if(!required){
+    token='';setMessage('');
+    if(api&&widgetId!==null){try{api.reset(widgetId);}catch(error){}}
+   }else if(!token)setMessage('Conclua a verificação de segurança para habilitar o envio.');
    updateButton();
   }
   async function init(){
