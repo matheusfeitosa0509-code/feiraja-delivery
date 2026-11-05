@@ -42,7 +42,6 @@ document.querySelector('#emailForm').addEventListener('focusin',()=>recoveryCapt
 document.querySelector('#emailForm').addEventListener('submit',async e=>{
  e.preventDefault(); if(!configured)return;
  const btn=document.querySelector('#sendBtn');const captchaToken=recoveryCaptcha.getToken();
- if(!captchaToken){show('Conclua a verificação de segurança antes de continuar.');return;}
  btn.disabled=true;btn.textContent='Enviando…';
  const email=document.querySelector('#email').value.trim();
  const redirectTo=location.origin+location.pathname.replace(/[^/]*$/,'')+'recuperar-senha.html';
