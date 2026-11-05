@@ -33,6 +33,7 @@
    initializing=true;container.hidden=false;updateButton();
    try{
     api=await loadScript();
+    if(!required)return;
     widgetId=api.render(container,{sitekey:SITE_KEY,
      callback:function(value){token=value;setMessage('Verificação concluída.');updateButton();},
      'expired-callback':function(){token='';setMessage('A verificação expirou. Faça-a novamente.');updateButton();},
