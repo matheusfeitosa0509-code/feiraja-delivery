@@ -24,6 +24,7 @@ jobs:
           mkdir -p _site/previa
           cp -a ./*.html ./icons ./imagens ./previa ./manifest.json ./sw.js _site/
           cp ./index.html _site/previa/index.html
+          sed -i 's#src="./imagens/166159-removebg-preview.png"#src="../imagens/166159-removebg-preview.png"#' _site/previa/index.html
           cp ./recuperar-senha.html _site/previa/recuperar-senha.html
           rm -f _site/imagens/produtos/leia.txt
       - name: Configure Pages
