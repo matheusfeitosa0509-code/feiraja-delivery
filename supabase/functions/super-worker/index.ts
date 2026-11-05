@@ -44,6 +44,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
+const MAX_JSON_BODY_BYTES = 64 * 1024;
+async function readJsonBody(req: Request): Promise<any> {
+  const declaredLength = Number(req.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_JSON_BODY_BYTES) throw new RangeError("BODY_TOO_LARGE");
+  if (!req.body) return {};
+  const reader = req.body.getReader(); const chunks: Uint8Array[] = []; let total = 0;
+  while (true) { const { done, value } = await reader.read(); if (done) break; total += value.byteLength; if (total > MAX_JSON_BODY_BYTES) { await reader.cancel(); throw new RangeError("BODY_TOO_LARGE"); } chunks.push(value); }
+  const bytes = new Uint8Array(total); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  try { return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)); } catch { throw new SyntaxError("INVALID_JSON"); }
+}
+
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
   headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -99,9 +110,9 @@ Deno.serve(async (req: Request) => {
     if (!supabaseUrl || !serviceKey) return json({ error: "Configuração interna do servidor incompleta." }, 500);
     const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
-    const body = await req.json().catch(() => ({}));
+    let body: any;\n    try { body = await readJsonBody(req); }\n    catch (error) { if (error instanceof RangeError) return json({ error: "Corpo da requisição excede o limite de 65536 bytes." }, 413); return json({ error: "Corpo JSON inválido." }, 400); }\n    if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Corpo JSON inválido." }, 400);
     const noticeType = String(url.searchParams.get("type") || url.searchParams.get("topic") || body?.type || body?.topic || "");
-    const paymentIdFromNotice = String(url.searchParams.get("data.id") || url.searchParams.get("id") || body?.data?.id || "");
+    const paymentIdFromNotice = String(url.searchParams.get("data.id") || url.searchParams.get("id") || body?.data?.id || "");\n    if (noticeType.length > 32 || paymentIdFromNotice.length > 100) return json({ error: "Identificador ou tipo de notificação excede o tamanho permitido." }, 400);
     if (noticeType && noticeType !== "payment") return json({ received: true, ignored: true });
     if (noticeType === "payment" && !paymentIdFromNotice) return json({ received: true, ignored: true });
     if (noticeType === "payment" && paymentIdFromNotice) {
@@ -113,7 +124,7 @@ Deno.serve(async (req: Request) => {
       }
       {
         const signatureHeader = req.headers.get("x-signature") || "";
-        const requestId = req.headers.get("x-request-id") || "";
+        const requestId = req.headers.get("x-request-id") || "";\n        if (signatureHeader.length > 512 || requestId.length > 200) return json({ error: "Cabeçalho de assinatura excede o tamanho permitido." }, 400);
         const parts = Object.fromEntries(signatureHeader.split(",").map((part) => {
           const index = part.indexOf("=");
           return index > -1 ? [part.slice(0, index).trim(), part.slice(index + 1).trim()] : ["", ""];
@@ -220,17 +231,17 @@ Deno.serve(async (req: Request) => {
 
     const customer = body?.customer;
     const requestedItems = body?.items;
-    const paymentMethod = String(body?.paymentMethod || "pix").toLowerCase();
+    const rawPaymentMethod = body?.paymentMethod ?? "pix";\n    if (typeof rawPaymentMethod !== "string" || rawPaymentMethod.length > 32) return json({ error: "Forma de pagamento inválida ou muito longa." }, 400);\n    const paymentMethod = rawPaymentMethod.toLowerCase();
     const asaasEnabled = Deno.env.get("ASAAS_ENABLED") === "true";
     const asaasApiKey = asaasEnabled ? (Deno.env.get("ASAAS_API_KEY") || "") : "";
     if (!["pix", "cash", "card_on_delivery"].includes(paymentMethod)) return json({ error: "Forma de pagamento inválida." }, 400);
     if (paymentMethod === "pix" && (asaasEnabled ? !asaasApiKey : !mpToken)) {
       return json({ error: asaasEnabled ? "Asaas Pix ainda não está configurado." : "Pagamento Pix ainda não está configurado." }, 503);
     }
-    if (!customer || !Array.isArray(requestedItems) || requestedItems.length < 1 || requestedItems.length > 50) {
+    if (!customer || typeof customer !== "object" || Array.isArray(customer) || !Array.isArray(requestedItems) || requestedItems.length < 1 || requestedItems.length > 50) {
       return json({ error: "Pedido inválido: informe os dados do cliente e os produtos." }, 400);
     }
-    const name = String(customer.name ?? "").trim().slice(0, 120);
+    const stringLimits: Record<string, number> = { name: 120, phone: 40, cpf: 14, email: 254, address: 300 };\n    for (const [field, limit] of Object.entries(stringLimits)) { const value = customer[field]; if (value != null && (typeof value !== "string" || value.length > limit)) return json({ error: `Campo ${field} inválido ou maior que ${limit} caracteres.` }, 400); }\n    const name = String(customer.name ?? "").trim().slice(0, 120);
     const phone = String(customer.phone ?? "").trim().slice(0, 40);
     const cpf = paymentMethod === "pix" ? String(customer.cpf ?? "").replace(/\D/g, "").slice(0, asaasEnabled ? 14 : 11) : "";
     const validPixDocument = asaasEnabled ? isValidCpfOrCnpj(cpf) : isValidCpf(cpf);
@@ -254,7 +265,7 @@ Deno.serve(async (req: Request) => {
     for (const item of requestedItems) {
       const id = String(item?.id ?? "").trim();
       const qty = Number(item?.qty);
-      if (!id || !Number.isInteger(qty) || qty < 1 || qty > 100) return json({ error: "Quantidade ou produto inválido." }, 400);
+      if (!id || id.length > 100 || !Number.isInteger(qty) || qty < 1 || qty > 100) return json({ error: "Identificador de produto ou quantidade inválida." }, 400);
       const accumulatedQty = (qtyById.get(id) ?? 0) + qty;
       if (accumulatedQty > 100) return json({ error: "A quantidade total de cada produto não pode passar de 100 unidades." }, 400);
       qtyById.set(id, accumulatedQty);
