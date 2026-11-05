@@ -1,11 +1,10 @@
--- Endurece os privilégios padrão de objetos novos no schema public.
--- A conexão usada nesta auditoria/migrations é postgres. O projeto também tem
--- ACLs padrão registradas para supabase_admin, então cobrimos ambos os criadores.
+-- Restringe os privilégios padrão de objetos novos no schema public.
+-- Aplica-se a objetos criados por postgres e supabase_admin.
+-- Não altera privilégios de service_role nem do proprietário.
 --
--- IMPORTANTE: EXECUTE de PUBLIC é privilégio global padrão do PostgreSQL.
--- Não é possível revogá-lo apenas no escopo IN SCHEMA; por isso a revogação
--- de PUBLIC abaixo é global para novas funções criadas por cada papel.
--- Os GRANTs explícitos para service_role e para o proprietário são preservados.
+-- Observação: o EXECUTE padrão concedido implicitamente a PUBLIC em funções
+-- novas permanece ativo. A convenção por migration está documentada em
+-- supabase/migrations/README.md.
 
 -- Objetos criados por postgres.
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
@@ -14,8 +13,8 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   REVOKE EXECUTE ON FUNCTIONS FROM anon, authenticated;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres
-  REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  REVOKE ALL ON SEQUENCES FROM anon, authenticated;
 
 -- Objetos criados por supabase_admin.
 ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
@@ -24,5 +23,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
 ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
   REVOKE EXECUTE ON FUNCTIONS FROM anon, authenticated;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin
-  REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
+  REVOKE ALL ON SEQUENCES FROM anon, authenticated;
