@@ -19,6 +19,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Prepare site-only artifact
+        run: |
+          mkdir -p _site/previa
+          cp -a ./*.html ./icons ./imagens ./previa ./manifest.json ./sw.js _site/
+          cp ./index.html _site/previa/index.html
+          cp ./recuperar-senha.html _site/previa/recuperar-senha.html
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
@@ -26,7 +32,7 @@ jobs:
       - name: Upload static site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
