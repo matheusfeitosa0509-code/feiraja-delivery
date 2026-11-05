@@ -365,7 +365,7 @@ async function loadEditableProducts(){
   const select=$('editProductSelect');
   select.replaceChildren(new Option('Selecione um produto',''));
   editableProducts.forEach(p=>select.add(new Option(p.name+(p.available?'':' — INDISPONÍVEL'),p.id)));
-  productEditMessage(editableProducts.length?'Selecione um produto para editar o nome e/ou a imagem.':'Nenhum produto disponível foi encontrado.',editableProducts.length?'':'err');
+  productEditMessage(editableProducts.length?'Selecione um produto para editar o nome e/ou a imagem.':'Nenhum produto cadastrado foi encontrado.',editableProducts.length?'':'err');
 }
 $('editProductSelect').addEventListener('change',()=>{
   resetProductEditPreview();
