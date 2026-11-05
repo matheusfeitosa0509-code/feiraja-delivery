@@ -24,19 +24,51 @@ if(configured){supabase=createClient(SUPABASE_URL,SUPABASE_PUBLIC_KEY,{auth:{flo
 else {show('A chave pública (publishable) do Supabase já está configurada nesta página. Não use service_role ou chave secreta.');}
 const emailView=document.querySelector('#emailView'), passwordView=document.querySelector('#passwordView');
 const recoveryHash=new URLSearchParams(location.hash.replace(/^#/,''));
+// Guarde somente o indicador do fluxo; nunca armazene nem registre os valores do hash.
+const isRecoveryUrl=recoveryHash.get('type')==='recovery';
 const recoveryError=(recoveryHash.get('error_description')||'')+' '+(recoveryHash.get('error')||'')+' '+(recoveryHash.get('error_code')||'');
 if(/otp_expired|expired|invalid|link is invalid/i.test(recoveryError)){
  show('Este link é inválido ou venceu. Solicite outro link de recuperação.');
  history.replaceState(null,'',location.pathname+location.search);
 }
 let recoverySessionReady=false;
-supabase.auth.onAuthStateChange(async(event,session)=>{
+let recoverySessionCheckStarted=false;
+const invalidRecoveryMessage='Este link é inválido ou venceu. Solicite outro link de recuperação.';
+function logSafeError(label,error){
+ console.error(label,{name:error?.name,code:error?.code,status:error?.status});
+}
+function activateRecoverySession(session){
+ if(!session)return false;
+ recoverySessionReady=true;
+ emailView.hidden=true;passwordView.hidden=false;
+ show('Link validado. Escolha sua nova senha.',true);
+ return true;
+}
+function showInvalidRecovery(){
+ if(!recoverySessionReady)show(invalidRecoveryMessage);
+}
+async function verifyRecoverySession(){
+ if(!isRecoveryUrl||recoverySessionCheckStarted)return;
+ recoverySessionCheckStarted=true;
+ try{
+  const {data,error}=await supabase.auth.getSession();
+  if(error){logSafeError('Erro ao validar sessão de recuperação:',error);showInvalidRecovery();return;}
+  if(!activateRecoverySession(data?.session))showInvalidRecovery();
+ }catch(error){
+  logSafeError('Erro ao inicializar recuperação de senha:',error);
+  showInvalidRecovery();
+ }
+}
+supabase.auth.onAuthStateChange((event,session)=>{
  if(event==='PASSWORD_RECOVERY'){
-   recoverySessionReady=!!session;
-   if(session){emailView.hidden=true;passwordView.hidden=false;show('Link validado. Escolha sua nova senha.',true);}
-   else show('Não foi possível validar este link. Solicite outro e-mail e abra o link mais recente.');
+  if(!activateRecoverySession(session))showInvalidRecovery();
+ }
+ if(isRecoveryUrl&&event==='INITIAL_SESSION'){
+  void verifyRecoverySession();
  }
 });
+// getSession aguarda a inicialização do cliente; só é consultado para links de recuperação.
+if(isRecoveryUrl)void verifyRecoverySession();
 const recoveryCaptcha=window.FeiraTurnstile.create({containerId:'recoveryTurnstile',buttonId:'sendBtn',messageId:'recoveryCaptchaMessage',retryButtonId:'recoveryCaptchaRetry'});
 document.querySelector('#emailForm').addEventListener('focusin',()=>recoveryCaptcha.init());
 document.querySelector('#emailForm').addEventListener('submit',async e=>{
@@ -47,9 +79,9 @@ document.querySelector('#emailForm').addEventListener('submit',async e=>{
  const redirectTo=location.origin+location.pathname.replace(/[^/]*$/,'')+'recuperar-senha.html';
  try{
   const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo,...(captchaToken?{captchaToken}:{})});
-  if(error){console.error('Erro ao enviar recuperação:',error);show('Não foi possível enviar o e-mail automático. Por favor, solicite a recuperação de senha diretamente pelo nosso WhatsApp: +55 92 9444-4989.');}
+  if(error){logSafeError('Erro ao enviar recuperação:',error);show('Não foi possível enviar o e-mail automático. Por favor, solicite a recuperação de senha diretamente pelo nosso WhatsApp: +55 92 9444-4989.');}
   else show('Se houver uma conta cadastrada com esse e-mail, você receberá um link para redefinir a senha. Confira também o spam.',true);
- }catch(error){show('Não foi possível concluir a recuperação agora. Verifique sua conexão e tente novamente.');}
+ }catch(error){logSafeError('Erro ao solicitar recuperação:',error);show('Não foi possível concluir a recuperação agora. Verifique sua conexão e tente novamente.');}
  finally{recoveryCaptcha.reset();btn.textContent='Enviar link de recuperação';}
 });
 document.querySelector('#passwordForm').addEventListener('submit',async e=>{
