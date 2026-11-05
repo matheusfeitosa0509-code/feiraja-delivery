@@ -330,7 +330,7 @@ function productImageValue(value){
     try{parsed=new URL(raw);}catch{throw new Error('URL de imagem inválida.');}
     if(parsed.protocol==='https:'&&parsed.hostname&&!parsed.username&&!parsed.password)return parsed.href;
   }
-  if(/^imagens\/produtos\/[A-Za-z0-9._/-]+$/.test(raw)&&!raw.split('/').some(part=>part==='.'||part==='..'))return raw;
+  if(raw.startsWith('imagens/produtos/')&&!/[\\s?#]/.test(raw)&&!raw.includes(String.fromCharCode(92))&&!raw.split('/').some(part=>part==='.'||part==='..'))return raw;
   throw new Error('Imagem inválida. Use imagens/produtos/nome-do-arquivo.jpg ou uma URL HTTPS.');
 }
 function productImagePreview(img,value){
