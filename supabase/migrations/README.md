@@ -111,44 +111,57 @@ GRANT EXECUTE ON FUNCTION public.__acl_probe_supabase_admin_fn_restricted()
 RESET ROLE;
 ```
 
-### 4. Conferir privilégios de tabelas e sequências
+### 4. Conferir todos os privilégios de tabelas e sequências
 
-Resultado esperado para cada uma das duas tabelas e duas sequências:
-- `anon` e `authenticated`: sem privilégios diretos de tabela/sequence provenientes dos defaults testados.
-- `service_role`: mantém os privilégios padrão que já estavam concedidos.
-- Proprietário (`postgres` ou `supabase_admin`): mantém os privilégios inerentes ao proprietário.
+A consulta abaixo lista cada privilégio relevante por papel e objeto. Esperado: `anon` e `authenticated` sem privilégios diretos nos objetos novos; `service_role` com os privilégios padrão preservados; e o proprietário com os privilégios inerentes à propriedade.
 
 ```sql
+WITH objects(object_name, owner_name) AS (
+  VALUES
+    ('public.__acl_probe_postgres_table'::text, 'postgres'::text),
+    ('public.__acl_probe_supabase_admin_table', 'supabase_admin')
+),
+roles AS (
+  SELECT object_name, owner_name, 'anon'::text AS role_name FROM objects
+  UNION ALL SELECT object_name, owner_name, 'authenticated' FROM objects
+  UNION ALL SELECT object_name, owner_name, 'service_role' FROM objects
+  UNION ALL SELECT object_name, owner_name, owner_name FROM objects
+),
+privileges(privilege_name) AS (
+  VALUES ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'),
+         ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')
+)
 SELECT
-  object_name,
-  object_type,
-  has_table_privilege('anon', object_name, 'SELECT') AS anon_select,
-  has_table_privilege('authenticated', object_name, 'SELECT') AS authenticated_select,
-  has_table_privilege('service_role', object_name, 'SELECT') AS service_role_select,
-  has_table_privilege(owner_name, object_name, 'SELECT') AS owner_select,
-  owner_name
-FROM (
-  SELECT 'public.__acl_probe_postgres_table'::text AS object_name,
-         'table'::text AS object_type, 'postgres'::text AS owner_name
-  UNION ALL
-  SELECT 'public.__acl_probe_supabase_admin_table',
-         'table', 'supabase_admin'
-) t;
+  r.object_name,
+  r.role_name,
+  p.privilege_name,
+  has_table_privilege(r.role_name, r.object_name, p.privilege_name) AS allowed
+FROM roles r
+CROSS JOIN privileges p
+ORDER BY r.object_name, r.role_name, p.privilege_name;
 
+WITH objects(object_name, owner_name) AS (
+  VALUES
+    ('public.__acl_probe_postgres_seq'::text, 'postgres'::text),
+    ('public.__acl_probe_supabase_admin_seq', 'supabase_admin')
+),
+roles AS (
+  SELECT object_name, owner_name, 'anon'::text AS role_name FROM objects
+  UNION ALL SELECT object_name, owner_name, 'authenticated' FROM objects
+  UNION ALL SELECT object_name, owner_name, 'service_role' FROM objects
+  UNION ALL SELECT object_name, owner_name, owner_name FROM objects
+),
+privileges(privilege_name) AS (
+  VALUES ('USAGE'), ('SELECT'), ('UPDATE')
+)
 SELECT
-  object_name,
-  has_sequence_privilege('anon', object_name, 'USAGE') AS anon_usage,
-  has_sequence_privilege('authenticated', object_name, 'USAGE') AS authenticated_usage,
-  has_sequence_privilege('service_role', object_name, 'USAGE') AS service_role_usage,
-  has_sequence_privilege(owner_name, object_name, 'USAGE') AS owner_usage,
-  owner_name
-FROM (
-  SELECT 'public.__acl_probe_postgres_seq'::text AS object_name,
-         'postgres'::text AS owner_name
-  UNION ALL
-  SELECT 'public.__acl_probe_supabase_admin_seq',
-         'supabase_admin'
-) s;
+  r.object_name,
+  r.role_name,
+  p.privilege_name,
+  has_sequence_privilege(r.role_name, r.object_name, p.privilege_name) AS allowed
+FROM roles r
+CROSS JOIN privileges p
+ORDER BY r.object_name, r.role_name, p.privilege_name;
 ```
 
 ### 5. Conferir funções: PUBLIC padrão versus revogação por função
