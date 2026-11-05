@@ -158,10 +158,10 @@ function renderPriceProducts(){
   const filtered=priceProducts.filter(p=>p.name.toLocaleLowerCase('pt-BR').includes(term));
   const select=$('priceProduct');
   select.replaceChildren(new Option('Selecione um produto',''));
-  filtered.forEach(p=>select.add(new Option(p.name+' — R$ '+Number(p.price).toFixed(2).replace('.',','),p.id)));
+  filtered.forEach(p=>select.add(new Option(p.name+(p.available?'':' — INDISPONÍVEL')+' — R$ '+Number(p.price).toFixed(2).replace('.',','),p.id)));
   if(filtered.some(p=>p.id===previous))$('priceProduct').value=previous;
   $('btnUpdatePrice').disabled=!$('priceProduct').value;
-  if(!filtered.length)showPriceMessage('Nenhum produto disponível corresponde à busca.','err');
+  if(!filtered.length)showPriceMessage('Nenhum produto corresponde à busca.','err');
   else if(!$('priceProduct').value)$('newProductPrice').value='';
 }
 async function loadPriceProducts(){
@@ -171,12 +171,12 @@ async function loadPriceProducts(){
   if(membershipError||!membership){$('priceEditor').classList.add('hide');return}
   $('priceEditor').classList.remove('hide');
   showPriceMessage('Carregando produtos…');
-  const {data,error}=await db.from('products').select('id,name,price,available').eq('available',true).order('name');
+  const {data,error}=await db.from('products').select('id,name,price,available').order('name');
   if(error){showPriceMessage('Não foi possível carregar os produtos: '+error.message,'err');return}
   priceProducts=data||[];
   renderPriceProducts();
   if(priceProducts.length)showPriceMessage('Selecione um produto para consultar ou alterar o preço.');
-  else showPriceMessage('Nenhum produto disponível foi encontrado.','err');
+  else showPriceMessage('Nenhum produto cadastrado foi encontrado.','err');
 }
 function formatPrice(value){return Number(value).toFixed(2).replace('.',',');}
 function resetPricePreview(){
@@ -358,13 +358,13 @@ async function loadEditableProducts(){
   if(membershipError||!membership){$('productEdit').classList.add('hide');return}
   $('productEdit').classList.remove('hide');
   productEditMessage('Carregando produtos…');
-  // A política SELECT atual permite listar somente produtos disponíveis.
-  const {data,error}=await db.from('products').select('id,name,image,available').eq('available',true).order('name');
+  // A consulta administrativa inclui produtos disponíveis e indisponíveis.
+  const {data,error}=await db.from('products').select('id,name,image,available').order('name');
   if(error){productEditMessage('Não foi possível carregar os produtos: '+error.message,'err');return}
   editableProducts=data||[];
   const select=$('editProductSelect');
   select.replaceChildren(new Option('Selecione um produto',''));
-  editableProducts.forEach(p=>select.add(new Option(p.name,p.id)));
+  editableProducts.forEach(p=>select.add(new Option(p.name+(p.available?'':' — INDISPONÍVEL'),p.id)));
   productEditMessage(editableProducts.length?'Selecione um produto para editar o nome e/ou a imagem.':'Nenhum produto disponível foi encontrado.',editableProducts.length?'':'err');
 }
 $('editProductSelect').addEventListener('change',()=>{
