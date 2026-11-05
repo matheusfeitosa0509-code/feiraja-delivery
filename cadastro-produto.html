@@ -111,7 +111,7 @@ $('btnLogin').onclick=async()=>{
   $('btnLogin').disabled=true;$('loginMsg').textContent='Entrando…';
   try{
     const{error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value,options:{...(captchaToken?{captchaToken}:{})}});
-    if(error){$('loginMsg').textContent='Falha no login: '+error.message;return}
+    if(error){console.error('Falha no login do cadastro de produto:',error);$('loginMsg').textContent='Falha no login. Verifique seus dados e tente novamente.';return}
     $('loginMsg').textContent='';await show();
   }catch(error){$('loginMsg').textContent='Não foi possível concluir o login. Verifique sua conexão e tente novamente.';}
   finally{productAdminCaptcha.reset();}
@@ -135,7 +135,7 @@ $('btnSave').onclick=async()=>{
   $('btnSave').disabled=true;say('Salvando…');
   const{error}=await db.from('products').insert({id,name,price,category,image,available:true});
   if(error){
-    say(error.code==='23505'?'Já existe um produto com este ID. Altere o campo ID.':'Erro: '+error.message,'err');
+    console.error('Falha ao cadastrar produto:',error);say(error.code==='23505'?'Já existe um produto com este ID. Altere o campo ID.':'Não foi possível cadastrar o produto. Tente novamente.','err');
     $('btnSave').disabled=false;return;
   }
   const{data}=await db.from('products').select('id,name,price,category,image,available').eq('id',id).maybeSingle();
@@ -171,7 +171,7 @@ async function loadPriceProducts(){
   $('priceEditor').classList.remove('hide');
   showPriceMessage('Carregando produtos…');
   const {data,error}=await db.from('products').select('id,name,price,available').order('name');
-  if(error){showPriceMessage('Não foi possível carregar os produtos: '+error.message,'err');return}
+  if(error){console.error('Falha ao carregar produtos para editor de preço:',error);showPriceMessage('Não foi possível carregar os produtos. Tente novamente.','err');return}
   priceProducts=data||[];
   renderPriceProducts();
   if(priceProducts.length)showPriceMessage('Selecione um produto para consultar ou alterar o preço.');
@@ -255,7 +255,7 @@ $('btnUpdatePrice').addEventListener('click',async()=>{
     $('btnConfirmPrice').dataset.previewCurrent=String(product.price);
     $('btnConfirmPrice').dataset.previewOld=product.old_price===null?'null':String(product.old_price);
   }catch(error){
-    showPriceMessage('Não foi possível consultar o preço atual: '+error.message,'err');
+    console.error('Falha ao consultar preço atual:',error);showPriceMessage('Não foi possível consultar o preço atual. Tente novamente.','err');
   }finally{
     button.textContent='Pré-visualizar alteração';
     button.disabled=!$('priceProduct').value;
@@ -307,7 +307,7 @@ $('btnConfirmPrice').addEventListener('click',async()=>{
     confirmButton.classList.add('hide');
     showPriceMessage('Preço de "'+updated.name+'" atualizado para R$ '+formatPrice(updated.price)+'.','ok');
   }catch(error){
-    showPriceMessage('Não foi possível atualizar: '+error.message,'err');
+    console.error('Falha ao atualizar preço:',error);showPriceMessage('Não foi possível atualizar o preço. Tente novamente.','err');
   }finally{
     confirmButton.textContent='Confirmar e salvar preço';
     confirmButton.disabled=false;
@@ -377,7 +377,7 @@ async function loadEditableProducts(){
   productEditMessage('Carregando produtos…');
   // A consulta administrativa inclui produtos disponíveis e indisponíveis.
   const {data,error}=await db.from('products').select('id,name,image,available').order('name');
-  if(error){productEditMessage('Não foi possível carregar os produtos: '+error.message,'err');return}
+  if(error){console.error('Falha ao carregar produtos para edição:',error);productEditMessage('Não foi possível carregar os produtos para edição. Tente novamente.','err');return}
   editableProducts=data||[];
   const select=$('editProductSelect');
   select.replaceChildren(new Option('Selecione um produto',''));
@@ -406,7 +406,7 @@ $('btnPreviewProductEdit').addEventListener('click',async()=>{
   if(!name){productEditMessage('O nome não pode ficar vazio.','err');return}
   let image;
   try{image=productImageValue($('editProductImage').value);}
-  catch(error){productEditMessage(error.message,'err');return}
+  catch(error){console.error('Falha ao validar imagem do produto:',error);productEditMessage('Não foi possível validar a imagem informada. Confira o caminho ou URL e tente novamente.','err');return}
   const button=$('btnPreviewProductEdit');
   button.disabled=true;button.textContent='Consultando…';
   try{
@@ -433,7 +433,7 @@ $('btnPreviewProductEdit').addEventListener('click',async()=>{
     $('btnConfirmProductEdit').disabled=false;
     productEditMessage('Confira o antes e o depois. A gravação só ocorrerá após sua confirmação.');
   }catch(error){
-    productEditMessage('Não foi possível preparar a prévia: '+error.message,'err');
+    console.error('Falha ao preparar prévia do produto:',error);productEditMessage('Não foi possível preparar a prévia. Confira os dados e tente novamente.','err');
   }finally{
     button.textContent='Pré-visualizar alteração';
     button.disabled=!$('editProductSelect').value;
@@ -464,7 +464,7 @@ $('btnConfirmProductEdit').addEventListener('click',async()=>{
     $('editProductSelect').dispatchEvent(new Event('change'));
     productEditMessage('Produto atualizado com sucesso.','ok');
   }catch(error){
-    productEditMessage('Não foi possível salvar nome/imagem: '+error.message,'err');
+    console.error('Falha ao salvar alterações do produto:',error);productEditMessage('Não foi possível salvar as alterações do produto. Tente novamente.','err');
   }finally{
     button.textContent='Confirmar e salvar';
     if(productEditSnapshot)button.disabled=false;
