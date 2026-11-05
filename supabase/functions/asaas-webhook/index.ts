@@ -84,7 +84,8 @@ Deno.serve(async (req: Request) => {
   const payment = (body as any).payment;
   const paymentId = String(payment?.id || "");
   const externalReference = String(payment?.externalReference || "");
-  const billingType = String(payment?.billingType || "").toUpperCase();\n  if (event.length > 64 || paymentId.length > 100 || externalReference.length > 100 || billingType.length > 32) return json({ error: "Evento ou identificador excede o tamanho permitido." }, 400);
+  const billingType = String(payment?.billingType || "").toUpperCase();
+  if (event.length > 64 || paymentId.length > 100 || externalReference.length > 100 || billingType.length > 32) return json({ error: "Evento ou identificador excede o tamanho permitido." }, 400);
   const paymentValue = Number(payment?.value);
 
   if (!paymentId || !externalReference || billingType !== "PIX" ||
