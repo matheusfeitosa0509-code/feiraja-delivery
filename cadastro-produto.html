@@ -322,30 +322,43 @@ function productEditMessage(message,kind=''){
   $('editProductMsg').textContent=message;
   $('editProductMsg').className=kind;
 }
-function productImageValue(value){
+function productImageUrl(value){
   const raw=String(value||'').trim();
-  if(!raw)return '';
+  if(!raw)return null;
   if(/^https:\/\//i.test(raw)){
-    let parsed;
-    try{parsed=new URL(raw);}catch{throw new Error('URL de imagem inválida.');}
-    if(parsed.protocol==='https:'&&parsed.hostname&&!parsed.username&&!parsed.password)return parsed.href;
+    let url;
+    try{url=new URL(raw);}catch{throw new Error('URL de imagem inválida.');}
+    if(url.protocol==='https:'&&url.hostname&&!url.username&&!url.password)return url;
   }
-  if(raw.startsWith('imagens/produtos/')&&!/\s/.test(raw)&&!raw.includes('?')&&!raw.includes('#')&&!raw.includes(String.fromCharCode(92))&&!raw.split('/').some(part=>part==='.'||part==='..'))return raw;
+  if(raw.startsWith('imagens/produtos/')&&!/\s/.test(raw)&&!raw.includes('?')&&!raw.includes('#')&&!raw.includes(String.fromCharCode(92))){
+    const parts=raw.split('/');
+    if(parts.length>=3&&parts.every(part=>part&&part!=='.'&&part!=='..')){
+      const url=new URL('/'+parts.join('/'),window.location.origin);
+      if(url.origin===window.location.origin&&url.pathname.startsWith('/imagens/produtos/'))return url;
+    }
+  }
   throw new Error('Imagem inválida. Use imagens/produtos/nome-do-arquivo.jpg ou uma URL HTTPS.');
 }
-function productImagePreview(img,value){
-  let src='';
-  try{src=productImageValue(value);}catch(error){img.removeAttribute('src');img.alt='Imagem inválida';return;}
-  img.onerror=()=>{img.removeAttribute('src');img.alt='Não foi possível carregar esta imagem';};
-  if(src)img.setAttribute('src',src);else img.removeAttribute('src');
+function productImageValue(value){
+  const url=productImageUrl(value);
+  if(!url)return '';
+  return url.origin===window.location.origin?url.pathname.slice(1):url.href;
 }
-function validateProductImage(src){
-  if(!src)return Promise.resolve();
+function productImagePreview(img,value){
+  let url;
+  try{url=productImageUrl(value);}catch(error){img.removeAttribute('src');img.alt='Imagem inválida';return;}
+  img.onerror=()=>{img.removeAttribute('src');img.alt='Não foi possível carregar esta imagem';};
+  if(url)img.src=url.href;else img.removeAttribute('src');
+}
+function validateProductImage(value){
+  if(!value)return Promise.resolve();
+  let url;
+  try{url=productImageUrl(value);}catch(error){return Promise.reject(error);}
   return new Promise((resolve,reject)=>{
     const probe=new Image();
     probe.onload=()=>probe.naturalWidth>0?resolve():reject(new Error('A imagem não carregou corretamente. Confira o caminho ou URL.'));
     probe.onerror=()=>reject(new Error('A imagem não carregou na prévia. Confira o caminho ou URL antes de confirmar.'));
-    probe.src=src;
+    probe.src=url.href;
   });
 }
 function resetProductEditPreview(){
