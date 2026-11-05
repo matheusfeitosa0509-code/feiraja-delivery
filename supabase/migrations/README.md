@@ -129,7 +129,7 @@ roles AS (
 ),
 privileges(privilege_name) AS (
   VALUES ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'),
-         ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')
+         ('TRUNCATE'), ('REFERENCES'), ('TRIGGER'), ('MAINTAIN')
 )
 SELECT
   r.object_name,
