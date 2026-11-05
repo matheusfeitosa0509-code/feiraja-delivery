@@ -1,5 +1,7 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#08794e"><title>FeiraJá Delivery — Loja nova</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://esm.sh https://challenges.cloudflare.com; script-src-attr 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: https:; connect-src 'self' https://juhwdevvwstmyxyyagzh.supabase.co https://api.pwnedpasswords.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#08794e"><title>FeiraJá Delivery — Loja nova</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--g:#2f6a14;--g2:#7fb237;--ink:#1d2a12;--mut:#44503a;--bg:#f6f4ea;--card:#fff;--line:#e4e7d6;--soft:#e6efd3;--warn:#c2410c;--pix:#0f8f7e}
 *{box-sizing:border-box}
@@ -598,7 +600,7 @@ try {
  <div class="field" id="authNameWrap"><label class="lbl" for="authName">Nome completo</label><input class="in" id="authName" maxlength="120" autocomplete="name"></div>
  <div class="field"><label class="lbl" for="authPassword">Senha</label><input class="in" id="authPassword" type="password" required autocomplete="current-password" minlength="8"></div>
  <div class="forgot-row"><button id="forgotBtn" class="link" type="button">Esqueci a senha</button></div>
- <div class="auth-actions"><button id="authSubmit" class="btn" type="submit">Entrar</button><div id="authMessage" class="sm hidden" role="status"></div><button id="authToggle" class="btn alt" type="button">Criar conta</button><button id="browseFirst" class="btn alt" type="button">Ver os produtos primeiro</button><button id="myOrdersBtn" class="btn alt hidden" type="button">Meus pedidos</button></div></form>
+ <div id="turnstileWidget" class="field hidden" aria-label="Verificação de segurança"></div><div class="auth-actions"><button id="authSubmit" class="btn" type="submit">Entrar</button><div id="authMessage" class="sm hidden" role="status"></div><button id="authToggle" class="btn alt" type="button">Criar conta</button><button id="browseFirst" class="btn alt" type="button">Ver os produtos primeiro</button><button id="myOrdersBtn" class="btn alt hidden" type="button">Meus pedidos</button></div></form>
  <div id="myOrders" class="hidden"><p class="sm">Histórico de compras e status atualizado pela loja.</p><div id="myOrdersList"></div><button id="refreshMyOrders" class="btn alt full" type="button">Atualizar pedidos</button></div>
  <button id="logoutBtn" class="btn alt full hidden" type="button">Sair da conta</button><p class="terms sm">Ao continuar você aceita os <a href="#termos" class="link" data-legal-page="termos">Termos de uso</a> e a <a href="#privacidade" class="link" data-legal-page="privacidade">Política de privacidade</a>.</p>
  <footer class="legal-footer" aria-label="Informações e documentos da loja"><nav class="legal-links"><a href="#termos" data-legal-page="termos">Termos de uso</a><span>·</span><a href="#privacidade" data-legal-page="privacidade">Política de privacidade</a><span>·</span><a href="#entregas" data-legal-page="entregas">Entregas e trocas</a></nav><div class="legal-brand">Feira On Delivery · Manaus, AM</div><div>Contato: <a href="https://wa.me/559294444989" target="_blank" rel="noopener noreferrer">+55 92 9444-4989</a> · <a href="mailto:feiraondelivery2026@gmail.com">feiraondelivery2026@gmail.com</a></div><div id="legalDocumentLine">CNPJ/CPF: <span id="legalDocumentValue">65.414.756/0001-22</span></div></footer>
@@ -619,7 +621,29 @@ try {
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 const supabase=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW');
+const TURNSTILE_SITE_KEY = ''; // Preencha com a Site Key pública do Cloudflare Turnstile.
+let turnstileWidgetId=null,turnstileToken='',turnstilePendingResolver=null,turnstileScriptPromise=null;
+function loadTurnstileScript(){
+ if(!TURNSTILE_SITE_KEY)return Promise.resolve(null);
+ if(window.turnstile)return Promise.resolve(window.turnstile);
+ if(!turnstileScriptPromise)turnstileScriptPromise=new Promise((resolve,reject)=>{
+  const script=document.createElement('script');script.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';script.async=true;script.defer=true;
+  script.onload=()=>window.turnstile?resolve(window.turnstile):reject(new Error('Turnstile indisponível.'));
+  script.onerror=()=>reject(new Error('Não foi possível carregar a verificação de segurança.'));
+  document.head.append(script);
+ });
+ return turnstileScriptPromise;
+}
+async function getTurnstileToken(){
+ if(!TURNSTILE_SITE_KEY)return '';
+ const api=await loadTurnstileScript(),host=$('#turnstileWidget');host.hidden=false;host.classList.remove('hidden','hide');
+ if(turnstileWidgetId===null)turnstileWidgetId=api.render(host,{sitekey:TURNSTILE_SITE_KEY,callback:token=>{turnstileToken=token;if(turnstilePendingResolver){turnstilePendingResolver(token);turnstilePendingResolver=null;}},'expired-callback':()=>{turnstileToken='';if(turnstilePendingResolver){turnstilePendingResolver('');turnstilePendingResolver=null;}},'error-callback':()=>{turnstileToken='';if(turnstilePendingResolver){turnstilePendingResolver('');turnstilePendingResolver=null;}}});
+ if(turnstileToken)return turnstileToken;
+ return new Promise(resolve=>{turnstilePendingResolver=resolve;});
+}
+function resetTurnstile(){turnstileToken='';if(TURNSTILE_SITE_KEY&&turnstileWidgetId!==null&&window.turnstile)window.turnstile.reset(turnstileWidgetId);}
 const $=s=>document.querySelector(s), money=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n);
+function safeProductImage(value){const raw=String(value??'').trim();if(!raw)return '';if(/^https:\/\//i.test(raw)){try{const url=new URL(raw);return url.protocol==='https:'&&!url.username&&!url.password?raw:'';}catch{return '';}}const path=raw.replace(/^\.\//,'');if(!/^imagens\/produtos\/[A-Za-z0-9._/-]+$/.test(path)||path.split('/').some(part=>!part||part==='.'||part==='..'))return '';return './'+path;}
 
 const LEGAL_DATA={responsavel:'Dr Alimentos',documento:'65.414.756/0001-22',whatsapp:'+55 92 9444-4989',email:'feiraondelivery2026@gmail.com',provedorPix:'Asaas',provedor:'Supabase',endereco:'Consulte pelo WhatsApp',horarios:'6h às 13h',data:'01/11/2026',prazoHoras:'Consulte pelo WhatsApp'};
 const TERMOS_TEXTO=[
@@ -678,7 +702,7 @@ async function loadProfile(knownUser){
  if(knownUser){currentUser=knownUser;}else{const {data:{session}}=await supabase.auth.getSession();currentUser=session?.user||null;}
  updateAccountUI();
  if(!currentUser){await loadMyOrders();return;}
- const {data,error}=await supabase.from('customer_profiles').select('*').eq('user_id',currentUser.id).maybeSingle();
+ const {data,error}=await supabase.from('customer_profiles').select('full_name,phone,cpf,address').eq('user_id',currentUser.id).maybeSingle();
  if(error&&knownUser)throw error;
  if(data){
   if(data.full_name&&!$('#name').value.trim())$('#name').value=data.full_name;
@@ -708,7 +732,7 @@ async function loadMyOrders(knownUser){
  paint(html);document.querySelectorAll('[data-toggle-items]').forEach(b=>b.onclick=()=>{const p=b.closest('.order-card').querySelector('.order-items-desc');p.classList.toggle('hidden');b.textContent=p.classList.contains('hidden')?'Ver itens':'Ocultar itens';});$('#ordersMessage').textContent='Mostrando '+data.length+' pedido(s). O status é atualizado pela loja.';
 }
 function updateAccountUI(){const logged=!!currentUser;$('#myOrdersBtn').classList.toggle('hidden',!logged);$('#accountBtn').setAttribute('aria-label','Conta');const status=$('#accountStatus');if(status)status.textContent='';$('#logoutBtn').classList.toggle('hidden',!logged);$('#accountModal').classList.toggle('session-logged-in',logged);$('#authForm').classList.toggle('session-logged-in',logged);$('#authEmail').disabled=logged;$('#authPassword').disabled=logged;$('#authEmail').classList.toggle('hidden',logged);$('#authPassword').classList.toggle('hidden',logged);$('#authNameWrap').classList.toggle('hidden',logged||authMode!=='signup');$('#forgotBtn').classList.toggle('hidden',logged);$('#authSubmit').classList.toggle('hidden',logged);$('#authToggle').classList.toggle('hidden',logged);$('#authMessage').classList.add('hidden');$('#authSubmit').textContent=authMode==='signup'?'Criar conta':'Entrar';$('#authPassword').minLength=authMode==='signup'?8:0;$('#accountTitle').textContent=logged?'Sua conta':(authMode==='signup'?'Criar conta':'Entre na sua conta');$('#loginIntro').textContent=logged?'Sua conta está conectada.':(authMode==='signup'?'Informe seus dados para criar sua conta.':'Use seu e-mail e senha, como hoje.');$('#authToggle').textContent=authMode==='signup'?'Já tenho conta — entrar':'Criar conta';}
-async function load(){const status=$('#status');status.textContent='Carregando produtos…';$('#products').innerHTML='<p class="empty">Conectando ao catálogo…</p>';try{const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),10000);let response;try{response=await fetch('https://juhwdevvwstmyxyyagzh.supabase.co/rest/v1/products?select=id,name,price,old_price,category,image,available&available=eq.true&order=name.asc',{headers:{apikey:'sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',Authorization:'Bearer sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW'},signal:controller.signal,cache:'no-store'});}finally{clearTimeout(timer);}if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();products=(data||[]).map(p=>({...p,price:Number(p.price),old_price:p.old_price==null?null:Number(p.old_price),image:typeof p.image==='string'&&p.image.startsWith('imagens/produtos/')?'./'+p.image:p.image}));for(const id of Object.keys(cart)){if(!products.some(p=>p.id===id))delete cart[id]}persistCart();status.textContent=products.length?'Catálogo carregado.':'Ainda não há produtos cadastrados.';renderCats();renderProducts();safeRenderHomeProductSections();return;}catch(error){console.error('Falha ao carregar catálogo:',error);status.textContent=error.name==='AbortError'?'O catálogo demorou mais que o esperado. Toque em Recarregar para tentar novamente.':'Não foi possível carregar o catálogo. Verifique a conexão e tente novamente.';$('#products').innerHTML='<p class="empty">Não conseguimos carregar os produtos agora. <button id="retryProducts" type="button">Recarregar produtos</button></p>';$('#retryProducts').onclick=load;return;}}
+async function load(){const status=$('#status');status.textContent='Carregando produtos…';$('#products').innerHTML='<p class="empty">Conectando ao catálogo…</p>';try{const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),10000);let response;try{response=await fetch('https://juhwdevvwstmyxyyagzh.supabase.co/rest/v1/products?select=id,name,price,old_price,category,image,available&available=eq.true&order=name.asc',{headers:{apikey:'sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',Authorization:'Bearer sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW'},signal:controller.signal,cache:'no-store'});}finally{clearTimeout(timer);}if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();products=(data||[]).map(p=>({...p,price:Number(p.price),old_price:p.old_price==null?null:Number(p.old_price),image:safeProductImage(p.image)}));for(const id of Object.keys(cart)){if(!products.some(p=>p.id===id))delete cart[id]}persistCart();status.textContent=products.length?'Catálogo carregado.':'Ainda não há produtos cadastrados.';renderCats();renderProducts();safeRenderHomeProductSections();return;}catch(error){console.error('Falha ao carregar catálogo:',error);status.textContent=error.name==='AbortError'?'O catálogo demorou mais que o esperado. Toque em Recarregar para tentar novamente.':'Não foi possível carregar o catálogo. Verifique a conexão e tente novamente.';$('#products').innerHTML='<p class="empty">Não conseguimos carregar os produtos agora. <button id="retryProducts" type="button">Recarregar produtos</button></p>';$('#retryProducts').onclick=load;return;}}
 function alphaCompare(a,b){return String(a??'').localeCompare(String(b??''),'pt-BR',{sensitivity:'base',ignorePunctuation:false});}function renderCats(){const cats=['Todos',...[...new Set(products.map(p=>p.category||'Outros'))].sort(alphaCompare)];$('#categories').innerHTML=cats.map(c=>'<button type="button" class="chip '+(c===category?'active':'')+'" data-cat="'+esc(c)+'">'+esc(c)+'</button>').join('');$('#categories').querySelectorAll('button').forEach(b=>b.onclick=()=>{category=b.dataset.cat;if($('#search').value.trim())$('#search').value='';renderCats();renderProducts();});}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function shortOrderNumber(id){return String(id||'').slice(-8).toUpperCase();}
@@ -727,6 +751,9 @@ $('#accountBtn').onclick=()=>{if(currentUser){authMode='profile';$('#authNameWra
  const originalButtonText=btn.textContent;
  btn.disabled=true;
  try{
+  const captchaNeeded=authMode==='login'||(authMode==='signup'&&!currentUser?.is_anonymous);
+  const captchaToken=captchaNeeded?await getTurnstileToken():'';
+  if(captchaNeeded&&TURNSTILE_SITE_KEY&&!captchaToken){$('#authMessage').textContent='Complete a verificação de segurança para continuar.';$('#authMessage').classList.remove('hidden');return;}
   let result;
   if(authMode==='signup'){
    if(password.length<8){
@@ -750,11 +777,11 @@ $('#accountBtn').onclick=()=>{if(currentUser){authMode='profile';$('#authNameWra
    if(currentUser?.is_anonymous){
     result=await supabase.auth.updateUser({email,password,data:metadata});
    }else{
-    result=await supabase.auth.signUp({email,password,options:{emailRedirectTo:'https://matheusfeitosa0509-code.github.io/feiraja-delivery/loja.html',data:metadata}});
+    result=await supabase.auth.signUp({email,password,options:{emailRedirectTo:'https://matheusfeitosa0509-code.github.io/feiraja-delivery/loja.html',data:metadata,...(captchaToken?{captchaToken}:{})}});
    }
   }else if(authMode==='login'){
    btn.textContent='Entrando...';
-   result=await supabase.auth.signInWithPassword({email,password});
+   result=await supabase.auth.signInWithPassword({email,password,...(captchaToken?{options:{captchaToken}}:{})});
   }else{
    return;
   }
@@ -804,6 +831,7 @@ $('#accountBtn').onclick=()=>{if(currentUser){authMode='profile';$('#authNameWra
   $('#authMessage').textContent=authMode==='login'?'Não foi possível concluir o login. Verifique sua conexão e tente novamente.':'Não foi possível concluir a operação. Tente novamente.';
   $('#authMessage').classList.remove('hidden');
  }finally{
+  resetTurnstile();
   btn.disabled=false;
   btn.textContent=originalButtonText;
  }
