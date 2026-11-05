@@ -1,10 +1,11 @@
 -- Restringe os privilégios padrão de objetos novos no schema public.
--- Aplica-se a objetos criados por postgres e supabase_admin.
--- Não altera privilégios de service_role nem do proprietário.
+-- Aplica-se somente aos objetos criados por postgres e supabase_admin.
+-- Revoga apenas concessões padrão explícitas a anon e authenticated.
+-- Não revoga privilégios de service_role nem do proprietário.
 --
--- Observação: o EXECUTE padrão concedido implicitamente a PUBLIC em funções
--- novas permanece ativo. A convenção por migration está documentada em
--- supabase/migrations/README.md.
+-- IMPORTANTE: o EXECUTE concedido por padrão a PUBLIC em funções novas
+-- não é removido por estas instruções. Cada CREATE FUNCTION futuro deve
+-- revogar PUBLIC, anon e authenticated individualmente; veja README.md.
 
 -- Objetos criados por postgres.
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
