@@ -1,7 +1,9 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://esm.sh https://challenges.cloudflare.com; script-src-attr 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: https:; connect-src 'self' https://juhwdevvwstmyxyyagzh.supabase.co https://api.pwnedpasswords.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>Cadastrar produto — FeiraOn</title>
 <style>
@@ -21,6 +23,7 @@ small{color:var(--muted);display:block;margin-top:5px;line-height:1.4}
 <h1>🔐 Entrar</h1>
 <label>E-mail</label><input id="email" type="email" autocomplete="username">
 <label>Senha</label><input id="password" type="password" autocomplete="current-password">
+<div id="turnstileWidget" class="hide" style="margin-top:12px" aria-label="Verificação de segurança"></div>
 <button id="btnLogin">Entrar</button>
 <div id="loginMsg" class="err"></div>
 </div>
@@ -90,6 +93,27 @@ small{color:var(--muted);display:block;margin-top:5px;line-height:1.4}
 import{createClient}from'https://esm.sh/@supabase/supabase-js@2.57.4';
 const db=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',{auth:{persistSession:true,autoRefreshToken:true}});
 const $=id=>document.getElementById(id);
+const TURNSTILE_SITE_KEY = ''; // Preencha com a Site Key pública do Cloudflare Turnstile.
+let turnstileWidgetId=null,turnstileToken='',turnstilePendingResolver=null,turnstileScriptPromise=null;
+function loadTurnstileScript(){
+ if(!TURNSTILE_SITE_KEY)return Promise.resolve(null);
+ if(window.turnstile)return Promise.resolve(window.turnstile);
+ if(!turnstileScriptPromise)turnstileScriptPromise=new Promise((resolve,reject)=>{
+  const script=document.createElement('script');script.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';script.async=true;script.defer=true;
+  script.onload=()=>window.turnstile?resolve(window.turnstile):reject(new Error('Turnstile indisponível.'));
+  script.onerror=()=>reject(new Error('Não foi possível carregar a verificação de segurança.'));
+  document.head.append(script);
+ });
+ return turnstileScriptPromise;
+}
+async function getTurnstileToken(){
+ if(!TURNSTILE_SITE_KEY)return '';
+ const api=await loadTurnstileScript(),host=$('#turnstileWidget');host.hidden=false;host.classList.remove('hidden','hide');
+ if(turnstileWidgetId===null)turnstileWidgetId=api.render(host,{sitekey:TURNSTILE_SITE_KEY,callback:token=>{turnstileToken=token;if(turnstilePendingResolver){turnstilePendingResolver(token);turnstilePendingResolver=null;}},'expired-callback':()=>{turnstileToken='';if(turnstilePendingResolver){turnstilePendingResolver('');turnstilePendingResolver=null;}},'error-callback':()=>{turnstileToken='';if(turnstilePendingResolver){turnstilePendingResolver('');turnstilePendingResolver=null;}}});
+ if(turnstileToken)return turnstileToken;
+ return new Promise(resolve=>{turnstilePendingResolver=resolve;});
+}
+function resetTurnstile(){turnstileToken='';if(TURNSTILE_SITE_KEY&&turnstileWidgetId!==null&&window.turnstile)window.turnstile.reset(turnstileWidgetId);}
 const slug=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 function makeId(name){const s=slug(name).replace(/-/g,'_');return s?'feiraja_'+s:''}
 function say(t,c){$('msg').textContent=t;$('msg').className=c||''}
@@ -103,10 +127,12 @@ async function show(){
   setIn(true);
 }
 $('btnLogin').onclick=async()=>{
-  $('loginMsg').textContent='Entrando…';
-  const{error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
-  if(error){$('loginMsg').textContent='Falha no login: '+error.message;return}
-  $('loginMsg').textContent='';await show();
+  const button=$('btnLogin');button.disabled=true;$('loginMsg').textContent='Entrando…';
+  try{const captchaToken=TURNSTILE_SITE_KEY?await getTurnstileToken():'';if(TURNSTILE_SITE_KEY&&!captchaToken){$('loginMsg').textContent='Complete a verificação de segurança para continuar.';return;}
+    const{error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value,...(captchaToken?{options:{captchaToken}}:{})});
+    if(error){$('loginMsg').textContent='Falha no login: '+error.message;return}
+    $('loginMsg').textContent='';await show();
+  }catch(error){$('loginMsg').textContent='Não foi possível concluir o login. Tente novamente.';}finally{resetTurnstile();button.disabled=false;}
 };
 $('btnOut').onclick=async()=>{await db.auth.signOut();setIn(false)};
 $('name').addEventListener('input',()=>{
@@ -317,12 +343,13 @@ function productEditMessage(message,kind=''){
 function productImageValue(value){
   const raw=String(value||'').trim();
   if(!raw)return '';
-  if(/^https?:\/\//i.test(raw))return raw;
-  if(raw.startsWith('imagens/produtos/')&&!raw.includes(' ')&&!raw.includes(String.fromCharCode(92)))return raw;
-  throw new Error('Imagem inválida. Use imagens/produtos/nome-do-arquivo.jpg ou uma URL HTTP/HTTPS.');
+  if(/^https:\/\//i.test(raw)){try{const url=new URL(raw);if(url.protocol==='https:'&&!url.username&&!url.password)return raw;}catch{}}
+  const path=raw.replace(/^\.\//,'');
+  if(/^imagens\/produtos\/[A-Za-z0-9._/-]+$/.test(path)&&!path.split('/').some(part=>!part||part==='.'||part==='..'))return path;
+  throw new Error('Imagem inválida. Use imagens/produtos/nome-do-arquivo.jpg ou uma URL HTTPS.');
 }
 function productImagePreview(img,value){
-  const src=String(value||'').trim();
+  let src='';try{src=productImageValue(value);}catch{}
   img.onerror=()=>{img.removeAttribute('src');img.alt='Não foi possível carregar esta imagem';};
   if(src)img.src=src;else img.removeAttribute('src');
 }
@@ -448,7 +475,7 @@ $('btnConfirmProductEdit').addEventListener('click',async()=>{
 
 db.auth.onAuthStateChange((event,session)=>{
   if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){loadPriceProducts();loadEditableProducts();}
-  if(event==='SIGNED_OUT'){$('priceEditor').classList.add('hide');priceProducts=[];$('priceProduct').innerHTML='<option value="">Entre como administrador</option>';$('btnUpdatePrice').disabled=true;$('productEdit').classList.add('hide');editableProducts=[];}
+  if(event==='SIGNED_OUT'){$('priceEditor').classList.add('hide');priceProducts=[];$('priceProduct').replaceChildren(new Option('Entre como administrador',''));$('btnUpdatePrice').disabled=true;$('productEdit').classList.add('hide');editableProducts=[];}
 });
 
 show();
