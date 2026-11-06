@@ -129,6 +129,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <div class="product-tabs" aria-label="Ferramentas de produtos">
 <button type="button" data-product-section="formBox" aria-pressed="true">Cadastrar</button>
 <button type="button" data-product-section="priceEditor" aria-pressed="false">Alterar preço</button>
+<button type="button" data-product-section="resaleEditor" aria-pressed="false">Preço de revenda</button>
 <button type="button" data-product-section="productEdit" aria-pressed="false">Editar nome e imagem</button>
 <button type="button" data-product-section="productAvailabilityCard" aria-pressed="false">Disponibilidade</button>
 </div>
@@ -165,6 +166,22 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
   <div id="pricePreview" role="status" aria-live="polite"></div>
   <button id="btnConfirmPrice" type="button" class="sec hide">Confirmar e salvar preço</button>
   <div id="priceMsg" role="status" aria-live="polite"></div>
+</section>
+
+<!-- Configuração independente de preço de revenda por produto. -->
+<section id="resaleEditor" class="card hide product-section" style="border-top:1px solid var(--line);margin-top:24px;padding-top:20px">
+<h1>📦 Preço de revenda por quantidade</h1>
+<p class="muted">Configure cada produto separadamente. A quantidade mínima usa a mesma unidade comercial já indicada no cadastro do produto.</p>
+<label for="resaleProduct">Selecionar produto</label><select id="resaleProduct"><option value="">Carregando produtos…</option></select>
+<p id="resaleNormalPrice" class="muted" aria-live="polite">Selecione um produto para consultar o preço normal.</p>
+<label class="resale-switch" for="resaleEnabled"><input id="resaleEnabled" type="checkbox"> Ativar preço de revenda</label>
+<label for="resalePrice">Preço de revenda (R$ por unidade comercial)</label><input id="resalePrice" inputmode="decimal" placeholder="Ex.: 9,50">
+<label for="resaleMinQty">Quantidade mínima</label><input id="resaleMinQty" type="number" inputmode="numeric" min="1" step="1" value="10">
+<small>O padrão é 10. Quando ativado, o preço de revenda deve ser maior que zero e menor que o preço normal atual.</small>
+<button id="btnPreviewResale" type="button" disabled>Pré-visualizar configuração</button>
+<div id="resalePreview" role="status" aria-live="polite"></div>
+<button id="btnConfirmResale" type="button" class="sec hide" disabled>Confirmar e salvar configuração</button>
+<p id="resaleMessage" class="muted" role="status" aria-live="polite"></p>
 </section>
 
 <!-- Editor independente de nome e imagem de produtos existentes. -->
@@ -309,6 +326,7 @@ async function show(){
   const{data:m,error}=await db.from('admin_users').select('user_id').eq('user_id',session.user.id).maybeSingle();
   if(error||!m){await db.auth.signOut();setIn(false);$('message').textContent='Esta conta não tem autorização de administrador.';return}
   setIn(true);
+  await loadResaleProducts();
 }
 $('btnOut').onclick=async()=>{await db.auth.signOut();setIn(false);$('panel').classList.add('hidden');$('login').classList.remove('hidden');$('refresh').classList.add('hidden');$('logout').classList.add('hidden')};
 $('name').addEventListener('input',()=>{
@@ -509,6 +527,119 @@ $('btnConfirmPrice').addEventListener('click',async()=>{
   }
 });
 
+// Editor isolado de preço de revenda por quantidade.
+let resaleProducts=[];
+let resaleSnapshot=null;
+function resaleMessage(message,isError=false){
+  $('resaleMessage').textContent=message;
+  $('resaleMessage').classList.toggle('error',isError);
+}
+function formatResalePrice(value){return Number(value).toFixed(2).replace('.',',');}
+function resalePriceInput(){
+  const raw=$('resalePrice').value.trim();
+  if(!raw)return null;
+  if(!/^[0-9]+([.,][0-9]{1,2})?$/.test(raw))throw new Error('Digite um preço de revenda válido, usando vírgula ou ponto.');
+  const value=Math.round(Number(raw.replace(',','.'))*100)/100;
+  if(!Number.isFinite(value)||value<=0)throw new Error('O preço de revenda deve ser maior que zero.');
+  return value;
+}
+function resaleMinInput(){
+  const raw=$('resaleMinQty').value.trim();
+  if(!/^[0-9]+$/.test(raw))throw new Error('A quantidade mínima deve ser um número inteiro.');
+  const value=Number(raw);
+  if(!Number.isSafeInteger(value)||value<1)throw new Error('A quantidade mínima deve ser pelo menos 1.');
+  return value;
+}
+function resetResalePreview(){
+  resaleSnapshot=null;
+  $('resalePreview').textContent='';
+  $('btnConfirmResale').classList.add('hide');
+  $('btnConfirmResale').disabled=true;
+  $('btnPreviewResale').disabled=!$('resaleProduct').value;
+}
+function fillResaleProduct(){
+  resetResalePreview();
+  const product=resaleProducts.find(p=>p.id===$('resaleProduct').value);
+  $('resaleEnabled').checked=product?.resale_enabled===true;
+  $('resalePrice').value=product?.resale_price==null?'':formatResalePrice(product.resale_price);
+  $('resaleMinQty').value=String(product?.resale_min_qty??10);
+  $('resaleNormalPrice').textContent=product?'Preço normal atual: '+money(product.price):'Selecione um produto para consultar o preço normal.';
+  resaleMessage(product?'Configuração carregada.':'');
+  $('btnPreviewResale').disabled=!product;
+}
+async function loadResaleProducts(){
+  const {data:{session}}=await db.auth.getSession();
+  if(!session){$('resaleEditor').classList.add('hide');return}
+  const {data:membership,error:membershipError}=await db.from('admin_users').select('user_id').eq('user_id',session.user.id).maybeSingle();
+  if(membershipError||!membership){$('resaleEditor').classList.add('hide');return}
+  $('resaleEditor').classList.remove('hide');
+  resaleMessage('Carregando produtos…');
+  const {data,error}=await db.from('products').select('id,name,price,resale_enabled,resale_price,resale_min_qty').order('name',{ascending:true});
+  if(error){console.error('Falha ao carregar preços de revenda:',error);resaleMessage('Não foi possível carregar os produtos. Verifique se a migração da tabela foi aplicada.',true);return}
+  resaleProducts=(data||[]).map(p=>({...p,price:Number(p.price),resale_price:p.resale_price==null?null:Number(p.resale_price),resale_enabled:p.resale_enabled===true,resale_min_qty:Number(p.resale_min_qty??10)}));
+  const selected=$('resaleProduct').value;
+  const select=$('resaleProduct');
+  select.replaceChildren(new Option('Selecione um produto',''));
+  resaleProducts.forEach(p=>select.add(new Option(p.name+' — '+money(p.price),p.id)));
+  if(resaleProducts.some(p=>p.id===selected))select.value=selected;
+  fillResaleProduct();
+  resaleMessage(resaleProducts.length?resaleProducts.length+' produto(s) carregado(s), incluindo indisponíveis.':'Nenhum produto cadastrado.',!resaleProducts.length);
+}
+$('resaleProduct').addEventListener('change',fillResaleProduct);
+$('resaleEnabled').addEventListener('change',resetResalePreview);
+$('resalePrice').addEventListener('input',resetResalePreview);
+$('resaleMinQty').addEventListener('input',resetResalePreview);
+$('btnPreviewResale').addEventListener('click',async()=>{
+  const id=$('resaleProduct').value;
+  if(!id){resaleMessage('Selecione um produto.');return}
+  const button=$('btnPreviewResale');
+  button.disabled=true;button.textContent='Consultando…';
+  resetResalePreview();
+  try{
+    const product=resaleProducts.find(p=>p.id===id);
+    if(!product)throw new Error('Produto não encontrado. Atualize a lista.');
+    const enabled=$('resaleEnabled').checked;
+    const resalePrice=resalePriceInput();
+    const minQty=resaleMinInput();
+    if(enabled&&resalePrice===null)throw new Error('Informe o preço de revenda para ativar a opção.');
+    if(enabled&&resalePrice>=product.price)throw new Error('O preço de revenda deve ser menor que o preço normal atual ('+money(product.price)+').');
+    const {data:current,error}=await db.from('products').select('id,name,price,resale_enabled,resale_price,resale_min_qty').eq('id',id).maybeSingle();
+    if(error)throw error;
+    if(!current)throw new Error('Produto não encontrado ou sem permissão para leitura.');
+    if(enabled&&resalePrice>=Number(current.price))throw new Error('O preço normal mudou. Informe um preço de revenda menor que '+money(current.price)+'.');
+    const after={resale_enabled:enabled,resale_price:resalePrice,resale_min_qty:minQty};
+    resaleSnapshot={id,before:{price:Number(current.price),resale_enabled:current.resale_enabled===true,resale_price:current.resale_price==null?null:Number(current.resale_price),resale_min_qty:Number(current.resale_min_qty??10)},after};
+    $('resalePreview').textContent='Produto: '+current.name+'\nPreço normal: '+money(current.price)+'\nRevenda: '+(enabled?'ATIVADA':'DESATIVADA')+'\nPreço de revenda: '+(resalePrice===null?'não informado':money(resalePrice))+'\nQuantidade mínima: '+minQty;
+    $('btnConfirmResale').classList.remove('hide');
+    $('btnConfirmResale').disabled=false;
+    resaleMessage('Confira os dados. Nada será salvo antes da confirmação.');
+  }catch(error){resaleMessage(error?.message||'Não foi possível validar a configuração.',true);}
+  finally{button.textContent='Pré-visualizar configuração';button.disabled=!$('resaleProduct').value;}
+});
+$('btnConfirmResale').addEventListener('click',async()=>{
+  const snapshot=resaleSnapshot;
+  if(!snapshot)return;
+  const button=$('btnConfirmResale');
+  button.disabled=true;button.textContent='Reconsultando…';
+  $('btnPreviewResale').disabled=true;
+  try{
+    const {data:current,error:readError}=await db.from('products').select('id,name,price,resale_enabled,resale_price,resale_min_qty').eq('id',snapshot.id).maybeSingle();
+    if(readError)throw readError;
+    if(!current)throw new Error('Produto não encontrado ou sem permissão para leitura.');
+    const before={price:Number(current.price),resale_enabled:current.resale_enabled===true,resale_price:current.resale_price==null?null:Number(current.resale_price),resale_min_qty:Number(current.resale_min_qty??10)};
+    if(JSON.stringify(before)!==JSON.stringify(snapshot.before)){resetResalePreview();throw new Error('O produto foi alterado desde a prévia. Gere uma nova prévia antes de salvar.');}
+    if(snapshot.after.resale_enabled&&(snapshot.after.resale_price===null||snapshot.after.resale_price<=0||snapshot.after.resale_price>=before.price))throw new Error('O preço de revenda precisa ser maior que zero e menor que o preço normal atual.');
+    const {data,error}=await db.from('products').update(snapshot.after).eq('id',snapshot.id).select('id,name,price,resale_enabled,resale_price,resale_min_qty').maybeSingle();
+    if(error)throw error;
+    if(!data)throw new Error('Nenhuma linha foi atualizada. Verifique a autorização administrativa.');
+    await loadResaleProducts();
+    $('resaleProduct').value=data.id;
+    fillResaleProduct();
+    resaleMessage('Configuração de revenda de "'+data.name+'" salva.');
+  }catch(error){console.error('Falha ao salvar configuração de revenda:',error);resaleMessage(error?.message||'Não foi possível salvar a configuração.',true);}
+  finally{button.textContent='Confirmar e salvar configuração';button.disabled=!resaleSnapshot;$('btnPreviewResale').disabled=!$('resaleProduct').value;}
+});
+
 // Editor isolado de nome e imagem; não compartilha estado nem funções com o editor de preço.
 let editableProducts=[];
 let productEditSnapshot=null;
@@ -667,8 +798,8 @@ $('btnConfirmProductEdit').addEventListener('click',async()=>{
 });
 
 db.auth.onAuthStateChange((event,session)=>{
-  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){setIn(true);loadPriceProducts();loadEditableProducts();}
-  if(event==='SIGNED_OUT'){setIn(false);$('priceEditor').classList.add('hide');priceProducts=[];$('priceProduct').replaceChildren(new Option('Entre como administrador',''));$('btnUpdatePrice').disabled=true;$('productEdit').classList.add('hide');editableProducts=[];}
+  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){setIn(true);loadPriceProducts();loadEditableProducts();loadResaleProducts();}
+  if(event==='SIGNED_OUT'){setIn(false);$('priceEditor').classList.add('hide');priceProducts=[];$('priceProduct').replaceChildren(new Option('Entre como administrador',''));$('btnUpdatePrice').disabled=true;$('productEdit').classList.add('hide');editableProducts=[];$('resaleEditor').classList.add('hide');resaleProducts=[];$('resaleProduct').replaceChildren(new Option('Entre como administrador',''));$('btnPreviewResale').disabled=true;}
 });
 
 show();
@@ -685,7 +816,7 @@ function selectMainTab(tab){
  document.getElementById('tabProducts').setAttribute('aria-selected',String(products));
 }
 function selectProductSection(id){
- const valid=['formBox','priceEditor','productEdit','productAvailabilityCard'];
+ const valid=['formBox','priceEditor','resaleEditor','productEdit','productAvailabilityCard'];
  const target=valid.includes(id)?id:'formBox';
  document.querySelectorAll('#productTools .product-section').forEach(el=>el.classList.toggle('active',el.id===target));
  document.getElementById('productAvailabilityCard').classList.toggle('active',target==='productAvailabilityCard');
