@@ -64,7 +64,6 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const url = new URL(req.url);
   const earlyNoticeType = String(url.searchParams.get("type") || url.searchParams.get("topic") || "");
-  if (earlyNoticeType && earlyNoticeType !== "payment") return json({ received: true, ignored: true });
   let requestBody: any = {};
   if (req.method === "POST") {
     try {
@@ -77,6 +76,7 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Corpo JSON inválido." }, 400);
     }
   }
+  if (earlyNoticeType && earlyNoticeType !== "payment") return json({ received: true, ignored: true });
   const earlyBody = requestBody;
   const earlyBodyType = String(earlyBody?.type || earlyBody?.topic || "");
   if (earlyBodyType && earlyBodyType !== "payment") return json({ received: true, ignored: true });
