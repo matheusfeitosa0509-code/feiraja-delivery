@@ -1,7 +1,7 @@
 {
   "name": "Feira On Delivery",
   "short_name": "Feira On",
-  "start_url": "/",
+  "start_url": "/loja.html",
   "scope": "/",
   "display": "standalone",
   "theme_color": "#2f6a14",
