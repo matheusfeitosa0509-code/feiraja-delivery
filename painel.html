@@ -244,7 +244,11 @@ function renderAdminProducts(){
  $('adminProductList').innerHTML=adminProducts.map(p=>'<div class="product-row"><strong>'+esc(p.name)+'</strong><span class="product-state '+(p.available?'':'unavailable')+'">'+(p.available?'disponível':'indisponível')+'</span></div>').join('')||'<p class="muted">Nenhum produto encontrado.</p>';
  syncAvailabilityControls();
 }
-async function loadAdminProducts(){
+let adminProductsLoaded=false,adminProductsLoading=null;
+async function loadAdminProducts(force=false){
+ if(adminProductsLoaded&&!force)return;
+ if(adminProductsLoading)return adminProductsLoading;
+ adminProductsLoading=(async()=>{
  $('refreshProducts').disabled=true;
  $('refreshProducts').textContent='Carregando…';
  availabilityMessage('Carregando todos os produtos…');
@@ -255,6 +259,9 @@ async function loadAdminProducts(){
  adminProducts=(data||[]).map(p=>({...p,available:p.available===true}));
  renderAdminProducts();
  availabilityMessage(adminProducts.length?adminProducts.length+' produto(s) carregado(s), incluindo indisponíveis.':'Nenhum produto cadastrado.',!adminProducts.length);
+ adminProductsLoaded=true;
+ })();
+ try{await adminProductsLoading;}finally{adminProductsLoading=null;}
 }
 async function toggleAvailability(){
  const id=$('availabilityProduct').value;
@@ -326,7 +333,7 @@ const adminLoginButton=$('form').querySelector('button[type="submit"]');adminLog
 const adminCaptcha=window.FeiraTurnstile.create({containerId:'adminTurnstile',buttonId:'formSubmit',messageId:'adminCaptchaMessage',retryButtonId:'adminCaptchaRetry'});
 $('form').addEventListener('focusin',()=>adminCaptcha.init());
 $('form').addEventListener('submit',async e=>{e.preventDefault();if(showInProgress)return;const captchaToken=adminCaptcha.getToken();adminLoginButton.disabled=true;adminLoginButton.textContent='Entrando…';$('message').textContent='Autenticando…';console.time('painel-login-ate-pronto');try{const{error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value,options:{...(captchaToken?{captchaToken}:{})}});if(error){console.error('Falha no login do painel:',error);$('message').textContent='Falha no login. Verifique seus dados e tente novamente.';return}$('message').textContent='';await show();}catch(error){$('message').textContent='Não foi possível concluir o login. Verifique sua conexão e tente novamente.';}finally{adminCaptcha.reset();adminLoginButton.textContent=adminLoginDefaultText;console.timeEnd('painel-login-ate-pronto');}});
-$('refresh').addEventListener('click',()=>{document.title='FeiraOn Delivery | Painel de pedidos';load();loadAdminProducts()});$('refreshProducts').addEventListener('click',loadAdminProducts);$('availabilityProduct').addEventListener('change',syncAvailabilityControls);$('toggleAvailability').addEventListener('click',toggleAvailability);$('loadMore').addEventListener('click',loadMore);setInterval(()=>{if(!$('panel').classList.contains('hidden')&&!document.querySelector('#orders select:focus'))load(true)},30000);$('logout').addEventListener('click',async()=>{await db.auth.signOut();setLoggedIn(false)});$('search').addEventListener('input',render);$('filter').addEventListener('change',render);show();
+$('refresh').addEventListener('click',()=>{document.title='FeiraOn Delivery | Painel de pedidos';load();loadAdminProducts(true)});$('refreshProducts').addEventListener('click',()=>loadAdminProducts(true));$('availabilityProduct').addEventListener('change',syncAvailabilityControls);$('toggleAvailability').addEventListener('click',toggleAvailability);$('loadMore').addEventListener('click',loadMore);setInterval(()=>{if(!$('panel').classList.contains('hidden')&&!document.querySelector('#orders select:focus'))load(true)},30000);$('logout').addEventListener('click',async()=>{await db.auth.signOut();setLoggedIn(false)});$('search').addEventListener('input',render);$('filter').addEventListener('change',render);show();
 
 }
 {
@@ -337,14 +344,6 @@ function makeId(name){const s=slug(name).replace(/-/g,'_');return s?'feiraja_'+s
 function say(t,c){$('msg').textContent=t;$('msg').className=c||''}
 function setIn(v){}
 
-async function show(){
-  const{data:{session}}=await db.auth.getSession();
-  if(!session){setIn(false);return}
-  const{data:m,error}=await db.from('admin_users').select('user_id').eq('user_id',session.user.id).maybeSingle();
-  if(error||!m){await db.auth.signOut();setIn(false);$('message').textContent='Esta conta não tem autorização de administrador.';return}
-  setIn(true);
-  await loadResaleProducts();
-}
 $('btnOut').onclick=async()=>{await db.auth.signOut();setIn(false);$('panel').classList.add('hidden');$('login').classList.remove('hidden');$('refresh').classList.add('hidden');$('logout').classList.add('hidden')};
 $('name').addEventListener('input',()=>{
   $('pid').value=makeId($('name').value);
@@ -369,6 +368,7 @@ $('btnSave').onclick=async()=>{
   }
   const{data}=await db.from('products').select('id,name,price,category,image,available').eq('id',id).maybeSingle();
   say('✅ Produto salvo!\n'+(data?JSON.stringify(data,null,1):'(salvo, mas não consegui reler)')+'\n\nLembrete: a foto deve existir em '+(image||'(sem foto)'),'ok');
+  adminProductsLoaded=false;priceProductsLoaded=false;editableProductsLoaded=false;resaleProductsLoaded=false;
   $('btnSave').disabled=false;
   ['name','price','pid','imgfile'].forEach(i=>{$(i).value=''});delete $('imgfile').dataset.touched;
 };
@@ -657,7 +657,7 @@ $('btnConfirmResale').addEventListener('click',async()=>{
     const {data,error}=await db.from('products').update(snapshot.after).eq('id',snapshot.id).select('id,name,price,resale_enabled,resale_price,resale_min_qty').maybeSingle();
     if(error)throw error;
     if(!data)throw new Error('Nenhuma linha foi atualizada. Verifique a autorização administrativa.');
-    await loadResaleProducts();
+    await loadResaleProducts(true);
     $('resaleProduct').value=data.id;
     fillResaleProduct();
     resaleMessage('Configuração de revenda de "'+data.name+'" salva.');
@@ -813,7 +813,7 @@ $('btnConfirmProductEdit').addEventListener('click',async()=>{
     const updated=data[0];
     const cached=editableProducts.find(p=>p.id===updated.id);
     if(cached){cached.name=updated.name;cached.image=updated.image;}
-    await loadEditableProducts();
+    await loadEditableProducts(true);
     $('editProductSelect').value=updated.id;
     $('editProductSelect').dispatchEvent(new Event('change'));
     productEditMessage('Produto atualizado com sucesso.','ok');
@@ -830,8 +830,6 @@ db.auth.onAuthStateChange((event,session)=>{
   if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session)setIn(true);
   if(event==='SIGNED_OUT'){setIn(false);window.__feiraAdminVerifiedSession=null;priceProductsLoaded=false;editableProductsLoaded=false;resaleProductsLoaded=false;$('priceEditor').classList.add('hide');priceProducts=[];$('priceProduct').replaceChildren(new Option('Entre como administrador',''));$('btnUpdatePrice').disabled=true;$('productEdit').classList.add('hide');editableProducts=[];$('resaleEditor').classList.add('hide');resaleProducts=[];$('resaleProduct').replaceChildren(new Option('Entre como administrador',''));$('btnPreviewResale').disabled=true;}
 });
-
-show();
 
 }
 const params=new URLSearchParams(location.search);
