@@ -889,7 +889,7 @@ Deno.serve(async (req: Request) => {
           : "O processamento falhou. O pedido foi cancelado.",
       }, 500);
     }
-    console.error("Erro interno super-worker:", error instanceof Error ? error.message : "unknown");
+    console.error("Erro interno super-worker:", { code: "INTERNAL_ERROR", stage: "request_handler" });
     return json({ error: "Erro interno ao processar o pedido. Tente novamente." }, 500);
   }
 });
