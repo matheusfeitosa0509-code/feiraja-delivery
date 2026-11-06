@@ -90,7 +90,7 @@
   <button id="btnConfirmProductEdit" type="button" class="sec hide" disabled>Confirmar e salvar</button>
   <div id="editProductMsg" role="status" aria-live="polite"></div>
 </section>
-<section class="card" id="productAvailabilityCard"><h2>Disponibilidade</h2><p class="muted">Consulte e altere a disponibilidade de produtos. A alteração grava somente a coluna available.</p><label for="availabilityProduct">Selecionar produto</label><select id="availabilityProduct"><option value="">Carregando produtos…</option></select><p id="availabilityCurrent" class="availability-current" aria-live="polite">Selecione um produto para ver o estado atual.</p><div class="availability-actions"><button id="toggleAvailability" type="button" disabled>Alternar disponibilidade</button><button id="refreshProducts" type="button" class="secondary">Atualizar produtos</button></div><p id="availabilityMessage" class="muted availability-message" role="status"></p><h3>Todos os produtos</h3><div id="adminProductList" class="product-list"><p class="muted">Carregando produtos…</p></div></section>
+<section class="card product-section" id="productAvailabilityCard"><h2>Disponibilidade</h2><p class="muted">Consulte e altere a disponibilidade de produtos. A alteração grava somente a coluna available.</p><label for="availabilityProduct">Selecionar produto</label><select id="availabilityProduct"><option value="">Carregando produtos…</option></select><p id="availabilityCurrent" class="availability-current" aria-live="polite">Selecione um produto para ver o estado atual.</p><div class="availability-actions"><button id="toggleAvailability" type="button" disabled>Alternar disponibilidade</button><button id="refreshProducts" type="button" class="secondary">Atualizar produtos</button></div><p id="availabilityMessage" class="muted availability-message" role="status"></p><h3>Todos os produtos</h3><div id="adminProductList" class="product-list"><p class="muted">Carregando produtos…</p></div></section>
 </section>
 </section></main>
 <script src="./turnstile.js" defer></script>
@@ -205,7 +205,7 @@ async function show(){
   const{data:{session}}=await db.auth.getSession();
   if(!session){setIn(false);return}
   const{data:m,error}=await db.from('admin_users').select('user_id').eq('user_id',session.user.id).maybeSingle();
-  if(error||!m){await db.auth.signOut();setIn(false);$('loginMsg').textContent='Esta conta não tem autorização de administrador.';return}
+  if(error||!m){await db.auth.signOut();setIn(false);$('message').textContent='Esta conta não tem autorização de administrador.';return}
   setIn(true);
 }
 $('btnOut').onclick=async()=>{await db.auth.signOut();setIn(false)};
