@@ -72,8 +72,14 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Configuração interna incompleta." }, 503);
   }
 
-  const body = await req.json().catch(() => null);
-  if (!body || typeof body !== "object") return json({ error: "Notificação inválida." }, 400);
+  let body: any;
+  try {
+    body = await readJsonBody(req);
+  } catch (error) {
+    if (error instanceof RangeError) return json({ error: "Corpo da notificação excede o limite de 65536 bytes." }, 413);
+    return json({ error: "Notificação JSON inválida." }, 400);
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Notificação inválida." }, 400);
 
   const event = String((body as any).event || "");
   if (event !== "PAYMENT_RECEIVED" && event !== "PAYMENT_CONFIRMED") {
