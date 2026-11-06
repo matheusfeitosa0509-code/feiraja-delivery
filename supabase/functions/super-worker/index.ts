@@ -351,12 +351,17 @@ Deno.serve(async (req: Request) => {
       items, subtotal, delivery_fee: deliveryFee, total, status: "Pagamento Pendente",
       market_checklist: { items: items.map((item: any) => ({ id: item.id, name: item.name, qty: item.qty, bought: false })), notes: String(body?.notes ?? "").trim().slice(0, 500) },
     };
-    const { error: draftError } = await db.rpc("create_order_with_rate_limit", { p_order: draftOrder });
+    const { data: createdOrderRows, error: draftError } = await db.rpc("create_order_with_rate_limit", { p_order: draftOrder });
     if (draftError) {
       if (isOrderRateLimitError(draftError)) {
         return json({ error: "Limite de 5 pedidos em 10 minutos atingido. Aguarde antes de tentar novamente." }, 429);
       }
       console.error("super-worker", { code: "DB_ERROR", stage: "insert_order_pix_draft" });
+      return json({ error: "Não foi possível registrar o pedido. Nenhum Pix foi criado." }, 500);
+    }
+    const createdOrder = Array.isArray(createdOrderRows) ? createdOrderRows[0] : null;
+    if (!createdOrder || String(createdOrder.order_id ?? "") !== orderId) {
+      console.error("super-worker", { code: "DB_ERROR", stage: "validate_created_order_pix" });
       return json({ error: "Não foi possível registrar o pedido. Nenhum Pix foi criado." }, 500);
     }
     if (asaasEnabled) {
