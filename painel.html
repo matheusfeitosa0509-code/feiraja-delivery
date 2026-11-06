@@ -199,7 +199,7 @@ const $=id=>document.getElementById(id);
 const slug=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 function makeId(name){const s=slug(name).replace(/-/g,'_');return s?'feiraja_'+s:''}
 function say(t,c){$('msg').textContent=t;$('msg').className=c||''}
-function setIn(v){$('productTools').classList.toggle('hidden',!v)}
+function setIn(v){}
 
 async function show(){
   const{data:{session}}=await db.auth.getSession();
