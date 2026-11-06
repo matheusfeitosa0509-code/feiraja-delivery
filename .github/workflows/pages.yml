@@ -25,7 +25,7 @@ jobs:
           cp -a ./index.html ./admin.html ./cadastro-produto.html ./painel.html ./loja.html ./politica-privacidade.html ./recuperar-senha.html ./termos.html ./turnstile.js ./icons ./imagens ./manifest.json ./sw.js _site/
           rm -f _site/imagens/produtos/leia.txt
       - name: Configure Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
         with:
           enablement: true
       - name: Upload static site
