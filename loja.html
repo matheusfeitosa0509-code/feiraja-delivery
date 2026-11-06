@@ -680,7 +680,7 @@ async function loadProfile(knownUser){
  if(knownUser){currentUser=knownUser;}else{const {data:{session}}=await supabase.auth.getSession();currentUser=session?.user||null;}
  updateAccountUI();
  if(!currentUser){await loadMyOrders();return;}
- const {data,error}=await supabase.from('customer_profiles').select('*').eq('user_id',currentUser.id).maybeSingle();
+ const {data,error}=await supabase.from('customer_profiles').select('full_name,phone,cpf,address').eq('user_id',currentUser.id).maybeSingle();
  if(error&&knownUser)throw error;
  if(data){
   if(data.full_name&&!$('#name').value.trim())$('#name').value=data.full_name;
