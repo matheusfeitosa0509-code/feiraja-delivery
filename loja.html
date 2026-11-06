@@ -623,13 +623,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 const supabase=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW');
 const $=s=>document.querySelector(s), money=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n);
 
-const LEGAL_DATA={responsavel:'Dr Alimentos',documento:'65.414.756/0001-22',whatsapp:'+55 92 9444-4989',email:'feiraondelivery2026@gmail.com',provedorPix:'Asaas',provedor:'Supabase',endereco:'Consulte pelo WhatsApp',horarios:'6h às 13h',data:'01/11/2026',prazoHoras:'Consulte pelo WhatsApp'};
+const LEGAL_DATA={responsavel:'Dr Alimentos',documento:'65.414.756/0001-22',whatsapp:'+55 92 9444-4989',email:'feiraondelivery2026@gmail.com',provedorPix:'Asaas',provedor:'Supabase',endereco:'Consulte pelo WhatsApp',horarios:'6h às 13h',data:'06/11/2026',prazoHoras:'Consulte pelo WhatsApp'};
 const TERMOS_TEXTO=[
  {heading:'Última atualização',body:LEGAL_DATA.data},
  {heading:'1. Quem somos',body:'Feira On Delivery é um serviço de entrega de produtos de feira em Manaus/AM. Responsável: '+LEGAL_DATA.responsavel+'.'},
  {heading:'2. Pedidos',body:'O pedido só é confirmado após o pagamento via Pix ou a confirmação pela loja. Preços e disponibilidade podem mudar sem aviso.'},
  {heading:'3. Entrega e pedido mínimo',body:'Pedido mínimo de R$ 30,00 em produtos para entrega. Taxa de entrega de R$ 15,00 para toda Manaus. A retirada no local é gratuita e não tem pedido mínimo.'},
- {heading:'4. Pagamento',body:'Aceitamos Pix, dinheiro na entrega e cartão na entrega.'},
+ {heading:'4. Pagamento',body:'Aceitamos Pix, processado pelo Asaas, dinheiro na entrega e cartão na entrega, com maquininha do entregador.'},
  {heading:'5. Produtos frescos',body:'Pequenas variações de tamanho, cor e peso são normais. Itens vendidos por peso podem ter ajuste de valor.'},
  {heading:'6. Prazos',body:'Os prazos de entrega são estimados e podem variar por trânsito, clima ou demanda.'},
  {heading:'7. Cadastro',body:'A pessoa é responsável pelos dados informados e pela guarda de sua senha.'},
@@ -638,15 +638,17 @@ const TERMOS_TEXTO=[
 const PRIVACIDADE_TEXTO=[
  {heading:'Última atualização',body:LEGAL_DATA.data},
  {heading:'1. Dados coletados',body:'Nome, e-mail, telefone/WhatsApp, endereço, CPF (somente para pagamento via Pix) e histórico de pedidos.'},
- {heading:'2. Finalidade',body:'Processar e entregar pedidos, gerar a cobrança Pix, dar atendimento e entrar em contato sobre o pedido.'},
- {heading:'3. Compartilhamento',body:'Compartilhamos dados apenas com quem for necessário para o serviço: provedor de pagamento ('+LEGAL_DATA.provedorPix+'), autenticação e banco de dados ('+LEGAL_DATA.provedor+') e entregador. Não vendemos dados pessoais.'},
- {heading:'4. Seus direitos (LGPD)',body:'Você pode acessar, corrigir e excluir seus dados e revogar o consentimento pelo contato '+LEGAL_DATA.whatsapp+' / '+LEGAL_DATA.email+'.'},
- {heading:'5. Armazenamento',body:'Os dados ficam guardados pelo tempo necessário ao serviço e a obrigações legais.'},
- {heading:'6. Segurança',body:'Adotamos medidas razoáveis de proteção, mas nenhum sistema é totalmente seguro.'},
- {heading:'7. Atualizações',body:'Esta política pode mudar. A data da última versão fica no topo.'}
+ {heading:'2. Finalidade',body:'Processar e entregar pedidos, gerar a cobrança Pix, prestar atendimento e entrar em contato sobre o pedido.'},
+ {heading:'3. Compartilhamento e serviços utilizados',body:'Compartilhamos dados somente com prestadores necessários ao serviço: Asaas, para processar pagamentos Pix; Supabase, para autenticação, banco de dados e funções; Cloudflare Turnstile, para verificar se formulários estão sendo usados por pessoas e dificultar acessos automatizados; Pwned Passwords, que verifica se uma senha apareceu em vazamentos usando somente os primeiros cinco caracteres do hash SHA-1, sem enviar a senha completa; e esm.sh, CDN que entrega ao navegador a biblioteca JavaScript do Supabase utilizada pela loja. Os dados necessários ao pedido também podem ser tratados pelo entregador. Não vendemos dados pessoais.'},
+ {heading:'4. Armazenamento no navegador',body:'O navegador guarda informações do carrinho de compras e a sessão de login para manter esses recursos funcionando entre visitas. A sessão é utilizada pela autenticação do Supabase.'},
+ {heading:'5. Bases legais (LGPD)',body:'Tratamos os dados com estas bases legais, conforme a finalidade: execução do contrato, para receber, processar e entregar pedidos; cumprimento de obrigação legal, quando precisarmos atender exigências legais ou regulatórias; e consentimento, quando a atividade depender da sua autorização.'},
+ {heading:'6. Seus direitos (LGPD)',body:'Você pode solicitar acesso, correção e exclusão dos seus dados e revogar o consentimento pelo contato '+LEGAL_DATA.whatsapp+' / '+LEGAL_DATA.email+'.'},
+ {heading:'7. Prazo de armazenamento',body:'Os dados ficam guardados pelo tempo necessário ao serviço e a obrigações legais.'},
+ {heading:'8. Segurança',body:'Adotamos medidas razoáveis de proteção, mas nenhum sistema é totalmente seguro.'},
+ {heading:'9. Atualizações',body:'Esta política pode mudar. A data da última versão fica no topo.'}
 ];
 const ENTREGAS_TEXTO=[
- {heading:'1. Área e taxa',body:'Entregamos em toda Manaus, com taxa de R$ 15,00. Retirada no local: '+LEGAL_DATA.endereco+', horários: '+LEGAL_DATA.horarios+'.'},
+ {heading:'1. Área e taxa',body:'Entregamos em toda Manaus, com taxa de R$ 15,00. A retirada no local é gratuita. Para consultar o endereço de retirada, fale pelo WhatsApp. Horários: '+LEGAL_DATA.horarios+'.'},
  {heading:'2. Recebimento',body:'Confira o endereço e esteja disponível. Se ninguém receber, podem ser feitas novas tentativas, com custo.'},
  {heading:'3. Problema com o produto',body:'Avise pelo WhatsApp, com foto, dentro do prazo combinado com a loja. Fazemos a troca ou o reembolso do item afetado.'},
  {heading:'4. Cancelamento',body:'Antes da separação do pedido, sem custo. Depois disso, pode haver cobrança parcial.'}
