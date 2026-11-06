@@ -303,6 +303,7 @@ async function show(){
   const {data:membership,error:membershipError}=await db.from('admin_users').select('user_id').eq('user_id',session.user.id).maybeSingle();
   if(membershipError||!membership){window.__feiraAdminVerifiedSession=null;await db.auth.signOut();setLoggedIn(false);$('message').textContent='Esta conta não tem autorização de administrador.';return;}
   window.__feiraAdminVerifiedSession=session;
+  window.dispatchEvent(new Event('feira-admin-verified'));
   setLoggedIn(true);
   setPanelLoading(true);
   await Promise.all([load(),loadAdminProducts()]);
@@ -855,4 +856,5 @@ document.getElementById('tabProducts').addEventListener('click',()=>{selectMainT
 document.querySelectorAll('[data-product-section]').forEach(btn=>btn.addEventListener('click',()=>openProductSection(btn.dataset.productSection)));
 selectMainTab(requestedTab);
 openProductSection(requestedTab==='products'?requestedSection:'formBox');
+window.addEventListener('feira-admin-verified',()=>{if(requestedTab==='products'){const active=document.querySelector('#productTools .product-section.active');openProductSection(active?.id||requestedSection);}});
 </script></body></html>
