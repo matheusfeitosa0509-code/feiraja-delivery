@@ -5,10 +5,10 @@ Loja estática em português com catálogo Supabase, checkout (Pix Mercado Pago,
 ## Publicação
 O workflow `.github/workflows/pages.yml` publica a raiz do repositório no GitHub Pages a cada push na branch `main`.
 
-- Site: https://matheusfeitosa0509-code.github.io/feiraja-delivery/
-- Loja: https://matheusfeitosa0509-code.github.io/feiraja-delivery/loja.html
-- Painel: https://matheusfeitosa0509-code.github.io/feiraja-delivery/admin.html
-- Recuperação: https://matheusfeitosa0509-code.github.io/feiraja-delivery/recuperar-senha.html
+- Site: https://www.feiraondelivery.com.br/
+- Loja: https://www.feiraondelivery.com.br/loja.html
+- Painel: https://www.feiraondelivery.com.br/admin.html
+- Recuperação: https://www.feiraondelivery.com.br/recuperar-senha.html
 
 Pico.css está fixado na versão `2.1.1` nas páginas legais que o utilizam.
 
@@ -34,7 +34,7 @@ A URL de notificação usada pelo checkout é `https://juhwdevvwstmyxyyagzh.supa
 - O checkout limita pedidos por usuário a 5 em 10 minutos.
 
 ## Documentação legal
-- Termos de Uso: https://matheusfeitosa0509-code.github.io/feiraja-delivery/termos.html
-- Política de Privacidade: https://matheusfeitosa0509-code.github.io/feiraja-delivery/politica-privacidade.html
+- Termos de Uso: https://www.feiraondelivery.com.br/termos.html
+- Política de Privacidade: https://www.feiraondelivery.com.br/politica-privacidade.html
 
 As páginas já estão publicadas. A Política de Privacidade ainda precisa ser completada com a identificação legal do responsável (nome civil/empresarial e CPF/CNPJ).

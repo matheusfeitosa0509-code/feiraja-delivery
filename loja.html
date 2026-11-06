@@ -759,7 +759,7 @@ $('#authForm').addEventListener('submit',async e=>{
    if(currentUser?.is_anonymous){
     result=await supabase.auth.updateUser({email,password,data:metadata});
    }else{
-    result=await supabase.auth.signUp({email,password,options:{emailRedirectTo:'https://matheusfeitosa0509-code.github.io/feiraja-delivery/loja.html',data:metadata,...(captchaToken?{captchaToken}:{})}});
+    result=await supabase.auth.signUp({email,password,options:{emailRedirectTo:'https://www.feiraondelivery.com.br/loja.html',data:metadata,...(captchaToken?{captchaToken}:{})}});
    }
   }else if(authMode==='login'){
    btn.textContent='Entrando...';

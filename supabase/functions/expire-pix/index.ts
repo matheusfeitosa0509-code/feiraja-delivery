@@ -1,34 +1,40 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 const SIMULATION_MODE = true; // Segurança: esta versão é somente leitura.
-const ALLOWED_ORIGIN = "https://matheusfeitosa0509-code.github.io";
-const corsHeaders = {
-  "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
+const ALLOWED_ORIGINS = new Set([
+  "https://www.feiraondelivery.com.br",
+  "https://feiraondelivery.com.br",
+  "https://matheusfeitosa0509-code.github.io",
+]);
+const corsHeadersFor = (origin: string | null) => ({
+  ...(origin && ALLOWED_ORIGINS.has(origin)
+    ? { "Access-Control-Allow-Origin": origin, "Vary": "Origin" }
+    : {}),
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-const respond = (body: unknown, status = 200) =>
+});
+const respond = (body: unknown, status = 200, origin: string | null = null) =>
   new Response(JSON.stringify(body, null, 2), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeadersFor(origin), "Content-Type": "application/json" },
   });
 
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get("Origin");
-  if (origin && origin !== ALLOWED_ORIGIN) return respond({ error: "Origem não autorizada." }, 403);
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") return respond({ error: "Use POST." }, 405);
+  if (origin && !ALLOWED_ORIGINS.has(origin)) return respond({ error: "Origem não autorizada." }, 403);
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeadersFor(origin) });
+  if (req.method !== "POST") return respond({ error: "Use POST." }, 405, origin);
 
   const authHeader = req.headers.get("Authorization") || "";
   const accessToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-  if (!accessToken) return respond({ error: "Autenticação obrigatória." }, 401);
+  if (!accessToken) return respond({ error: "Autenticação obrigatória." }, 401, origin);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const mpToken = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN");
   if (!supabaseUrl || !serviceKey || !mpToken) {
     // Não revelar qual configuração interna está ausente.
-    return respond({ error: "Configuração interna indisponível; nenhum pedido foi alterado." }, 503);
+    return respond({ error: "Configuração interna indisponível; nenhum pedido foi alterado." }, 503, origin);
   }
 
   const authClient = createClient(
@@ -38,7 +44,7 @@ Deno.serve(async (req: Request) => {
   );
   const { data: authData, error: authError } = await authClient.auth.getUser(accessToken);
   if (authError || !authData?.user || authData.user.is_anonymous) {
-    return respond({ error: "Sessão inválida; acesso negado." }, 401);
+    return respond({ error: "Sessão inválida; acesso negado." }, 401, origin);
   }
 
   const db = createClient(supabaseUrl, serviceKey, {
@@ -47,8 +53,8 @@ Deno.serve(async (req: Request) => {
   const { data: admin, error: adminError } = await db
     .from("admin_users").select("user_id")
     .eq("user_id", authData.user.id).maybeSingle();
-  if (adminError) return respond({ error: "Não foi possível verificar autorização." }, 503);
-  if (!admin) return respond({ error: "Somente administradores autorizados." }, 403);
+  if (adminError) return respond({ error: "Não foi possível verificar autorização." }, 503, origin);
+  if (!admin) return respond({ error: "Somente administradores autorizados." }, 403, origin);
 
   const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { data: orders, error: ordersError } = await db.from("orders")
@@ -58,7 +64,7 @@ Deno.serve(async (req: Request) => {
     .lt("created_at", cutoff)
     .order("created_at", { ascending: true })
     .limit(500);
-  if (ordersError) return respond({ error: "Falha ao consultar pedidos; nenhum pedido foi alterado." }, 503);
+  if (ordersError) return respond({ error: "Falha ao consultar pedidos; nenhum pedido foi alterado." }, 503, origin);
 
   const results = await Promise.all((orders || []).map(async (order: any) => {
     const ageMinutes = Math.floor((Date.now() - new Date(order.created_at).getTime()) / 60000);
@@ -101,5 +107,5 @@ Deno.serve(async (req: Request) => {
     changed_orders: 0,
     results,
     note: "Esta versão não contém operação de UPDATE nem cancelamento.",
-  });
+  }, 200, origin);
 });

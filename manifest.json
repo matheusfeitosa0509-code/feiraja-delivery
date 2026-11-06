@@ -1,8 +1,8 @@
 {
   "name": "Feira On Delivery",
   "short_name": "Feira On",
-  "start_url": "/feiraja-delivery/",
-  "scope": "/feiraja-delivery/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "theme_color": "#2f6a14",
   "background_color": "#2f6a14",
