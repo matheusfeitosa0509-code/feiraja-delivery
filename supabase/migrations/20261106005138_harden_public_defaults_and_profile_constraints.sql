@@ -1,44 +1,29 @@
 -- Feira On Delivery
 -- Migration: harden_public_defaults_and_profile_constraints
--- Restringe privilégios padrão, leitura de perfis e validações de dados.
+-- Restringe privilégios padrão do postgres, leitura de perfis e validações de dados.
 -- Não altera RLS, pagamentos, Asaas, Mercado Pago ou Edge Functions.
+-- O bloco supabase_admin foi omitido porque a conexão não possui ownership desse role.
 
 BEGIN;
 
--- 1. DEFAULT PRIVILEGES: supabase_admin
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin
+-- 1. DEFAULT PRIVILEGES: postgres
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres
 IN SCHEMA public
 REVOKE ALL ON TABLES FROM anon, authenticated;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres
 IN SCHEMA public
 REVOKE ALL ON SEQUENCES FROM anon, authenticated;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres
 IN SCHEMA public
 REVOKE EXECUTE ON FUNCTIONS FROM anon, authenticated;
 
 -- PUBLIC EXECUTE é um privilégio padrão global, não restrito ao schema.
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin
-REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
-
--- 2. DEFAULT PRIVILEGES: postgres
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres
-IN SCHEMA public
-REVOKE ALL ON TABLES FROM anon, authenticated;
-
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres
-IN SCHEMA public
-REVOKE ALL ON SEQUENCES FROM anon, authenticated;
-
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres
-IN SCHEMA public
-REVOKE EXECUTE ON FUNCTIONS FROM anon, authenticated;
-
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres
 REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 
--- 3. CUSTOMER_PROFILES: SELECT somente nas colunas permitidas
+-- 2. CUSTOMER_PROFILES: SELECT somente nas colunas permitidas
 REVOKE SELECT ON TABLE public.customer_profiles
 FROM authenticated;
 
@@ -53,12 +38,12 @@ GRANT SELECT (
 ON TABLE public.customer_profiles
 TO authenticated;
 
--- 4. PRODUCTS: preço positivo
+-- 3. PRODUCTS: preço positivo
 ALTER TABLE public.products
 ADD CONSTRAINT products_price_positive_check
 CHECK (price > 0);
 
--- 5. ORDERS: quantidade positiva nos itens JSON
+-- 4. ORDERS: quantidade positiva nos itens JSON
 ALTER TABLE public.orders
 ADD CONSTRAINT orders_items_positive_quantity_check
 CHECK (
@@ -91,7 +76,7 @@ CHECK (
     )
 );
 
--- 6. ORDERS: limites de comprimento dos campos de texto
+-- 5. ORDERS: limites de comprimento dos campos de texto
 ALTER TABLE public.orders
 ADD CONSTRAINT orders_text_lengths_check
 CHECK (
@@ -110,7 +95,7 @@ CHECK (
     AND char_length(coalesce(payment_provider, '')) <= 30
 );
 
--- 7. CUSTOMER_PROFILES: limites de comprimento dos campos de texto
+-- 6. CUSTOMER_PROFILES: limites de comprimento dos campos de texto
 ALTER TABLE public.customer_profiles
 ADD CONSTRAINT customer_profiles_text_lengths_check
 CHECK (
