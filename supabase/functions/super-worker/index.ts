@@ -204,7 +204,7 @@ Deno.serve(async (req: Request) => {
         .update({ status: nextStatus, payment_id: paymentIdFromNotice })
         .eq("id", linkedOrder.id);
       if (updateError) {
-        console.error("Falha ao atualizar status do pedido:", updateError.message);
+        console.error("Falha ao atualizar status do pedido:", { code: updateError.code || "DB_ERROR", stage: "update_order_status" });
         return json({ error: "Falha ao atualizar pedido." }, 500);
       }
       return json({ received: true });
@@ -322,7 +322,7 @@ Deno.serve(async (req: Request) => {
       };
       const { data: savedOrder, error: insertError } = await db.from("orders").insert(orderPayload).select("id,status,total").single();
       if (insertError) {
-        console.error("Falha ao salvar pedido sem Pix:", insertError.message);
+        console.error("Falha ao salvar pedido sem Pix:", { code: insertError.code || "DB_ERROR", stage: "insert_order_non_pix" });
         return json({ error: "Não foi possível registrar o pedido." }, 500);
       }
       return json({ order: savedOrder, id: savedOrder.id, paymentStatus: savedOrder.status });
@@ -339,7 +339,7 @@ Deno.serve(async (req: Request) => {
     };
     const { error: draftError } = await db.from("orders").insert(draftOrder);
     if (draftError) {
-      console.error("Falha ao salvar pedido antes de criar Pix:", draftError.message);
+      console.error("Falha ao salvar pedido antes de criar Pix:", { code: draftError.code || "DB_ERROR", stage: "insert_order_pix_draft" });
       return json({ error: "Não foi possível registrar o pedido. Nenhum Pix foi criado." }, 500);
     }
     if (asaasEnabled) {
@@ -727,7 +727,7 @@ Deno.serve(async (req: Request) => {
     const payment = await mpResponse.json();
     if (!mpResponse.ok) {
       await db.from("orders").update({ status: "Cancelada" }).eq("id", orderId).eq("status", "Pagamento Pendente");
-      console.error("Mercado Pago recusou a criação do Pix:", payment?.message ?? mpResponse.status);
+      console.error("Mercado Pago recusou a criação do Pix:", { code: "PAYMENT_PROVIDER_REJECTED", stage: "create_pix", http_status: mpResponse.status });
       return json({ error: "O Mercado Pago não conseguiu gerar o Pix. O pedido foi marcado como cancelado; tente novamente." }, 502);
     }
     const tx = payment?.point_of_interaction?.transaction_data;
