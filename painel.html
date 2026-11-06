@@ -208,7 +208,7 @@ async function show(){
   if(error||!m){await db.auth.signOut();setIn(false);$('message').textContent='Esta conta não tem autorização de administrador.';return}
   setIn(true);
 }
-$('btnOut').onclick=async()=>{await db.auth.signOut();setIn(false)};
+$('btnOut').onclick=async()=>{await db.auth.signOut();setIn(false);$('panel').classList.add('hidden');$('login').classList.remove('hidden');$('refresh').classList.add('hidden');$('logout').classList.add('hidden')};
 $('name').addEventListener('input',()=>{
   $('pid').value=makeId($('name').value);
   if(!$('imgfile').dataset.touched){const s=slug($('name').value);$('imgfile').value=s?s+'.jpg':''}
