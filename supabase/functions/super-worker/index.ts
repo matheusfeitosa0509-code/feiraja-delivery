@@ -15,6 +15,10 @@ function isValidCnpj(value: string) {
   return first === Number(cnpj[12]) && second === Number(cnpj[13]);
 }
 
+function isOrderRateLimitError(error: any) {
+  return error?.code === "P0001" && error?.message === "ORDER_RATE_LIMIT";
+}
+
 function isValidCpfOrCnpj(value: string) {
   const digits = String(value || "").replace(/\D/g, "");
   return digits.length === 11 ? isValidCpf(digits) : digits.length === 14 && isValidCnpj(digits);
@@ -108,7 +112,7 @@ Deno.serve(async (req: Request) => {
       // Webhooks must be signed. Never process payment notices without the configured secret.
       const webhookSecret = Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET");
       if (!webhookSecret) {
-        console.error("MERCADO_PAGO_WEBHOOK_SECRET não configurado.");
+        console.error("super-worker", { code: "CONFIG_MISSING", stage: "verify_mp_webhook_config" });
         return json({ error: "Webhook não configurado." }, 503);
       }
       {
@@ -165,7 +169,7 @@ Deno.serve(async (req: Request) => {
       const paidAmount = Math.round(Number(verifiedPayment.transaction_amount) * 100);
       const expectedAmount = Math.round(Number(linkedOrder.total) * 100);
       if (!Number.isFinite(expectedAmount) || paidAmount !== expectedAmount) {
-        console.error("Valor do pagamento não corresponde ao pedido:", linkedOrder.id);
+        console.error("super-worker", { code: "PAYMENT_MISMATCH", stage: "verify_mp_payment" });
         return json({ received: true, ignored: true });
       }
       const incomingStatus = String(verifiedPayment.status || "");
@@ -204,7 +208,7 @@ Deno.serve(async (req: Request) => {
         .update({ status: nextStatus, payment_id: paymentIdFromNotice })
         .eq("id", linkedOrder.id);
       if (updateError) {
-        console.error("Falha ao atualizar status do pedido:", updateError.message);
+        console.error("super-worker", { code: "DB_ERROR", stage: "update_order_status" });
         return json({ error: "Falha ao atualizar pedido." }, 500);
       }
       return json({ received: true });
@@ -246,9 +250,6 @@ Deno.serve(async (req: Request) => {
     }
 
     if (paymentMethod === "pix" && !validPixDocument) return json({ error: asaasEnabled ? "Informe um CPF ou CNPJ válido para gerar o Pix." : "Informe um CPF válido para gerar o Pix." }, 400);
-    const { count: recentOrderCount, error: rateLimitError } = await db.from("orders").select("id", { count: "exact", head: true }).eq("user_id", orderUserId).gte("created_at", new Date(Date.now() - 10 * 60 * 1000).toISOString());
-    if (rateLimitError) return json({ error: "Não foi possível validar o limite de pedidos. Tente novamente." }, 503);
-    if ((recentOrderCount || 0) >= 5) return json({ error: "Limite de 5 pedidos em 10 minutos atingido. Aguarde antes de tentar novamente." }, 429);
 
     const qtyById = new Map<string, number>();
     for (const item of requestedItems) {
@@ -267,7 +268,7 @@ Deno.serve(async (req: Request) => {
     if (products.some((p: any) => p.available === false)) return json({ error: "Um dos produtos está indisponível. Atualize a feira e tente novamente." }, 409);
 
     if (products.some((p: any) => !Number.isFinite(Number(p.price)) || Number(p.price) < 0)) {
-      console.error('Preço inválido cadastrado em products.');
+      console.error("super-worker", { code: "PRODUCT_PRICE_INVALID", stage: "validate_product_price" });
       return json({ error: 'Um produto está com preço inválido. Avise a loja antes de tentar novamente.' }, 409);
     }
     const items = products.map((p: any) => ({
@@ -320,11 +321,24 @@ Deno.serve(async (req: Request) => {
         items, subtotal, delivery_fee: deliveryFee, total, status: "Pedido Recebido",
         market_checklist: { notes: String(body?.notes ?? "").trim().slice(0, 1000) },
       };
-      const { data: savedOrder, error: insertError } = await db.from("orders").insert(orderPayload).select("id,status,total").single();
+      const { data: createdOrderRows, error: insertError } = await db.rpc("create_order_with_rate_limit", { p_order: orderPayload });
       if (insertError) {
-        console.error("Falha ao salvar pedido sem Pix:", insertError.message);
+        if (isOrderRateLimitError(insertError)) {
+          return json({ error: "Limite de 5 pedidos em 10 minutos atingido. Aguarde antes de tentar novamente." }, 429);
+        }
+        console.error("super-worker", { code: "DB_ERROR", stage: "insert_order_non_pix" });
         return json({ error: "Não foi possível registrar o pedido." }, 500);
       }
+      const createdOrder = Array.isArray(createdOrderRows) ? createdOrderRows[0] : createdOrderRows;
+      if (!createdOrder) {
+        console.error("super-worker", { code: "DB_ERROR", stage: "read_created_order_non_pix" });
+        return json({ error: "Não foi possível registrar o pedido." }, 500);
+      }
+      const savedOrder = {
+        id: createdOrder.order_id,
+        status: createdOrder.order_status,
+        total: createdOrder.order_total,
+      };
       return json({ order: savedOrder, id: savedOrder.id, paymentStatus: savedOrder.status });
     }
     // Save the order before creating the Pix payment so a provider/database failure
@@ -337,9 +351,12 @@ Deno.serve(async (req: Request) => {
       items, subtotal, delivery_fee: deliveryFee, total, status: "Pagamento Pendente",
       market_checklist: { items: items.map((item: any) => ({ id: item.id, name: item.name, qty: item.qty, bought: false })), notes: String(body?.notes ?? "").trim().slice(0, 500) },
     };
-    const { error: draftError } = await db.from("orders").insert(draftOrder);
+    const { error: draftError } = await db.rpc("create_order_with_rate_limit", { p_order: draftOrder });
     if (draftError) {
-      console.error("Falha ao salvar pedido antes de criar Pix:", draftError.message);
+      if (isOrderRateLimitError(draftError)) {
+        return json({ error: "Limite de 5 pedidos em 10 minutos atingido. Aguarde antes de tentar novamente." }, 429);
+      }
+      console.error("super-worker", { code: "DB_ERROR", stage: "insert_order_pix_draft" });
       return json({ error: "Não foi possível registrar o pedido. Nenhum Pix foi criado." }, 500);
     }
     if (asaasEnabled) {
@@ -356,10 +373,7 @@ Deno.serve(async (req: Request) => {
           .eq("id", orderId).eq("payment_provider", "asaas").eq("status", "Pagamento Pendente")
           .select("id").maybeSingle();
         if (error || !cancelledOrder) {
-          console.error("Resultado do cancelamento do pedido Asaas:", {
-            stage: "cancel_order",
-            cancel_result: "failed",
-          });
+          console.error("super-worker", { code: "DB_ERROR", stage: "cancel_order" });
           throw new Error("Não foi possível confirmar o cancelamento do pedido Asaas.");
         }
         console.info("Resultado do cancelamento do pedido Asaas:", {
@@ -378,11 +392,7 @@ Deno.serve(async (req: Request) => {
             method: "DELETE", headers: asaasHeaders,
           });
         } catch {
-          console.error("Resultado da exclusão da cobrança Asaas:", {
-            stage: "delete_payment",
-            charge_id_present: true,
-            delete_result: "inconclusive",
-          });
+          console.error("super-worker", { code: "PROVIDER_DELETE_INCONCLUSIVE", stage: "delete_payment" });
           throw new Error("Não foi possível confirmar a exclusão da cobrança Asaas.");
         }
         if (response.ok) {
@@ -394,19 +404,14 @@ Deno.serve(async (req: Request) => {
           });
           return true;
         }
-        console.error("Resultado da exclusão da cobrança Asaas:", {
-          stage: "delete_payment",
-          http_status: response.status,
-          charge_id_present: true,
-          delete_result: "failed",
-        });
+        console.error("super-worker", { code: "PROVIDER_DELETE_FAILED", stage: "delete_payment" });
         throw new Error("Não foi possível confirmar a exclusão da cobrança Asaas.");
       };
       const { data: profile, error: profileReadError } = await db.from("customer_profiles")
         .select("asaas_customer_id").eq("user_id", orderUserId).maybeSingle();
       if (profileReadError) {
         await cancelPendingOrder();
-        console.error("Falha ao consultar vínculo do cliente Asaas.");
+        console.error("super-worker", { code: "DB_ERROR", stage: "read_asaas_customer_link" });
         return json({ error: "Não foi possível preparar o cliente Asaas. O pedido foi cancelado." }, 500);
       }
 
@@ -431,7 +436,7 @@ Deno.serve(async (req: Request) => {
           }
         } else if (storedCustomerResponse.status !== 404) {
           await cancelPendingOrder();
-          console.error("Falha ao validar cliente Asaas armazenado:", storedCustomerResponse.status);
+          console.error("super-worker", { code: "PROVIDER_CUSTOMER_INVALID", stage: "validate_stored_customer" });
           return json({ error: "Não foi possível verificar o cliente Asaas. O pedido foi cancelado." }, 502);
         }
       }
@@ -449,7 +454,7 @@ Deno.serve(async (req: Request) => {
         }
         if (!customerSearchResponse.ok) {
           await cancelPendingOrder();
-          console.error("Falha ao localizar cliente Asaas:", customerSearchResponse.status);
+          console.error("super-worker", { code: "PROVIDER_CUSTOMER_LOOKUP_FAILED", stage: "search_customer" });
           return json({ error: "Não foi possível localizar o cliente Asaas. O pedido foi cancelado." }, 502);
         }
         const customerSearch = await customerSearchResponse.json().catch(() => ({}));
@@ -486,7 +491,7 @@ Deno.serve(async (req: Request) => {
           const createdCustomer = await createCustomerResponse.json().catch(() => ({}));
           if (!createCustomerResponse.ok || !createdCustomer?.id) {
             await cancelPendingOrder();
-            console.error("Asaas recusou o cadastro do cliente:", createCustomerResponse.status);
+            console.error("super-worker", { code: "PROVIDER_CUSTOMER_CREATE_FAILED", stage: "create_customer" });
             return json({ error: "Não foi possível cadastrar o cliente Asaas. O pedido foi cancelado." }, 502);
           }
           asaasCustomerId = String(createdCustomer.id);
@@ -499,7 +504,7 @@ Deno.serve(async (req: Request) => {
         .select("user_id").maybeSingle();
       if (profileSaveError || !savedProfile) {
         await cancelPendingOrder();
-        console.error("Falha ao salvar vínculo do cliente Asaas.");
+        console.error("super-worker", { code: "DB_ERROR", stage: "save_customer_link" });
         return json({ error: "Não foi possível salvar o vínculo do cliente Asaas. O pedido foi cancelado." }, 500);
       }
 
@@ -548,7 +553,7 @@ Deno.serve(async (req: Request) => {
           if (recoveredPayment?.id) {
             createPaymentResponse = new Response(JSON.stringify(recoveredPayment), { status: 200 });
           } else {
-            console.error("Criação da cobrança Asaas inconclusiva; pedido mantido para reconciliação.");
+            console.error("super-worker", { code: "PAYMENT_CREATE_INCONCLUSIVE", stage: "create_payment" });
             return json({ error: "Não foi possível confirmar se a cobrança foi criada. O pedido permanece pendente para nova tentativa de reconciliação." }, 503);
           }
         }
@@ -558,7 +563,7 @@ Deno.serve(async (req: Request) => {
         if (recoveredPayment?.id) {
           createPaymentResponse = new Response(JSON.stringify(recoveredPayment), { status: 200 });
         } else {
-          console.error("Falha ao reconciliar cobrança Asaas após resposta inconclusiva.");
+          console.error("super-worker", { code: "PAYMENT_RECONCILIATION_FAILED", stage: "reconcile_payment" });
           return json({ error: "Não foi possível confirmar se a cobrança foi criada. O pedido permanece pendente para nova tentativa de reconciliação." }, 503);
         }
       }
@@ -626,15 +631,9 @@ Deno.serve(async (req: Request) => {
               description: sanitizeAsaasLogValue(item?.description),
             }));
           }
-          console.error("Falha na criação da cobrança Asaas:", diagnostic);
+          console.error("super-worker", { code: "PROVIDER_CREATE_FAILED", stage: "create_payment" });
         } else {
-          console.error("Falha na criação/validação da cobrança Asaas:", {
-            stage: "create_payment",
-            http_status: createPaymentResponse.status,
-            provider_error_code_omitted: true,
-            provider_error_message: providerErrorMessage || null,
-            charge_id_present: Boolean(asaasPayment?.id),
-          });
+          console.error("super-worker", { code: "PROVIDER_CREATE_FAILED", stage: "create_payment" });
         }
         if (asaasPayment?.id) {
           const deleted = await deleteAsaasPayment(String(asaasPayment.id));
@@ -658,7 +657,7 @@ Deno.serve(async (req: Request) => {
           return json({ error: "Não foi possível confirmar a remoção da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 502);
         }
         await cancelPendingOrder();
-        console.error("Falha ao vincular cobrança Asaas ao pedido.");
+        console.error("super-worker", { code: "DB_ERROR", stage: "link_payment_to_order" });
         return json({ error: "Não foi possível vincular a cobrança ao pedido. O pedido foi cancelado." }, 500);
       }
 
@@ -679,7 +678,7 @@ Deno.serve(async (req: Request) => {
           return json({ error: "Não foi possível confirmar a remoção da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 502);
         }
         await cancelPendingOrder();
-        console.error("Asaas não retornou os dados do QR Pix:", qrResponse.status);
+        console.error("super-worker", { code: "PROVIDER_QR_MISSING", stage: "read_pix_qr" });
         return json({ error: "O Asaas não retornou os dados do Pix. O pedido foi cancelado." }, 502);
       }
 
@@ -693,7 +692,7 @@ Deno.serve(async (req: Request) => {
           return json({ error: "Não foi possível confirmar a remoção da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 502);
         }
         await cancelPendingOrder();
-        console.error("Falha ao salvar QR Pix Asaas.");
+        console.error("super-worker", { code: "DB_ERROR", stage: "save_pix_qr" });
         return json({ error: "Não foi possível salvar os dados do Pix. O pedido foi cancelado." }, 500);
       }
 
@@ -727,7 +726,7 @@ Deno.serve(async (req: Request) => {
     const payment = await mpResponse.json();
     if (!mpResponse.ok) {
       await db.from("orders").update({ status: "Cancelada" }).eq("id", orderId).eq("status", "Pagamento Pendente");
-      console.error("Mercado Pago recusou a criação do Pix:", payment?.message ?? mpResponse.status);
+      console.error("super-worker", { code: "PAYMENT_PROVIDER_REJECTED", stage: "create_pix" });
       return json({ error: "O Mercado Pago não conseguiu gerar o Pix. O pedido foi marcado como cancelado; tente novamente." }, 502);
     }
     const tx = payment?.point_of_interaction?.transaction_data;
@@ -746,7 +745,7 @@ Deno.serve(async (req: Request) => {
       .select("id,status,total")
       .single();
     if (savePaymentError || !savedOrder) {
-      console.error("Pix criado; metadados pendentes de reconciliação para o pedido:", orderId);
+      console.error("super-worker", { code: "PAYMENT_METADATA_RECONCILIATION_PENDING", stage: "reconcile_payment_metadata" });
       return json({ error: "O Pix foi iniciado e o pedido está salvo com o código " + orderId + ". Atualize seus pedidos ou fale com a loja se os dados do Pix não aparecerem." }, 500);
     }
     const initialStatus = payment.status === "approved" ? "Pagamento Confirmado" :
@@ -770,18 +769,18 @@ Deno.serve(async (req: Request) => {
       const { data: currentOrder, error: orderReadError } = await context.db.from("orders")
         .select("id,status,payment_id").eq("id", context.orderId).eq("payment_provider", "asaas").maybeSingle();
       if (orderReadError || !currentOrder) {
-        console.error("Falha inesperada; não foi possível consultar o pedido para reconciliação Asaas.");
+        console.error("super-worker", { code: "RECONCILIATION_READ_FAILED", stage: "reconcile_order" });
         return json({ error: "O processamento falhou e não foi possível confirmar o estado do pedido. Contate a loja." }, 500);
       }
       if (String(currentOrder.status || "") !== "Pagamento Pendente") {
-        console.error("Falha inesperada após mudança de estado do pedido; estado preservado.");
+        console.error("super-worker", { code: "RECONCILIATION_STATE_PRESERVED", stage: "reconcile_order_state" });
         return json({ error: "O processamento foi interrompido e o estado atual do pedido foi preservado. Consulte seus pedidos ou contate a loja." }, 500);
       }
 
       const apiKey = Deno.env.get("ASAAS_API_KEY") || "";
       if (context.paymentId) {
         if (!apiKey || !context.baseUrl) {
-          console.error("Não foi possível reconciliar cobrança Asaas após falha inesperada.");
+          console.error("super-worker", { code: "PAYMENT_RECONCILIATION_FAILED", stage: "reconcile_payment" });
           return json({ error: "Não foi possível confirmar a limpeza da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 500);
         }
         try {
@@ -790,12 +789,7 @@ Deno.serve(async (req: Request) => {
             headers: { access_token: apiKey, Accept: "application/json" },
           });
           if (!deleteResponse.ok) {
-            console.error("Resultado da exclusão na reconciliação Asaas:", {
-              stage: "reconcile_delete_payment",
-              http_status: deleteResponse.status,
-              charge_id_present: true,
-              delete_result: "failed",
-            });
+            console.error("super-worker", { code: "PROVIDER_DELETE_FAILED", stage: "reconcile_delete_payment" });
             return json({ error: "Não foi possível confirmar a limpeza da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 500);
           }
           console.info("Resultado da exclusão na reconciliação Asaas:", {
@@ -805,11 +799,7 @@ Deno.serve(async (req: Request) => {
             delete_result: "confirmed",
           });
         } catch {
-          console.error("Resultado da exclusão na reconciliação Asaas:", {
-            stage: "reconcile_delete_payment",
-            charge_id_present: true,
-            delete_result: "inconclusive",
-          });
+          console.error("super-worker", { code: "PROVIDER_DELETE_INCONCLUSIVE", stage: "reconcile_delete_payment" });
           return json({ error: "Não foi possível confirmar a limpeza da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 500);
         }
       } else if (context.paymentRequestStarted && !context.paymentRequestResolved) {
@@ -826,7 +816,7 @@ Deno.serve(async (req: Request) => {
             method: "GET", headers: { access_token: apiKey, Accept: "application/json" },
           });
           if (!lookupResponse.ok) {
-            console.error("Falha ao consultar cobrança durante reconciliação Asaas:", lookupResponse.status);
+            console.error("super-worker", { code: "PROVIDER_LOOKUP_FAILED", stage: "reconcile_lookup_payment" });
             return json({ error: "Não foi possível reconciliar a cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 500);
           }
           const lookupData = await lookupResponse.json().catch(() => ({}));
@@ -837,19 +827,14 @@ Deno.serve(async (req: Request) => {
             (!context.customerId || String(item?.customer || "") === context.customerId)
           ) : null;
           if (!candidate?.id) {
-            console.error("Cobrança Asaas inconclusiva; pedido mantido para reconciliação manual.");
+            console.error("super-worker", { code: "PAYMENT_RECONCILIATION_REQUIRED", stage: "reconcile_payment" });
             return json({ error: "Não foi possível confirmar se a cobrança foi criada. O pedido permanece pendente para revisão; não tente pagar novamente." }, 500);
           }
           const deleteResponse = await fetch(context.baseUrl + "/v3/payments/" + encodeURIComponent(String(candidate.id)), {
             method: "DELETE", headers: { access_token: apiKey, Accept: "application/json" },
           });
           if (!deleteResponse.ok) {
-            console.error("Resultado da exclusão da cobrança reconciliada Asaas:", {
-              stage: "reconcile_delete_payment",
-              http_status: deleteResponse.status,
-              charge_id_present: true,
-              delete_result: "failed",
-            });
+            console.error("super-worker", { code: "PROVIDER_DELETE_FAILED", stage: "reconcile_delete_payment" });
             return json({ error: "Não foi possível confirmar a limpeza da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 500);
           }
           console.info("Resultado da exclusão da cobrança reconciliada Asaas:", {
@@ -859,11 +844,7 @@ Deno.serve(async (req: Request) => {
             delete_result: "confirmed",
           });
         } catch {
-          console.error("Resultado da exclusão da cobrança reconciliada Asaas:", {
-            stage: "reconcile_delete_payment",
-            charge_id_present: true,
-            delete_result: "inconclusive",
-          });
+          console.error("super-worker", { code: "PROVIDER_DELETE_INCONCLUSIVE", stage: "reconcile_delete_payment" });
           return json({ error: "Não foi possível reconciliar a cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 500);
         }
       }
@@ -873,10 +854,7 @@ Deno.serve(async (req: Request) => {
         .eq("id", context.orderId).eq("payment_provider", "asaas").eq("status", "Pagamento Pendente")
         .select("id").maybeSingle();
       if (cancelError || !cancelledOrder) {
-        console.error("Resultado do cancelamento do pedido na reconciliação Asaas:", {
-          stage: "reconcile_cancel_order",
-          cancel_result: "failed",
-        });
+        console.error("super-worker", { code: "DB_ERROR", stage: "reconcile_cancel_order" });
         return json({ error: "Não foi possível confirmar o cancelamento do pedido. Contate a loja para revisão." }, 500);
       }
       console.info("Resultado do cancelamento do pedido na reconciliação Asaas:", {
@@ -889,7 +867,7 @@ Deno.serve(async (req: Request) => {
           : "O processamento falhou. O pedido foi cancelado.",
       }, 500);
     }
-    console.error("Erro interno super-worker:", error instanceof Error ? error.message : "unknown");
+    console.error("super-worker", { code: "INTERNAL_ERROR", stage: "request_handler" });
     return json({ error: "Erro interno ao processar o pedido. Tente novamente." }, 500);
   }
 });
