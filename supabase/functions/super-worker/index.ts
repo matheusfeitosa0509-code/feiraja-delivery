@@ -65,7 +65,19 @@ Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
   const earlyNoticeType = String(url.searchParams.get("type") || url.searchParams.get("topic") || "");
   if (earlyNoticeType && earlyNoticeType !== "payment") return json({ received: true, ignored: true });
-  const earlyBody = req.method === "POST" ? await req.clone().json().catch(() => ({})) : {};
+  let requestBody: any = {};
+  if (req.method === "POST") {
+    try {
+      requestBody = await readJsonBody(req);
+    } catch (error) {
+      if (error instanceof RangeError) return json({ error: "Corpo da requisição excede o limite de 65536 bytes." }, 413);
+      return json({ error: "Corpo JSON inválido." }, 400);
+    }
+    if (!requestBody || typeof requestBody !== "object" || Array.isArray(requestBody)) {
+      return json({ error: "Corpo JSON inválido." }, 400);
+    }
+  }
+  const earlyBody = requestBody;
   const earlyBodyType = String(earlyBody?.type || earlyBody?.topic || "");
   if (earlyBodyType && earlyBodyType !== "payment") return json({ received: true, ignored: true });
   if (req.method === "GET") {
@@ -110,10 +122,7 @@ Deno.serve(async (req: Request) => {
     if (!supabaseUrl || !serviceKey) return json({ error: "Configuração interna do servidor incompleta." }, 500);
     const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
-    let body: any;
-    try { body = await readJsonBody(req); }
-    catch (error) { if (error instanceof RangeError) return json({ error: "Corpo da requisição excede o limite de 65536 bytes." }, 413); return json({ error: "Corpo JSON inválido." }, 400); }
-    if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Corpo JSON inválido." }, 400);
+    const body = requestBody;
     const noticeType = String(url.searchParams.get("type") || url.searchParams.get("topic") || body?.type || body?.topic || "");
     const paymentIdFromNotice = String(url.searchParams.get("data.id") || url.searchParams.get("id") || body?.data?.id || "");
     if (noticeType.length > 32 || paymentIdFromNotice.length > 100) return json({ error: "Identificador ou tipo de notificação excede o tamanho permitido." }, 400);
