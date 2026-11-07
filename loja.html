@@ -694,6 +694,7 @@ async function checkPasswordPwned(password){
 
 
 let cartStorageWarning=false;
+ let cartStorageWriteWarning=false;
 function readStoredCart(){try{const raw=localStorage.getItem('feiraja_cart_v1');if(raw===null)return {};const parsed=JSON.parse(raw);if(!parsed||typeof parsed!=='object'||Array.isArray(parsed)||Object.entries(parsed).some(([id,qty])=>!id.trim()||!Number.isInteger(qty)||qty<1||qty>100)){cartStorageWarning=true;return {};}return parsed;}catch{cartStorageWarning=true;return {};}}
 let products=[],cart=readStoredCart(),category='Todos',authMode='login',currentUser=null,pendingCheckout=false;
 function persistCart(){try{localStorage.setItem('feiraja_cart_v1',JSON.stringify(cart));cartStorageWarning=false;}catch(error){cartStorageWriteWarning=true;console.error('Não foi possível salvar o carrinho local:',error);}}
