@@ -246,6 +246,7 @@ function renderAdminProducts(){
 }
 let adminProductsLoaded=false,adminProductsLoading=null;
 async function loadAdminProducts(force=false){
+ if(!window.__feiraAdminVerifiedSession){availabilityMessage('Carregando…');return;}
  if(adminProductsLoaded&&!force)return;
  if(adminProductsLoading)return adminProductsLoading;
  adminProductsLoading=(async()=>{
