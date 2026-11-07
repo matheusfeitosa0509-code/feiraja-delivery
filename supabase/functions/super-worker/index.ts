@@ -273,7 +273,7 @@ Deno.serve(async (req: Request) => {
     for (const p of products as any[]) {
       const qty = qtyById.get(p.id)!;
       const normalPriceCents = Math.round(Number(p.price) * 100);
-      if (!Number.isFinite(Number(p.price)) || normalPriceCents < 0) {
+      if (!Number.isFinite(Number(p.price)) || !Number.isSafeInteger(normalPriceCents) || normalPriceCents < 0) {
         console.error("super-worker", { code: "PRODUCT_PRICE_INVALID", stage: "validate_product_price" });
         return json({ error: "Um produto está com preço inválido. Avise a loja antes de tentar novamente." }, 409);
       }
@@ -282,7 +282,7 @@ Deno.serve(async (req: Request) => {
       if (p.resale_enabled === true) {
         const resalePriceCents = p.resale_price == null ? NaN : Math.round(Number(p.resale_price) * 100);
         const resaleMinQty = Number(p.resale_min_qty);
-        if (p.resale_price == null || !Number.isFinite(resalePriceCents) || resalePriceCents <= 0 ||
+        if (p.resale_price == null || !Number.isSafeInteger(resalePriceCents) || resalePriceCents <= 0 ||
             resalePriceCents > normalPriceCents || p.resale_min_qty == null ||
             !Number.isInteger(resaleMinQty) || resaleMinQty < 1) {
           console.error("super-worker", { code: "RESALE_CONFIG_INVALID", stage: "validate_resale_config" });
@@ -295,6 +295,7 @@ Deno.serve(async (req: Request) => {
       }
 
       subtotalCents += effectivePriceCents * qty;
+      if (!Number.isSafeInteger(subtotalCents)) return json({ error: "Valor total inválido." }, 400);
       items.push({
         id: p.id, name: p.name, category: p.category, image: p.image,
         price: effectivePriceCents / 100, qty,
