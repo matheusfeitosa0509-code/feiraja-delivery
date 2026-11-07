@@ -6,6 +6,17 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const MAX_JSON_BODY_BYTES = 64 * 1024;
+async function readJsonBody(req: Request): Promise<any> {
+  const declaredLength = Number(req.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_JSON_BODY_BYTES) throw new RangeError("BODY_TOO_LARGE");
+  if (!req.body) return {};
+  const reader = req.body.getReader(); const chunks: Uint8Array[] = []; let total = 0;
+  while (true) { const { done, value } = await reader.read(); if (done) break; total += value.byteLength; if (total > MAX_JSON_BODY_BYTES) { await reader.cancel(); throw new RangeError("BODY_TOO_LARGE"); } chunks.push(value); }
+  const bytes = new Uint8Array(total); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  try { return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)); } catch { throw new SyntaxError("INVALID_JSON"); }
+}
+
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
   headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -61,8 +72,14 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Configuração interna incompleta." }, 503);
   }
 
-  const body = await req.json().catch(() => null);
-  if (!body || typeof body !== "object") return json({ error: "Notificação inválida." }, 400);
+  let body: any;
+  try {
+    body = await readJsonBody(req);
+  } catch (error) {
+    if (error instanceof RangeError) return json({ error: "Corpo da notificação excede o limite de 65536 bytes." }, 413);
+    return json({ error: "Notificação JSON inválida." }, 400);
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Notificação inválida." }, 400);
 
   const event = String((body as any).event || "");
   if (event !== "PAYMENT_RECEIVED" && event !== "PAYMENT_CONFIRMED") {
@@ -74,6 +91,7 @@ Deno.serve(async (req: Request) => {
   const paymentId = String(payment?.id || "");
   const externalReference = String(payment?.externalReference || "");
   const billingType = String(payment?.billingType || "").toUpperCase();
+  if (event.length > 64 || paymentId.length > 100 || externalReference.length > 100 || billingType.length > 32) return json({ error: "Evento ou identificador excede o tamanho permitido." }, 400);
   const paymentValue = Number(payment?.value);
 
   if (!paymentId || !externalReference || billingType !== "PIX" ||
