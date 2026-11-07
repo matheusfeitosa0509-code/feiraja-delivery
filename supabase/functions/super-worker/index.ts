@@ -267,9 +267,13 @@ Deno.serve(async (req: Request) => {
     if (!products || products.length !== ids.length) return json({ error: "Um ou mais produtos não existem mais. Atualize a feira e tente novamente." }, 409);
     if (products.some((p: any) => p.available === false)) return json({ error: "Um dos produtos está indisponível. Atualize a feira e tente novamente." }, 409);
 
+    const pricingVersion = String(body?.pricing_version || "");
+    if (pricingVersion && pricingVersion !== "resale-v1") {
+      return json({ error: "Versão de cálculo de preços não reconhecida. Atualize a feira e tente novamente." }, 409);
+    }
+
     const items: any[] = [];
     let subtotalCents = 0;
-    let resaleApplies = false;
     for (const p of products as any[]) {
       const qty = qtyById.get(p.id)!;
       const normalPriceCents = Math.round(Number(p.price) * 100);
@@ -279,7 +283,7 @@ Deno.serve(async (req: Request) => {
       }
 
       let effectivePriceCents = normalPriceCents;
-      if (p.resale_enabled === true) {
+      if (pricingVersion === "resale-v1" && p.resale_enabled === true) {
         const resalePriceCents = p.resale_price == null ? NaN : Math.round(Number(p.resale_price) * 100);
         const resaleMinQty = Number(p.resale_min_qty);
         if (p.resale_price == null || !Number.isSafeInteger(resalePriceCents) || resalePriceCents <= 0 ||
@@ -289,7 +293,6 @@ Deno.serve(async (req: Request) => {
           return json({ error: "Preço de revenda configurado incorretamente para um produto. Avise a loja antes de tentar novamente." }, 409);
         }
         if (qty >= resaleMinQty) {
-          resaleApplies = true;
           effectivePriceCents = resalePriceCents;
         }
       }
@@ -302,11 +305,18 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const pricingVersion = String(body?.pricing_version || "");
-    if (resaleApplies && pricingVersion !== "resale-v1") {
-      return json({ error: "O cálculo de revenda da loja está desatualizado. Atualize a página antes de concluir o pedido." }, 409);
+    // REMOVER ESSA COMPATIBILIDADE até 2026-12-06.
+    // Clientes sem versão recebem temporariamente o preço normal, igual à loja antiga.
+    if (!pricingVersion) {
+      console.warn("super-worker", {
+        code: "LEGACY_NORMAL_PRICE_COMPAT",
+        stage: "legacy_pricing_compat",
+        remove_after: "2026-12-06",
+      });
     }
-    if (pricingVersion) {
+
+    const quoteProvided = body?.pricing_quote !== undefined && body?.pricing_quote !== null;
+    if (pricingVersion === "resale-v1" || quoteProvided) {
       const quote = body?.pricing_quote;
       const quoteItems = Array.isArray(quote?.items) ? quote.items : [];
       const quoteById = new Map<string, any>();
@@ -317,8 +327,7 @@ Deno.serve(async (req: Request) => {
         }
         quoteById.set(id, item);
       }
-      const quoteMatches = pricingVersion === "resale-v1" &&
-        quoteItems.length === items.length &&
+      const quoteMatches = quoteItems.length === items.length &&
         items.every((item: any) => {
           const quoted = quoteById.get(String(item.id));
           return quoted && Number(quoted.qty) === item.qty &&
