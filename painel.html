@@ -894,7 +894,7 @@ db.auth.onAuthStateChange((event,session)=>{
 
 }
 const params=new URLSearchParams(location.search);
-const requestedTab=params.get('aba')==='produtos'?'products':'orders';
+const requestedTab=['produtos','products'].includes(params.get('aba'))?'products':'orders';
 const requestedSection=params.get('secao')||'cadastrar';
 function selectMainTab(tab){
  const products=tab==='products';
