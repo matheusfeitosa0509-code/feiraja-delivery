@@ -262,24 +262,82 @@ Deno.serve(async (req: Request) => {
     }
     const ids = [...qtyById.keys()];
     const { data: products, error: productsError } = await db.from("products")
-      .select("id,name,price,category,image,available").in("id", ids);
+      .select("id,name,price,category,image,available,resale_enabled,resale_price,resale_min_qty").in("id", ids);
     if (productsError) throw productsError;
     if (!products || products.length !== ids.length) return json({ error: "Um ou mais produtos não existem mais. Atualize a feira e tente novamente." }, 409);
     if (products.some((p: any) => p.available === false)) return json({ error: "Um dos produtos está indisponível. Atualize a feira e tente novamente." }, 409);
 
-    if (products.some((p: any) => !Number.isFinite(Number(p.price)) || Number(p.price) < 0)) {
-      console.error("super-worker", { code: "PRODUCT_PRICE_INVALID", stage: "validate_product_price" });
-      return json({ error: 'Um produto está com preço inválido. Avise a loja antes de tentar novamente.' }, 409);
+    const items: any[] = [];
+    let subtotalCents = 0;
+    let resaleApplies = false;
+    for (const p of products as any[]) {
+      const qty = qtyById.get(p.id)!;
+      const normalPriceCents = Math.round(Number(p.price) * 100);
+      if (!Number.isFinite(Number(p.price)) || normalPriceCents < 0) {
+        console.error("super-worker", { code: "PRODUCT_PRICE_INVALID", stage: "validate_product_price" });
+        return json({ error: "Um produto está com preço inválido. Avise a loja antes de tentar novamente." }, 409);
+      }
+
+      let effectivePriceCents = normalPriceCents;
+      if (p.resale_enabled === true) {
+        const resalePriceCents = p.resale_price == null ? NaN : Math.round(Number(p.resale_price) * 100);
+        const resaleMinQty = Number(p.resale_min_qty);
+        if (p.resale_price == null || !Number.isFinite(resalePriceCents) || resalePriceCents <= 0 ||
+            resalePriceCents > normalPriceCents || p.resale_min_qty == null ||
+            !Number.isInteger(resaleMinQty) || resaleMinQty < 1) {
+          console.error("super-worker", { code: "RESALE_CONFIG_INVALID", stage: "validate_resale_config" });
+          return json({ error: "Preço de revenda configurado incorretamente para um produto. Avise a loja antes de tentar novamente." }, 409);
+        }
+        if (qty >= resaleMinQty) {
+          resaleApplies = true;
+          effectivePriceCents = resalePriceCents;
+        }
+      }
+
+      subtotalCents += effectivePriceCents * qty;
+      items.push({
+        id: p.id, name: p.name, category: p.category, image: p.image,
+        price: effectivePriceCents / 100, qty,
+      });
     }
-    const items = products.map((p: any) => ({
-      id: p.id, name: p.name, category: p.category, image: p.image,
-      price: Number(p.price), qty: qtyById.get(p.id)!,
-    }));
-    const subtotal = Math.round(items.reduce((sum: number, item: any) => sum + item.price * item.qty, 0) * 100) / 100;
-    if (deliveryType === "delivery" && subtotal < 30) return json({ error: "Pedido mínimo de R$ 30,00 em produtos para entrega em casa." }, 400);
-    const deliveryFee = deliveryType === "delivery" ? 15 : 0;
-    const total = Math.round((subtotal + deliveryFee) * 100) / 100;
-    if (!Number.isFinite(total) || total <= 0 || total > 100000) return json({ error: "Valor total inválido." }, 400);
+
+    const pricingVersion = String(body?.pricing_version || "");
+    if (resaleApplies && pricingVersion !== "resale-v1") {
+      return json({ error: "O cálculo de revenda da loja está desatualizado. Atualize a página antes de concluir o pedido." }, 409);
+    }
+    if (pricingVersion) {
+      const quote = body?.pricing_quote;
+      const quoteItems = Array.isArray(quote?.items) ? quote.items : [];
+      const quoteById = new Map<string, any>();
+      for (const item of quoteItems) {
+        const id = String(item?.id ?? "");
+        if (!id || quoteById.has(id)) {
+          return json({ error: "A cotação de preços da loja é inválida. Atualize a página e tente novamente." }, 409);
+        }
+        quoteById.set(id, item);
+      }
+      const quoteMatches = pricingVersion === "resale-v1" &&
+        quoteItems.length === items.length &&
+        items.every((item: any) => {
+          const quoted = quoteById.get(String(item.id));
+          return quoted && Number(quoted.qty) === item.qty &&
+            Number.isInteger(quoted.unit_price_cents) &&
+            quoted.unit_price_cents === Math.round(item.price * 100);
+        }) &&
+        Number.isInteger(quote?.subtotal_cents) &&
+        quote.subtotal_cents === subtotalCents;
+      if (!quoteMatches) {
+        return json({ error: "Os preços da feira mudaram. Atualize a página e confira a sacola antes de concluir o pedido." }, 409);
+      }
+    }
+
+    const subtotal = subtotalCents / 100;
+    if (deliveryType === "delivery" && subtotalCents < 3000) return json({ error: "Pedido mínimo de R$ 30,00 em produtos para entrega em casa." }, 400);
+    const deliveryFeeCents = deliveryType === "delivery" ? 1500 : 0;
+    const deliveryFee = deliveryFeeCents / 100;
+    const totalCents = subtotalCents + deliveryFeeCents;
+    const total = totalCents / 100;
+    if (!Number.isFinite(total) || totalCents <= 0 || totalCents > 10000000) return json({ error: "Valor total inválido." }, 400);
 
     let asaasBaseUrl = "";
     if (asaasEnabled) {
