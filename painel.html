@@ -176,7 +176,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <p id="resaleNormalPrice" class="muted" aria-live="polite">Selecione um produto para consultar o preço normal.</p>
 <label class="resale-switch" for="resaleEnabled"><input id="resaleEnabled" type="checkbox"> Ativar preço de revenda</label>
 <label for="resalePrice">Preço de revenda (R$ por unidade comercial)</label><input id="resalePrice" inputmode="decimal" placeholder="Ex.: 9,50">
-<label for="resaleMinQty">Quantidade mínima</label><input id="resaleMinQty" type="number" inputmode="numeric" min="1" step="1" value="10">
+<label for="resaleMinQty">Quantidade mínima</label><input id="resaleMinQty" type="number" inputmode="numeric" min="1" step="1" value="10"><label for="resaleUnit">Unidade da quantidade mínima</label><select id="resaleUnit"><option value="un">un (unidade)</option><option value="kg">kg (quilograma)</option></select>
 <small>O padrão é 10. Quando ativado, o preço de revenda deve ser maior que zero e menor que o preço normal atual.</small>
 <button id="btnPreviewResale" type="button" disabled>Pré-visualizar configuração</button>
 <div id="resalePreview" role="status" aria-live="polite"></div>
@@ -249,13 +249,13 @@ async function loadAdminProducts(){
  availabilityMessage('Carregando todos os produtos…');
  try{
   const {data,error}=await db.from('products')
-   .select('id, name, image, price, old_price, available, resale_enabled, resale_price, resale_min_qty')
+   .select('id, name, image, price, old_price, available, resale_enabled, resale_price, resale_min_qty, resale_unit')
    .order('name',{ascending:true});
   if(error)throw error;
   const rows=data||[];
   adminProducts=rows.map(p=>({...p,available:p.available===true}));
   priceProducts=rows.map(p=>({...p,price:Number(p.price),old_price:p.old_price==null?null:Number(p.old_price)}));
-  resaleProducts=rows.map(p=>({...p,price:Number(p.price),resale_price:p.resale_price==null?null:Number(p.resale_price),resale_enabled:p.resale_enabled===true,resale_min_qty:Number(p.resale_min_qty??10)}));
+  resaleProducts=rows.map(p=>({...p,price:Number(p.price),resale_price:p.resale_price==null?null:Number(p.resale_price),resale_enabled:p.resale_enabled===true,resale_min_qty:Number(p.resale_min_qty??10),resale_unit:p.resale_unit==='kg'?'kg':'un'}));
   editableProducts=rows.slice();
   renderAdminProducts();
   renderPriceProducts();
@@ -569,6 +569,7 @@ function fillResaleProduct(){
   $('resaleEnabled').checked=product?.resale_enabled===true;
   $('resalePrice').value=product?.resale_price==null?'':formatResalePrice(product.resale_price);
   $('resaleMinQty').value=String(product?.resale_min_qty??10);
+  $('resaleUnit').value=product?.resale_unit==='kg'?'kg':'un';
   $('resaleNormalPrice').textContent=product?'Preço normal atual: '+money(product.price):'Selecione um produto para consultar o preço normal.';
   resaleMessage(product?'Configuração carregada.':'');
   $('btnPreviewResale').disabled=!product;
@@ -589,6 +590,7 @@ $('resaleProduct').addEventListener('change',fillResaleProduct);
 $('resaleEnabled').addEventListener('change',resetResalePreview);
 $('resalePrice').addEventListener('input',resetResalePreview);
 $('resaleMinQty').addEventListener('input',resetResalePreview);
+$('resaleUnit').addEventListener('change',resetResalePreview);
 $('btnPreviewResale').addEventListener('click',async()=>{
   const id=$('resaleProduct').value;
   if(!id){resaleMessage('Selecione um produto.');return}
@@ -603,13 +605,13 @@ $('btnPreviewResale').addEventListener('click',async()=>{
     const minQty=resaleMinInput();
     if(enabled&&resalePrice===null)throw new Error('Informe o preço de revenda para ativar a opção.');
     if(enabled&&resalePrice>=product.price)throw new Error('O preço de revenda deve ser menor que o preço normal atual ('+money(product.price)+').');
-    const {data:current,error}=await db.from('products').select('id,name,price,resale_enabled,resale_price,resale_min_qty').eq('id',id).maybeSingle();
+    const {data:current,error}=await db.from('products').select('id,name,price,resale_enabled,resale_price,resale_min_qty,resale_unit').eq('id',id).maybeSingle();
     if(error)throw error;
     if(!current)throw new Error('Produto não encontrado ou sem permissão para leitura.');
     if(enabled&&resalePrice>=Number(current.price))throw new Error('O preço normal mudou. Informe um preço de revenda menor que '+money(current.price)+'.');
-    const after={resale_enabled:enabled,resale_price:resalePrice,resale_min_qty:minQty};
-    resaleSnapshot={id,before:{price:Number(current.price),resale_enabled:current.resale_enabled===true,resale_price:current.resale_price==null?null:Number(current.resale_price),resale_min_qty:Number(current.resale_min_qty??10)},after};
-    $('resalePreview').textContent='Produto: '+current.name+'\nPreço normal: '+money(current.price)+'\nRevenda: '+(enabled?'ATIVADA':'DESATIVADA')+'\nPreço de revenda: '+(resalePrice===null?'não informado':money(resalePrice))+'\nQuantidade mínima: '+minQty;
+    const after={resale_enabled:enabled,resale_price:resalePrice,resale_min_qty:minQty,resale_unit:$('resaleUnit').value==='kg'?'kg':'un'};
+    resaleSnapshot={id,before:{price:Number(current.price),resale_enabled:current.resale_enabled===true,resale_price:current.resale_price==null?null:Number(current.resale_price),resale_min_qty:Number(current.resale_min_qty??10),resale_unit:current.resale_unit==='kg'?'kg':'un'},after};
+    $('resalePreview').textContent='Produto: '+current.name+'\nPreço normal: '+money(current.price)+'\nRevenda: '+(enabled?'ATIVADA':'DESATIVADA')+'\nPreço de revenda: '+(resalePrice===null?'não informado':money(resalePrice))+'\nQuantidade mínima: '+minQty+' '+after.resale_unit;
     $('btnConfirmResale').classList.remove('hide');
     $('btnConfirmResale').disabled=false;
     resaleMessage('Confira os dados. Nada será salvo antes da confirmação.');
@@ -623,13 +625,13 @@ $('btnConfirmResale').addEventListener('click',async()=>{
   button.disabled=true;button.textContent='Reconsultando…';
   $('btnPreviewResale').disabled=true;
   try{
-    const {data:current,error:readError}=await db.from('products').select('id,name,price,resale_enabled,resale_price,resale_min_qty').eq('id',snapshot.id).maybeSingle();
+    const {data:current,error:readError}=await db.from('products').select('id,name,price,resale_enabled,resale_price,resale_min_qty,resale_unit').eq('id',snapshot.id).maybeSingle();
     if(readError)throw readError;
     if(!current)throw new Error('Produto não encontrado ou sem permissão para leitura.');
-    const before={price:Number(current.price),resale_enabled:current.resale_enabled===true,resale_price:current.resale_price==null?null:Number(current.resale_price),resale_min_qty:Number(current.resale_min_qty??10)};
+    const before={price:Number(current.price),resale_enabled:current.resale_enabled===true,resale_price:current.resale_price==null?null:Number(current.resale_price),resale_min_qty:Number(current.resale_min_qty??10),resale_unit:current.resale_unit==='kg'?'kg':'un'};
     if(JSON.stringify(before)!==JSON.stringify(snapshot.before)){resetResalePreview();throw new Error('O produto foi alterado desde a prévia. Gere uma nova prévia antes de salvar.');}
     if(snapshot.after.resale_enabled&&(snapshot.after.resale_price===null||snapshot.after.resale_price<=0||snapshot.after.resale_price>=before.price))throw new Error('O preço de revenda precisa ser maior que zero e menor que o preço normal atual.');
-    const {data,error}=await db.from('products').update(snapshot.after).eq('id',snapshot.id).select('id,name,price,resale_enabled,resale_price,resale_min_qty').maybeSingle();
+    const {data,error}=await db.from('products').update(snapshot.after).eq('id',snapshot.id).select('id,name,price,resale_enabled,resale_price,resale_min_qty,resale_unit').maybeSingle();
     if(error)throw error;
     if(!data)throw new Error('Nenhuma linha foi atualizada. Verifique a autorização administrativa.');
     await loadAdminProducts();
