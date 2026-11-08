@@ -1044,7 +1044,13 @@ $('#assistantSend').addEventListener('click',async()=>{
    timer=setTimeout(()=>{controller.abort();reject(new Error('O assistente demorou mais de 20 segundos. Tente novamente.'));},20000);
   });
   const result=await Promise.race([request,timeout]);
-  if(result.error)throw new Error(result.data?.error||'Não consegui montar a sugestão agora. Tente novamente.');
+  if(result.error){
+   let message=result.data?.error||'';
+   if(!message&&result.error.context&&typeof result.error.context.json==='function'){
+    try{const payload=await result.error.context.json();message=payload?.error||'';}catch{}
+   }
+   throw new Error(message||'Não consegui montar a sugestão agora. Tente novamente.');
+  }
   const data=result.data||{};
   if(data.error)throw new Error(data.error);
   const responseText=String(data.resposta||'Posso ajudar a separar seus produtos.');
