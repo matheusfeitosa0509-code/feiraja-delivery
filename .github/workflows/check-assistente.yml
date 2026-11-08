@@ -1,0 +1,25 @@
+name: Check Assistente (Deno)
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/assistente/**"
+
+permissions:
+  contents: read
+
+jobs:
+  deno-check:
+    name: deno check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Check assistente
+        run: deno check supabase/functions/assistente/index.ts
