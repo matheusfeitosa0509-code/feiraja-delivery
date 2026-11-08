@@ -211,14 +211,19 @@ Deno.serve(async (req) => {
     }
     quotaConsumed = true;
 
-    const { data: rows, error: productsError } = await admin
-      .from("products")
-      .select("id,name,category,available")
-      .eq("available", true)
-      .order("name", { ascending: true })
-      .limit(200);
-    if (productsError || !Array.isArray(rows)) {
-      return await internalFailure("PRODUCT_CATALOG_READ_FAILED", "catalog_read", "Não foi possível consultar o catálogo agora.", 503);
+    const rows = [];
+    for (let offset = 0; ; offset += 1000) {
+      const { data: page, error: productsError } = await admin
+        .from("products")
+        .select("id,name,available")
+        .eq("available", true)
+        .order("name", { ascending: true })
+        .range(offset, offset + 999);
+      if (productsError || !Array.isArray(page)) {
+        return await internalFailure("PRODUCT_CATALOG_READ_FAILED", "catalog_read", "Não foi possível consultar o catálogo agora.", 503);
+      }
+      rows.push(...page);
+      if (page.length < 1000) break;
     }
 
     const { data: salesRules, error: salesRulesError } = await admin
