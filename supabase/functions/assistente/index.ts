@@ -277,7 +277,9 @@ Deno.serve(async (req) => {
     let jsonRetried = false;
     let failureStage = "anthropic_request";
 
-    for (let attempt = 0; attempt < 3 && !parsed; attempt++) {
+    for (let attempt = 0; attempt < 2 && !parsed; attempt++) {
+      const attemptNumber = attempt + 1;
+      console.error("assistente", { code: "ANTHROPIC_ATTEMPT", stage: "anthropic_request", attempt: attemptNumber });
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 18000);
       let anthropicResponse;
@@ -332,6 +334,7 @@ Deno.serve(async (req) => {
         stop_reason: stopReason,
         status: anthropicStatus,
         output_tokens: outputTokens,
+        attempt: attemptNumber,
       });
 
       if (refusal) {
@@ -346,7 +349,7 @@ Deno.serve(async (req) => {
       if (stopReason === "max_tokens" && !maxTokensRetried) {
         maxTokensRetried = true;
         failureStage = "retry_max_tokens";
-        console.error("assistente", { code: "ANTHROPIC_RETRY_MAX_TOKENS", stage: failureStage, stop_reason: stopReason, status: anthropicStatus, output_tokens: outputTokens });
+        console.error("assistente", { code: "ANTHROPIC_RETRY_MAX_TOKENS", stage: failureStage, attempt: attemptNumber, stop_reason: stopReason, status: anthropicStatus, output_tokens: outputTokens });
         continue;
       }
 
@@ -354,7 +357,7 @@ Deno.serve(async (req) => {
       if (!parsed && !jsonRetried) {
         jsonRetried = true;
         failureStage = "retry_invalid_json";
-        console.error("assistente", { code: "MODEL_JSON_RETRY", stage: failureStage, stop_reason: stopReason, status: anthropicStatus, output_tokens: outputTokens });
+        console.error("assistente", { code: "MODEL_JSON_RETRY", stage: failureStage, attempt: attemptNumber, stop_reason: stopReason, status: anthropicStatus, output_tokens: outputTokens });
         continue;
       }
       if (!parsed) {
