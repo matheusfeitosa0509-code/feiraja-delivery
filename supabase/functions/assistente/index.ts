@@ -344,7 +344,7 @@ Deno.serve(async (req) => {
       const response = proposedItems.length
         ? "Encontrei seu último pedido. Confira os itens e quantidades antes de adicionar. A loja aplicará os preços atuais do catálogo; nenhum preço antigo será reutilizado."
         : "Não há itens do seu último pedido que possam ser propostos agora. Confira os avisos abaixo.";
-      return json({ resposta: response, itens: proposedItems, perguntas: unavailableMessages.slice(0, 8) });
+      return json({ resposta: response, itens: proposedItems, perguntas: unavailableMessages });
     }
 
     if (asksPromotions) {
@@ -358,7 +358,7 @@ Deno.serve(async (req) => {
         return await internalFailure("PROMOTIONS_READ_FAILED", "promotions_read", "Não foi possível consultar as promoções agora.", 503);
       }
       const promotions = (promotionRows as Array<{ id: string; name: string | null; price: number | string | null; old_price: number | string | null }>)
-        .filter((product) => Number.isFinite(Number(product.price)) && Number.isFinite(Number(product.old_price)) && Number(product.old_price) > Number(product.price));
+        .filter((product) => product.price !== null && product.old_price !== null && Number.isFinite(Number(product.price)) && Number.isFinite(Number(product.old_price)) && Number(product.old_price) > Number(product.price));
       if (!promotions.length) {
         return json({ resposta: "No momento, não há produtos com promoção cadastrada e disponível.", itens: [], perguntas: [] });
       }
