@@ -278,10 +278,9 @@ Deno.serve(async (req: Request) => {
       .select("product_id,sale_unit,quantity_step,min_quantity,max_quantity")
       .in("product_id", ids);
     if (salesRulesError) {
-      console.error("super-worker", { code: "DB_ERROR", stage: "read_product_sales_rules" });
-      return json({ error: "Não foi possível validar a unidade de venda. Tente novamente." }, 503);
+      console.error("super-worker", { code: "SALES_RULES_FALLBACK" });
     }
-    const salesRulesById = new Map((salesRules || []).map((rule: any) => [String(rule.product_id), rule]));
+    const salesRulesById = new Map((salesRulesError ? [] : salesRules || []).map((rule: any) => [String(rule.product_id), rule]));
     for (const [id, qty] of qtyById) {
       const rule = salesRulesById.get(id) || null;
       const requestedQuantities = qtyValuesById.get(id) || [];
