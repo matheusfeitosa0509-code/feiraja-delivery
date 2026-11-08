@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 type SupabaseAdmin = ReturnType<typeof createClient>;
-type ProductRow = { id: string; name: string | null; price?: number | null; available?: boolean };
+type ProductRow = { id: string; name: string | null; available?: boolean };
 type ProductSalesRule = {
   product_id: string;
   sale_unit: string | null;
@@ -182,7 +182,8 @@ Produtos de farinha, goma, camarão, caranguejo e cabeça de alho cujo nome cont
 Para produtos vendidos por kg, interprete “meio quilo”, “meio kg” e “500 gramas” como 0,5 somente quando passo e mínimo do catálogo permitirem. Não confunda embalagem “(1 kg)” com produto “(kg)”.
 Quando o cliente perguntar sobre promoção, preço promocional, situação/status de pedido, horário de funcionamento ou entrega, responda apenas se a informação estiver explicitamente disponível no contexto recebido. Como o catálogo desta chamada contém somente dados de identificação e unidade/limites, não afirme promoções, preços, status, horários ou condições de entrega; diga com clareza que o assistente não tem essa informação e oriente a consultar a loja/painel apropriado.
 Se não encontrar produto, explique de forma simples e inclua o marcador nao_encontrado: NOME em perguntas. Se a quantidade não for permitida, explique o limite ou passo exato e pergunte qual quantidade válida deseja. Não dê respostas genéricas quando puder apontar o produto/unidade/quantidade que precisa ser esclarecido.
-Nunca invente preços, descontos, disponibilidade fora do catálogo recebido, pedidos existentes ou ações já realizadas.`;
+Quando o cliente pedir uma receita ou montar a feira para um prato (por exemplo, “moqueca para 4”), transforme a receita em uma lista de compras: indique ingredientes e quantidades razoáveis para o número de pessoas informado. Proponha somente produtos que existam no catálogo disponível, usando seus IDs exatos e respeitando unidade, passo, mínimo e máximo. Ingrediente ausente do catálogo deve ser mencionado como não encontrado e incluído em perguntas com o marcador "nao_encontrado: NOME_DO_INGREDIENTE"; nunca invente produto, ID ou disponibilidade. Não inclua ingredientes ausentes em itens. Se a quantidade depender de preferência ou tamanho não informado, faça uma pergunta curta em vez de supor. Nunca invente preços nem calcule custos da receita.
+Nunca invente preços, descontos, disponibilidade fora do catálogo recebido, pedidos existentes ou ações já realizadas. Não afirme promoções: pedidos sobre promoções são respondidos exclusivamente pelo servidor com dados atuais do banco.
 
 Deno.serve(async (req) => {
   let admin: SupabaseAdmin | null = null;
@@ -252,7 +253,7 @@ Deno.serve(async (req) => {
     for (let offset = 0; ; offset += 1000) {
       const { data: page, error: productsError } = await admin
         .from("products")
-        .select("id,name,price,available")
+        .select("id,name,available")
         .eq("available", true)
         .order("name", { ascending: true })
         .range(offset, offset + 999);
@@ -284,6 +285,87 @@ Deno.serve(async (req) => {
         maximo: rule.max_quantity ?? 100,
       };
     }).filter((product: CatalogEntry) => product.id && product.nome);
+
+    const normalizedText = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const asksRepeatOrder = /\b(repetir|repita|refazer|fazer de novo)\b.*\b(pedido|compra)\b|\b(meu|minha)\s+(ultimo|ultima)\s+(pedido|compra)\b|\bmesmo pedido\b/.test(normalizedText);
+    const asksPromotions = /\b(promocao|promocoes|oferta|ofertas|desconto|descontos)\b/.test(normalizedText);
+
+    if (asksRepeatOrder) {
+      const { data: lastOrder, error: orderError } = await admin
+        .from("orders")
+        .select("items")
+        .eq("user_id", authData.user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (orderError) {
+        return await internalFailure("LAST_ORDER_READ_FAILED", "last_order_read", "Não foi possível consultar seu último pedido agora.", 503);
+      }
+      const previousItems = Array.isArray(lastOrder?.items) ? lastOrder.items as Array<Record<string, unknown>> : [];
+      if (!previousItems.length) {
+        return json({ resposta: "Não encontrei um pedido anterior para repetir nesta conta.", itens: [], perguntas: [] });
+      }
+
+      const previousIds = [...new Set(previousItems.map((item) => String(item?.id || item?.product_id || "")).filter(Boolean))];
+      const { data: currentRows, error: currentRowsError } = previousIds.length
+        ? await admin.from("products").select("id,name,available").in("id", previousIds)
+        : { data: [], error: null };
+      if (currentRowsError) {
+        return await internalFailure("LAST_ORDER_PRODUCTS_READ_FAILED", "last_order_products", "Não foi possível conferir os produtos do pedido anterior.", 503);
+      }
+      const currentById = new Map(((currentRows || []) as Array<{ id: string; name: string | null; available: boolean | null }>).map((row) => [String(row.id), row]));
+      const catalogById = new Map(catalog.map((product) => [product.id, product]));
+      const proposedById = new Map<string, number>();
+      const unavailableMessages: string[] = [];
+      for (const oldItem of previousItems) {
+        const id = String(oldItem?.id || oldItem?.product_id || "");
+        const oldProduct = currentById.get(id);
+        const displayName = String(oldProduct?.name || oldItem?.name || id || "Produto sem identificação").slice(0, 100);
+        if (!id || !oldProduct || oldProduct.available !== true || !catalogById.has(id)) {
+          unavailableMessages.push(displayName + ": indisponível ou não existe mais; não foi incluído na sugestão.");
+          continue;
+        }
+        const product = catalogById.get(id)!;
+        const quantity = Number(oldItem?.qty ?? oldItem?.quantity);
+        const step = product.passo ?? 1;
+        if (!Number.isFinite(quantity) || quantity <= 0 || quantity < product.minimo ||
+            quantity > Math.min(100, product.maximo) || !Number.isInteger(quantity / step) || !product.unidade) {
+          unavailableMessages.push(displayName + ": a quantidade antiga não atende à regra atual de venda; confira a quantidade na loja.");
+          continue;
+        }
+        const combined = (proposedById.get(id) || 0) + quantity;
+        if (combined > Math.min(100, product.maximo) || !Number.isInteger(combined / step)) {
+          unavailableMessages.push(displayName + ": a quantidade total do pedido antigo não atende ao limite atual; confira na loja.");
+          continue;
+        }
+        proposedById.set(id, combined);
+      }
+      const proposedItems = [...proposedById.entries()].map(([product_id, quantidade]) => ({ product_id, quantidade }));
+      const response = proposedItems.length
+        ? "Encontrei seu último pedido. Confira os itens e quantidades antes de adicionar. A loja aplicará os preços atuais do catálogo; nenhum preço antigo será reutilizado."
+        : "Não há itens do seu último pedido que possam ser propostos agora. Confira os avisos abaixo.";
+      return json({ resposta: response, itens: proposedItems, perguntas: unavailableMessages.slice(0, 8) });
+    }
+
+    if (asksPromotions) {
+      const { data: promotionRows, error: promotionError } = await admin
+        .from("products")
+        .select("id,name,price,old_price")
+        .eq("available", true)
+        .not("old_price", "is", null)
+        .order("name", { ascending: true });
+      if (promotionError || !Array.isArray(promotionRows)) {
+        return await internalFailure("PROMOTIONS_READ_FAILED", "promotions_read", "Não foi possível consultar as promoções agora.", 503);
+      }
+      const promotions = (promotionRows as Array<{ id: string; name: string | null; price: number | string | null; old_price: number | string | null }>)
+        .filter((product) => Number.isFinite(Number(product.price)) && Number.isFinite(Number(product.old_price)) && Number(product.old_price) > Number(product.price));
+      if (!promotions.length) {
+        return json({ resposta: "No momento, não há produtos com promoção cadastrada e disponível.", itens: [], perguntas: [] });
+      }
+      const currency = (value: number | string) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value));
+      const promotionList = promotions.map((product) => "• " + String(product.name || "Produto") + ": de " + currency(product.old_price!) + " por " + currency(product.price!));
+      return json({ resposta: "Estas são as promoções reais disponíveis agora, consultadas na loja:\n" + promotionList.join("\n"), itens: [], perguntas: [] });
+    }
 
     const MAX_CATALOG_PROMPT_CHARS = 20000;
     const fullCatalogJson = JSON.stringify(catalog);
