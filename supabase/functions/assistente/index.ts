@@ -293,8 +293,8 @@ Deno.serve(async (req) => {
     const hasQuantityOrUnit = /\b\d+(?:[.,]\d+)?\s*(?:kg|quilo|quilos|g|grama|gramas|unidade|unidades|duzia|duzias|maco|macos)\b|\b(?:meio|meia|um|uma|dois|duas|tres|quatro|cinco)\s+(?:kg|quilo|quilos|quilo e meio|grama|gramas)\b/.test(intentText);
     const normalizedProductSearch = " " + intentText.replace(/[^a-z0-9]+/g, " ").trim() + " ";
     const mentionsCatalogProduct = catalog.some((product) => {
-      const productName = product.nome.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase()
-        .replace(/\\s*\\([^)]*\\)\\s*$/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+      const productName = product.nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+        .replace(/\s*\([^)]*\)\s*$/g, "").replace(/[^a-z0-9]+/g, " ").trim();
       return productName.length >= 3 && normalizedProductSearch.includes(" " + productName + " ");
     });
     const hasPaymentContext = /\b(pagamento|pix|cartao|credito|debito|frete|entrega)\b/.test(intentText);
