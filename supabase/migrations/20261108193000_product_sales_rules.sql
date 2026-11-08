@@ -52,5 +52,5 @@ select
   0.5,
   100
 from public.products as p
-where p.name ~* '\\(kg\\)'
+where p.name ilike '%(kg)%'
 on conflict (product_id) do nothing;
