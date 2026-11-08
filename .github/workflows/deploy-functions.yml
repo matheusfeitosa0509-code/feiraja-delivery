@@ -12,6 +12,7 @@ on:
           - asaas-webhook
           - asaas-saque-validacao
           - expire-pix
+          - assistente
       ref:
         description: "SHA completo de commit alcançável por main (vazio = commit atual de main)"
         required: false
@@ -46,7 +47,7 @@ jobs:
           set -euo pipefail
 
           case "$FUNCTION_NAME" in
-            super-worker|asaas-webhook|asaas-saque-validacao|expire-pix) ;;
+            super-worker|asaas-webhook|asaas-saque-validacao|expire-pix|assistente) ;;
             *)
               echo "::error::Função não permitida."
               exit 1
@@ -111,6 +112,12 @@ jobs:
         if: inputs.function == 'expire-pix'
         run: |
           supabase functions deploy expire-pix \
+            --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Implantar assistente
+        if: inputs.function == 'assistente'
+        run: |
+          supabase functions deploy assistente \
             --project-ref "$SUPABASE_PROJECT_REF"
 
       - name: Registrar SHA implantado
