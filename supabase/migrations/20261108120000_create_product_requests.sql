@@ -1,9 +1,6 @@
 -- ORDEM 103 — Solicitação de produtos pelos clientes.
 -- Arquivo de proposta: NÃO APLICAR sem autorização explícita do responsável.
 
-create schema if not exists private;
-revoke all on schema private from public, anon, authenticated;
-
 create table public.product_requests (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -49,10 +46,10 @@ create policy "Customers insert own product requests"
 
 -- A contagem é serializada por cliente e calculada no horário UTC.
 -- O trigger também substitui created_at para impedir que o cliente retrodate pedidos.
-create or replace function private.enforce_product_request_daily_limit()
+create or replace function public.enforce_product_request_daily_limit()
 returns trigger
 language plpgsql
-security definer
+security invoker
 set search_path = pg_catalog, public
 as $function$
 declare
@@ -86,11 +83,11 @@ begin
 end;
 $function$;
 
-revoke execute on function private.enforce_product_request_daily_limit()
+revoke execute on function public.enforce_product_request_daily_limit()
   from public, anon, authenticated;
 
 create trigger product_requests_daily_limit
   before insert on public.product_requests
-  for each row execute function private.enforce_product_request_daily_limit();
+  for each row execute function public.enforce_product_request_daily_limit();
 
 -- Não há políticas nem privilégios de UPDATE/DELETE para clientes.
