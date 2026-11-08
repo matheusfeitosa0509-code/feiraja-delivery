@@ -901,6 +901,7 @@ async function openProductRequestSheet(prefill=''){
   if(error)throw error;
   if(!session?.user){openAccountScreen();return;}
   $('#productRequestForm').reset();
+  $('#productRequestForm').classList.remove('hidden');
   $('#productRequestMessage').classList.add('hidden');
   $('#productRequestName').value=String(prefill||'').trim().slice(0,80);
   $('#productRequestSheet').setAttribute('aria-hidden','false');
