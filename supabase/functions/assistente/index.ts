@@ -189,12 +189,18 @@ Deno.serve(async (req) => {
     admin = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    async function internalFailure(code, stage, message, status = 502, meta = {}) {
-      if (quotaConsumed) {
+    async function refundQuotaWithoutBlocking() {
+      if (!admin || !quotaConsumed) return;
+      try {
         const { error: refundError } = await admin.rpc("refund_assistant_daily_message", { p_user_id: quotaUserId });
         if (refundError) console.error("assistente", { code: "DAILY_LIMIT_REFUND_FAILED", stage: "quota_refund" });
         else quotaConsumed = false;
+      } catch {
+        console.error("assistente", { code: "DAILY_LIMIT_REFUND_FAILED", stage: "quota_refund" });
       }
+    }
+    async function internalFailure(code, stage, message, status = 502, meta = {}) {
+      await refundQuotaWithoutBlocking();
       console.error("assistente", { code, stage, ...meta });
       return json({ error: message }, status);
     }
@@ -293,7 +299,7 @@ Deno.serve(async (req) => {
           signal: controller.signal,
         });
       } catch {
-        return await internalFailure("ANTHROPIC_REQUEST_FAILED", failureStage, "Não consegui montar a sugestão agora. Tente novamente.", 502, { status: anthropicStatus });
+        return await internalFailure("ANTHROPIC_REQUEST_FAILED", failureStage, "Não consegui montar a sugestão agora. Tente novamente.", 502, { stop_reason: null, status: anthropicStatus, output_tokens: null });
       } finally {
         clearTimeout(timeout);
       }
@@ -306,7 +312,9 @@ Deno.serve(async (req) => {
           apiErrorType = errorBody?.error?.type || null;
         } catch { /* corpo de erro indisponível */ }
         return await internalFailure("ANTHROPIC_BAD_STATUS", "anthropic_http", "Não consegui montar a sugestão agora. Tente novamente.", 502, {
+          stop_reason: null,
           status: anthropicStatus,
+          output_tokens: null,
           type: apiErrorType,
         });
       }
@@ -327,7 +335,6 @@ Deno.serve(async (req) => {
       });
 
       if (refusal) {
-        console.error("assistente", { code: "ANTHROPIC_REFUSAL", stage: "anthropic_response", stop_reason: stopReason, status: anthropicStatus, output_tokens: outputTokens });
         return json({ error: "Não posso atender a esse pedido. Posso ajudar com a lista de compras." }, 200);
       }
       if (!textBlocks.length) {
@@ -339,6 +346,7 @@ Deno.serve(async (req) => {
       if (stopReason === "max_tokens" && !maxTokensRetried) {
         maxTokensRetried = true;
         failureStage = "retry_max_tokens";
+        console.error("assistente", { code: "ANTHROPIC_RETRY_MAX_TOKENS", stage: failureStage, stop_reason: stopReason, status: anthropicStatus, output_tokens: outputTokens });
         continue;
       }
 
@@ -346,6 +354,7 @@ Deno.serve(async (req) => {
       if (!parsed && !jsonRetried) {
         jsonRetried = true;
         failureStage = "retry_invalid_json";
+        console.error("assistente", { code: "MODEL_JSON_RETRY", stage: failureStage, stop_reason: stopReason, status: anthropicStatus, output_tokens: outputTokens });
         continue;
       }
       if (!parsed) {
@@ -423,8 +432,12 @@ Deno.serve(async (req) => {
     return json({ resposta, itens: validCandidates, perguntas });
   } catch {
     if (admin && quotaConsumed) {
-      const { error: refundError } = await admin.rpc("refund_assistant_daily_message", { p_user_id: quotaUserId });
-      if (refundError) console.error("assistente", { code: "DAILY_LIMIT_REFUND_FAILED", stage: "quota_refund" });
+      try {
+        const { error: refundError } = await admin.rpc("refund_assistant_daily_message", { p_user_id: quotaUserId });
+        if (refundError) console.error("assistente", { code: "DAILY_LIMIT_REFUND_FAILED", stage: "quota_refund" });
+      } catch {
+        console.error("assistente", { code: "DAILY_LIMIT_REFUND_FAILED", stage: "quota_refund" });
+      }
     }
     console.error("assistente", { code: "UNEXPECTED_FAILURE", stage: "handler" });
     return json({ error: "Não consegui montar a sugestão agora. Tente novamente." }, 500);
