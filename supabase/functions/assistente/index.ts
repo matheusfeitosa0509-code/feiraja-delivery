@@ -417,12 +417,14 @@ Deno.serve(async (req) => {
     }
 
     const byId = new Map(catalog.map((product) => [product.id, product]));
+    const promptProductIds = new Set(promptCatalog.map((product) => product.id));
     const candidates = Array.isArray(parsed.itens) ? parsed.itens.slice(0, 15) : [];
     const validCandidates = [];
     let fractionalRejected = false;
     const seen = new Set();
     for (const item of candidates) {
-      if (!item || typeof item.product_id !== "string" || seen.has(item.product_id)) continue;
+      if (!item || typeof item.product_id !== "string" || seen.has(item.product_id) ||
+          !promptProductIds.has(item.product_id)) continue;
       const product = byId.get(item.product_id);
       const quantity = item.quantidade;
       if (product?.unidade && Number.isFinite(quantity) && product.passo === 1 && !Number.isInteger(quantity)) {
