@@ -269,9 +269,9 @@ Deno.serve(async (req) => {
     if (salesRulesError) {
       console.error("assistente", { code: "SALES_RULES_FALLBACK" });
     }
-    const salesRulesById = new Map((salesRulesError ? [] : salesRules || []).map((rule) => [String(rule.product_id), rule]));
+    const salesRulesById = new Map<string, ProductSalesRule>((salesRulesError ? [] : (salesRules || []) as ProductSalesRule[]).map((rule: ProductSalesRule) => [String(rule.product_id), rule]));
 
-    const catalog = rows.map((product) => {
+    const catalog: CatalogEntry[] = rows.map((product: any): CatalogEntry => {
       const rule = quantityRule(product.name, salesRulesById.get(String(product.id)));
       return {
         id: String(product.id),
@@ -281,23 +281,18 @@ Deno.serve(async (req) => {
         minimo: rule.min_quantity ?? 1,
         maximo: rule.max_quantity ?? 100,
       };
-    }).filter((product) => product.id && product.nome);
+    }).filter((product: CatalogEntry) => product.id && product.nome);
 
     const MAX_CATALOG_PROMPT_CHARS = 20000;
     const fullCatalogJson = JSON.stringify(catalog);
-    let promptCatalog = catalog;
+    let promptCatalog: Array<CatalogEntry | CompactCatalogEntry> = catalog;
     let compactCatalogMode = false;
     if (fullCatalogJson.length > MAX_CATALOG_PROMPT_CHARS) {
       compactCatalogMode = true;
-      const priceById = new Map(rows.map((product) => [String(product.id), product.price]));
-      const compactCatalog = catalog.map((product) => {
-        const rawPrice = priceById.get(product.id);
-        return {
-          id: product.id,
-          nome: product.nome,
-          preco: rawPrice != null && Number.isFinite(Number(rawPrice)) ? Number(rawPrice) : null,
-        };
-      });
+      const compactCatalog: CompactCatalogEntry[] = catalog.map((product) => ({
+        id: product.id,
+        nome: product.nome,
+      }));
       promptCatalog = [];
       for (const product of compactCatalog) {
         const candidate = [...promptCatalog, product];
@@ -448,7 +443,7 @@ Deno.serve(async (req) => {
     const byId = new Map(catalog.map((product) => [product.id, product]));
     const promptProductIds = new Set(promptCatalog.map((product) => product.id));
     const candidates = Array.isArray(parsed.itens) ? parsed.itens.slice(0, 15) : [];
-    const validCandidates = [];
+    const validCandidates: Array<{ product_id: string; quantidade: number }> = [];
     let fractionalRejected = false;
     const seen = new Set();
     for (const item of candidates) {
@@ -464,8 +459,10 @@ Deno.serve(async (req) => {
         fractionalRejected = true;
         continue;
       }
-      if (!product || !product.unidade || !Number.isFinite(quantity) ||
-          !Number.isInteger(quantity / product.passo) || quantity < product.minimo ||
+      if (!product) continue;
+      const quantityStep = product.passo ?? 1;
+      if (!product.unidade || typeof quantity !== "number" || !Number.isFinite(quantity) ||
+          !Number.isInteger(quantity / quantityStep) || quantity < product.minimo ||
           quantity > Math.min(100, product.maximo) || (!compactCatalogMode && item.unidade !== product.unidade)) continue;
       seen.add(item.product_id);
       validCandidates.push({ product_id: product.id, quantidade: quantity });
@@ -492,12 +489,12 @@ Deno.serve(async (req) => {
         ? "Posso separar os produtos para você conferir."
         : rawResposta);
     const perguntas = Array.isArray(parsed.perguntas)
-      ? parsed.perguntas.filter((value) => typeof value === "string").map((value) => value.trim().slice(0, 200)).filter(Boolean).slice(0, 8)
+      ? parsed.perguntas.filter((value): value is string => typeof value === "string").map((value) => value.trim().slice(0, 200)).filter(Boolean).slice(0, 8)
       : [];
     if (fractionalRejected) {
       perguntas.push("Este produto é vendido somente em quantidades inteiras. Qual quantidade inteira você deseja?");
     }
-    if (candidates.length > validCandidates.length && !perguntas.some((value) => !value.startsWith("nao_encontrado:")) && !fractionalRejected) {
+    if (candidates.length > validCandidates.length && !perguntas.some((value: string) => !value.startsWith("nao_encontrado:")) && !fractionalRejected) {
       perguntas.push("Confirme a unidade e a quantidade desejadas para eu montar a sugestão com segurança.");
     }
 
