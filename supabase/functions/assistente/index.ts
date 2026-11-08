@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 type SupabaseAdmin = ReturnType<typeof createClient>;
+type ProductRow = { id: string; name: string | null; price?: number | null; available?: boolean };
 type ProductSalesRule = {
   product_id: string;
   sale_unit: string | null;
@@ -222,7 +223,7 @@ Deno.serve(async (req) => {
       const client = admin;
       if (!client || !quotaConsumed || !quotaUserId) return;
       try {
-        const { error: refundError } = await client.rpc("refund_assistant_daily_message", { p_user_id: quotaUserId });
+        const { error: refundError } = await client.rpc("refund_assistant_daily_message", { p_user_id: quotaUserId } as never);
         if (refundError) console.error("assistente", { code: "DAILY_LIMIT_REFUND_FAILED", stage: "quota_refund" });
         else quotaConsumed = false;
       } catch {
@@ -237,7 +238,7 @@ Deno.serve(async (req) => {
 
     const { data: allowed, error: limitError } = await admin.rpc("consume_assistant_daily_message", {
       p_user_id: authData.user.id,
-    });
+    } as never);
     if (limitError) {
       console.error("assistente", { code: "DAILY_LIMIT_CHECK_FAILED" });
       return json({ error: "Assistente temporariamente indisponível." }, 503);
@@ -247,7 +248,7 @@ Deno.serve(async (req) => {
     }
     quotaConsumed = true;
 
-    const rows = [];
+    const rows: ProductRow[] = [];
     for (let offset = 0; ; offset += 1000) {
       const { data: page, error: productsError } = await admin
         .from("products")
@@ -258,7 +259,7 @@ Deno.serve(async (req) => {
       if (productsError || !Array.isArray(page)) {
         return await internalFailure("PRODUCT_CATALOG_READ_FAILED", "catalog_read", "Não foi possível consultar o catálogo agora.", 503);
       }
-      rows.push(...page);
+      rows.push(...(page as ProductRow[]));
       if (page.length < 1000) break;
     }
 
@@ -269,7 +270,8 @@ Deno.serve(async (req) => {
     if (salesRulesError) {
       console.error("assistente", { code: "SALES_RULES_FALLBACK" });
     }
-    const salesRulesById = new Map<string, ProductSalesRule>((salesRulesError ? [] : (salesRules || []) as ProductSalesRule[]).map((rule: ProductSalesRule) => [String(rule.product_id), rule]));
+    const salesRuleRows: ProductSalesRule[] = salesRulesError ? [] : ((salesRules as unknown as ProductSalesRule[] | null) ?? []);
+    const salesRulesById = new Map<string, ProductSalesRule>(salesRuleRows.map((rule) => [String(rule.product_id), rule]));
 
     const catalog: CatalogEntry[] = rows.map((product: any): CatalogEntry => {
       const rule = quantityRule(product.name, salesRulesById.get(String(product.id)));
@@ -451,11 +453,11 @@ Deno.serve(async (req) => {
           !promptProductIds.has(item.product_id)) continue;
       const product = byId.get(item.product_id);
       const quantity = item.quantidade;
-      if (product?.unidade && Number.isFinite(quantity) && product.passo === 1 && !Number.isInteger(quantity)) {
+      if (product?.unidade && typeof quantity === "number" && Number.isFinite(quantity) && product.passo === 1 && !Number.isInteger(quantity)) {
         fractionalRejected = true;
         continue;
       }
-      if (compactCatalogMode && !Number.isInteger(quantity)) {
+      if (compactCatalogMode && (typeof quantity !== "number" || !Number.isInteger(quantity))) {
         fractionalRejected = true;
         continue;
       }
