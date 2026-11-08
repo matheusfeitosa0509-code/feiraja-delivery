@@ -263,6 +263,9 @@ Deno.serve(async (req) => {
     const perguntas = Array.isArray(parsed.perguntas)
       ? parsed.perguntas.filter((value) => typeof value === "string").map((value) => value.trim().slice(0, 200)).filter(Boolean).slice(0, 8)
       : [];
+    if (candidates.length && !validCandidates.length && !perguntas.length) {
+      perguntas.push("Confirme a unidade e a quantidade desejadas para eu montar a sugestão com segurança.");
+    }
 
     return json({ resposta, itens: validCandidates, perguntas });
   } catch {
