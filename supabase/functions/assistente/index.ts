@@ -55,8 +55,8 @@ function normalizeHistory(value) {
     const content = entry.content.trim();
     if (!content || content.length > 300) return null;
     const last = result[result.length - 1];
-    if (last && last.role === entry.role) last.content += "\n" + content;
-    else result.push({ role: entry.role, content });
+    if (last && last.role === entry.role) last.content = (last.content + "\n" + content).slice(-300);
+    else result.push({ role: entry.role, content: content.slice(-300) });
   }
   while (result.length && result[0].role !== "user") result.shift();
   return result.slice(-6);
@@ -263,7 +263,7 @@ Deno.serve(async (req) => {
     const perguntas = Array.isArray(parsed.perguntas)
       ? parsed.perguntas.filter((value) => typeof value === "string").map((value) => value.trim().slice(0, 200)).filter(Boolean).slice(0, 8)
       : [];
-    if (candidates.length && !validCandidates.length && !perguntas.length) {
+    if (candidates.length > validCandidates.length && !perguntas.some((value) => !value.startsWith("nao_encontrado:"))) {
       perguntas.push("Confirme a unidade e a quantidade desejadas para eu montar a sugestão com segurança.");
     }
 
