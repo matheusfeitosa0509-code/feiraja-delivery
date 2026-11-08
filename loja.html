@@ -637,6 +637,7 @@ try {
  <section id="pageHome" class="app-page active" aria-label="Produtos">
   <div class="home-top" id="homeTopAddress" aria-hidden="true"><div class="home-address"><span class="sm">Entregar em</span><strong id="homeAddress">Informe no pagamento</strong></div><button class="icon-button" type="button" data-go-page="Orders" aria-label="Notificações"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button></div>
   <div class="search home-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="homeSearch" placeholder="Buscar produtos da feira…" aria-label="Buscar produtos da feira"></div>
+   <button id="requestProductFab" class="request-product-link" type="button">Não achou? Peça um produto</button>
   <section class="home-hero" hidden><b>Entrega na porta</b><p>Produtos da feira direto para você, com praticidade e cuidado.</p><div class="home-hero-seals"><span>Taxa R$ 15,00</span><span>Retirada grátis</span></div></section>
   <div class="home-section-title" hidden><b>Categorias</b><button type="button" class="link" data-go-page="products">Ver tudo</button></div>
   <div id="homeCategories" class="real-categories" hidden></div>
@@ -656,9 +657,7 @@ try {
   <div id="products" class="product-grid"></div>
  </section>
  <button id="cartbar" class="cartbar hide" type="button"><span id="cartbarCount">0 itens</span><strong>Ver carrinho · <span id="cartbarTotal">R$ 0,00</span></strong></button>
- <button id="requestProductFab" class="request-product-fab" type="button" aria-label="Pedir um produto">
-  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H7l-3 2v-5.5A7.5 7.5 0 1 1 20 11.5Z"/><path d="M12.5 8v7M9 11.5h7"/></svg><span>Pedir produto</span>
- </button>
+
  <section id="pageCart" class="app-page" aria-label="Carrinho">
   <div class="products-top"><button class="back-button" type="button" data-go-page="home" aria-label="Voltar">‹</button><h1>Carrinho</h1></div>
   <aside class="panel" id="cartPanel"><div id="cartItems"></div>
@@ -674,7 +673,8 @@ try {
 <nav class="mobile-nav" aria-label="Navegação principal">
  <button type="button" class="tab-button active" data-page="Home"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z"/></svg>Produtos</button>
  <button type="button" class="tab-button" data-page="Cart"><svg viewBox="0 0 24 24"><path d="M3 4h3l2.5 11h10L21 7H7"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg><i class="badge"></i>Carrinho <b id="tabCartCount">0</b></button>
- <button type="button" class="tab-button" data-page="Orders"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Pedidos</button>
+ <button id="assistantNavButton" type="button" class="assistant-nav-button" aria-label="Abrir assistente"><span class="assistant-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></span><span>Assistente</span></button>
+  <button type="button" class="tab-button" data-page="Orders"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Pedidos</button>
  <span id="accountStatus" class="sm hidden" aria-live="polite"></span><button id="accountBtn" type="button" class="tab-button" data-page="Account" aria-label="Conta"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Conta</button>
 </nav>
 <div class="modal request-product-sheet" id="productRequestSheet" aria-hidden="true">
@@ -715,7 +715,7 @@ try {
   <div class="assistant-compose">
    <textarea id="assistantInput" maxlength="300" rows="2" placeholder="Ex.: 3 kg de queijo coalho e 2 abacaxis" aria-label="Escreva seu pedido"></textarea>
    <div class="assistant-compose-actions">
-    <button id="assistantMic" type="button" aria-label="Falar pedido" title="Falar pedido" hidden>🎙</button>
+    <button id="assistantMic" type="button" aria-label="Falar pedido" title="Falar pedido" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button>
     <button id="assistantSend" type="button">Enviar</button>
    </div>
   </div>
