@@ -961,19 +961,20 @@ function setAssistantStatus(message,isError=false){
  el.style.color=isError?'#b42318':'var(--mut)';
 }
 function renderAssistantProposal(items){
- assistantProposal=Array.isArray(items)?items.slice(0,15):[];
+ const requested=Array.isArray(items)?items.slice(0,15):[];
+ assistantProposal=[];
  const section=$('#assistantProposal'),list=$('#assistantProposalItems');
  list.replaceChildren();
- let usable=0;
- assistantProposal.forEach(item=>{
+ requested.forEach(item=>{
   const product=products.find(p=>p.id===item.product_id&&p.available!==false);
   if(!product)return;
   const li=document.createElement('li');
   li.textContent=String(item.quantidade)+' × '+String(product.name);
-  list.appendChild(li);usable++;
+  list.appendChild(li);
+  assistantProposal.push(item);
  });
- section.classList.toggle('hidden',usable===0);
- if(!usable)assistantProposal=[];
+ section.classList.toggle('hidden',assistantProposal.length===0);
+ if(requested.length>assistantProposal.length)setAssistantStatus('Alguns produtos não estão mais disponíveis nesta lista. Atualize o catálogo antes de adicionar.',true);
 }
 async function openAssistantSheet(){
  try{
@@ -1060,7 +1061,7 @@ $('#assistantSend').addEventListener('click',async()=>{
    assistantMissingName='';
    $('#assistantManualRequest').hidden=true;
   }
-  assistantHistory.push({role:'assistant',content:[responseText,...questions].join('\n')});
+  assistantHistory.push({role:'assistant',content:[responseText,...questions].join('\n').slice(0,300)});
   renderAssistantProposal(data.itens);
   input.value='';
   setAssistantStatus(data.itens?.length&&!assistantProposal.length?'Alguns itens não puderam ser validados. Confira a pergunta antes de continuar.':'');
