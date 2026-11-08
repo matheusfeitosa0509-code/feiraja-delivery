@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { calculateLineTotalCents, isValidSalesQuantity, selectEffectiveUnitPriceCents, sumDecimalQuantities } from "../_shared/sales-rules.js";
 
 function isValidCpf(value: string) { const cpf = String(value || "").replace(/\D/g, ""); if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false; const calc = (base: string, factor: number) => { let sum = 0; for (const digit of base) sum += Number(digit) * factor--; const mod = (sum * 10) % 11; return mod === 10 ? 0 : mod; }; return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10]); }
 
@@ -251,21 +252,43 @@ Deno.serve(async (req: Request) => {
 
     if (paymentMethod === "pix" && !validPixDocument) return json({ error: asaasEnabled ? "Informe um CPF ou CNPJ válido para gerar o Pix." : "Informe um CPF válido para gerar o Pix." }, 400);
 
-    const qtyById = new Map<string, number>();
+    const qtyValuesById = new Map<string, number[]>();
     for (const item of requestedItems) {
       const id = String(item?.id ?? "").trim();
       const qty = Number(item?.qty);
-      if (!id || !Number.isInteger(qty) || qty < 1 || qty > 100) return json({ error: "Quantidade ou produto inválido." }, 400);
-      const accumulatedQty = (qtyById.get(id) ?? 0) + qty;
-      if (accumulatedQty > 100) return json({ error: "A quantidade total de cada produto não pode passar de 100 unidades." }, 400);
+      if (!id || !Number.isFinite(qty) || qty <= 0) return json({ error: "Quantidade ou produto inválido." }, 400);
+      const values = qtyValuesById.get(id) ?? [];
+      values.push(qty);
+      qtyValuesById.set(id, values);
+    }
+    const ids = [...qtyValuesById.keys()];
+    const qtyById = new Map<string, number>();
+    for (const [id, values] of qtyValuesById) {
+      const accumulatedQty = sumDecimalQuantities(values);
+      if (accumulatedQty === null) return json({ error: "Quantidade ou produto inválido." }, 400);
       qtyById.set(id, accumulatedQty);
     }
-    const ids = [...qtyById.keys()];
     const { data: products, error: productsError } = await db.from("products")
       .select("id,name,price,category,image,available,resale_enabled,resale_price,resale_min_qty").in("id", ids);
     if (productsError) throw productsError;
     if (!products || products.length !== ids.length) return json({ error: "Um ou mais produtos não existem mais. Atualize a feira e tente novamente." }, 409);
     if (products.some((p: any) => p.available === false)) return json({ error: "Um dos produtos está indisponível. Atualize a feira e tente novamente." }, 409);
+
+    const { data: salesRules, error: salesRulesError } = await db.from("product_sales_rules")
+      .select("product_id,sale_unit,quantity_step,min_quantity,max_quantity")
+      .in("product_id", ids);
+    if (salesRulesError) {
+      console.error("super-worker", { code: "SALES_RULES_FALLBACK" });
+    }
+    const salesRulesById = new Map((salesRulesError ? [] : salesRules || []).map((rule: any) => [String(rule.product_id), rule]));
+    for (const [id, qty] of qtyById) {
+      const rule = salesRulesById.get(id) || null;
+      const requestedQuantities = qtyValuesById.get(id) || [];
+      if (!requestedQuantities.every((requestedQty) => isValidSalesQuantity(requestedQty, rule)) ||
+          !isValidSalesQuantity(qty, rule)) {
+        return json({ error: "Quantidade inválida para a unidade de venda deste produto." }, 400);
+      }
+    }
 
     const pricingVersion = String(body?.pricing_version || "");
     if (pricingVersion && pricingVersion !== "resale-v1") {
@@ -292,12 +315,18 @@ Deno.serve(async (req: Request) => {
           console.error("super-worker", { code: "RESALE_CONFIG_INVALID", stage: "validate_resale_config" });
           return json({ error: "Preço de revenda configurado incorretamente para um produto. Avise a loja antes de tentar novamente." }, 409);
         }
-        if (qty >= resaleMinQty) {
-          effectivePriceCents = resalePriceCents;
-        }
+        effectivePriceCents = selectEffectiveUnitPriceCents(
+          normalPriceCents,
+          resalePriceCents,
+          true,
+          resaleMinQty,
+          qty,
+        );
       }
 
-      subtotalCents += effectivePriceCents * qty;
+      const lineTotalCents = calculateLineTotalCents(effectivePriceCents, qty);
+      if (lineTotalCents === null) return json({ error: "Valor total inválido." }, 400);
+      subtotalCents += lineTotalCents;
       if (!Number.isSafeInteger(subtotalCents)) return json({ error: "Valor total inválido." }, 400);
       items.push({
         id: p.id, name: p.name, category: p.category, image: p.image,
