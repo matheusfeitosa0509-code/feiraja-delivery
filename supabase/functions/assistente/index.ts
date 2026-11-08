@@ -374,17 +374,16 @@ Deno.serve(async (req) => {
       if (refusal) {
         return json({ error: "Não posso atender a esse pedido. Posso ajudar com a lista de compras." }, 200);
       }
-      if (!textBlocks.length) {
-        return await internalFailure("ANTHROPIC_NO_TEXT", "anthropic_response", "Não consegui montar a sugestão agora. Tente novamente.", 502, {
-          stop_reason: stopReason, status: anthropicStatus, output_tokens: outputTokens,
-        });
-      }
-
       if (stopReason === "max_tokens" && !maxTokensRetried) {
         maxTokensRetried = true;
         failureStage = "retry_max_tokens";
         console.error("assistente", { code: "ANTHROPIC_RETRY_MAX_TOKENS", stage: failureStage, attempt: attemptNumber, stop_reason: stopReason, status: anthropicStatus, output_tokens: outputTokens });
         continue;
+      }
+      if (!textBlocks.length) {
+        return await internalFailure("ANTHROPIC_NO_TEXT", "anthropic_response", "Não consegui montar a sugestão agora. Tente novamente.", 502, {
+          stop_reason: stopReason, status: anthropicStatus, output_tokens: outputTokens,
+        });
       }
 
       parsed = extractJson(textBlocks.map((part) => part.text).join("\n"));
