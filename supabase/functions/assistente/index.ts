@@ -301,7 +301,8 @@ Deno.serve(async (req) => {
       if (orderError) {
         return await internalFailure("LAST_ORDER_READ_FAILED", "last_order_read", "Não foi possível consultar seu último pedido agora.", 503);
       }
-      const previousItems = Array.isArray(lastOrder?.items) ? lastOrder.items as Array<Record<string, unknown>> : [];
+      const lastOrderItems = (lastOrder as unknown as { items?: unknown } | null)?.items;
+      const previousItems = Array.isArray(lastOrderItems) ? lastOrderItems as Array<Record<string, unknown>> : [];
       if (!previousItems.length) {
         return json({ resposta: "Não encontrei um pedido anterior para repetir nesta conta.", itens: [], perguntas: [] });
       }
