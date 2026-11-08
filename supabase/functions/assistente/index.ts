@@ -289,12 +289,13 @@ Deno.serve(async (req) => {
     const normalizedText = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const intentText = normalizedText.replace(/[?!.,;:]+$/g, "").trim();
     const asksRepeatOrder = /\b(repetir|repita|refazer|fazer de novo)\b.*\b(pedido|compra)\b|\b(meu|minha)\s+(ultimo|ultima)\s+(pedido|compra)\b|\bmesmo pedido\b/.test(normalizedText);
-    const hasProductAction = /\b(quero|queria|preciso|me ve|me veja|separa|separe|adiciona|adicione|coloca|coloque|inclui|inclua|manda|me manda|compra|comprar|pede|pedir)\b/.test(intentText);
+    const hasProductAction = /\b(quero|queria)(?!\s+saber\b)|\b(preciso|me ve|me veja|separa|separe|adiciona|adicione|coloca|coloque|inclui|inclua|manda|me manda|compra|comprar|pede|pedir)\b/.test(intentText);
     const hasQuantityOrUnit = /\b\d+(?:[.,]\d+)?\s*(?:kg|quilo|quilos|g|grama|gramas|unidade|unidades|duzia|duzias|maco|macos)\b|\b(?:meio|meia|um|uma|dois|duas|tres|quatro|cinco)\s+(?:kg|quilo|quilos|quilo e meio|grama|gramas)\b/.test(intentText);
     const mentionsCatalogProduct = catalog.some((product) => {
       const productName = product.nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
         .replace(/\s*\([^)]*\)\s*$/g, "").trim();
-      return productName.length >= 3 && intentText.includes(productName);
+      const escapedName = productName.replace(/[.*+?^${}()|[\]\\]/g, "\\      return productName.length >= 3 && intentText.includes(productName);").replace(/\\s+/g, "\\s+");
+      return productName.length >= 3 && new RegExp("\\b" + escapedName + "\\b").test(intentText);
     });
     const hasPaymentContext = /\b(pagamento|pix|cartao|credito|debito|frete|entrega)\b/.test(intentText);
     const isPromotionQuestion =
