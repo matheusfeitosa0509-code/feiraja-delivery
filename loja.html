@@ -249,6 +249,9 @@ body>.site-footer,body>footer.site-footer,.preview-footer{display:none!important
 .assistant-proposal-actions button{min-height:48px;flex:1;border-radius:12px;font-weight:800}
 #assistantAdd{border:0;background:var(--g);color:#fff}
 #assistantCancel{border:1px solid var(--line);background:#fff;color:var(--ink)}
+#assistantConfirmation{background:#eaf5e4;border:1.5px solid #9ac58e;border-radius:16px;padding:16px;text-align:center}
+#assistantConfirmation p{margin:0 0 12px;font-size:16px;font-weight:800;color:#245b22}
+#assistantViewCart{width:100%;min-height:60px;border:0;border-radius:14px;background:var(--g);color:#fff;font-size:17px;font-weight:900}
 .assistant-compose{display:grid;grid-template-columns:minmax(0,1fr) 48px;gap:8px;align-items:end}
 .assistant-compose textarea{width:100%;min-height:52px;max-height:112px;resize:vertical;border:1.5px solid #cfd5bb;border-radius:14px;background:#fff;padding:12px;font:inherit;font-size:16px;color:var(--ink)}
 .assistant-compose-actions{display:flex;gap:8px;grid-column:1/-1}
@@ -686,6 +689,10 @@ try {
     <button id="assistantCancel" type="button">Cancelar</button>
    </div>
   </section>
+  <section id="assistantConfirmation" class="hidden" aria-live="polite">
+   <p>Itens adicionados ao carrinho.</p>
+   <button id="assistantViewCart" type="button">Ver carrinho e finalizar</button>
+  </section>
   <div class="assistant-compose">
    <textarea id="assistantInput" maxlength="300" rows="2" placeholder="Ex.: 3 kg de queijo coalho e 2 abacaxis" aria-label="Escreva seu pedido"></textarea>
    <div class="assistant-compose-actions">
@@ -962,6 +969,7 @@ function setAssistantStatus(message,isError=false){
 }
 function renderAssistantProposal(items){
  const requested=Array.isArray(items)?items.slice(0,15):[];
+ $('#assistantConfirmation').classList.add('hidden');
  assistantProposal=[];
  const section=$('#assistantProposal'),list=$('#assistantProposalItems');
  list.replaceChildren();
@@ -1096,13 +1104,16 @@ $('#assistantAdd').addEventListener('click',()=>{
  });
  if(!valid){setAssistantStatus('Um item não está mais disponível ou ultrapassaria o limite do carrinho. Atualize a lista e tente novamente.',true);return;}
  const proposal=assistantProposal.slice();
- for(const item of proposal){
-  for(let count=0;count<item.quantidade;count++)add(item.product_id);
- }
+ for(const item of proposal)cart[item.product_id]=(cart[item.product_id]||0)+item.quantidade;
+ persistCart();renderCart();renderProducts();safeRenderHomeProductSections();
  assistantProposal=[];
  $('#assistantProposal').classList.add('hidden');
- appendAssistantBubble('assistant','Pronto! Os itens confirmados foram adicionados ao seu carrinho. Você ainda precisa revisar o carrinho e finalizar por conta própria.');
+ $('#assistantConfirmation').classList.remove('hidden');
  setAssistantStatus('');
+});
+$('#assistantViewCart').addEventListener('click',()=>{
+ closeAssistantSheet();
+ showAppPage('Cart');
 });
 
 function showProductRequestMessage(message,isError=false){
