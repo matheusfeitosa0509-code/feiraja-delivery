@@ -14,6 +14,42 @@ function json(body, status = 200) {
   });
 }
 
+function extractJson(text) {
+  if (typeof text !== "string") return null;
+  const source = text.trim().replace(/^\\s*```(?:json)?\\s*/i, "").replace(/\\s*```\\s*$/i, "");
+  const start = source.indexOf("{");
+  if (start < 0) return null;
+  let depth = 0, quoted = false, escaped = false, end = -1;
+  for (let i = start; i < source.length; i++) {
+    const ch = source[i];
+    if (quoted) {
+      if (escaped) escaped = false;
+      else if (ch === "\\\\") escaped = true;
+      else if (ch === '"') quoted = false;
+    } else if (ch === '"') quoted = true;
+    else if (ch === "{") depth++;
+    else if (ch === "}" && --depth === 0) { end = i + 1; break; }
+  }
+  if (end < 0) return null;
+  const raw = source.slice(start, end);
+  let cleaned = "", inString = false, escape = false;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+    if (inString) {
+      cleaned += ch;
+      if (escape) escape = false;
+      else if (ch === "\\\\") escape = true;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') { inString = true; cleaned += ch; }
+    else if (ch === ",") {
+      let j = i + 1;
+      while (j < raw.length && /\\s/.test(raw[j])) j++;
+      if (raw[j] !== "}" && raw[j] !== "]") cleaned += ch;
+    } else cleaned += ch;
+  }
+  try { return JSON.parse(cleaned); } catch { return null; }
+}
+
 function defaultSecret(legacyName, collectionName) {
   const legacy = Deno.env.get(legacyName);
   if (legacy) return legacy;
@@ -110,6 +146,9 @@ Retorne SOMENTE JSON conforme o esquema: resposta, itens e perguntas. Em cada it
 No máximo 15 itens; no máximo 100 unidades por item. Seja breve e cordial em português do Brasil.`;
 
 Deno.serve(async (req) => {
+  let admin = null;
+  let quotaConsumed = false;
+  let quotaUserId = null;
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Não foi possível processar a mensagem." }, 405);
 
@@ -128,6 +167,7 @@ Deno.serve(async (req) => {
     });
     const { data: authData, error: authError } = await authClient.auth.getUser(tokenMatch[1]);
     if (authError || !authData?.user?.id) return json({ error: "Sua sessão expirou. Entre novamente." }, 401);
+    quotaUserId = authData.user.id;
 
     const body = await req.json().catch(() => null);
     if (!body || typeof body.text !== "string" || !body.text.trim() || body.text.trim().length > 300) {
@@ -137,9 +177,18 @@ Deno.serve(async (req) => {
     if (history === null) return json({ error: "Não foi possível processar o histórico da conversa." }, 400);
     const text = body.text.trim();
 
-    const admin = createClient(supabaseUrl, serviceKey, {
+    admin = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+    async function internalFailure(code, stage, message, status = 502, meta = {}) {
+      if (quotaConsumed) {
+        const { error: refundError } = await admin.rpc("refund_assistant_daily_message", { p_user_id: quotaUserId });
+        if (refundError) console.error("assistente", { code: "DAILY_LIMIT_REFUND_FAILED", stage: "quota_refund" });
+        else quotaConsumed = false;
+      }
+      console.error("assistente", { code, stage, ...meta });
+      return json({ error: message }, status);
+    }
 
     const { data: allowed, error: limitError } = await admin.rpc("consume_assistant_daily_message", {
       p_user_id: authData.user.id,
@@ -151,6 +200,7 @@ Deno.serve(async (req) => {
     if (allowed !== true) {
       return json({ error: "Você atingiu o limite de 20 mensagens hoje. Tente novamente amanhã." }, 429);
     }
+    quotaConsumed = true;
 
     const { data: rows, error: productsError } = await admin
       .from("products")
@@ -159,8 +209,7 @@ Deno.serve(async (req) => {
       .order("name", { ascending: true })
       .limit(200);
     if (productsError || !Array.isArray(rows)) {
-      console.error("assistente", { code: "PRODUCT_CATALOG_READ_FAILED" });
-      return json({ error: "Não foi possível consultar o catálogo agora." }, 503);
+      return await internalFailure("PRODUCT_CATALOG_READ_FAILED", "catalog_read", "Não foi possível consultar o catálogo agora.", 503);
     }
 
     const { data: salesRules, error: salesRulesError } = await admin
@@ -188,8 +237,7 @@ Deno.serve(async (req) => {
 
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY") || "";
     if (!apiKey) {
-      console.error("assistente", { code: "ANTHROPIC_KEY_MISSING" });
-      return json({ error: "Assistente temporariamente indisponível." }, 503);
+      return await internalFailure("ANTHROPIC_KEY_MISSING", "anthropic_config", "Assistente temporariamente indisponível.", 503);
     }
 
     const messages = history.map((entry) => ({ role: entry.role, content: entry.content }));
@@ -203,50 +251,112 @@ Deno.serve(async (req) => {
       messages.push({ role: "user", content: currentContent });
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 18000);
-    let anthropicResponse;
-    try {
-      anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: "claude-haiku-5-5",
-          max_tokens: 500,
-          system: systemPrompt,
-          messages,
-          output_config: { format: { type: "json_schema", schema: outputSchema } },
-        }),
-        signal: controller.signal,
+    const model = Deno.env.get("ASSISTANT_MODEL") || "claude-haiku-5-5";
+    let parsed = null;
+    let modelBody = null;
+    let anthropicStatus = null;
+    let maxTokensRetried = false;
+    let jsonRetried = false;
+    let failureStage = "anthropic_request";
+
+    for (let attempt = 0; attempt < 3 && !parsed; attempt++) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 18000);
+      let anthropicResponse;
+      try {
+        anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: maxTokensRetried ? 1400 : 700,
+            system: systemPrompt,
+            messages,
+            output_config: { format: { type: "json_schema", schema: outputSchema } },
+          }),
+          signal: controller.signal,
+        });
+      } catch {
+        return await internalFailure("ANTHROPIC_REQUEST_FAILED", failureStage, "Não consegui montar a sugestão agora. Tente novamente.", 502, { status: anthropicStatus });
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      anthropicStatus = anthropicResponse.status;
+      if (!anthropicResponse.ok) {
+        let apiErrorType = null;
+        try {
+          const errorBody = await anthropicResponse.json();
+          apiErrorType = errorBody?.error?.type || null;
+        } catch { /* corpo de erro indisponível */ }
+        return await internalFailure("ANTHROPIC_BAD_STATUS", "anthropic_http", "Não consegui montar a sugestão agora. Tente novamente.", 502, {
+          status: anthropicStatus,
+          type: apiErrorType,
+        });
+      }
+
+      modelBody = await anthropicResponse.json().catch(() => null);
+      const stopReason = modelBody?.stop_reason || null;
+      const outputTokens = Number.isFinite(modelBody?.usage?.output_tokens) ? modelBody.usage.output_tokens : null;
+      const contentBlocks = Array.isArray(modelBody?.content) ? modelBody.content : [];
+      const textBlocks = contentBlocks.filter((part) => part?.type === "text" && typeof part.text === "string");
+      const refusal = stopReason === "refusal" || contentBlocks.some((part) => part?.type === "refusal");
+
+      console.error("assistente", {
+        code: refusal ? "ANTHROPIC_REFUSAL" : "ANTHROPIC_RESPONSE",
+        stage: "anthropic_response",
+        stop_reason: stopReason,
+        status: anthropicStatus,
+        output_tokens: outputTokens,
       });
-    } catch {
-      console.error("assistente", { code: "ANTHROPIC_REQUEST_FAILED" });
-      return json({ error: "Não consegui montar a sugestão agora. Tente novamente." }, 502);
-    } finally {
-      clearTimeout(timeout);
+
+      if (refusal) {
+        return await internalFailure("ANTHROPIC_REFUSAL", "anthropic_response", "Não posso atender a esse pedido. Posso ajudar com a lista de compras.", 200, {
+          stop_reason: stopReason, status: anthropicStatus, output_tokens: outputTokens,
+        });
+      }
+      if (!textBlocks.length) {
+        return await internalFailure("ANTHROPIC_NO_TEXT", "anthropic_response", "Não consegui montar a sugestão agora. Tente novamente.", 502, {
+          stop_reason: stopReason, status: anthropicStatus, output_tokens: outputTokens,
+        });
+      }
+
+      if (stopReason === "max_tokens" && !maxTokensRetried) {
+        maxTokensRetried = true;
+        failureStage = "retry_max_tokens";
+        continue;
+      }
+
+      parsed = extractJson(textBlocks.map((part) => part.text).join("\n"));
+      if (!parsed && !jsonRetried) {
+        jsonRetried = true;
+        failureStage = "retry_invalid_json";
+        continue;
+      }
+      if (!parsed) {
+        return await internalFailure("MODEL_JSON_INVALID", "model_json_parse", "Não consegui montar a sugestão agora. Tente novamente.", 502, {
+          stop_reason: stopReason, status: anthropicStatus, output_tokens: outputTokens,
+        });
+      }
     }
 
-    if (!anthropicResponse.ok) {
-      console.error("assistente", { code: "ANTHROPIC_BAD_STATUS", status: anthropicResponse.status });
-      return json({ error: "Não consegui montar a sugestão agora. Tente novamente." }, 502);
+    if (!parsed) {
+      return await internalFailure("ANTHROPIC_INVALID_RESPONSE", failureStage, "Não consegui montar a sugestão agora. Tente novamente.", 502, {
+        stop_reason: modelBody?.stop_reason || null,
+        status: anthropicStatus,
+        output_tokens: modelBody?.usage?.output_tokens ?? null,
+      });
     }
-
-    const modelBody = await anthropicResponse.json().catch(() => null);
-    if (!modelBody || modelBody.stop_reason !== "end_turn") {
-      console.error("assistente", { code: "ANTHROPIC_INVALID_RESPONSE" });
-      return json({ error: "Não consegui montar a sugestão agora. Tente novamente." }, 502);
-    }
-    const textBlock = Array.isArray(modelBody.content) ? modelBody.content.find((part) => part.type === "text") : null;
-    let parsed;
-    try {
-      parsed = JSON.parse(textBlock?.text || "");
-    } catch {
-      console.error("assistente", { code: "MODEL_JSON_INVALID" });
-      return json({ error: "Não consegui montar a sugestão agora. Tente novamente." }, 502);
+    if (typeof parsed.resposta !== "string" || !Array.isArray(parsed.itens) || !Array.isArray(parsed.perguntas)) {
+      return await internalFailure("MODEL_SCHEMA_INVALID", "model_schema", "Não consegui montar a sugestão agora. Tente novamente.", 502, {
+        stop_reason: modelBody?.stop_reason || null,
+        status: anthropicStatus,
+        output_tokens: modelBody?.usage?.output_tokens ?? null,
+      });
     }
 
     const byId = new Map(catalog.map((product) => [product.id, product]));
@@ -304,7 +414,11 @@ Deno.serve(async (req) => {
 
     return json({ resposta, itens: validCandidates, perguntas });
   } catch {
-    console.error("assistente", { code: "UNEXPECTED_FAILURE" });
+    if (admin && quotaConsumed) {
+      const { error: refundError } = await admin.rpc("refund_assistant_daily_message", { p_user_id: quotaUserId });
+      if (refundError) console.error("assistente", { code: "DAILY_LIMIT_REFUND_FAILED", stage: "quota_refund" });
+    }
+    console.error("assistente", { code: "UNEXPECTED_FAILURE", stage: "handler" });
     return json({ error: "Não consegui montar a sugestão agora. Tente novamente." }, 500);
   }
 });
