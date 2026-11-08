@@ -235,7 +235,14 @@ body>.site-footer,body>footer.site-footer,.preview-footer{display:none!important
 #productRequestForm .btn{min-height:52px}
 .request-product-sheet{z-index:60}
 .assistant-sheet{z-index:61}
-.assistant-panel{height:min(90dvh,820px);max-height:90dvh;min-height:0;display:flex;flex-direction:column;gap:16px;padding:24px 20px calc(16px + env(safe-area-inset-bottom));border-radius:16px 16px 0 0;overflow:hidden}
+.assistant-panel{height:min(calc(var(--preview-vvh,100dvh) - 8px),820px);max-height:calc(var(--preview-vvh,100dvh) - 8px);min-height:0;display:flex;flex-direction:column;gap:10px;padding:16px 14px calc(12px + env(safe-area-inset-bottom));border-radius:16px 16px 0 0;overflow:hidden}
+.assistant-messages{flex:1 1 auto;min-height:56px}
+.assistant-examples{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:0 1px}
+.assistant-examples[hidden]{display:none!important}
+.assistant-examples-label{flex:0 0 100%;font-size:12px;font-weight:700;color:var(--mut);line-height:1.2}
+.assistant-example-chip{min-height:34px;padding:6px 10px;border:1px solid #dce3d4;border-radius:999px;background:#fff;color:var(--g);font:600 12px/1.25 'Plus Jakarta Sans',sans-serif;white-space:normal;text-align:left;touch-action:manipulation}
+.assistant-example-chip:active{background:#edf5e6;border-color:var(--g2)}
+@media(max-width:380px){.assistant-panel{gap:8px;padding-left:12px;padding-right:12px}.assistant-example-chip{font-size:11px;padding:6px 8px;min-height:32px}}
 .assistant-panel>.close{position:absolute;top:16px;right:16px;z-index:5;width:40px;height:40px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--g);box-shadow:0 2px 8px rgba(29,42,18,.08);touch-action:manipulation}
 .assistant-heading{padding:2px 52px 0 0}
 .assistant-heading h2{margin:0 0 6px;font-size:18px;font-weight:600;line-height:1.3;letter-spacing:-.25px}
@@ -701,6 +708,13 @@ try {
    <p class="sm" style="margin:0">Escreva ou fale o que precisa. Você confirma antes de adicionar.</p>
   </header>
   <div id="assistantMessages" class="assistant-messages" aria-live="polite"></div>
+  <div class="assistant-examples" aria-label="Exemplos de mensagens">
+   <span class="assistant-examples-label">Experimente:</span>
+   <button class="assistant-example-chip" type="button" data-assistant-example="Moqueca para 4 pessoas">Moqueca para 4 pessoas</button>
+   <button class="assistant-example-chip" type="button" data-assistant-example="Tem promoção?">Tem promoção?</button>
+   <button class="assistant-example-chip" type="button" data-assistant-example="Repete meu último pedido">Repete meu último pedido</button>
+   <button class="assistant-example-chip" type="button" data-assistant-example="Quero meio quilo de tomate">Quero meio quilo de tomate</button>
+  </div>
   <section id="assistantProposal" class="assistant-proposal hidden" aria-live="polite">
    <h3>Separei isto para você</h3>
    <ul id="assistantProposalItems"></ul>
@@ -1015,6 +1029,7 @@ async function openAssistantSheet(){
   if(error)throw error;
   if(!session?.user){openAccountScreen();return;}
   if(!assistantHistory.length)appendAssistantBubble('assistant','Olá! Diga quais produtos e quantidades você deseja. Vou montar uma sugestão para você conferir.');
+  document.querySelector('.assistant-examples').hidden=assistantHistory.some(item=>item.role==='user');
   $('#assistantSheet').setAttribute('aria-hidden','false');
   openPreviewModal('assistantSheet');
   requestAnimationFrame(()=>$('#assistantInput').focus());
@@ -1056,6 +1071,12 @@ if(typeof SpeechRecognitionApi==='function'){
  });
 }
 
+document.querySelector('.assistant-examples').addEventListener('click',event=>{
+ const chip=event.target.closest('[data-assistant-example]');
+ if(!chip)return;
+ $('#assistantInput').value=chip.dataset.assistantExample||'';
+ $('#assistantSend').click();
+});
 $('#assistantSend').addEventListener('click',async()=>{
  const input=$('#assistantInput');
  const message=input.value.trim();
@@ -1063,6 +1084,7 @@ $('#assistantSend').addEventListener('click',async()=>{
  if(!message){setAssistantStatus('Escreva ou dite seu pedido antes de enviar.',true);return;}
  if(message.length>300){setAssistantStatus('O pedido deve ter até 300 caracteres.',true);return;}
  const history=assistantHistory.slice(-6);
+ document.querySelector('.assistant-examples').hidden=true;
  appendAssistantBubble('user',message);
  assistantHistory.push({role:'user',content:message});
  button.disabled=true;button.textContent='Montando…';
