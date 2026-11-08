@@ -25,7 +25,7 @@ function extractJson(text) {
     const ch = source[i];
     if (quoted) {
       if (escaped) escaped = false;
-      else if (ch === "\\\\") escaped = true;
+      else if (ch === "\\") escaped = true;
       else if (ch === '"' ) quoted = false;
     } else if (ch === '"' ) quoted = true;
     else if (ch === "{") depth++;
@@ -39,12 +39,12 @@ function extractJson(text) {
     if (inString) {
       cleaned += ch;
       if (escape) escape = false;
-      else if (ch === "\\\\") escape = true;
+      else if (ch === "\\") escape = true;
       else if (ch === '"' ) inString = false;
     } else if (ch === '"' ) { inString = true; cleaned += ch; }
     else if (ch === ",") {
       let j = i + 1;
-      while (j < raw.length && /\\s/.test(raw[j])) j++;
+      while (j < raw.length && /\s/.test(raw[j])) j++;
       if (raw[j] !== "}" && raw[j] !== "]") cleaned += ch;
     } else cleaned += ch;
   }
@@ -392,10 +392,7 @@ Deno.serve(async (req) => {
         .select("id")
         .in("id", ids)
         .eq("available", true);
-      if (availabilityError) {
-        console.error("assistente", { code: "PRODUCT_AVAILABILITY_RECHECK_FAILED" });
-        return json({ error: "Não foi possível validar os produtos agora." }, 503);
-      }
+      if (availabilityError) return await internalFailure("PRODUCT_AVAILABILITY_RECHECK_FAILED", "availability_recheck", "Não foi possível validar os produtos agora.", 503);
       const currentIds = new Set((stillAvailable || []).map((item) => String(item.id)));
       for (let i = validCandidates.length - 1; i >= 0; i--) {
         if (!currentIds.has(validCandidates[i].product_id)) validCandidates.splice(i, 1);
