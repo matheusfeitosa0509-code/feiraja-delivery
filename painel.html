@@ -321,7 +321,7 @@ async function show(){
   $('priceEditor').classList.remove('hide');
   $('resaleEditor').classList.remove('hide');
   $('productEdit').classList.remove('hide');
-  await Promise.all([load(),loadAdminProducts()]);
+  await Promise.all([load(),loadAdminProducts(),loadProductRequests()]);
  }catch(error){
   console.error('Falha ao abrir o painel:',error);
   $('message').textContent='Não foi possível carregar o painel: '+(error?.message||'erro não identificado')+'. Atualize a página e tente novamente.';
@@ -914,7 +914,7 @@ async function loadProductRequests(){
 $('refreshProductRequests').addEventListener('click',loadProductRequests);
 
 db.auth.onAuthStateChange((event,session)=>{
-  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){setIn(true);loadPriceProducts();loadEditableProducts();loadResaleProducts();loadProductRequests();}
+  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){setIn(true);loadPriceProducts();loadEditableProducts();loadResaleProducts();}
   if(event==='SIGNED_OUT'){setIn(false);$('priceEditor').classList.add('hide');priceProducts=[];$('priceProduct').replaceChildren(new Option('Entre como administrador',''));$('btnUpdatePrice').disabled=true;$('productEdit').classList.add('hide');editableProducts=[];$('resaleEditor').classList.add('hide');resaleProducts=[];$('resaleProduct').replaceChildren(new Option('Entre como administrador',''));$('btnPreviewResale').disabled=true;}
 });
 
