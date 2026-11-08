@@ -132,6 +132,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <button type="button" data-product-section="resaleEditor" aria-pressed="false">Preço de revenda</button>
 <button type="button" data-product-section="productEdit" aria-pressed="false">Editar nome e imagem</button>
 <button type="button" data-product-section="productAvailabilityCard" aria-pressed="false">Disponibilidade</button>
+<button type="button" data-product-section="productRequests" aria-pressed="false">Produtos pedidos</button>
 </div>
 <div class="card product-section active" id="formBox">
 <h1>➕ Novo produto</h1>
@@ -210,6 +211,14 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
   <div id="editProductMsg" role="status" aria-live="polite"></div>
 </section>
 <section class="card product-section" id="productAvailabilityCard"><h2>Disponibilidade</h2><p class="muted">Consulte e altere a disponibilidade de produtos. A alteração grava somente a coluna available.</p><label for="availabilityProduct">Selecionar produto</label><select id="availabilityProduct"><option value="">Carregando produtos…</option></select><p id="availabilityCurrent" class="availability-current" aria-live="polite">Selecione um produto para ver o estado atual.</p><div class="availability-actions"><button id="toggleAvailability" type="button" disabled>Alternar disponibilidade</button><button id="refreshProducts" type="button" class="secondary">Atualizar produtos</button></div><p id="availabilityMessage" class="muted availability-message" role="status"></p><h3>Todos os produtos</h3><div id="adminProductList" class="product-list"><p class="muted">Carregando produtos…</p></div></section>
+<section class="card product-section" id="productRequests">
+ <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+  <h2 style="margin:0">Produtos pedidos</h2>
+  <button id="refreshProductRequests" type="button" class="secondary">Atualizar lista</button>
+ </div>
+ <p id="productRequestsMessage" class="muted" role="status" aria-live="polite">Carregando solicitações…</p>
+ <div id="productRequestsList" class="product-list"><p class="muted">Carregando…</p></div>
+</section>
 </section>
 </section></main>
 <script src="./turnstile.js" defer></script>
@@ -875,8 +884,37 @@ $('btnConfirmProductEdit').addEventListener('click',async()=>{
   }
 });
 
+async function loadProductRequests(){
+ const message=$('productRequestsMessage');
+ const list=$('productRequestsList');
+ if(!message||!list)return;
+ message.textContent='Carregando solicitações…';
+ try{
+  const {data,error}=await db.from('product_requests')
+   .select('id,product_name,note,created_at')
+   .order('created_at',{ascending:false})
+   .limit(200);
+  if(error)throw error;
+  const rows=data||[];
+  list.innerHTML=rows.map(row=>{
+   const date=row.created_at?new Date(row.created_at).toLocaleString('pt-BR'):'Data não informada';
+   return '<article class="product-row" style="display:block;margin:10px 0;padding:12px;border:1px solid var(--line);border-radius:12px">'
+    +'<strong>'+esc(row.product_name)+'</strong>'
+    +(row.note?'<p class="muted" style="margin:6px 0 0;white-space:pre-wrap">'+esc(row.note)+'</p>':'')
+    +'<small class="muted" style="display:block;margin-top:8px">'+esc(date)+'</small>'
+    +'</article>';
+  }).join('')||'<p class="muted">Nenhum produto pedido até agora.</p>';
+  message.textContent=rows.length+' solicitação(ões) mais recentes. Exibindo até 200.';
+ }catch(error){
+  console.error('Falha ao carregar produtos pedidos:',error);
+  message.textContent='Não foi possível carregar os produtos pedidos. Verifique a permissão de administrador e tente novamente.';
+  list.replaceChildren();
+ }
+}
+$('refreshProductRequests').addEventListener('click',loadProductRequests);
+
 db.auth.onAuthStateChange((event,session)=>{
-  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){setIn(true);loadPriceProducts();loadEditableProducts();loadResaleProducts();}
+  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){setIn(true);loadPriceProducts();loadEditableProducts();loadResaleProducts();loadProductRequests();}
   if(event==='SIGNED_OUT'){setIn(false);$('priceEditor').classList.add('hide');priceProducts=[];$('priceProduct').replaceChildren(new Option('Entre como administrador',''));$('btnUpdatePrice').disabled=true;$('productEdit').classList.add('hide');editableProducts=[];$('resaleEditor').classList.add('hide');resaleProducts=[];$('resaleProduct').replaceChildren(new Option('Entre como administrador',''));$('btnPreviewResale').disabled=true;}
 });
 
@@ -893,7 +931,7 @@ function selectMainTab(tab){
  document.getElementById('tabProducts').setAttribute('aria-selected',String(products));
 }
 function selectProductSection(id){
- const valid=['formBox','priceEditor','resaleEditor','productEdit','productAvailabilityCard'];
+ const valid=['formBox','priceEditor','resaleEditor','productEdit','productAvailabilityCard','productRequests'];
  const target=valid.includes(id)?id:'formBox';
  document.querySelectorAll('#productTools .product-section').forEach(el=>el.classList.toggle('active',el.id===target));
  document.getElementById('productAvailabilityCard').classList.toggle('active',target==='productAvailabilityCard');
