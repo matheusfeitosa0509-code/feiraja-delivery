@@ -478,7 +478,7 @@ Deno.serve(async (req) => {
         .in("id", ids)
         .eq("available", true);
       if (availabilityError) return await internalFailure("PRODUCT_AVAILABILITY_RECHECK_FAILED", "availability_recheck", "Não foi possível validar os produtos agora.", 503);
-      const currentIds = new Set((stillAvailable || []).map((item) => String(item.id)));
+      const currentIds = new Set(((stillAvailable || []) as Array<{ id: string }>).map((item) => String(item.id)));
       for (let i = validCandidates.length - 1; i >= 0; i--) {
         if (!currentIds.has(validCandidates[i].product_id)) validCandidates.splice(i, 1);
       }
@@ -505,7 +505,7 @@ Deno.serve(async (req) => {
     const client = admin;
     if (client && quotaConsumed && quotaUserId) {
       try {
-        const { error: refundError } = await client.rpc("refund_assistant_daily_message", { p_user_id: quotaUserId });
+        const { error: refundError } = await client.rpc("refund_assistant_daily_message", { p_user_id: quotaUserId } as never);
         if (refundError) console.error("assistente", { code: "DAILY_LIMIT_REFUND_FAILED", stage: "quota_refund" });
       } catch {
         console.error("assistente", { code: "DAILY_LIMIT_REFUND_FAILED", stage: "quota_refund" });
