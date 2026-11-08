@@ -518,6 +518,20 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type=
 .auth-screen .close{top:calc(env(safe-area-inset-top,0px) + 12px)!important;width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important}
 .checkout-screen .close{top:calc(env(safe-area-inset-top,0px) + 12px)!important;width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important}
 .account-back-catalog{margin:0 0 18px;min-height:48px}
+
+/* ORDEM 125 — navegação e acesso ao pedido manual */
+.mobile-nav{background:#fff!important;background-image:none!important;border-top:1px solid #e7ebdf!important;box-shadow:0 -5px 18px rgba(29,42,18,.07)!important;justify-content:space-between!important;padding-left:8px!important;padding-right:8px!important}
+.mobile-nav>.tab-button{flex:1;min-width:0!important;max-width:none!important;border-radius:14px;color:var(--mut);transition:background-color .15s ease,color .15s ease}
+.mobile-nav>.tab-button.active{background:#edf5e6!important;color:#2f6a14!important}
+.mobile-nav>.assistant-nav-button{position:relative;top:-9px;flex:1;min-width:0;max-width:76px;height:68px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;border:0;background:transparent;color:var(--g);font:600 10px 'Plus Jakarta Sans',sans-serif;touch-action:manipulation}
+.assistant-nav-button .assistant-nav-icon{width:54px;height:54px;margin-top:-17px;border:0;border-radius:50%;display:grid;place-items:center;background:#2f6a14;color:#fff;box-shadow:0 5px 13px rgba(47,106,20,.25)}
+.assistant-nav-button svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.mobile-nav .assistant-nav-button:active .assistant-nav-icon{transform:scale(.96)}
+#homeSearch,.search:not(.home-search){border-radius:16px!important}
+.request-product-link{display:inline-flex;align-items:center;min-height:32px;margin:-8px 0 14px;padding:0;border:0;background:transparent;color:#2f6a14;font:600 13px 'Plus Jakarta Sans',sans-serif;text-decoration:underline;text-underline-offset:3px;touch-action:manipulation}
+.request-product-link[hidden]{display:none!important}
+.assistant-heading h2{text-wrap:balance;font-size:17px}
+#assistantMic svg{display:block;width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
 </style>
 <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
