@@ -19,6 +19,9 @@ create table public.product_requests (
 create index product_requests_user_created_idx
   on public.product_requests (user_id, created_at desc);
 
+create index product_requests_created_idx
+  on public.product_requests (created_at desc);
+
 alter table public.product_requests enable row level security;
 
 revoke all on table public.product_requests from anon, authenticated;
