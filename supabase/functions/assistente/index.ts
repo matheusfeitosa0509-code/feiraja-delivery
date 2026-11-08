@@ -244,7 +244,7 @@ Deno.serve(async (req) => {
       return json({ error: "Assistente temporariamente indisponível." }, 503);
     }
     if (allowed !== true) {
-      return json({ error: "Você atingiu o limite de 20 mensagens hoje. Tente novamente amanhã." }, 429);
+      return json({ error: "Você atingiu o limite de 100 mensagens hoje. Tente novamente amanhã." }, 429);
     }
     quotaConsumed = true;
 
