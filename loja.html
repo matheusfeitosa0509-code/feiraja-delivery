@@ -221,6 +221,19 @@ body>.site-footer,body>footer.site-footer,.preview-footer{display:none!important
 #pageProducts.active{padding-bottom:calc(160px + env(safe-area-inset-bottom))!important}
 #cartbar:not(.hide){display:flex!important;position:fixed!important;left:12px!important;right:12px!important;bottom:calc(78px + env(safe-area-inset-bottom))!important;max-width:496px;margin:0 auto;z-index:29!important;box-shadow:0 8px 24px #0003!important}
 #cartbar[hidden]{display:none!important}
+.request-product-fab{position:fixed;right:16px;bottom:calc(88px + env(safe-area-inset-bottom));z-index:31;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:48px;min-height:48px;padding:0 16px;border:0;border-radius:999px;background:#075b3d;color:#fff;font-size:13px;font-weight:800;box-shadow:0 5px 18px #0004}
+.request-product-fab svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.request-product-fab[hidden]{display:none!important}
+#cartbar:not(.hide):not([hidden]) + .request-product-fab{bottom:calc(148px + env(safe-area-inset-bottom))}
+.home-no-results{margin:18px 0;padding:16px;border:1px solid var(--line);border-radius:16px;background:#fff;text-align:center}
+.home-no-results p{margin:0 0 12px;color:var(--mut);font-size:14px}
+.home-no-results button{min-height:48px;padding:0 16px;border:0;border-radius:12px;background:var(--g);color:#fff;font-weight:800}
+.request-product-panel{max-height:88dvh;overflow-y:auto;padding:24px 20px calc(22px + env(safe-area-inset-bottom));}
+.request-product-content{padding-top:8px}
+#productRequestForm .field input,#productRequestForm .field textarea{width:100%;min-height:50px;border-radius:14px;border:1.5px solid #cfd5bb;background:#fff;padding:12px 14px;font-size:16px;color:var(--ink)}
+#productRequestForm .field textarea{resize:vertical}
+#productRequestForm .btn{min-height:52px}
+.request-product-sheet{z-index:60}
 #pageHome.active{padding-bottom:calc(168px + env(safe-area-inset-bottom))!important}
 .mobile-nav #tabCartCount{position:absolute;top:1px;right:calc(50% - 29px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#f18b24;color:#fff;font-size:11px;font-weight:900;line-height:18px;display:inline-flex;align-items:center;justify-content:center}
 .mobile-nav .tab-button{position:relative}
@@ -582,6 +595,10 @@ try {
   <div id="homeCategories" class="real-categories" hidden></div>
   <section id="repeatOrder" class="repeat-section" hidden><div class="home-section-title repeat-heading"><b>Pedir de novo</b></div><div class="again"><div class="repeat-copy"><b id="repeatOrderTitle">Último pedido</b><div id="repeatOrderItems" class="sm"></div></div><button type="button" id="repeatOrderButton">Repetir</button></div></section>
   <section id="homeProductSections" aria-label="Produtos por categoria" class="home-product-sections"></section>
+  <section id="homeNoResults" class="home-no-results" hidden aria-live="polite">
+   <p>Não encontrou? Peça este produto: <strong id="homeNoResultsName"></strong></p>
+   <button id="homeRequestProduct" type="button">Pedir este produto</button>
+  </section>
  </section>
  <section id="pageProducts" class="app-page" aria-label="Produtos">
   <div class="products-top"><button class="back-button" type="button" data-go-page="home" aria-label="Voltar">‹</button><h1>Produtos</h1></div>
@@ -590,19 +607,11 @@ try {
   <nav id="categories" class="chips" aria-label="Categorias de produtos"></nav>
   <div id="status" class="sr" role="status">Carregando produtos…</div>
   <div id="products" class="product-grid"></div>
-  <section class="panel" id="productRequestCard" aria-labelledby="productRequestTitle" style="margin-top:18px">
-   <h2 id="productRequestTitle" style="font-size:18px;margin:0 0 6px">Sentiu falta de algum produto?</h2>
-   <p class="sm" style="margin:0 0 12px">Conte qual produto você gostaria de encontrar na feira.</p>
-   <button id="requestProductToggle" class="btn alt full" type="button">Não achou? Peça um produto</button>
-   <form id="productRequestForm" class="hidden" style="margin-top:14px">
-    <div class="field"><label for="productRequestName">Nome do produto</label><input id="productRequestName" name="product_name" type="text" maxlength="80" required autocomplete="off" placeholder="Ex.: Macaxeira"></div>
-    <div class="field"><label for="productRequestNote">Observação (opcional)</label><textarea id="productRequestNote" name="note" maxlength="300" rows="3" placeholder="Detalhes, tamanho ou preferência"></textarea></div>
-    <button id="productRequestSubmit" class="btn full" type="submit">Enviar pedido</button>
-   </form>
-   <p id="productRequestMessage" class="sm hidden" role="status" aria-live="polite"></p>
-  </section>
  </section>
  <button id="cartbar" class="cartbar hide" type="button"><span id="cartbarCount">0 itens</span><strong>Ver carrinho · <span id="cartbarTotal">R$ 0,00</span></strong></button>
+ <button id="requestProductFab" class="request-product-fab" type="button" aria-label="Pedir um produto">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H7l-3 2v-5.5A7.5 7.5 0 1 1 20 11.5Z"/><path d="M12.5 8v7M9 11.5h7"/></svg><span>Pedir produto</span>
+ </button>
  <section id="pageCart" class="app-page" aria-label="Carrinho">
   <div class="products-top"><button class="back-button" type="button" data-go-page="home" aria-label="Voltar">‹</button><h1>Carrinho</h1></div>
   <aside class="panel" id="cartPanel"><div id="cartItems"></div>
@@ -621,6 +630,21 @@ try {
  <button type="button" class="tab-button" data-page="Orders"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Pedidos</button>
  <span id="accountStatus" class="sm hidden" aria-live="polite"></span><button id="accountBtn" type="button" class="tab-button" data-page="Account" aria-label="Conta"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Conta</button>
 </nav>
+<div class="modal request-product-sheet" id="productRequestSheet" aria-hidden="true">
+ <section class="dialog request-product-panel" role="dialog" aria-modal="true" aria-labelledby="productRequestTitle">
+  <button class="close" id="productRequestClose" type="button" aria-label="Fechar">×</button>
+  <div class="request-product-content">
+   <h2 id="productRequestTitle" style="margin:0 48px 6px 0;font-size:21px">Pedir um produto</h2>
+   <p class="sm" style="margin:0 0 18px">Conte qual produto você gostaria de encontrar na feira.</p>
+   <form id="productRequestForm">
+    <div class="field"><label for="productRequestName">Nome do produto</label><input id="productRequestName" name="product_name" type="text" maxlength="80" required autocomplete="off" placeholder="Ex.: Macaxeira"></div>
+    <div class="field"><label for="productRequestNote">Observação (opcional)</label><textarea id="productRequestNote" name="note" maxlength="300" rows="3" placeholder="Detalhes, tamanho ou preferência"></textarea></div>
+    <button id="productRequestSubmit" class="btn full" type="submit">Enviar pedido</button>
+   </form>
+   <p id="productRequestMessage" class="sm hidden" role="status" aria-live="polite"></p>
+  </div>
+ </section>
+</div>
 <div class="modal auth-screen" id="accountModal"><div class="dialog"><button class="close" id="accountClose" type="button" aria-label="Fechar">×</button><div class="lhero"><div class="login-brand">Feira On Delivery</div><div class="login-sub">Tudo da feira, direto na sua porta.</div>
 <svg class="moto" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ilustração de entrega"><path class="road" d="M8 112H192" stroke="#fff" stroke-width="3" stroke-dasharray="5 5"/><g class="moto-enter"><g class="moto-bob"><rect x="112" y="14" width="56" height="40" rx="8" fill="#fbbf24" stroke="#1f3d12" stroke-width="4"/><path d="M124 28h32M124 38h32" stroke="#1f3d12" stroke-width="4" stroke-linecap="round"/><path d="M96 60h62l-10 24H86z" fill="#fff" stroke="#1f3d12" stroke-width="4" stroke-linejoin="round"/><rect x="96" y="52" width="34" height="9" rx="4.5" fill="#1f3d12"/><path d="M48 88L68 38h14" stroke="#fff" stroke-width="7" stroke-linecap="round" fill="none"/><path d="M62 32h20" stroke="#1f3d12" stroke-width="6" stroke-linecap="round"/><path d="M70 84h26" stroke="#fff" stroke-width="7" stroke-linecap="round"/><g class="wheel" transform-box="fill-box" transform-origin="center"><circle cx="46" cy="94" r="17" fill="#fff" stroke="#1f3d12" stroke-width="7"/><line x1="46" y1="78" x2="46" y2="110" stroke="#1f3d12" stroke-width="4"/></g><g class="wheel" transform-box="fill-box" transform-origin="center"><circle cx="154" cy="94" r="17" fill="#fff" stroke="#1f3d12" stroke-width="7"/><line x1="154" y1="78" x2="154" y2="110" stroke="#1f3d12" stroke-width="4"/></g></g></g></svg></div><div class="sheet">
  <h2 id="accountTitle" style="margin:0 0 6px;font-size:24px">Entre na sua conta</h2><p id="loginIntro" class="sm" style="margin:0 0 18px">Use seu e-mail e senha, como hoje.</p><button id="accountBackCatalog" class="btn alt account-back-catalog" type="button">Voltar ao catálogo</button>
@@ -871,19 +895,33 @@ $('#cpf').addEventListener('input',e=>{const d=e.target.value.replace(/\D/g,'').
  el.classList.remove('hidden');
  el.style.color=isError?'#b42318':'#28743b';
 }
-$('#requestProductToggle').addEventListener('click',async()=>{
+async function openProductRequestSheet(prefill=''){
  try{
   const {data:{session},error}=await supabase.auth.getSession();
   if(error)throw error;
   if(!session?.user){openAccountScreen();return;}
-  $('#productRequestForm').classList.toggle('hidden');
+  $('#productRequestForm').reset();
   $('#productRequestMessage').classList.add('hidden');
-  if(!$('#productRequestForm').classList.contains('hidden'))$('#productRequestName').focus();
+  $('#productRequestName').value=String(prefill||'').trim().slice(0,80);
+  $('#productRequestSheet').setAttribute('aria-hidden','false');
+  openPreviewModal('productRequestSheet');
+  requestAnimationFrame(()=>$('#productRequestName').focus());
  }catch(error){
   console.error('Falha ao verificar sessão para pedir produto:',error);
+  $('#productRequestSheet').setAttribute('aria-hidden','false');
+  openPreviewModal('productRequestSheet');
   showProductRequestMessage('Não foi possível verificar seu login. Tente novamente.',true);
  }
-});
+}
+function closeProductRequestSheet(){
+ $('#productRequestSheet').classList.remove('open');
+ $('#productRequestSheet').setAttribute('aria-hidden','true');
+}
+$('#requestProductFab').addEventListener('click',()=>openProductRequestSheet());
+$('#homeRequestProduct').addEventListener('click',()=>openProductRequestSheet($('#homeSearch').value));
+$('#productRequestClose').addEventListener('click',closeProductRequestSheet);
+$('#productRequestSheet').addEventListener('click',event=>{if(event.target===$('#productRequestSheet'))closeProductRequestSheet();});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&$('#productRequestSheet').classList.contains('open'))closeProductRequestSheet();});
 $('#productRequestForm').addEventListener('submit',async event=>{
  event.preventDefault();
  const name=$('#productRequestName').value.trim();
@@ -951,6 +989,7 @@ function setupAppTabs(){document.querySelectorAll('.tab-button').forEach(el=>el.
 function safeRenderHomeProductSections(){try{renderHomeProductSections();}catch(error){console.error('Falha isolada nas fileiras de produtos da prévia:',error);}}
 function renderHomeProductSections(){
  const root=$('#homeProductSections');if(!root)return;
+ let searchMatches=0;
  const groups=[...new Set(products.map(p=>String(p.category||'').trim()||'Outros'))].sort(alphaCompare).map(cat=>[cat,p=>(String(p.category||'').trim()||'Outros')===cat]);
  const image=p=>'<img loading="lazy" decoding="async" src="'+esc(p.image||'')+'" alt="'+esc(p.name)+'" onerror="this.onerror=null;this.src=\'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22160%22%20height%3D%22120%22%20viewBox%3D%220%200%20160%20120%22%3E%3Crect%20width%3D%22160%22%20height%3D%22120%22%20rx%3D%2212%22%20fill%3D%22%23eef4ec%22%2F%3E%3Cpath%20d%3D%22M44%2078l23-25%2018%2018%2012-13%2020%2020H44Z%22%20fill%3D%22%23c4d6c4%22%20stroke%3D%22%236b8b72%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22105%22%20cy%3D%2239%22%20r%3D%228%22%20fill%3D%22%23c4d6c4%22%20stroke%3D%22%236b8b72%22%20stroke-width%3D%223%22%2F%3E%3Ctext%20x%3D%2280%22%20y%3D%22103%22%20font-family%3D%22Arial%22%20font-size%3D%2210%22%20text-anchor%3D%22middle%22%20fill%3D%22%23546b59%22%3EImagem%20indisponivel%3C%2Ftext%3E%3C%2Fsvg%3E\'">';
  const card=p=>'<article class="product">'+image(p)+'<div class="pbody"><h3>'+esc(p.name)+'</h3>'+priceBlock(p)+'<div class="product-qty">'+((cart[p.id]||0)>0?'<button type="button" data-home-card-change="'+esc(p.id)+'" data-d="-1" aria-label="Diminuir quantidade">−</button><strong>'+Number(cart[p.id])+'</strong><button type="button" data-home-card-change="'+esc(p.id)+'" data-d="1" aria-label="Aumentar quantidade">+</button>':'<button type="button" class="add" data-home-add="'+esc(p.id)+'" aria-label="Adicionar '+esc(p.name)+'">+</button>')+'</div></div></article>';
@@ -959,8 +998,14 @@ function renderHomeProductSections(){
  root.innerHTML=groups.map(([cat,matches],index)=>{
   const items=products.filter(matches);
   const visible=items.filter(p=>(String(p.name||'')+' '+String(p.category||'')).toLocaleLowerCase('pt-BR').includes(q));
+  searchMatches+=visible.length;
   return '<section class="catalog-category home-catalog-category" data-home-product-category="'+esc(cat)+'" data-category-index="'+index+'" '+(visible.length?'':'hidden')+'><header class="home-category-heading"><h2>'+esc(cat)+'</h2><button type="button" class="link home-view-all" data-view-category="'+index+'">Ver todos</button></header><div class="catalog-row">'+(q?visible:items).map(card).join('')+'</div></section>';
  }).join('');
+ const noResults=$('#homeNoResults');
+ if(noResults){
+  noResults.hidden=!(q&&searchMatches===0);
+  $('#homeNoResultsName').textContent=$('#homeSearch').value.trim();
+ }
  root.querySelectorAll('[data-home-add]').forEach(b=>b.onclick=()=>add(b.dataset.homeAdd));
  root.querySelectorAll('[data-home-card-change]').forEach(b=>b.onclick=()=>change(b.dataset.homeCardChange,Number(b.dataset.d)));
  root.querySelectorAll('[data-view-category]').forEach(b=>b.onclick=()=>{
@@ -979,12 +1024,12 @@ function renderHomeProductSections(){
  });
  syncCartbarVisibility();
 }
-function syncCartbarVisibility(){const bar=$('#cartbar');if(!bar)return;const home=$('#pageHome')?.classList.contains('active');bar.hidden=!home||bar.classList.contains('hide');}
+function syncCartbarVisibility(){const bar=$('#cartbar');if(!bar)return;const home=$('#pageHome')?.classList.contains('active');bar.hidden=!home||bar.classList.contains('hide');const requestFab=$('#requestProductFab');if(requestFab)requestFab.hidden=!home;}
 try{setupAppTabs();}catch(error){console.error('Falha isolada na navegação da prévia:',error);}document.title='Feira On Delivery';load();renderCart();loadProfile();
 
 /* Prévia v5: mede a tela visível e a navegação inferior; mantém foco/último campo rolável. */
 (()=>{
- const modals=[...document.querySelectorAll('#accountModal,#modal')];
+ const modals=[...document.querySelectorAll('#accountModal,#modal,#productRequestSheet')];
  const nav=document.querySelector('.mobile-nav');
  if(!modals.length)return;
  let savedScrollY=0,locked=false;
