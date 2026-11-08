@@ -1029,8 +1029,9 @@ function closeAssistantSheet(){
  $('#assistantSheet').classList.remove('open');
  $('#assistantSheet').setAttribute('aria-hidden','true');
 }
-$('#requestProductFab').addEventListener('click',openAssistantSheet);
+$('#requestProductFab').addEventListener('click',()=>openProductRequestSheet($('#homeSearch').value));
 $('#assistantClose').addEventListener('click',closeAssistantSheet);
+$('#assistantNavButton').addEventListener('click',openAssistantSheet);
 $('#assistantSheet').addEventListener('click',event=>{if(event.target===$('#assistantSheet'))closeAssistantSheet();});
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&$('#assistantSheet').classList.contains('open'))closeAssistantSheet();});
 
@@ -1047,7 +1048,7 @@ if(typeof SpeechRecognitionApi==='function'){
   if(transcript){$('#assistantInput').value=transcript.slice(0,300);$('#assistantInput').focus();setAssistantStatus('Texto reconhecido. Revise e toque em Enviar.');}
  };
  assistantRecognition.onerror=()=>setAssistantStatus('Não consegui reconhecer a fala. Você pode escrever o pedido.',true);
- assistantRecognition.onend=()=>{assistantListening=false;$('#assistantMic').textContent='🎙';};
+ assistantRecognition.onend=()=>{assistantListening=false;$('#assistantMic').innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg>';};
  $('#assistantMic').addEventListener('click',()=>{
   if(assistantListening){try{assistantRecognition.stop();}catch{}return;}
   try{assistantRecognition.start();}catch{setAssistantStatus('O microfone não está disponível agora.',true);}
