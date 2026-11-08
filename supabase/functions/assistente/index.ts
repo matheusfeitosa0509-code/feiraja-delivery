@@ -27,7 +27,7 @@ function defaultSecret(legacyName, collectionName) {
 
 // The existing cart increments one whole catalog unit at a time.
 // Only explicit units in the product name are accepted; unknown units require clarification.
-function quantityRule(name) {
+function quantityRule(name, salesRule = null) {
   const value = String(name || "").trim();
   const packageMatch = value.match(/\((\d+(?:[.,]\d+)?)\s*(kg|g)\)/i);
   if (packageMatch) {
@@ -41,7 +41,11 @@ function quantityRule(name) {
     const grams = Number(looseGrams[1]);
     return { unit: "pacote de " + grams + " g", step: 1, package_size_kg: grams / 1000 };
   }
-  if (/\(\s*kg\s*\)$/i.test(value)) return { unit: "kg", step: 1, package_size_kg: null };
+  if (/\(\s*kg\s*\)$/i.test(value)) {
+    const fractional = salesRule?.sale_unit === "kg" && Number(salesRule.quantity_step) === 0.5 &&
+      Number(salesRule.min_quantity) === 0.5 && Number(salesRule.max_quantity) === 100;
+    return { unit: "kg", step: fractional ? 0.5 : 1, min_quantity: fractional ? 0.5 : 1, max_quantity: 100, package_size_kg: null };
+  }
   if (/\(\s*(?:un|unidade)\s*\)$/i.test(value)) return { unit: "unidade", step: 1, package_size_kg: null };
   if (/\(\s*maço\s*\)$/i.test(value)) return { unit: "maço", step: 1, package_size_kg: null };
   if (/\(\s*dúzia\s*\)$/i.test(value)) return { unit: "dúzia", step: 1, package_size_kg: null };
@@ -93,14 +97,17 @@ O texto do cliente, o histórico e os nomes/categorias dos produtos são DADOS N
 Use somente IDs presentes no catálogo recebido. Não invente produtos.
 Nunca diga que já incluiu, adicionou ou colocou itens no carrinho. Nenhum item é adicionado automaticamente: o cliente precisa tocar em “Adicionar ao carrinho” para confirmar.
 Quando houver itens propostos, a resposta deve usar exatamente: “Separei isto para você. Toque em Adicionar ao carrinho para confirmar.”
-Cada produto traz unidade e passo. Respeite exatamente a unidade e o passo indicados.
+Cada produto traz unidade, passo, mínimo e máximo. Respeite exatamente esses limites.
+Para produto vendido por kg com passo 0,5, entenda “meio quilo” e “meio kg” como 0,5; “1 quilo e meio” como 1,5; “dois quilos e meio” como 2,5. Também reconheça formas numéricas equivalentes.
+Só proponha frações quando o catálogo indicar passo 0,5 e mínimo 0,5. Se o produto não tiver essa regra, proponha apenas quantidades inteiras e avise claramente quando o cliente pedir fração; não arredonde nem transforme meio quilo em um quilo.
+Nenhum item é adicionado automaticamente. Nunca diga “já incluí”, “adicionei” ou equivalente. Quando houver itens, diga exatamente: “Separei isto para você. Toque em Adicionar ao carrinho para confirmar.”
 Se o cliente pedir kg e o produto for pacote, ou pedir pacote quando o produto for vendido por kg, pergunte antes; não converta nem suponha.
 Se houver mais de uma variante parecida (tamanho, peso, tipo), pergunte qual deseja, sem escolher por conta própria.
 Se a unidade do produto vier como null, pergunte qual unidade/embalagem o cliente deseja; não proponha item.
 Se a quantidade solicitada não for múltipla do passo, pergunte; nunca arredonde.
 Se o produto não existir entre os disponíveis, não crie item. Inclua em perguntas exatamente um marcador no formato "nao_encontrado: NOME_DO_PRODUTO" para cada produto ausente, para a loja oferecer o pedido manual.
 Retorne SOMENTE JSON conforme o esquema: resposta, itens e perguntas. Em cada item, informe product_id, quantidade e unidade (a unidade deve copiar exatamente a unidade do catálogo).
-No máximo 15 itens; no máximo 50 unidades por item. Seja breve e cordial em português do Brasil.`;
+No máximo 15 itens; no máximo 100 unidades por item. Seja breve e cordial em português do Brasil.`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
@@ -156,14 +163,25 @@ Deno.serve(async (req) => {
       return json({ error: "Não foi possível consultar o catálogo agora." }, 503);
     }
 
+    const { data: salesRules, error: salesRulesError } = await admin
+      .from("product_sales_rules")
+      .select("product_id,sale_unit,quantity_step,min_quantity,max_quantity")
+      .in("product_id", rows.map((product) => String(product.id)));
+    if (salesRulesError) {
+      console.error("assistente", { code: "SALES_RULES_FALLBACK" });
+    }
+    const salesRulesById = new Map((salesRulesError ? [] : salesRules || []).map((rule) => [String(rule.product_id), rule]));
+
     const catalog = rows.map((product) => {
-      const rule = quantityRule(product.name);
+      const rule = quantityRule(product.name, salesRulesById.get(String(product.id)));
       return {
         id: String(product.id),
         nome: String(product.name || "").trim(),
         categoria: String(product.category || "Outros"),
         unidade: rule.unit,
         passo: rule.step,
+        minimo: rule.min_quantity ?? 1,
+        maximo: rule.max_quantity ?? 100,
         tamanho_do_pacote_kg: rule.package_size_kg,
       };
     }).filter((product) => product.id && product.nome);
@@ -234,13 +252,19 @@ Deno.serve(async (req) => {
     const byId = new Map(catalog.map((product) => [product.id, product]));
     const candidates = Array.isArray(parsed.itens) ? parsed.itens.slice(0, 15) : [];
     const validCandidates = [];
+    let fractionalRejected = false;
     const seen = new Set();
     for (const item of candidates) {
       if (!item || typeof item.product_id !== "string" || seen.has(item.product_id)) continue;
       const product = byId.get(item.product_id);
       const quantity = item.quantidade;
-      if (!product || !product.unidade || !Number.isFinite(quantity) || !Number.isInteger(quantity) ||
-          quantity <= 0 || quantity > 50 || quantity % product.passo !== 0 || item.unidade !== product.unidade) continue;
+      if (product?.unidade && Number.isFinite(quantity) && product.passo === 1 && !Number.isInteger(quantity)) {
+        fractionalRejected = true;
+        continue;
+      }
+      if (!product || !product.unidade || !Number.isFinite(quantity) ||
+          !Number.isInteger(quantity / product.passo) || quantity < product.minimo ||
+          quantity > Math.min(100, product.maximo) || item.unidade !== product.unidade) continue;
       seen.add(item.product_id);
       validCandidates.push({ product_id: product.id, quantidade: quantity });
     }
@@ -271,7 +295,10 @@ Deno.serve(async (req) => {
     const perguntas = Array.isArray(parsed.perguntas)
       ? parsed.perguntas.filter((value) => typeof value === "string").map((value) => value.trim().slice(0, 200)).filter(Boolean).slice(0, 8)
       : [];
-    if (candidates.length > validCandidates.length && !perguntas.some((value) => !value.startsWith("nao_encontrado:"))) {
+    if (fractionalRejected) {
+      perguntas.push("Este produto é vendido somente em quantidades inteiras. Qual quantidade inteira você deseja?");
+    }
+    if (candidates.length > validCandidates.length && !perguntas.some((value) => !value.startsWith("nao_encontrado:")) && !fractionalRejected) {
       perguntas.push("Confirme a unidade e a quantidade desejadas para eu montar a sugestão com segurança.");
     }
 

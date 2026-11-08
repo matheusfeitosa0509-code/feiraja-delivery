@@ -982,7 +982,7 @@ function renderAssistantProposal(items){
   const product=products.find(p=>p.id===item.product_id&&p.available!==false);
   if(!product)return;
   const li=document.createElement('li');
-  li.textContent=String(item.quantidade)+' × '+String(product.name);
+  li.textContent=formatCartQuantity(item.quantidade,product)+' × '+String(product.name);
   list.appendChild(li);
   assistantProposal.push(item);
  });
@@ -1105,7 +1105,7 @@ $('#assistantAdd').addEventListener('click',()=>{
  if(!assistantProposal.length)return;
  const valid=assistantProposal.every(item=>{
   const product=products.find(p=>p.id===item.product_id&&p.available!==false);
-  return !!product&&Number.isInteger(item.quantidade)&&item.quantidade>0&&(cart[item.product_id]||0)+item.quantidade<=100;
+  return !!product&&isValidCartQuantity(product,item.quantidade)&&isValidCartQuantity(product,(cart[item.product_id]||0)+item.quantidade);
  });
  if(!valid){setAssistantStatus('Um item não está mais disponível ou ultrapassaria o limite do carrinho. Atualize a lista e tente novamente.',true);return;}
  const proposal=assistantProposal.slice();
