@@ -1,5 +1,34 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
+type SupabaseAdmin = ReturnType<typeof createClient>;
+type ProductSalesRule = {
+  product_id: string;
+  sale_unit: string | null;
+  quantity_step: number | null;
+  min_quantity: number | null;
+  max_quantity: number | null;
+};
+type HistoryEntry = { role: "user" | "assistant"; content: string };
+type QuantityRule = {
+  unit: string | null;
+  step: number | null;
+  min_quantity?: number;
+  max_quantity?: number;
+  package_size_kg: number | null;
+};
+type CatalogEntry = {
+  id: string;
+  nome: string;
+  unidade: string | null;
+  passo: number | null;
+  minimo: number;
+  maximo: number;
+};
+type CompactCatalogEntry = { id: string; nome: string };
+type AssistantItem = { product_id?: unknown; quantidade?: unknown; unidade?: unknown } | null;
+type AssistantOutput = { resposta?: unknown; itens?: AssistantItem[]; perguntas?: unknown[] };
+type AnthropicContentBlock = { type?: string; text?: string };
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "https://www.feiraondelivery.com.br",
   "Vary": "Origin",
@@ -7,14 +36,14 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-function json(body, status = 200) {
+function json(body: unknown, status: number = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json; charset=utf-8" },
   });
 }
 
-function extractJson(text) {
+function extractJson(text: string): AssistantOutput | null {
   if (typeof text !== "string") return null;
   const fence = String.fromCharCode(96).repeat(3);
   const source = text.trim().replace(new RegExp("^\\s*" + fence + "(?:json)?\\s*", "i"), "").replace(new RegExp("\\s*" + fence + "\\s*$", "i"), "");
@@ -48,10 +77,10 @@ function extractJson(text) {
       if (raw[j] !== "}" && raw[j] !== "]") cleaned += ch;
     } else cleaned += ch;
   }
-  try { return JSON.parse(cleaned); } catch { return null; }
+  try { return JSON.parse(cleaned) as AssistantOutput; } catch { return null; }
 }
 
-function defaultSecret(legacyName, collectionName) {
+function defaultSecret(legacyName: string, collectionName: string): string {
   const legacy = Deno.env.get(legacyName);
   if (legacy) return legacy;
   try {
@@ -64,7 +93,7 @@ function defaultSecret(legacyName, collectionName) {
 
 // The existing cart increments one whole catalog unit at a time.
 // Only explicit units in the product name are accepted; unknown units require clarification.
-function quantityRule(name, salesRule = null) {
+function quantityRule(name: string | null, salesRule: ProductSalesRule | null = null): QuantityRule {
   const value = String(name || "").trim();
   const packageMatch = value.match(/\((\d+(?:[.,]\d+)?)\s*(kg|g)\)/i);
   if (packageMatch) {
@@ -89,9 +118,9 @@ function quantityRule(name, salesRule = null) {
   return { unit: null, step: null, package_size_kg: null };
 }
 
-function normalizeHistory(value) {
+function normalizeHistory(value: unknown): HistoryEntry[] | null {
   if (!Array.isArray(value) || value.length > 6) return null;
-  const result = [];
+  const result: HistoryEntry[] = [];
   for (const entry of value) {
     if (!entry || !["user", "assistant"].includes(entry.role) || typeof entry.content !== "string") return null;
     const content = entry.content.trim();
@@ -155,9 +184,9 @@ Se não encontrar produto, explique de forma simples e inclua o marcador nao_enc
 Nunca invente preços, descontos, disponibilidade fora do catálogo recebido, pedidos existentes ou ações já realizadas.`;
 
 Deno.serve(async (req) => {
-  let admin = null;
+  let admin: SupabaseAdmin | null = null;
   let quotaConsumed = false;
-  let quotaUserId = null;
+  let quotaUserId: string | null = null;
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Não foi possível processar a mensagem." }, 405);
 
@@ -189,17 +218,18 @@ Deno.serve(async (req) => {
     admin = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    async function refundQuotaWithoutBlocking() {
-      if (!admin || !quotaConsumed) return;
+    async function refundQuotaWithoutBlocking(): Promise<void> {
+      const client = admin;
+      if (!client || !quotaConsumed || !quotaUserId) return;
       try {
-        const { error: refundError } = await admin.rpc("refund_assistant_daily_message", { p_user_id: quotaUserId });
+        const { error: refundError } = await client.rpc("refund_assistant_daily_message", { p_user_id: quotaUserId });
         if (refundError) console.error("assistente", { code: "DAILY_LIMIT_REFUND_FAILED", stage: "quota_refund" });
         else quotaConsumed = false;
       } catch {
         console.error("assistente", { code: "DAILY_LIMIT_REFUND_FAILED", stage: "quota_refund" });
       }
     }
-    async function internalFailure(code, stage, message, status = 502, meta = {}) {
+    async function internalFailure(code: string, stage: string, message: string, status: number = 502, meta: Record<string, unknown> = {}): Promise<Response> {
       await refundQuotaWithoutBlocking();
       console.error("assistente", { code, stage, ...meta });
       return json({ error: message }, status);
@@ -304,8 +334,8 @@ Deno.serve(async (req) => {
     }
 
     const model = Deno.env.get("ASSISTANT_MODEL") || "claude-haiku-5-5";
-    let parsed = null;
-    let modelBody = null;
+    let parsed: AssistantOutput | null = null;
+    let modelBody: any = null;
     let anthropicStatus = null;
     let maxTokensRetried = false;
     let jsonRetried = false;
@@ -358,7 +388,7 @@ Deno.serve(async (req) => {
       modelBody = await anthropicResponse.json().catch(() => null);
       const stopReason = modelBody?.stop_reason || null;
       const outputTokens = Number.isFinite(modelBody?.usage?.output_tokens) ? modelBody.usage.output_tokens : null;
-      const contentBlocks = Array.isArray(modelBody?.content) ? modelBody.content : [];
+      const contentBlocks: AnthropicContentBlock[] = Array.isArray(modelBody?.content) ? modelBody.content : [];
       const textBlocks = contentBlocks.filter((part) => part?.type === "text" && typeof part.text === "string");
       const refusal = stopReason === "refusal" || contentBlocks.some((part) => part?.type === "refusal");
 
@@ -473,9 +503,10 @@ Deno.serve(async (req) => {
 
     return json({ resposta, itens: validCandidates, perguntas });
   } catch {
-    if (admin && quotaConsumed) {
+    const client = admin;
+    if (client && quotaConsumed && quotaUserId) {
       try {
-        const { error: refundError } = await admin.rpc("refund_assistant_daily_message", { p_user_id: quotaUserId });
+        const { error: refundError } = await client.rpc("refund_assistant_daily_message", { p_user_id: quotaUserId });
         if (refundError) console.error("assistente", { code: "DAILY_LIMIT_REFUND_FAILED", stage: "quota_refund" });
       } catch {
         console.error("assistente", { code: "DAILY_LIMIT_REFUND_FAILED", stage: "quota_refund" });
