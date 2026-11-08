@@ -16,7 +16,8 @@ function json(body, status = 200) {
 
 function extractJson(text) {
   if (typeof text !== "string") return null;
-  const source = text.trim().replace(/^\\s*```(?:json)?\\s*/i, "").replace(/\\s*```\\s*$/i, "");
+  const fence = String.fromCharCode(96).repeat(3);
+  const source = text.trim().replace(new RegExp("^\\s*" + fence + "(?:json)?\\s*", "i"), "").replace(new RegExp("\\s*" + fence + "\\s*$", "i"), "");
   const start = source.indexOf("{");
   if (start < 0) return null;
   let depth = 0, quoted = false, escaped = false, end = -1;
@@ -25,8 +26,8 @@ function extractJson(text) {
     if (quoted) {
       if (escaped) escaped = false;
       else if (ch === "\\\\") escaped = true;
-      else if (ch === '"') quoted = false;
-    } else if (ch === '"') quoted = true;
+      else if (ch === '"' ) quoted = false;
+    } else if (ch === '"' ) quoted = true;
     else if (ch === "{") depth++;
     else if (ch === "}" && --depth === 0) { end = i + 1; break; }
   }
@@ -39,8 +40,8 @@ function extractJson(text) {
       cleaned += ch;
       if (escape) escape = false;
       else if (ch === "\\\\") escape = true;
-      else if (ch === '"') inString = false;
-    } else if (ch === '"') { inString = true; cleaned += ch; }
+      else if (ch === '"' ) inString = false;
+    } else if (ch === '"' ) { inString = true; cleaned += ch; }
     else if (ch === ",") {
       let j = i + 1;
       while (j < raw.length && /\\s/.test(raw[j])) j++;
@@ -143,7 +144,15 @@ Se a unidade do produto vier como null, pergunte qual unidade/embalagem o client
 Se a quantidade solicitada não for múltipla do passo, pergunte; nunca arredonde.
 Se o produto não existir entre os disponíveis, não crie item. Inclua em perguntas exatamente um marcador no formato "nao_encontrado: NOME_DO_PRODUTO" para cada produto ausente, para a loja oferecer o pedido manual.
 Retorne SOMENTE JSON conforme o esquema: resposta, itens e perguntas. Em cada item, informe product_id, quantidade e unidade (a unidade deve copiar exatamente a unidade do catálogo).
-No máximo 15 itens; no máximo 100 unidades por item. Seja breve e cordial em português do Brasil.`;
+No máximo 15 itens; no máximo 100 unidades por item. Seja breve e cordial em português do Brasil.
+
+Interprete a intenção com tolerância a erros comuns de reconhecimento de voz, singular/plural, acentos e pequenas variações fonéticas, mas confirme quando houver mais de um produto plausível. Exemplo: “ovo a caroço”, “ova caroço” ou “ova de caroço” deve corresponder a “Farinha Ova Caroço” se esse nome exato existir no catálogo. “Tapioca” ou “goma” pode corresponder a “Goma de Tapioca” se estiver disponível. Nunca crie nomes nem IDs.
+Aceite vários produtos na mesma frase e separe cada um em item próprio. Se houver ambiguidade entre produtos, variantes ou unidades, faça uma única pergunta curta reunindo as dúvidas necessárias; não repita a mesma pergunta em mensagens seguintes se o histórico já esclareceu.
+Produtos de farinha, goma, camarão, caranguejo e cabeça de alho cujo nome contenha “(1 kg)” ou “(1kg)” são embalagens fechadas de 1 kg, não venda avulsa por kg. Assim, “10 kg de farinha branca” deve selecionar a embalagem exata “Farinha Branca (1 kg)” e propor quantidade 10, unidade “pacote de 1 kg”, se existir no catálogo. Não converter para produto vendido por kg. Outros tamanhos entre parênteses também representam embalagem fechada.
+Para produtos vendidos por kg, interprete “meio quilo”, “meio kg” e “500 gramas” como 0,5 somente quando passo e mínimo do catálogo permitirem. Não confunda embalagem “(1 kg)” com produto “(kg)”.
+Quando o cliente perguntar sobre promoção, preço promocional, situação/status de pedido, horário de funcionamento ou entrega, responda apenas se a informação estiver explicitamente disponível no contexto recebido. Como o catálogo desta chamada contém somente dados de identificação e unidade/limites, não afirme promoções, preços, status, horários ou condições de entrega; diga com clareza que o assistente não tem essa informação e oriente a consultar a loja/painel apropriado.
+Se não encontrar produto, explique de forma simples e inclua o marcador nao_encontrado: NOME em perguntas. Se a quantidade não for permitida, explique o limite ou passo exato e pergunte qual quantidade válida deseja. Não dê respostas genéricas quando puder apontar o produto/unidade/quantidade que precisa ser esclarecido.
+Nunca invente preços, descontos, disponibilidade fora do catálogo recebido, pedidos existentes ou ações já realizadas.`;
 
 Deno.serve(async (req) => {
   let admin = null;
@@ -226,12 +235,10 @@ Deno.serve(async (req) => {
       return {
         id: String(product.id),
         nome: String(product.name || "").trim(),
-        categoria: String(product.category || "Outros"),
         unidade: rule.unit,
         passo: rule.step,
         minimo: rule.min_quantity ?? 1,
         maximo: rule.max_quantity ?? 100,
-        tamanho_do_pacote_kg: rule.package_size_kg,
       };
     }).filter((product) => product.id && product.nome);
 
@@ -315,9 +322,8 @@ Deno.serve(async (req) => {
       });
 
       if (refusal) {
-        return await internalFailure("ANTHROPIC_REFUSAL", "anthropic_response", "Não posso atender a esse pedido. Posso ajudar com a lista de compras.", 200, {
-          stop_reason: stopReason, status: anthropicStatus, output_tokens: outputTokens,
-        });
+        console.error("assistente", { code: "ANTHROPIC_REFUSAL", stage: "anthropic_response", stop_reason: stopReason, status: anthropicStatus, output_tokens: outputTokens });
+        return json({ error: "Não posso atender a esse pedido. Posso ajudar com a lista de compras." }, 200);
       }
       if (!textBlocks.length) {
         return await internalFailure("ANTHROPIC_NO_TEXT", "anthropic_response", "Não consegui montar a sugestão agora. Tente novamente.", 502, {
