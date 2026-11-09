@@ -7,7 +7,7 @@ O workflow `.github/workflows/pages.yml` publica a raiz do repositório no GitHu
 
 - Site: https://www.feiraondelivery.com.br/
 - Loja: https://www.feiraondelivery.com.br/loja.html
-- Painel: https://www.feiraondelivery.com.br/admin.html
+- Painel: https://www.feiraondelivery.com.br/painel.html
 - Recuperação: https://www.feiraondelivery.com.br/recuperar-senha.html
 
 Pico.css está fixado na versão `2.1.1` nas páginas legais que o utilizam.
