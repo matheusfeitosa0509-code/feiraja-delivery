@@ -163,10 +163,14 @@ Deno.serve(async (req: Request) => {
     typeof kind !== "string" ||
     (kind !== "admin" && kind !== "customer") ||
     typeof new_status !== "string" ||
-    !KNOWN_STATUSES.has(new_status) ||
-    typeof signature !== "string"
+    !KNOWN_STATUSES.has(new_status)
   ) {
     return jsonResponse(400, { error: "INVALID_REQUEST" });
+  }
+
+  // Missing or non-string signatures are authentication failures, not malformed requests.
+  if (typeof signature !== "string" || !signature.trim()) {
+    return jsonResponse(401, { error: "UNAUTHORIZED" });
   }
 
   const timestampSeconds = Number(timestamp);
@@ -297,8 +301,13 @@ Deno.serve(async (req: Request) => {
       };
 
       try {
-        await webpush.sendNotification(subscription, notificationPayload, {
+        const providerResponse = await webpush.sendNotification(subscription, notificationPayload, {
           TTL: 3600,
+          urgency: "high",
+        });
+        console.info("push_send", {
+          kind,
+          status_code: providerResponse.statusCode,
         });
         successfulSends++;
       } catch (error) {
