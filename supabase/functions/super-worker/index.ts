@@ -272,7 +272,7 @@ Deno.serve(async (req: Request) => {
       .select("id,name,price,category,image,available,resale_enabled,resale_price,resale_min_qty").in("id", ids);
     if (productsError) throw productsError;
     if (!products || products.length !== ids.length) return json({ error: "Um ou mais produtos não existem mais. Atualize a feira e tente novamente." }, 409);
-    if (products.some((p: any) => p.available === false)) return json({ error: "Um dos produtos está indisponível. Atualize a feira e tente novamente." }, 409);
+    if (products.some((p: any) => p.available !== true)) return json({ error: "Um dos produtos está indisponível. Atualize a feira e tente novamente." }, 409);
 
     const { data: salesRules, error: salesRulesError } = await db.from("product_sales_rules")
       .select("product_id,sale_unit,quantity_step,min_quantity,max_quantity")
