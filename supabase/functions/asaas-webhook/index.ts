@@ -65,7 +65,10 @@ Deno.serve(async (req: Request) => {
   if (!body || typeof body !== "object") return json({ error: "Notificação inválida." }, 400);
 
   const event = String((body as any).event || "");
-  if (event !== "PAYMENT_RECEIVED" && event !== "PAYMENT_CONFIRMED") {
+  const isRefundEvent = event === "PAYMENT_REFUNDED";
+  const isChargebackEvent = event === "PAYMENT_CHARGEBACK_REQUESTED";
+  const isPaymentConfirmationEvent = event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED";
+  if (!isPaymentConfirmationEvent && !isRefundEvent && !isChargebackEvent) {
     // Other Asaas events are acknowledged but do not change order state in this implementation.
     return json({ received: true, ignored: true });
   }
@@ -185,21 +188,63 @@ Deno.serve(async (req: Request) => {
   const expectedCents = Math.round(Number(order.total) * 100);
   const paidCents = Math.round(paymentValue * 100);
   const verifiedCents = Math.round(verifiedValue * 100);
+  const verifiedChargebackStatus = String(verifiedPayment?.chargeback?.status || "").toUpperCase();
+  const verifiedStatusAccepted = isRefundEvent
+    ? verifiedStatus === "REFUNDED"
+    : isChargebackEvent
+    ? ["RECEIVED", "CONFIRMED"].includes(verifiedStatus) && verifiedChargebackStatus === "REQUESTED"
+    : ["RECEIVED", "CONFIRMED"].includes(verifiedStatus);
   if (String(verifiedPayment?.id || "") !== paymentId ||
       String(verifiedPayment?.externalReference || "") !== externalReference ||
       String(verifiedPayment?.billingType || "").toUpperCase() !== "PIX" ||
-      !["RECEIVED", "CONFIRMED"].includes(verifiedStatus) ||
+      !verifiedStatusAccepted ||
       !Number.isFinite(expectedCents) || expectedCents <= 0 ||
       !Number.isFinite(paidCents) || paidCents !== expectedCents ||
       !Number.isFinite(verifiedCents) || verifiedCents !== expectedCents) {
     const mismatch = String(verifiedPayment?.id || "") !== paymentId ? "id_divergente" :
       String(verifiedPayment?.externalReference || "") !== externalReference ? "referencia_divergente" :
       String(verifiedPayment?.billingType || "").toUpperCase() !== "PIX" ? "tipo_divergente" :
-      !["RECEIVED", "CONFIRMED"].includes(verifiedStatus) ? "status_nao_aceito" :
+      !verifiedStatusAccepted ? "status_nao_aceito" :
       (!Number.isFinite(expectedCents) || expectedCents <= 0 || !Number.isFinite(paidCents) || paidCents !== expectedCents ||
         !Number.isFinite(verifiedCents) || verifiedCents !== expectedCents) ? "valor_divergente" : "dados_divergentes";
     console.warn("Webhook Asaas ignorado após consulta bem-sucedida: divergência permanente.", { mismatch });
     return json({ received: true, ignored: true, reason: "divergencia_permanente" });
+  }
+
+  if (isRefundEvent || isChargebackEvent) {
+    const targetStatus = isRefundEvent ? "Pagamento reembolsado" : "Pagamento contestado";
+    const normalizedTargetStatus = targetStatus.toLowerCase();
+    if (normalizedStatus === normalizedTargetStatus) {
+      return json({ received: true, ignored: true, reason: "status_financeiro_ja_registrado" });
+    }
+    const paidOrderStatuses = new Set([
+      "pagamento confirmado",
+      "preparando",
+      "pronto para retirada",
+      "saiu para entrega",
+      "entregue",
+      "preparando pedido",
+      "concluído",
+      "concluido",
+    ]);
+    if (!paidOrderStatuses.has(normalizedStatus)) {
+      return json({ received: true, ignored: true, reason: "pedido_nao_pago_ou_status_nao_elegivel" });
+    }
+    const { data: updatedFinancialOrder, error: financialUpdateError } = await db.from("orders")
+      .update({ status: targetStatus })
+      .eq("id", order.id)
+      .eq("payment_provider", "asaas")
+      .eq("payment_id", paymentId)
+      .eq("status", order.status)
+      .select("id")
+      .maybeSingle();
+
+    if (financialUpdateError) {
+      console.error("Falha ao registrar status financeiro após webhook Asaas.");
+      return json({ error: "Falha ao atualizar pedido." }, 500);
+    }
+    if (!updatedFinancialOrder) return json({ received: true, ignored: true });
+    return json({ received: true });
   }
 
   if (isCancelledOrder) {
