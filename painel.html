@@ -228,7 +228,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <script type="module">
 import{createClient}from'https://esm.sh/@supabase/supabase-js@2.117.1';
 const db=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',{auth:{persistSession:true,autoRefreshToken:true}});
-const VAPID_PUBLIC_KEY='COLAR VAPID_PUBLIC_KEY AQUI'; // COLAR VAPID_PUBLIC_KEY AQUI
+const VAPID_PUBLIC_KEY='BJ9dTvmRGcTHYQSOOLj61AG2kC2YEMuhWMM2J6GdDdTuofeBkYJsyF5uNIhCfnV03jZBn2fFP1ZUqty0QZ_uuog'; // VAPID pública
 const PANEL_PUSH_PENDING_KEY='feira_push_pending_release_v1';let panelPushUserSynced='',panelCurrentUser=null;
 function panelPushBytes(v){const pad='='.repeat((4-v.length%4)%4),raw=atob((v+pad).replace(/-/g,'+').replace(/_/g,'/')),a=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i);return a;}
 function panelSavePending(endpoint,userId){try{localStorage.setItem(PANEL_PUSH_PENDING_KEY,JSON.stringify({endpoint:endpoint||null,userId}));}catch(_){}}
