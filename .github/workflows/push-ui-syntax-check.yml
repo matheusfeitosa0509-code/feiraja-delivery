@@ -35,14 +35,14 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PY'
-          import pathlib, re, sys
+          import pathlib, re
           files = ["loja.html", "painel.html"]
           out = pathlib.Path("/tmp/push-ui-syntax")
           out.mkdir(exist_ok=True)
           count = 0
           for name in files:
               source = pathlib.Path(name).read_text(encoding="utf-8")
-              for match in re.finditer(r"<script\\b[^>]*>([\\s\\S]*?)</script\\s*>", source, re.I):
+              for match in re.finditer(r"<script\b[^>]*>([\s\S]*?)</script\s*>", source, re.I):
                   code = match.group(1)
                   if code.strip():
                       count += 1
