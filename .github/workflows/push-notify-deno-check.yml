@@ -1,0 +1,32 @@
+name: Push Notify Deno Check
+
+on:
+  push:
+    branches:
+      - feat/push-notify-fixes
+    paths:
+      - "supabase/functions/push-notify/**"
+      - ".github/workflows/push-notify-deno-check.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "supabase/functions/push-notify/**"
+      - ".github/workflows/push-notify-deno-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  deno-check:
+    name: deno check push-notify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type check (no deploy, no secrets)
+        run: deno check --no-lock supabase/functions/push-notify/index.ts
