@@ -6,7 +6,6 @@ on:
       - "supabase/functions/asaas-webhook/**"
       - "supabase/functions/super-worker/**"
       - "supabase/functions/_shared/**"
-      - ".github/workflows/check-pagamentos.yml"
   workflow_dispatch:
 
 permissions:
