@@ -8,6 +8,7 @@ on:
       - "supabase/functions/_shared/**"
       - "supabase/functions/expire-pix/**"
       - "supabase/functions/asaas-saque-validacao/**"
+      - ".github/workflows/check-pagamentos.yml"
   push:
     branches: [main]
     paths:
@@ -16,6 +17,7 @@ on:
       - "supabase/functions/_shared/**"
       - "supabase/functions/expire-pix/**"
       - "supabase/functions/asaas-saque-validacao/**"
+      - ".github/workflows/check-pagamentos.yml"
   workflow_dispatch:
 
 permissions:
