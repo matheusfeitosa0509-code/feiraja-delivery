@@ -1,0 +1,34 @@
+name: Check Pagamentos (Deno)
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/asaas-webhook/**"
+      - "supabase/functions/super-worker/**"
+      - "supabase/functions/_shared/**"
+      - ".github/workflows/check-pagamentos.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deno-check:
+    name: deno check pagamentos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Check Asaas webhook
+        run: deno check supabase/functions/asaas-webhook/index.ts
+
+      - name: Check super-worker
+        run: deno check supabase/functions/super-worker/index.ts
