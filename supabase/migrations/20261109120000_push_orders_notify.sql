@@ -40,6 +40,14 @@ BEGIN
     -- Aviso ao cliente: somente atualização de status e pedido vinculado a usuário.
     -- Exclui cancelamento automático de checkout Pix que falhou antes da cobrança.
     IF NEW.user_id IS NOT NULL
+       AND NEW.status NOT IN (
+         'Pedido Recebido',
+         'Recebido',
+         'received',
+         'Pagamento Pendente',
+         'Aguardando Pagamento Pix',
+         'Pagamento em análise'
+       )
        AND NOT (
          OLD.status = 'Pagamento Pendente'
          AND NEW.status = 'Cancelada'
