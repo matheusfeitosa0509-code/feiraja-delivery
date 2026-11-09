@@ -423,13 +423,13 @@ $('refresh').addEventListener('click',()=>{document.title='Feira On Delivery | P
 const slug=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 function makeId(name){const s=slug(name).replace(/-/g,'_');return s?'feiraja_'+s:''}
 function say(t,c){$('msg').textContent=t;$('msg').className=c||''}
-function setIn(v){}
+
 
 $('btnOut').onclick=async()=>{
  const button=$('btnOut');button.disabled=true;
  try{
   const{error}=await db.auth.signOut();if(error)throw error;
-  setIn(false);$('panel').classList.add('hidden');$('login').classList.remove('hidden');$('refresh').classList.add('hidden');$('logout').classList.add('hidden');
+  $('panel').classList.add('hidden');$('login').classList.remove('hidden');$('refresh').classList.add('hidden');$('logout').classList.add('hidden');
  }catch(error){
   console.error('Falha ao sair do painel:',error);say('Não foi possível sair: '+(error?.message||'erro não identificado')+'. Tente novamente.','err');
  }finally{button.disabled=false;}
@@ -917,8 +917,8 @@ async function loadProductRequests(){
 $('refreshProductRequests').addEventListener('click',loadProductRequests);
 
 db.auth.onAuthStateChange((event,session)=>{
-  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){setIn(true);loadPriceProducts();loadEditableProducts();loadResaleProducts();}
-  if(event==='SIGNED_OUT'){setIn(false);$('priceEditor').classList.add('hide');priceProducts=[];$('priceProduct').replaceChildren(new Option('Entre como administrador',''));$('btnUpdatePrice').disabled=true;$('productEdit').classList.add('hide');editableProducts=[];$('resaleEditor').classList.add('hide');resaleProducts=[];$('resaleProduct').replaceChildren(new Option('Entre como administrador',''));$('btnPreviewResale').disabled=true;}
+  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){loadPriceProducts();loadEditableProducts();loadResaleProducts();}
+  if(event==='SIGNED_OUT'){$('priceEditor').classList.add('hide');priceProducts=[];$('priceProduct').replaceChildren(new Option('Entre como administrador',''));$('btnUpdatePrice').disabled=true;$('productEdit').classList.add('hide');editableProducts=[];$('resaleEditor').classList.add('hide');resaleProducts=[];$('resaleProduct').replaceChildren(new Option('Entre como administrador',''));$('btnPreviewResale').disabled=true;}
 });
 
 
