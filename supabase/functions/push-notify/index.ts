@@ -311,6 +311,7 @@ Deno.serve(async (req: Request) => {
         console.error("push_event_cleanup_failed");
         return jsonResponse(500, { error: "PUSH_PROCESSING_FAILED" });
       }
+      return jsonResponse(500, { error: "PUSH_DELIVERY_FAILED" });
     }
 
     return jsonResponse(200, {
