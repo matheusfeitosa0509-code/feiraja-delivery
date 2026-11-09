@@ -22,6 +22,8 @@ function constantTimeEqual(left: string, right: string) {
 }
 
 const protectedAdministrativeStatuses = new Set([
+  "pagamento reembolsado",
+  "pagamento contestado",
   "saiu para entrega",
   "preparando",
   "pronto para retirada",
