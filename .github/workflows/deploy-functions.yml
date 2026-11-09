@@ -13,6 +13,7 @@ on:
           - asaas-saque-validacao
           - expire-pix
           - assistente
+          - push-notify
       ref:
         description: "SHA completo de commit alcançável por main (vazio = commit atual de main)"
         required: false
@@ -47,7 +48,7 @@ jobs:
           set -euo pipefail
 
           case "$FUNCTION_NAME" in
-            super-worker|asaas-webhook|asaas-saque-validacao|expire-pix|assistente) ;;
+            super-worker|asaas-webhook|asaas-saque-validacao|expire-pix|assistente|push-notify) ;;
             *)
               echo "::error::Função não permitida."
               exit 1
@@ -119,6 +120,14 @@ jobs:
         run: |
           supabase functions deploy assistente \
             --project-ref "$SUPABASE_PROJECT_REF"
+
+
+      - name: Implantar push-notify
+        if: inputs.function == 'push-notify'
+        run: |
+          supabase functions deploy push-notify \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --no-verify-jwt
 
       - name: Registrar SHA implantado
         if: success()
