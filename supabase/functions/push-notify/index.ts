@@ -163,10 +163,14 @@ Deno.serve(async (req: Request) => {
     typeof kind !== "string" ||
     (kind !== "admin" && kind !== "customer") ||
     typeof new_status !== "string" ||
-    !KNOWN_STATUSES.has(new_status) ||
-    typeof signature !== "string"
+    !KNOWN_STATUSES.has(new_status)
   ) {
     return jsonResponse(400, { error: "INVALID_REQUEST" });
+  }
+
+  // Missing or non-string signatures are authentication failures, not malformed requests.
+  if (typeof signature !== "string" || !signature.trim()) {
+    return jsonResponse(401, { error: "UNAUTHORIZED" });
   }
 
   const timestampSeconds = Number(timestamp);
@@ -206,6 +210,8 @@ Deno.serve(async (req: Request) => {
   let eventWasInserted = false;
   let successfulSends = 0;
 
+  let stage = "order_lookup";
+
   try {
     const { data: order, error: orderError } = await supabase
       .from("orders")
@@ -221,6 +227,7 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(200, { ok: true, skipped: "STALE_EVENT" });
     }
 
+    stage = "event_insert";
     const { data: insertedEvent, error: eventError } = await supabase
       .from("push_events")
       .insert({ order_id, kind, status: new_status })
@@ -243,6 +250,7 @@ Deno.serve(async (req: Request) => {
     if (kind === "customer") {
       if (order.user_id) recipientUserIds = [order.user_id];
     } else {
+      stage = "admin_lookup";
       const { data: admins, error: adminsError } = await supabase
         .from("admin_users")
         .select("user_id");
@@ -256,6 +264,7 @@ Deno.serve(async (req: Request) => {
       ];
     }
 
+    stage = "subscription_lookup";
     let subscriptions: PushSubscriptionRow[] = [];
     if (recipientUserIds.length > 0) {
       const { data, error: subscriptionsError } = await supabase
@@ -268,8 +277,10 @@ Deno.serve(async (req: Request) => {
       subscriptions = (data ?? []) as PushSubscriptionRow[];
     }
 
+    stage = "vapid_configuration";
     webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
+    stage = "push_send";
     const notificationUrl = kind === "admin" ? "/painel.html" : "/loja.html";
     const notificationPayload = JSON.stringify({
       title: "Feira On Delivery",
@@ -290,8 +301,13 @@ Deno.serve(async (req: Request) => {
       };
 
       try {
-        await webpush.sendNotification(subscription, notificationPayload, {
+        const providerResponse = await webpush.sendNotification(subscription, notificationPayload, {
           TTL: 3600,
+          urgency: "high",
+        });
+        console.info("push_send", {
+          kind,
+          status_code: providerResponse.statusCode,
         });
         successfulSends++;
       } catch (error) {
@@ -331,7 +347,7 @@ Deno.serve(async (req: Request) => {
       sent: successfulSends,
       attempted: subscriptions.length,
     });
-  } catch {
+  } catch (error: unknown) {
     // If processing failed before any delivery succeeded, release the idempotency
     // claim so a later retry can process the event again.
     if (eventWasInserted && successfulSends === 0) {
@@ -343,8 +359,25 @@ Deno.serve(async (req: Request) => {
         .eq("status", new_status);
       if (cleanupError) console.error("push_event_cleanup_failed");
     }
-    // Deliberately omit exception details: they may contain provider or request data.
-    console.error("push_notification_processing_failed");
+    // Only standard error names and exact, fixed web-push messages are logged.
+    const allowedErrorNames = new Set(["Error", "TypeError", "RangeError", "URIError", "SyntaxError"]);
+    const errorName = error instanceof Error && allowedErrorNames.has(error.name)
+      ? error.name
+      : "UnknownError";
+    const rawMessage = error instanceof Error ? error.message : "";
+    const safeMessagePrefixes = [
+      "Vapid subject is not a valid URL.",
+      "Vapid public key should be 65 bytes long when decoded.",
+      "Vapid private key should be 32 bytes long when decoded.",
+      "Public key must be a Uint8Array or string.",
+      "Private key must be a Uint8Array or string.",
+    ];
+    const errorMessagePrefix = safeMessagePrefixes.find((message) => rawMessage === message) ?? null;
+    console.error("push_notification_processing_failed", {
+      stage,
+      error_name: errorName,
+      error_message_prefix: errorMessagePrefix,
+    });
     return jsonResponse(500, { error: "PUSH_PROCESSING_FAILED" });
   }
 });
