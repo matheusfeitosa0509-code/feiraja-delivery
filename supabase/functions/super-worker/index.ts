@@ -49,6 +49,42 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
+const MAX_JSON_BODY_BYTES = 64 * 1024;
+async function readJsonBody(req: Request): Promise<any> {
+  const contentLength = req.headers.get("content-length");
+  if (contentLength !== null) {
+    const declaredLength = Number(contentLength);
+    if (Number.isFinite(declaredLength) && declaredLength > MAX_JSON_BODY_BYTES) {
+      throw new RangeError("BODY_TOO_LARGE");
+    }
+  }
+  if (!req.body) return {};
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_JSON_BODY_BYTES) {
+      await reader.cancel();
+      throw new RangeError("BODY_TOO_LARGE");
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+  } catch {
+    throw new SyntaxError("INVALID_JSON");
+  }
+}
+
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
   headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -58,8 +94,20 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const url = new URL(req.url);
   const earlyNoticeType = String(url.searchParams.get("type") || url.searchParams.get("topic") || "");
+  let requestBody: any = {};
+  if (req.method === "POST") {
+    try {
+      requestBody = await readJsonBody(req);
+    } catch (error) {
+      if (error instanceof RangeError) return json({ error: "Corpo da requisição excede o limite de 65536 bytes." }, 413);
+      return json({ error: "Corpo JSON inválido." }, 400);
+    }
+    if (!requestBody || typeof requestBody !== "object" || Array.isArray(requestBody)) {
+      return json({ error: "Corpo JSON inválido." }, 400);
+    }
+  }
   if (earlyNoticeType && earlyNoticeType !== "payment") return json({ received: true, ignored: true });
-  const earlyBody = req.method === "POST" ? await req.clone().json().catch(() => ({})) : {};
+  const earlyBody = requestBody;
   const earlyBodyType = String(earlyBody?.type || earlyBody?.topic || "");
   if (earlyBodyType && earlyBodyType !== "payment") return json({ received: true, ignored: true });
   if (req.method === "GET") {
@@ -104,7 +152,7 @@ Deno.serve(async (req: Request) => {
     if (!supabaseUrl || !serviceKey) return json({ error: "Configuração interna do servidor incompleta." }, 500);
     const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
-    const body = await req.json().catch(() => ({}));
+    const body = requestBody;
     const noticeType = String(url.searchParams.get("type") || url.searchParams.get("topic") || body?.type || body?.topic || "");
     const paymentIdFromNotice = String(url.searchParams.get("data.id") || url.searchParams.get("id") || body?.data?.id || "");
     if (noticeType && noticeType !== "payment") return json({ received: true, ignored: true });
