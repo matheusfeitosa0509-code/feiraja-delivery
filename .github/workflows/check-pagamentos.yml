@@ -6,6 +6,16 @@ on:
       - "supabase/functions/asaas-webhook/**"
       - "supabase/functions/super-worker/**"
       - "supabase/functions/_shared/**"
+      - "supabase/functions/expire-pix/**"
+      - "supabase/functions/asaas-saque-validacao/**"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/asaas-webhook/**"
+      - "supabase/functions/super-worker/**"
+      - "supabase/functions/_shared/**"
+      - "supabase/functions/expire-pix/**"
+      - "supabase/functions/asaas-saque-validacao/**"
   workflow_dispatch:
 
 permissions:
@@ -31,3 +41,9 @@ jobs:
 
       - name: Check super-worker
         run: deno check supabase/functions/super-worker/index.ts
+
+      - name: Check expire-pix
+        run: deno check supabase/functions/expire-pix/index.ts
+
+      - name: Check Asaas saque validation
+        run: deno check supabase/functions/asaas-saque-validacao/index.ts
