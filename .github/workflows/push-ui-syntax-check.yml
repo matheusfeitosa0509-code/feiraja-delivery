@@ -1,0 +1,59 @@
+name: Push UI JavaScript Syntax Check
+
+on:
+  push:
+    branches:
+      - feat/push-telas
+      - fix/loja-status-timeline
+    paths:
+      - "loja.html"
+      - "painel.html"
+      - "sw.js"
+      - ".github/workflows/push-ui-syntax-check.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "loja.html"
+      - "painel.html"
+      - "sw.js"
+      - ".github/workflows/push-ui-syntax-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    name: Parse inline scripts with V8 (no execution)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Extract inline scripts and parse
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import pathlib, re
+          files = ["loja.html", "painel.html"]
+          out = pathlib.Path("/tmp/push-ui-syntax")
+          out.mkdir(exist_ok=True)
+          count = 0
+          for name in files:
+              source = pathlib.Path(name).read_text(encoding="utf-8")
+              for match in re.finditer(r"<script\b[^>]*>([\s\S]*?)</script\s*>", source, re.I):
+                  code = match.group(1)
+                  if code.strip():
+                      count += 1
+                      (out / f"{pathlib.Path(name).stem}-{count}.mjs").write_text(code, encoding="utf-8")
+          if count == 0:
+              raise SystemExit("Nenhum script inline encontrado.")
+          print(f"{count} script(s) inline extraído(s).")
+          PY
+          find /tmp/push-ui-syntax -type f -name "*.mjs" -print0 | while IFS= read -r -d '' file; do
+            echo "V8 parse: $file"
+            node --check "$file"
+          done
+          echo "V8 parse: sw.js"
+          node --check sw.js
