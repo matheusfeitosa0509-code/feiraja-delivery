@@ -4,6 +4,8 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#176b3a">
 <title>Painel - Feira On Delivery</title>
 <meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="./manifest-painel.json">
+<script>try{if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js",{scope:"./"}).catch(()=>{}));}catch(_){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 
@@ -114,7 +116,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 </style>
 </head>
 <body><main class="wrap">
-<header class="brand-header"><div><h1>Feira On Delivery</h1><p class="brand-subtitle">Painel administrativo</p></div><div class="actions"><button id="refresh" class="secondary hidden">↻ Atualizar</button><button id="logout" class="secondary hidden">Sair</button></div></header>
+<header class="brand-header"><div><h1>Feira On Delivery</h1><p class="brand-subtitle">Painel administrativo</p></div><div class="actions"><button id="refresh" class="secondary hidden">↻ Atualizar</button><button id="pushToggle" class="secondary hidden" type="button">Ativar avisos</button><button id="logout" class="secondary hidden">Sair</button><small id="pushHint" class="muted hidden" role="status"></small></div></header>
 <section id="login" class="card login"><h2>Entrar como administrador</h2><p class="muted">Use a conta de administrador da loja.</p><form id="form"><label for="email">E-mail</label><input id="email" type="email" autocomplete="username" required><label for="password">Senha</label><input id="password" type="password" autocomplete="current-password" required><div id="adminTurnstile" style="margin:12px 0;min-height:65px"></div><p id="adminCaptchaMessage" class="muted" role="status">Conclua a verificação ou envie sem token se ela falhar.</p><button id="adminCaptchaRetry" type="button" hidden class="secondary" style="margin-top:4px">Tentar de novo</button><button type="submit" disabled style="width:100%;margin-top:16px">Entrar</button></form><p id="message" role="status"></p></section>
 <section id="panel" class="hidden">
 <div class="main-tabs" role="tablist" aria-label="Seções do painel">
@@ -226,6 +228,19 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <script type="module">
 import{createClient}from'https://esm.sh/@supabase/supabase-js@2.117.1';
 const db=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',{auth:{persistSession:true,autoRefreshToken:true}});
+const VAPID_PUBLIC_KEY='BJ9dTvmRGcTHYQSOOLj61AG2kC2YEMuhWMM2J6GdDdTuofeBkYJsyF5uNIhCfnV03jZBn2fFP1ZUqty0QZ_uuog'; // VAPID pública
+const PANEL_PUSH_PENDING_KEY='feira_push_pending_release_v1';let panelPushUserSynced='',panelCurrentUser=null;
+function panelPushBytes(v){const pad='='.repeat((4-v.length%4)%4),raw=atob((v+pad).replace(/-/g,'+').replace(/_/g,'/')),a=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i);return a;}
+function panelSavePending(endpoint,userId){try{localStorage.setItem(PANEL_PUSH_PENDING_KEY,JSON.stringify({endpoint:endpoint||null,userId}));}catch(_){}}
+function panelClearPending(endpoint){try{const x=JSON.parse(localStorage.getItem(PANEL_PUSH_PENDING_KEY)||'null');if(!endpoint||x?.endpoint===endpoint)localStorage.removeItem(PANEL_PUSH_PENDING_KEY);}catch(_){}}
+async function panelWithPushTimeout(promise,deadline){const remaining=Math.max(0,deadline-Date.now());let timer;try{return await Promise.race([Promise.resolve(promise),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('PUSH_CLEANUP_TIMEOUT')),remaining);})]);}finally{clearTimeout(timer);}}
+async function panelRetryPending(user){const x=(()=>{try{return JSON.parse(localStorage.getItem(PANEL_PUSH_PENDING_KEY)||'null');}catch(_){return null;}})();if(!x||x.userId!==user?.id)return;const deadline=Date.now()+3000;try{let endpoint=x.endpoint||null;if(!endpoint&&'serviceWorker'in navigator){const reg=await panelWithPushTimeout(navigator.serviceWorker.ready,deadline),sub=await panelWithPushTimeout(reg.pushManager.getSubscription(),deadline);endpoint=sub?.endpoint||null;if(sub)await panelWithPushTimeout(sub.unsubscribe(),deadline);}if(!endpoint){panelClearPending();return;}const r=await panelWithPushTimeout(db.rpc('release_push_subscription',{p_endpoint:endpoint}),deadline);if(r.error)throw r.error;panelClearPending(endpoint);}catch(e){console.warn('Limpeza push pendente:',e);}}
+async function panelRelease(endpoint,user){if(!endpoint||!user?.id)return true;try{const{error}=await db.rpc('release_push_subscription',{p_endpoint:endpoint});if(error){panelSavePending(endpoint,user.id);return false;}panelClearPending(endpoint);return true;}catch(e){panelSavePending(endpoint,user.id);console.warn('Liberação push será repetida no próximo login:',e);return false;}}
+async function initPanelPush(user){if(!user?.id||user.is_anonymous||!('serviceWorker'in navigator)||panelPushUserSynced===user.id)return;const{data:member,error}=await db.from('admin_users').select('user_id').eq('user_id',user.id).maybeSingle();if(error||!member)return;if(VAPID_PUBLIC_KEY==='COLAR VAPID_PUBLIC_KEY AQUI')return;const ua=navigator.userAgent||'',ios=/iPad|iPhone|iPod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1),installed=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;document.getElementById('pushToggle').classList.remove('hidden');document.getElementById('pushHint').classList.remove('hidden');if(ios&&!installed){document.getElementById('pushHint').textContent='Adicione à Tela de Início para receber avisos.';document.getElementById('pushToggle').disabled=true;return;}if(!('PushManager'in window)){document.getElementById('pushHint').textContent='Este navegador não oferece suporte a notificações push.';return;}void panelRetryPending(user);try{const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();if(sub){const k=sub.toJSON().keys||{},r=await db.rpc('claim_push_subscription',{p_endpoint:sub.endpoint,p_p256dh:k.p256dh,p_auth:k.auth,p_user_agent:navigator.userAgent});if(r.error)throw r.error;}panelPushUserSynced=user.id;document.getElementById('pushToggle').disabled=false;document.getElementById('pushToggle').textContent=sub?'Desativar avisos':'Ativar avisos';document.getElementById('pushHint').textContent='Avisos administrativos neste aparelho.';}catch(e){console.warn('Sincronização push do painel:',e);}}
+async function cleanupPanelPushInBackground(user){const deadline=Date.now()+3000;let endpoint=null;try{if('serviceWorker'in navigator){const reg=await panelWithPushTimeout(navigator.serviceWorker.ready,deadline),sub=await panelWithPushTimeout(reg.pushManager.getSubscription(),deadline);endpoint=sub?.endpoint||null;if(sub)await panelWithPushTimeout(sub.unsubscribe(),deadline);}if(endpoint&&user?.id){const r=await panelWithPushTimeout(db.rpc('release_push_subscription',{p_endpoint:endpoint}),deadline);if(r.error)throw r.error;panelClearPending(endpoint);}else if(user?.id)await panelWithPushTimeout(panelRetryPending(user),deadline);}catch(e){if(user?.id)panelSavePending(endpoint,user.id);console.warn('Limpeza push pendente após logout:',e);}}
+async function cleanupPanelPushAndSignOut(){const user=panelCurrentUser;void cleanupPanelPushInBackground(user);const{error}=await db.auth.signOut();if(error)throw error;panelPushUserSynced='';panelCurrentUser=null;}
+document.getElementById('pushToggle').addEventListener('click',async()=>{const b=document.getElementById('pushToggle'),h=document.getElementById('pushHint');b.disabled=true;try{if(!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window))throw Error('Este navegador não oferece suporte a notificações push.');const reg=await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();const{data:{session}}=await db.auth.getSession(),user=session?.user;if(!user)throw Error('Entre novamente como administrador.');if(sub){const ep=sub.endpoint;try{await sub.unsubscribe();}catch(e){panelSavePending(ep,user.id);throw e;}const ok=await panelRelease(ep,user);h.textContent=ok?'Avisos desativados.':'Avisos locais desativados; a limpeza será repetida no próximo login.';}else{if(VAPID_PUBLIC_KEY==='COLAR VAPID_PUBLIC_KEY AQUI')throw Error('A chave pública VAPID ainda precisa ser cadastrada no código.');let permission=Notification.permission;if(permission!=='granted')permission=await Notification.requestPermission();if(permission!=='granted')throw Error('Permissão de notificações não concedida.');sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:panelPushBytes(VAPID_PUBLIC_KEY)});const k=sub.toJSON().keys||{},r=await db.rpc('claim_push_subscription',{p_endpoint:sub.endpoint,p_p256dh:k.p256dh,p_auth:k.auth,p_user_agent:navigator.userAgent});if(r.error){await sub.unsubscribe();throw r.error;}h.textContent='Avisos ativados.';}const current=await reg.pushManager.getSubscription();b.textContent=current?'Desativar avisos':'Ativar avisos';}catch(e){h.textContent=e?.message||'Não foi possível atualizar os avisos.';console.warn('Push painel:',e);}finally{b.disabled=false;}});
+
 {
 
 const $=id=>document.getElementById(id);
@@ -309,16 +324,16 @@ async function toggleAvailability(){
  }
 }
 
-function setLoggedIn(yes){$('login').classList.toggle('hidden',yes);$('panel').classList.toggle('hidden',!yes);$('refresh').classList.toggle('hidden',!yes);$('logout').classList.toggle('hidden',!yes)}
+function setLoggedIn(yes){$('login').classList.toggle('hidden',yes);$('panel').classList.toggle('hidden',!yes);$('refresh').classList.toggle('hidden',!yes);$('logout').classList.toggle('hidden',!yes);if(!yes){$('pushToggle').classList.add('hidden');$('pushHint').classList.add('hidden');}}
 async function show(){
  try{
   const{data:{session},error:sessionError}=await db.auth.getSession();
   if(sessionError)throw sessionError;
-  if(!session){setLoggedIn(false);return}
+  if(!session){panelCurrentUser=null;setLoggedIn(false);return}panelCurrentUser=session.user;
   const{data:membership,error:membershipError}=await db.from('admin_users').select('user_id').eq('user_id',session.user.id).maybeSingle();
   if(membershipError)throw membershipError;
-  if(!membership){const{error:signOutError}=await db.auth.signOut();if(signOutError)throw signOutError;setLoggedIn(false);$('message').textContent='Esta conta não tem autorização de administrador.';return}
-  setLoggedIn(true);
+  if(!membership){await cleanupPanelPushAndSignOut();setLoggedIn(false);$('message').textContent='Esta conta não tem autorização de administrador.';return}
+  setLoggedIn(true);void initPanelPush(session.user);
   $('priceEditor').classList.remove('hide');
   $('resaleEditor').classList.remove('hide');
   $('productEdit').classList.remove('hide');
@@ -414,7 +429,7 @@ $('form').addEventListener('focusin',()=>adminCaptcha.init());
 $('form').addEventListener('submit',async e=>{e.preventDefault();const captchaToken=adminCaptcha.getToken();adminLoginButton.disabled=true;$('message').textContent='Entrando…';try{const{error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value,options:{...(captchaToken?{captchaToken}:{})}});if(error){console.error('Falha no login do painel:',error);$('message').textContent='Falha no login. Verifique seus dados e tente novamente.';return}$('message').textContent='';await show();}catch(error){$('message').textContent='Não foi possível concluir o login. Verifique sua conexão e tente novamente.';}finally{adminCaptcha.reset();}});
 $('refresh').addEventListener('click',()=>{document.title='Feira On Delivery | Painel de pedidos';load();loadAdminProducts()});$('refreshProducts').addEventListener('click',loadAdminProducts);$('availabilityProduct').addEventListener('change',syncAvailabilityControls);$('toggleAvailability').addEventListener('click',toggleAvailability);$('loadMore').addEventListener('click',loadMore);setInterval(()=>{if(!$('panel').classList.contains('hidden')&&!document.querySelector('#orders select:focus'))load(true)},30000);$('logout').addEventListener('click',async()=>{
  const button=$('logout');button.disabled=true;
- try{const{error}=await db.auth.signOut();if(error)throw error;setLoggedIn(false);}
+ try{await cleanupPanelPushAndSignOut();setLoggedIn(false);}
  catch(error){console.error('Falha ao sair do painel:',error);$('message').textContent='Não foi possível sair: '+(error?.message||'erro não identificado')+'. Tente novamente.';}
  finally{button.disabled=false;}
 });$('search').addEventListener('input',render);$('filter').addEventListener('change',render);show();
@@ -428,7 +443,7 @@ function say(t,c){$('msg').textContent=t;$('msg').className=c||''}
 $('btnOut').onclick=async()=>{
  const button=$('btnOut');button.disabled=true;
  try{
-  const{error}=await db.auth.signOut();if(error)throw error;
+  await cleanupPanelPushAndSignOut();
   $('panel').classList.add('hidden');$('login').classList.remove('hidden');$('refresh').classList.add('hidden');$('logout').classList.add('hidden');
  }catch(error){
   console.error('Falha ao sair do painel:',error);say('Não foi possível sair: '+(error?.message||'erro não identificado')+'. Tente novamente.','err');
@@ -917,6 +932,8 @@ async function loadProductRequests(){
 $('refreshProductRequests').addEventListener('click',loadProductRequests);
 
 db.auth.onAuthStateChange((event,session)=>{
+  if(event==='SIGNED_OUT')panelPushUserSynced='';
+  if(event==='SIGNED_IN'&&session?.user)void initPanelPush(session.user);
   if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){loadPriceProducts();loadEditableProducts();loadResaleProducts();}
   if(event==='SIGNED_OUT'){$('priceEditor').classList.add('hide');priceProducts=[];$('priceProduct').replaceChildren(new Option('Entre como administrador',''));$('btnUpdatePrice').disabled=true;$('productEdit').classList.add('hide');editableProducts=[];$('resaleEditor').classList.add('hide');resaleProducts=[];$('resaleProduct').replaceChildren(new Option('Entre como administrador',''));$('btnPreviewResale').disabled=true;}
 });

@@ -776,6 +776,150 @@ try {
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.1';
 const supabase=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW');
+
+const VAPID_PUBLIC_KEY = 'BJ9dTvmRGcTHYQSOOLj61AG2kC2YEMuhWMM2J6GdDdTuofeBkYJsyF5uNIhCfnV03jZBn2fFP1ZUqty0QZ_uuog'; // VAPID pública
+const PUSH_PENDING_RELEASE_KEY = 'feira_push_pending_release_v1';
+function pushBase64UrlToBytes(value){
+ const padding='='.repeat((4-value.length%4)%4);
+ const base64=(value+padding).replace(/-/g,'+').replace(/_/g,'/');
+ const raw=atob(base64),bytes=new Uint8Array(raw.length);
+ for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+ return bytes;
+}
+function savePendingPushRelease(endpoint,userId){
+ try{localStorage.setItem(PUSH_PENDING_RELEASE_KEY,JSON.stringify({endpoint:endpoint||null,userId}));}catch(error){console.warn('Não foi possível guardar a limpeza pendente do push:',error);}
+}
+function clearPendingPushRelease(endpoint){
+ try{const pending=JSON.parse(localStorage.getItem(PUSH_PENDING_RELEASE_KEY)||'null');if(!endpoint||pending?.endpoint===endpoint)localStorage.removeItem(PUSH_PENDING_RELEASE_KEY);}catch(_){}
+}
+async function withPushTimeout(promise,deadline){
+ const remaining=Math.max(0,deadline-Date.now());let timer;
+ try{return await Promise.race([Promise.resolve(promise),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('PUSH_CLEANUP_TIMEOUT')),remaining);})]);}
+ finally{clearTimeout(timer);}
+}
+async function retryPendingPushRelease(user){
+ if(!user?.id)return;
+ const pending=(()=>{try{return JSON.parse(localStorage.getItem(PUSH_PENDING_RELEASE_KEY)||'null');}catch(_){return null;}})();
+ if(!pending||pending.userId!==user.id)return;
+ const deadline=Date.now()+3000;
+ try{
+  let endpoint=pending.endpoint||null;
+  if(!endpoint&&'serviceWorker'in navigator){
+   const registration=await withPushTimeout(navigator.serviceWorker.ready,deadline);
+   const subscription=await withPushTimeout(registration.pushManager.getSubscription(),deadline);
+   endpoint=subscription?.endpoint||null;
+   if(subscription)await withPushTimeout(subscription.unsubscribe(),deadline);
+  }
+  if(!endpoint){clearPendingPushRelease();return;}
+  const result=await withPushTimeout(supabase.rpc('release_push_subscription',{p_endpoint:endpoint}),deadline);
+  if(result.error)throw result.error;
+  clearPendingPushRelease(endpoint);
+ }catch(error){console.warn('Limpeza push pendente será repetida:',error);}
+}
+async function releasePushEndpoint(endpoint,user){
+ if(!endpoint||!user?.id)return true;
+ try{
+  const {error}=await supabase.rpc('release_push_subscription',{p_endpoint:endpoint});
+  if(error){savePendingPushRelease(endpoint,user.id);return false;}
+  clearPendingPushRelease(endpoint);
+  return true;
+ }catch(error){savePendingPushRelease(endpoint,user.id);console.warn('Liberação push será repetida no próximo login:',error);return false;}
+}
+async function syncPushSubscription(user){
+ if(!user?.id||user.is_anonymous||!('serviceWorker' in navigator)||!('PushManager' in window))return;
+ void retryPendingPushRelease(user);
+ try{
+  const registration=await navigator.serviceWorker.ready;
+  const subscription=await registration.pushManager.getSubscription();
+  if(!subscription)return;
+  const keys=subscription.toJSON().keys||{};
+  if(!keys.p256dh||!keys.auth)return;
+  const {error}=await supabase.rpc('claim_push_subscription',{
+   p_endpoint:subscription.endpoint,p_p256dh:keys.p256dh,p_auth:keys.auth,p_user_agent:navigator.userAgent
+  });
+  if(error)console.warn('Não foi possível registrar esta inscrição push:',error);
+ }catch(error){console.warn('Não foi possível sincronizar a inscrição push:',error);}
+}
+async function cleanupPushInBackground(user){
+ const deadline=Date.now()+3000;let endpoint=null;
+ try{
+  if('serviceWorker'in navigator){
+   const registration=await withPushTimeout(navigator.serviceWorker.ready,deadline);
+   const subscription=await withPushTimeout(registration.pushManager.getSubscription(),deadline);
+   endpoint=subscription?.endpoint||null;
+   if(subscription)await withPushTimeout(subscription.unsubscribe(),deadline);
+  }
+  if(endpoint&&user?.id){
+   const result=await withPushTimeout(supabase.rpc('release_push_subscription',{p_endpoint:endpoint}),deadline);
+   if(result.error)throw result.error;
+   clearPendingPushRelease(endpoint);
+  }else if(user?.id){
+   await withPushTimeout(retryPendingPushRelease(user),deadline);
+  }
+ }catch(error){
+  if(user?.id)savePendingPushRelease(endpoint,user.id);
+  console.warn('Limpeza push pendente será repetida após o próximo login:',error);
+ }
+}
+async function cleanupPushAndSignOut(options){
+ const user=currentUser;
+ void cleanupPushInBackground(user);
+ const {error}=await supabase.auth.signOut(options||undefined);
+ if(error)throw error;
+}
+function ensurePushControls(container,user){
+ if(!container||!user)return;
+ let button=container.querySelector('#pushToggleButton');
+ if(!button){
+  button=document.createElement('button');button.type='button';button.id='pushToggleButton';button.className='btn alt full';button.textContent='Ativar avisos';
+  const hint=document.createElement('p');hint.id='pushToggleHint';hint.className='profile-message';hint.setAttribute('role','status');
+  container.append(button,hint);
+ }
+ if(VAPID_PUBLIC_KEY==='COLAR VAPID_PUBLIC_KEY AQUI'){
+  button.hidden=true;
+  const unavailableHint=container.querySelector('#pushToggleHint');
+  if(unavailableHint)unavailableHint.textContent='Avisos ainda não estão disponíveis neste aparelho.';
+  return;
+ }
+ const hint=container.querySelector('#pushToggleHint');
+ const ua=navigator.userAgent||'';
+ const ios=/iPad|iPhone|iPod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+ const installed=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+ if(ios&&!installed){hint.textContent='Adicione à Tela de Início para receber avisos.';}
+ else{hint.textContent='Receba avisos sobre atualizações dos seus pedidos neste aparelho.';}
+ const refresh=async()=>{
+  try{const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();button.textContent=sub?'Desativar avisos':'Ativar avisos';}
+  catch(_){button.textContent='Ativar avisos';}
+ };
+ button.onclick=async()=>{
+  button.disabled=true;hint.textContent='Aguarde…';
+  try{
+   if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window))throw new Error('Este navegador não oferece suporte a notificações push.');
+   if(ios&&!installed){hint.textContent='Adicione à Tela de Início para receber avisos.';return;}
+   const registration=await navigator.serviceWorker.ready;
+   let subscription=await registration.pushManager.getSubscription();
+   if(subscription){
+    const endpoint=subscription.endpoint;
+    try{await subscription.unsubscribe();}catch(error){savePendingPushRelease(endpoint,user.id);throw error;}
+    const released=await releasePushEndpoint(endpoint,user);
+    hint.textContent=released?'Avisos desativados neste aparelho.':'Avisos locais desativados; a limpeza no servidor será repetida no próximo login.';
+   }else{
+    if(VAPID_PUBLIC_KEY==='COLAR VAPID_PUBLIC_KEY AQUI')throw new Error('A chave pública VAPID ainda precisa ser cadastrada no código.');
+    let permission=Notification.permission;
+    if(permission!=='granted')permission=await Notification.requestPermission();
+    if(permission!=='granted')throw new Error('Permissão de notificações não concedida.');
+    subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:pushBase64UrlToBytes(VAPID_PUBLIC_KEY)});
+    const keys=subscription.toJSON().keys||{};
+    const {error}=await supabase.rpc('claim_push_subscription',{p_endpoint:subscription.endpoint,p_p256dh:keys.p256dh,p_auth:keys.auth,p_user_agent:navigator.userAgent});
+    if(error){await subscription.unsubscribe();throw error;}
+    hint.textContent='Avisos ativados neste aparelho.';
+   }
+  }catch(error){hint.textContent=error?.message||'Não foi possível atualizar os avisos.';console.warn('Push:',error);}
+  finally{button.disabled=false;await refresh();}
+ };
+ void refresh();
+}
+
 const $=s=>document.querySelector(s), money=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n);
 
 const LEGAL_DATA={responsavel:'Dr Alimentos',documento:'65.414.756/0001-22',whatsapp:'+55 92 9444-4989',email:'feiraondelivery2026@gmail.com',provedorPix:'Asaas',provedor:'Supabase',endereco:'Consulte pelo WhatsApp',horarios:'6h às 13h',data:'06/11/2026',prazoHoras:'Consulte pelo WhatsApp'};
@@ -891,12 +1035,12 @@ function openPreviewModal(modalId){const ids=['accountModal','modal','productReq
 function checkoutSessionError(code,message){const error=new Error(message);error.code=code;return error;}
 async function getCheckoutAccessToken(){let timeoutId;try{const timeout=new Promise((_,reject)=>{timeoutId=setTimeout(()=>reject(checkoutSessionError('CHECKOUT_SESSION_TIMEOUT','A recuperação da sessão excedeu 10 segundos.')),10000);});const authResult=await Promise.race([supabase.auth.getSession(),timeout]);if(authResult?.error)throw checkoutSessionError('CHECKOUT_SESSION_INVALID','Não foi possível validar sua sessão.');const session=authResult?.data?.session;if(!session?.access_token||!session.user?.id||session.user.id!==currentUser?.id||(session.expires_at&&session.expires_at*1000<=Date.now()))throw checkoutSessionError('CHECKOUT_SESSION_INVALID','Sua sessão está inválida ou expirou.');return session.access_token;}finally{clearTimeout(timeoutId);}}
 function clearProjectSessionKeys(){const keys=[];for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key&&key.startsWith('sb-juhwdevvwstmyxyyagzh-auth-token'))keys.push(key);}keys.forEach(key=>localStorage.removeItem(key));return keys.length;}
-function showCheckoutSessionRecovery(message){const result=$('#result');result.innerHTML='<p>'+esc(message)+' Etapa: sessão. Você pode sair desta sessão neste aparelho e entrar novamente. Seu carrinho será mantido.</p><button id="checkoutLocalLogout" class="btn alt full" type="button">Sair e entrar novamente</button>';result.classList.remove('hidden');$('#checkoutLocalLogout').addEventListener('click',async()=>{const button=$('#checkoutLocalLogout');let timeoutId=null,reloadScheduled=false;button.disabled=true;button.textContent='Encerrando sessão…';try{const timeout=new Promise((_,reject)=>{timeoutId=setTimeout(()=>reject(checkoutSessionError('LOCAL_SIGNOUT_TIMEOUT','A saída da sessão excedeu 4 segundos.')),4000);});const {error}=await Promise.race([supabase.auth.signOut({scope:'local'}),timeout]);if(error)throw error;currentUser=null;pendingCheckout=true;authMode='login';authCaptcha.setRequired(true);updateAccountUI();$('#authPassword').value='';$('#authMessage').textContent='Sessão local encerrada. Entre novamente para continuar. Seu carrinho foi preservado.';$('#authMessage').classList.remove('hidden');$('#modal').classList.remove('open');openPreviewModal('accountModal');result.querySelector('p').textContent='Saída concluída. Seu carrinho foi preservado.';}catch(error){if(error?.code==='LOCAL_SIGNOUT_TIMEOUT'){try{const removed=clearProjectSessionKeys();currentUser=null;result.querySelector('p').textContent='A saída demorou mais de 4 segundos. A sessão local foi removida ('+removed+' chave(s)); recarregando a loja deslogada. Seu carrinho foi preservado.';reloadScheduled=true;setTimeout(()=>location.reload(),1200);}catch(storageError){result.querySelector('p').textContent='A saída excedeu 4 segundos e não foi possível limpar a sessão local neste aparelho. Nenhuma outra chave foi removida. Tente novamente.';console.error('Falha ao limpar chaves locais da sessão:',storageError);}}else{result.querySelector('p').textContent='Não foi possível encerrar a sessão local. Seu carrinho foi preservado. Tente novamente.';console.error('Falha ao encerrar sessão local:',error);}}finally{clearTimeout(timeoutId);if(button.isConnected&&!reloadScheduled){button.disabled=false;button.textContent='Tentar sair novamente';}}});}
-async function loadAccountProfile(){const box=$('#accountProfile');box.classList.remove('hidden');box.innerHTML='<p class="sm">Carregando seus dados…</p>';try{const user=currentUser;if(!user)throw new Error('Entre novamente para consultar seus dados.');const {data,error}=await supabase.from('customer_profiles').select('full_name,phone,address').eq('user_id',user.id).maybeSingle();if(error)throw error;const profile=data||{};const name=profile.full_name||user.user_metadata?.full_name||'';const phone=profile.phone||'';const address=profile.address||'';const incomplete=!name||!phone||!address;box.innerHTML='<h3>Dados da sua conta</h3><p class="profile-email">E-mail: '+esc(user.email||'Não informado')+'</p>'+(incomplete?'<p class="profile-message">Complete os dados abaixo para manter seu cadastro atualizado.</p>':'')+'<form id="accountProfileForm"><label class="profile-field"><span>Nome completo</span><input id="profileFullName" maxlength="120" autocomplete="name" required value="'+esc(name)+'"></label><label class="profile-field"><span>Telefone / WhatsApp</span><input id="profilePhone" type="tel" maxlength="30" autocomplete="tel" required value="'+esc(phone)+'"></label><label class="profile-field"><span>Endereço</span><input id="profileAddress" maxlength="300" autocomplete="street-address" required value="'+esc(address)+'"></label><div id="profileSaveMessage" class="profile-message hidden" role="status"></div><div class="profile-actions"><button class="btn" type="submit">Salvar meus dados</button><button class="btn alt" id="profileRetry" type="button">Atualizar dados</button></div></form>';$('#accountProfileForm').addEventListener('submit',async event=>{event.preventDefault();const submit=event.currentTarget.querySelector('[type=submit]'),message=$('#profileSaveMessage');submit.disabled=true;submit.textContent='Salvando…';message.classList.add('hidden');try{const values={user_id:user.id,full_name:$('#profileFullName').value.trim(),phone:$('#profilePhone').value.trim(),address:$('#profileAddress').value.trim()};const {error:saveError}=await supabase.from('customer_profiles').upsert(values,{onConflict:'user_id'});if(saveError)throw saveError;$('#name').value=values.full_name;$('#phone').value=values.phone;$('#address').value=values.address;message.textContent='Dados salvos com sucesso.';message.classList.remove('hidden');message.style.background='#eaf5e4';message.style.color='#245b22';}catch(saveError){message.textContent='Não foi possível salvar seus dados: '+(saveError.message||'erro desconhecido')+'. Verifique sua conexão ou as permissões da sua conta e tente novamente.';message.classList.remove('hidden');}finally{submit.disabled=false;submit.textContent='Salvar meus dados';}});$('#profileRetry').onclick=loadAccountProfile;void loadAdminPanelAccess(user);}catch(error){box.innerHTML='<h3>Não foi possível carregar sua conta</h3><p class="profile-message">'+esc(error.message||'Ocorreu um erro ao consultar seu perfil.')+'</p><div class="profile-actions"><button class="btn" id="profileRetry" type="button">Tentar novamente</button><button class="btn alt" id="profileLogout" type="button">Sair da conta</button></div>';$('#profileRetry').onclick=loadAccountProfile;$('#profileLogout').onclick=async()=>{await supabase.auth.signOut();currentUser=null;updateAccountUI();$('#accountModal').classList.remove('open');$('#accountProfile').classList.add('hidden');};void loadAdminPanelAccess(currentUser);}}
+function showCheckoutSessionRecovery(message){const result=$('#result');result.innerHTML='<p>'+esc(message)+' Etapa: sessão. Você pode sair desta sessão neste aparelho e entrar novamente. Seu carrinho será mantido.</p><button id="checkoutLocalLogout" class="btn alt full" type="button">Sair e entrar novamente</button>';result.classList.remove('hidden');$('#checkoutLocalLogout').addEventListener('click',async()=>{const button=$('#checkoutLocalLogout');let timeoutId=null,reloadScheduled=false;button.disabled=true;button.textContent='Encerrando sessão…';try{const timeout=new Promise((_,reject)=>{timeoutId=setTimeout(()=>reject(checkoutSessionError('LOCAL_SIGNOUT_TIMEOUT','A saída da sessão excedeu 4 segundos.')),4000);});const {error}=await Promise.race([cleanupPushAndSignOut({scope:'local'}),timeout]);if(error)throw error;currentUser=null;pendingCheckout=true;authMode='login';authCaptcha.setRequired(true);updateAccountUI();$('#authPassword').value='';$('#authMessage').textContent='Sessão local encerrada. Entre novamente para continuar. Seu carrinho foi preservado.';$('#authMessage').classList.remove('hidden');$('#modal').classList.remove('open');openPreviewModal('accountModal');result.querySelector('p').textContent='Saída concluída. Seu carrinho foi preservado.';}catch(error){if(error?.code==='LOCAL_SIGNOUT_TIMEOUT'){try{const removed=clearProjectSessionKeys();currentUser=null;result.querySelector('p').textContent='A saída demorou mais de 4 segundos. A sessão local foi removida ('+removed+' chave(s)); recarregando a loja deslogada. Seu carrinho foi preservado.';reloadScheduled=true;setTimeout(()=>location.reload(),1200);}catch(storageError){result.querySelector('p').textContent='A saída excedeu 4 segundos e não foi possível limpar a sessão local neste aparelho. Nenhuma outra chave foi removida. Tente novamente.';console.error('Falha ao limpar chaves locais da sessão:',storageError);}}else{result.querySelector('p').textContent='Não foi possível encerrar a sessão local. Seu carrinho foi preservado. Tente novamente.';console.error('Falha ao encerrar sessão local:',error);}}finally{clearTimeout(timeoutId);if(button.isConnected&&!reloadScheduled){button.disabled=false;button.textContent='Tentar sair novamente';}}});}
+async function loadAccountProfile(){const box=$('#accountProfile');box.classList.remove('hidden');box.innerHTML='<p class="sm">Carregando seus dados…</p>';try{const user=currentUser;if(!user)throw new Error('Entre novamente para consultar seus dados.');const {data,error}=await supabase.from('customer_profiles').select('full_name,phone,address').eq('user_id',user.id).maybeSingle();if(error)throw error;const profile=data||{};const name=profile.full_name||user.user_metadata?.full_name||'';const phone=profile.phone||'';const address=profile.address||'';const incomplete=!name||!phone||!address;box.innerHTML='<h3>Dados da sua conta</h3><p class="profile-email">E-mail: '+esc(user.email||'Não informado')+'</p>'+(incomplete?'<p class="profile-message">Complete os dados abaixo para manter seu cadastro atualizado.</p>':'')+'<form id="accountProfileForm"><label class="profile-field"><span>Nome completo</span><input id="profileFullName" maxlength="120" autocomplete="name" required value="'+esc(name)+'"></label><label class="profile-field"><span>Telefone / WhatsApp</span><input id="profilePhone" type="tel" maxlength="30" autocomplete="tel" required value="'+esc(phone)+'"></label><label class="profile-field"><span>Endereço</span><input id="profileAddress" maxlength="300" autocomplete="street-address" required value="'+esc(address)+'"></label><div id="profileSaveMessage" class="profile-message hidden" role="status"></div><div class="profile-actions"><button class="btn" type="submit">Salvar meus dados</button><button class="btn alt" id="profileRetry" type="button">Atualizar dados</button></div></form>';$('#accountProfileForm').addEventListener('submit',async event=>{event.preventDefault();const submit=event.currentTarget.querySelector('[type=submit]'),message=$('#profileSaveMessage');submit.disabled=true;submit.textContent='Salvando…';message.classList.add('hidden');try{const values={user_id:user.id,full_name:$('#profileFullName').value.trim(),phone:$('#profilePhone').value.trim(),address:$('#profileAddress').value.trim()};const {error:saveError}=await supabase.from('customer_profiles').upsert(values,{onConflict:'user_id'});if(saveError)throw saveError;$('#name').value=values.full_name;$('#phone').value=values.phone;$('#address').value=values.address;message.textContent='Dados salvos com sucesso.';message.classList.remove('hidden');message.style.background='#eaf5e4';message.style.color='#245b22';}catch(saveError){message.textContent='Não foi possível salvar seus dados: '+(saveError.message||'erro desconhecido')+'. Verifique sua conexão ou as permissões da sua conta e tente novamente.';message.classList.remove('hidden');}finally{submit.disabled=false;submit.textContent='Salvar meus dados';}});$('#profileRetry').onclick=loadAccountProfile;ensurePushControls(box,user);void loadAdminPanelAccess(user);}catch(error){box.innerHTML='<h3>Não foi possível carregar sua conta</h3><p class="profile-message">'+esc(error.message||'Ocorreu um erro ao consultar seu perfil.')+'</p><div class="profile-actions"><button class="btn" id="profileRetry" type="button">Tentar novamente</button><button class="btn alt" id="profileLogout" type="button">Sair da conta</button></div>';$('#profileRetry').onclick=loadAccountProfile;$('#profileLogout').onclick=async()=>{try{await cleanupPushAndSignOut();currentUser=null;updateAccountUI();$('#accountModal').classList.remove('open');$('#accountProfile').classList.add('hidden');}catch(error){console.warn('Falha ao sair:',error);}};void loadAdminPanelAccess(currentUser);}}
 async function loadAdminPanelAccess(user){const box=$('#accountProfile');box.querySelector('#adminPanelLink')?.remove();if(!user||user.is_anonymous)return;try{const {data,error}=await supabase.from('admin_users').select('user_id').eq('user_id',user.id).maybeSingle();if(error||!data||currentUser?.id!==user.id)return;const button=document.createElement('button');button.type='button';button.id='adminPanelLink';button.className='btn alt full';button.textContent='Painel administrativo';button.addEventListener('click',()=>{location.href='/painel.html';});box.appendChild(button);}catch(error){console.warn('Não foi possível verificar o acesso ao painel:',error);}}
 
 function openAccountScreen(){if($('#accountModal').classList.contains('open')&&($('#accountProfile').classList.contains('hidden')===false||!currentUser))return;if(currentUser){authMode='profile';authCaptcha.setRequired(false);updateAccountUI();$('#authForm').classList.add('hidden');$('#accountProfile').classList.remove('hidden');$('#myOrders').classList.add('hidden');$('#logoutBtn').classList.remove('hidden');openPreviewModal('accountModal');void loadAccountProfile();}else{authMode='login';$('#accountProfile').classList.add('hidden');$('#authForm').classList.remove('hidden');authCaptcha.setRequired(true);$('#authEmail').disabled=false;$('#authPassword').classList.remove('hidden');$('#authSubmit').classList.remove('hidden');$('#authToggle').classList.remove('hidden');$('#forgotBtn').classList.remove('hidden');updateAccountUI();openPreviewModal('accountModal');}}
-$('#accountBtn').onclick=openAccountScreen;$('#myOrdersBtn').onclick=async()=>{const box=$('#myOrders');box.classList.toggle('hidden');if(!box.classList.contains('hidden'))await loadMyOrders();};$('#accountClose').onclick=()=>$('#accountModal').classList.remove('open');$('#accountBackCatalog').onclick=()=>{$('#accountModal').classList.remove('open');showAppPage('Home');};$('#authToggle').onclick=()=>{authMode=authMode==='signup'?'login':'signup';$('#authNameWrap').classList.toggle('hidden',authMode!=='signup');$('#accountTitle').textContent=authMode==='signup'?'Criar conta':'Entre na sua conta';$('#loginIntro').textContent=authMode==='signup'?'Informe seus dados para criar sua conta.':'Use seu e-mail e senha, como hoje.';$('#authSubmit').textContent=authMode==='signup'?'Criar conta':'Entrar';$('#authToggle').textContent=authMode==='signup'?'Já tenho conta — entrar':'Criar conta';$('#authPassword').minLength=authMode==='signup'?8:0;$('#authPassword').autocomplete=authMode==='signup'?'new-password':'current-password';authCaptcha.setRequired(authMode==='login'||!currentUser?.is_anonymous);if(authCaptcha.isRequired())authCaptcha.init();};$('#forgotBtn').onclick=()=>{location.href='./recuperar-senha.html';};$('#browseFirst').onclick=()=>{closeAuthScreen();showAppPage('Products');};function closeAuthScreen(){document.body.classList.remove('preview-modal-open');$('#accountModal').classList.remove('open');}$('#logoutBtn').onclick=async()=>{await supabase.auth.signOut();currentUser=null;$('#myOrders').classList.add('hidden');updateAccountUI();$('#accountModal').classList.remove('open');};const authCaptcha=window.FeiraTurnstile.create({containerId:'authTurnstile',buttonId:'authSubmit',messageId:'authCaptchaMessage',retryButtonId:'authCaptchaRetry'});
+$('#accountBtn').onclick=openAccountScreen;$('#myOrdersBtn').onclick=async()=>{const box=$('#myOrders');box.classList.toggle('hidden');if(!box.classList.contains('hidden'))await loadMyOrders();};$('#accountClose').onclick=()=>$('#accountModal').classList.remove('open');$('#accountBackCatalog').onclick=()=>{$('#accountModal').classList.remove('open');showAppPage('Home');};$('#authToggle').onclick=()=>{authMode=authMode==='signup'?'login':'signup';$('#authNameWrap').classList.toggle('hidden',authMode!=='signup');$('#accountTitle').textContent=authMode==='signup'?'Criar conta':'Entre na sua conta';$('#loginIntro').textContent=authMode==='signup'?'Informe seus dados para criar sua conta.':'Use seu e-mail e senha, como hoje.';$('#authSubmit').textContent=authMode==='signup'?'Criar conta':'Entrar';$('#authToggle').textContent=authMode==='signup'?'Já tenho conta — entrar':'Criar conta';$('#authPassword').minLength=authMode==='signup'?8:0;$('#authPassword').autocomplete=authMode==='signup'?'new-password':'current-password';authCaptcha.setRequired(authMode==='login'||!currentUser?.is_anonymous);if(authCaptcha.isRequired())authCaptcha.init();};$('#forgotBtn').onclick=()=>{location.href='./recuperar-senha.html';};$('#browseFirst').onclick=()=>{closeAuthScreen();showAppPage('Products');};function closeAuthScreen(){document.body.classList.remove('preview-modal-open');$('#accountModal').classList.remove('open');}$('#logoutBtn').onclick=async()=>{try{await cleanupPushAndSignOut();currentUser=null;$('#myOrders').classList.add('hidden');updateAccountUI();$('#accountModal').classList.remove('open');}catch(error){console.warn('Falha ao sair:',error);}};const authCaptcha=window.FeiraTurnstile.create({containerId:'authTurnstile',buttonId:'authSubmit',messageId:'authCaptchaMessage',retryButtonId:'authCaptchaRetry'});
 $('#authForm').addEventListener('focusin',()=>{if(authCaptcha.isRequired())authCaptcha.init();});
 $('#authForm').addEventListener('submit',async e=>{
  e.preventDefault();
@@ -993,7 +1137,8 @@ $('#authForm').addEventListener('submit',async e=>{
   if(captchaRequired)authCaptcha.reset();else btn.disabled=false;
   btn.textContent=originalButtonText;
  }
-});let profileLoadTimer=null;supabase.auth.onAuthStateChange((event)=>{if(['TOKEN_REFRESHED','INITIAL_SESSION'].includes(event))return;clearTimeout(profileLoadTimer);profileLoadTimer=setTimeout(async()=>{await loadProfile();resumeCheckoutIfReady()},150);});
+});let profileLoadTimer=null;supabase.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_IN'&&session?.user)void syncPushSubscription(session.user);if(['TOKEN_REFRESHED','INITIAL_SESSION'].includes(event))return;clearTimeout(profileLoadTimer);profileLoadTimer=setTimeout(async()=>{await loadProfile();resumeCheckoutIfReady()},150);});
+supabase.auth.getSession().then(({data,error})=>{if(!error&&data?.session?.user)void syncPushSubscription(data.session.user);}).catch(error=>console.warn('Falha ao conferir inscrição push inicial:',error));
 $('#cpf').addEventListener('input',e=>{const d=e.target.value.replace(/\D/g,'').slice(0,11);e.target.value=d.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');e.target.setCustomValidity(d.length===11&&!isValidCpf(d)?'Informe um CPF válido.':'');});$('#cpf').addEventListener('blur',e=>{if($('#payment').value==='pix'&&!isValidCpf(e.target.value))e.target.setCustomValidity('Informe um CPF válido.');else e.target.setCustomValidity('');});$('#address').addEventListener('input',e=>{const address=e.target.value.trim();$('#addressChoiceText').textContent=address?'Casa · '+address:'Informe seu endereço';});let assistantHistory=[];
 let assistantProposal=[];
 let assistantMissingName='';
