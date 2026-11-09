@@ -21,7 +21,7 @@ jobs:
           import os from 'node:os';
           import path from 'node:path';
           import { spawnSync } from 'node:child_process';
-          const files = ['admin.html', 'loja.html', 'recuperar-senha.html'];
+          const files = ['loja.html', 'recuperar-senha.html'];
           let index = 0;
           for (const file of files) {
             const html = fs.readFileSync(file, 'utf8');
