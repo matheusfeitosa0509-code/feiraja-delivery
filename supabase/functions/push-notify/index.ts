@@ -193,6 +193,9 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  let eventWasInserted = false;
+  let successfulSends = 0;
+
   try {
     const { data: order, error: orderError } = await supabase
       .from("orders")
@@ -221,6 +224,7 @@ Deno.serve(async (req: Request) => {
     if (!insertedEvent) {
       return jsonResponse(200, { ok: true, skipped: "DUPLICATE" });
     }
+    eventWasInserted = true;
 
     let recipientUserIds: string[] = [];
 
@@ -262,7 +266,6 @@ Deno.serve(async (req: Request) => {
       tag: `feira-${kind}-${order_id}-${new_status}`,
     });
 
-    let successfulSends = 0;
     let serverSideSendErrors = false;
 
     for (const subscriptionRow of subscriptions) {
@@ -316,6 +319,17 @@ Deno.serve(async (req: Request) => {
       attempted: subscriptions.length,
     });
   } catch {
+    // If processing failed before any delivery succeeded, release the idempotency
+    // claim so a later retry can process the event again.
+    if (eventWasInserted && successfulSends === 0) {
+      const { error: cleanupError } = await supabase
+        .from("push_events")
+        .delete()
+        .eq("order_id", order_id)
+        .eq("kind", kind)
+        .eq("status", new_status);
+      if (cleanupError) console.error("push_event_cleanup_failed");
+    }
     // Deliberately omit exception details: they may contain provider or request data.
     console.error("push_notification_processing_failed");
     return jsonResponse(500, { error: "PUSH_PROCESSING_FAILED" });
