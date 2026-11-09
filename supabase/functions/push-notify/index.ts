@@ -29,23 +29,45 @@ const KNOWN_STATUSES = new Set([
   "Saiu para Entrega",
   "Entregue",
   "Cancelada",
-  "Reembolsado",
-  "Contestado",
+  "Pagamento cancelado",
+  "Pagamento em análise",
+  "Pagamento recusado",
+  "Pagamento reembolsado",
+  "Pagamento contestado",
+  "Preparando pedido",
+  "Saiu para entrega",
+  "Recebido",
+  "Pago",
+  "Concluído",
+  "Concluido",
+  "Cancelado",
+  "received",
 ]);
 
 const CUSTOMER_MESSAGES: Record<string, string> = {
   "Pedido Recebido": "Recebemos seu pedido.",
+  "Recebido": "Recebemos seu pedido.",
+  "received": "Recebemos seu pedido.",
   "Pagamento Pendente": "Aguardando a confirmação do pagamento.",
   "Aguardando Pagamento Pix": "Aguardando a confirmação do pagamento.",
+  "Pagamento em análise": "Aguardando a confirmação do pagamento.",
   "Pagamento Confirmado": "Pagamento confirmado!",
+  "Pago": "Pagamento confirmado!",
   "Preparando": "Estamos separando seu pedido.",
+  "Preparando pedido": "Estamos separando seu pedido.",
   "Pronto para Retirada": "Seu pedido está pronto para retirada.",
   "Saiu para Entrega": "Seu pedido saiu para entrega.",
+  "Saiu para entrega": "Seu pedido saiu para entrega.",
   "Entregue": "Pedido entregue. Obrigado!",
+  "Concluído": "Pedido entregue. Obrigado!",
+  "Concluido": "Pedido entregue. Obrigado!",
   "Cancelada": "Seu pedido foi cancelado.",
-  "Reembolsado": "Houve uma atualização do seu pedido.",
-  "Contestado": "Houve uma atualização do seu pedido.",
-]);
+  "Cancelado": "Seu pedido foi cancelado.",
+  "Pagamento cancelado": "Seu pedido foi cancelado.",
+  "Pagamento recusado": "O pagamento foi recusado.",
+  "Pagamento reembolsado": "Houve uma atualização do seu pedido.",
+  "Pagamento contestado": "Houve uma atualização do seu pedido.",
+};
 
 const jsonResponse = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), {
@@ -213,16 +235,18 @@ Deno.serve(async (req: Request) => {
 
     const { data: insertedEvent, error: eventError } = await supabase
       .from("push_events")
-      .upsert(
-        { order_id, kind, status: new_status },
-        { onConflict: "order_id,kind,status", ignoreDuplicates: true },
-      )
+      .insert({ order_id, kind, status: new_status })
       .select("id")
-      .maybeSingle();
+      .single();
 
-    if (eventError) throw new Error("EVENT_INSERT_FAILED");
+    if (eventError) {
+      if (eventError.code === "23505") {
+        return jsonResponse(200, { ok: true, skipped: "DUPLICATE" });
+      }
+      return jsonResponse(500, { error: "EVENT_INSERT_FAILED" });
+    }
     if (!insertedEvent) {
-      return jsonResponse(200, { ok: true, skipped: "DUPLICATE" });
+      return jsonResponse(500, { error: "EVENT_INSERT_FAILED" });
     }
     eventWasInserted = true;
 
@@ -279,7 +303,7 @@ Deno.serve(async (req: Request) => {
 
       try {
         await webpush.sendNotification(subscription, notificationPayload, {
-          TTL: 60,
+          TTL: 3600,
         });
         successfulSends++;
       } catch (error) {
