@@ -196,7 +196,8 @@ function tableHtml(rows, mode) {
 function renderInactive(rows) {
   if (!rows?.length) return '<p class="empty">—</p>';
   return rows.map((row) => {
-    const phone = String(row.customer_phone || '').replace(/[^0-9]/g, '');
+    let phone = String(row.customer_phone || '').replace(/[^0-9]/g, '');
+    if (phone.length === 10 || phone.length === 11) phone = '55' + phone;
     const contact = [
       row.customer_email ? '<small>E-mail: ' + esc(row.customer_email) + '</small>' : '',
       row.customer_phone ? '<small>Telefone: ' + esc(row.customer_phone) + '</small>' : ''
@@ -265,8 +266,8 @@ async function loadDashboard() {
     });
     if (error) {
       if (error.code === '42501' || /administradores|permission denied/i.test(error.message || '')) {
-        message.textContent = 'Acesso negado. Esta conta não está cadastrada como administradora.';
-        message.classList.remove('hidden');
+        $('loginMessage').textContent = 'Acesso negado. Esta conta não é administradora.';
+        message.classList.add('hidden');
         $('dashboard').classList.add('hidden');
         await db.auth.signOut();
         $('login').classList.remove('hidden');
