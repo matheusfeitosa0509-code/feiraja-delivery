@@ -275,6 +275,7 @@ Deno.serve(async (req: Request) => {
     const requestedItems = body?.items;
     const paymentMethod = String(body?.paymentMethod || "pix").toLowerCase();
     const asaasEnabled = Deno.env.get("ASAAS_ENABLED") === "true";
+    const deliveryEnabled = Deno.env.get("DELIVERY_ENABLED") === "true";
     const asaasApiKey = asaasEnabled ? (Deno.env.get("ASAAS_API_KEY") || "") : "";
     if (!["pix", "cash", "card_on_delivery"].includes(paymentMethod)) return json({ error: "Forma de pagamento inválida." }, 400);
     if (paymentMethod === "pix" && (asaasEnabled ? !asaasApiKey : !mpToken)) {
@@ -288,10 +289,18 @@ Deno.serve(async (req: Request) => {
     const cpf = paymentMethod === "pix" ? String(customer.cpf ?? "").replace(/\D/g, "").slice(0, asaasEnabled ? 14 : 11) : "";
     const validPixDocument = asaasEnabled ? isValidCpfOrCnpj(cpf) : isValidCpf(cpf);
     const email = String(customer.email ?? "").trim().toLowerCase().slice(0, 254);
-    const deliveryType = customer.deliveryType === "pickup" ? "pickup" : "delivery";
-    const address = deliveryType === "pickup" ? "Retirada na Feira" : String(customer.address ?? "").trim().slice(0, 300);
-    if (!name || phone.replace(/\D/g, "").length < 8 || (paymentMethod === "pix" && (!validPixDocument || !/^\S+@\S+\.\S+$/.test(email))) || (email && !/^\S+@\S+\.\S+$/.test(email)) || (deliveryType === "delivery" && !address)) {
-      return json({ error: "Confira nome, telefone, CPF, e-mail e endereço de entrega." }, 400);
+    const requestedDeliveryType = String(customer.deliveryType ?? "");
+    const deliveryType = requestedDeliveryType === "pickup_uber" ? "pickup_uber" :
+      requestedDeliveryType === "pickup_store" || requestedDeliveryType === "pickup" ? "pickup_store" : "delivery";
+    if (deliveryType === "delivery" && !deliveryEnabled) {
+      return json({ error: "Entrega própria desativada. Escolha retirada na loja ou retirada com Uber." }, 400);
+    }
+    const address = "Av. Lourenço da Silva Braga, 700 (em frente à feira)";
+    const pickupCode = deliveryType === "pickup_uber"
+      ? String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, "0")
+      : null;
+    if (!name || phone.replace(/\D/g, "").length < 8 || (paymentMethod === "pix" && (!validPixDocument || !/^\S+@\S+\.\S+$/.test(email))) || (email && !/^\S+@\S+\.\S+$/.test(email))) {
+      return json({ error: "Confira nome, telefone, CPF e e-mail." }, 400);
     }
     const accountEmail = String(authData.user.email || "").trim().toLowerCase();
     if (paymentMethod === "pix" && accountEmail && email !== accountEmail) {
@@ -419,8 +428,8 @@ Deno.serve(async (req: Request) => {
     }
 
     const subtotal = subtotalCents / 100;
-    if (deliveryType === "delivery" && subtotalCents < 3000) return json({ error: "Pedido mínimo de R$ 30,00 em produtos para entrega em casa." }, 400);
-    const deliveryFeeCents = deliveryType === "delivery" ? 1500 : 0;
+    if (subtotalCents < 3000) return json({ error: "Pedido mínimo de R$ 30,00 em produtos para retirada." }, 400);
+    const deliveryFeeCents = deliveryType === "delivery" && deliveryEnabled ? 1500 : 0;
     const deliveryFee = deliveryFeeCents / 100;
     const totalCents = subtotalCents + deliveryFeeCents;
     const total = totalCents / 100;
@@ -462,7 +471,8 @@ Deno.serve(async (req: Request) => {
         id: orderId, user_id: orderUserId, customer_name: name, customer_phone: phone,
         customer_cpf: null, customer_email: email || null, customer_address: address,
         delivery_type: deliveryType,
-        payment_method: paymentMethod === "cash" ? "Dinheiro na entrega" : "Cartão na entrega",
+        payment_method: paymentMethod === "cash" ? "Dinheiro na retirada" : "Cartão na retirada",
+        pickup_code: pickupCode,
         items, subtotal, delivery_fee: deliveryFee, total, status: "Pedido Recebido",
         market_checklist: { notes: String(body?.notes ?? "").trim().slice(0, 1000) },
       };
@@ -483,6 +493,7 @@ Deno.serve(async (req: Request) => {
         id: createdOrder.order_id,
         status: createdOrder.order_status,
         total: createdOrder.order_total,
+        pickupCode,
       };
       return json({ order: savedOrder, id: savedOrder.id, paymentStatus: savedOrder.status });
     }
@@ -491,7 +502,7 @@ Deno.serve(async (req: Request) => {
     const draftOrder = {
       id: orderId, user_id: orderUserId, customer_name: name, customer_phone: phone,
       customer_cpf: cpf, customer_email: email, customer_address: address,
-      delivery_type: deliveryType, payment_method: asaasEnabled ? "Asaas Pix" : "Mercado Pago Pix",
+      delivery_type: deliveryType, pickup_code: pickupCode, payment_method: asaasEnabled ? "Asaas Pix" : "Mercado Pago Pix",
       ...(asaasEnabled ? { payment_provider: "asaas" } : {}),
       items, subtotal, delivery_fee: deliveryFee, total, status: "Pagamento Pendente",
       market_checklist: { items: items.map((item: any) => ({ id: item.id, name: item.name, qty: item.qty, bought: false })), notes: String(body?.notes ?? "").trim().slice(0, 500) },
@@ -842,7 +853,7 @@ Deno.serve(async (req: Request) => {
       }
 
       return json({
-        order: savedAsaasOrder,
+        order: { ...savedAsaasOrder, pickupCode },
         paymentId: asaasPaymentId,
         qrCode,
         qrCodeBase64,
@@ -902,7 +913,7 @@ Deno.serve(async (req: Request) => {
     const { data: finalOrder } = await db.from("orders").select("id,status,total").eq("id", orderId).single();
     const responseOrder = finalOrder || savedOrder;
     return json({
-      order: responseOrder,
+      order: { ...responseOrder, pickupCode },
       paymentId: String(payment.id),
       qrCode: tx.qr_code,
       qrCodeBase64: tx.qr_code_base64 ?? null,
