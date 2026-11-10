@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{color-scheme:light;--green:#176b3a;--ink:#173525;--muted:#68796e;--bg:#f3f7f1;--line:#e2ebe0;--white:#fff;--soft:#e7f3e5;--shadow:0 8px 24px rgba(23,53,37,.07}
+:root{color-scheme:light;--green:#176b3a;--ink:#173525;--muted:#68796e;--bg:#f3f7f1;--line:#e2ebe0;--white:#fff;--soft:#e7f3e5;--shadow:0 8px 24px rgba(23,53,37,.07)
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px 'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif;line-height:1.5}
 .wrap{width:100%;max-width:1120px;margin:auto;padding:0 16px 36px}
@@ -61,7 +61,7 @@ th{background:#f4f8f2;color:#425a49}
 <main class="wrap">
 <header>
   <div><h1>Clientes e vendas</h1><p class="subtitle">Feira On Delivery · indicadores administrativos</p></div>
-  <a class="back" href="./painel.html">← Voltar ao painel</a>
+  <div class="actions"><button id="logout" type="button" class="secondary">Sair</button><a class="back" href="./painel.html">← Voltar ao painel</a></div>
 </header>
 
 <section id="login" class="card login">
@@ -309,6 +309,7 @@ $('loginForm').addEventListener('submit', async (event) => {
   }
 });
 $('refresh').addEventListener('click', loadDashboard);
+$('logout').addEventListener('click', async () => { await db.auth.signOut(); });
 $('period').addEventListener('change', loadDashboard);
 $('logout')?.addEventListener('click', async () => { await db.auth.signOut(); });
 
@@ -317,13 +318,10 @@ if (sessionData?.session) {
   $('login').classList.add('hidden');
   await loadDashboard();
 }
-db.auth.onAuthStateChange((event, session) => {
+db.auth.onAuthStateChange((event) => {
   if (event === 'SIGNED_OUT') {
     $('dashboard').classList.add('hidden');
     $('login').classList.remove('hidden');
-  } else if (event === 'SIGNED_IN' && session) {
-    $('login').classList.add('hidden');
-    void loadDashboard();
   }
 });
 </script>
