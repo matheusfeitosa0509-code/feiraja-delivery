@@ -22,8 +22,8 @@ BEGIN
   EXECUTE v_definition;
 
   v_definition := pg_get_functiondef('public.push_orders_notify()'::regprocedure);
-  v_definition := replace(v_definition, '''Dinheiro na entrega''', '''Dinheiro na retirada''');
-  v_definition := replace(v_definition, '''Cartão na entrega''', '''Cartão na retirada''');
+  v_definition := replace(v_definition, '''Dinheiro na entrega''', '''Dinheiro na retirada'', ''Dinheiro na entrega''');
+  v_definition := replace(v_definition, '''Cartão na entrega''', '''Cartão na retirada'', ''Cartão na entrega''');
   IF position('Dinheiro na retirada' in v_definition) = 0 THEN
     RAISE EXCEPTION 'Não foi possível atualizar push_orders_notify';
   END IF;
