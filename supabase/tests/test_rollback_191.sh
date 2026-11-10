@@ -163,8 +163,9 @@ function setup_db() {
   dropdb --if-exists "$db" >/dev/null 2>&1 || true
   createdb "$db"
   export PGDATABASE="$db"
-  psql -v ON_ERROR_STOP=1 -f "$SCHEMA" >"$TMP/\${db}_schema.log" 2>&1
-  psql -v ON_ERROR_STOP=1 -f "$MIG" >"$TMP/\${db}_migration.log" 2>&1
+  psql -v ON_ERROR_STOP=1 -f "$SCHEMA" >"$TMP/${db}_schema.log" 2>&1
+  BASELINE_HASH="$(original_hashes)"
+  psql -v ON_ERROR_STOP=1 -f "$MIG" >"$TMP/${db}_migration.log" 2>&1
 }
 function original_hashes() {
   psql -Atqc "SELECT md5(pg_get_functiondef('public.create_order_with_rate_limit(jsonb)'::regprocedure)) || ':' || md5(pg_get_functiondef('public.push_orders_notify()'::regprocedure))"
@@ -183,7 +184,7 @@ function assert_functions_original() {
 
 echo "CENÁRIO A: reversão com pickup_code vazio"
 setup_db "$DB_A"
-ORIGINAL_A="$(original_hashes)"
+ORIGINAL_A="$BASELINE_HASH"
 psql -v ON_ERROR_STOP=1 -f "$TMP/rollback.sql" >"$TMP/a_rollback.log" 2>&1
 if psql -Atqc "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='pickup_code'" | grep -qx '0'; then
   echo "PASS: coluna pickup_code removida"
@@ -199,7 +200,7 @@ assert_functions_original "$ORIGINAL_A"
 
 echo "CENÁRIO B: preservar código Uber existente"
 setup_db "$DB_B"
-ORIGINAL_B="$(original_hashes)"
+ORIGINAL_B="$BASELINE_HASH"
 psql -v ON_ERROR_STOP=1 <<'SQL' >"$TMP/b_insert.log" 2>&1
 INSERT INTO public.orders(
  id,customer_name,customer_phone,customer_address,delivery_type,
@@ -229,7 +230,7 @@ assert_functions_original "$ORIGINAL_B"
 
 echo "CENÁRIO D: erro intencional dentro da transação de reversão"
 setup_db "$DB_D"
-ORIGINAL_D="$(original_hashes)"
+MIGRATED_D="$(original_hashes)"
 sed '/^COMMIT;$/i SELECT 1 / 0;' "$TMP/rollback.sql" >"$TMP/rollback_forced_error.sql"
 set +e
 psql -v ON_ERROR_STOP=1 -f "$TMP/rollback_forced_error.sql" >"$TMP/d_forced_error.log" 2>&1
@@ -248,6 +249,14 @@ fi
 if ! psql -Atqc "SELECT count(*) FROM pg_constraint WHERE conrelid='public.orders'::regclass AND conname='orders_pickup_code_format_check'" | grep -qx '1'; then
   echo "FAIL: rollback transacional não restaurou a constraint"; exit 1
 fi
-assert_functions_original "$ORIGINAL_D"
+
+AFTER_ERROR="$(original_hashes)"
+if [[ "$AFTER_ERROR" != "$MIGRATED_D" ]]; then
+  echo "FAIL: funções mudaram apesar do rollback transacional"
+  echo "expected=$MIGRATED_D"
+  echo "actual=$AFTER_ERROR"
+  exit 1
+fi
+echo "PASS: funções permaneceram exatamente no estado pré-reversão"
 echo "PASS: erro reverteu integralmente a transação; coluna, constraint e funções da migration permaneceram"
 echo "RESULTADO: PASS todos os cenários A, B e D"
