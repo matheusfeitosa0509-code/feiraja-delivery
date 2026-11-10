@@ -111,8 +111,9 @@ Deno.serve(async (req: Request) => {
   const event = String((body as any).event || "");
   const isRefundEvent = event === "PAYMENT_REFUNDED";
   const isChargebackEvent = event === "PAYMENT_CHARGEBACK_REQUESTED";
+  const isOverdueEvent = event === "PAYMENT_OVERDUE";
   const isPaymentConfirmationEvent = event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED";
-  if (!isPaymentConfirmationEvent && !isRefundEvent && !isChargebackEvent) {
+  if (!isPaymentConfirmationEvent && !isRefundEvent && !isChargebackEvent && !isOverdueEvent) {
     // Other Asaas events are acknowledged but do not change order state in this implementation.
     return json({ received: true, ignored: true });
   }
@@ -237,6 +238,8 @@ Deno.serve(async (req: Request) => {
     ? verifiedStatus === "REFUNDED"
     : isChargebackEvent
     ? ["RECEIVED", "CONFIRMED"].includes(verifiedStatus) && verifiedChargebackStatus === "REQUESTED"
+    : isOverdueEvent
+    ? verifiedStatus === "OVERDUE"
     : ["RECEIVED", "CONFIRMED"].includes(verifiedStatus);
   if (String(verifiedPayment?.id || "") !== paymentId ||
       String(verifiedPayment?.externalReference || "") !== externalReference ||
@@ -253,6 +256,26 @@ Deno.serve(async (req: Request) => {
         !Number.isFinite(verifiedCents) || verifiedCents !== expectedCents) ? "valor_divergente" : "dados_divergentes";
     console.warn("Webhook Asaas ignorado após consulta bem-sucedida: divergência permanente.", { mismatch });
     return json({ received: true, ignored: true, reason: "divergencia_permanente" });
+  }
+
+  if (isOverdueEvent) {
+    if (normalizedStatus !== "pagamento pendente") {
+      return json({ received: true, ignored: true, reason: "pedido_nao_pendente_ou_status_preservado" });
+    }
+    const { data: expiredOrder, error: overdueUpdateError } = await db.from("orders")
+      .update({ status: "Cancelada" })
+      .eq("id", order.id)
+      .eq("payment_provider", "asaas")
+      .eq("payment_id", paymentId)
+      .eq("status", order.status)
+      .select("id")
+      .maybeSingle();
+    if (overdueUpdateError) {
+      console.error("Falha ao registrar expiração de cobrança Asaas.");
+      return json({ error: "Falha ao atualizar pedido." }, 500);
+    }
+    if (!expiredOrder) return json({ received: true, ignored: true });
+    return json({ received: true, expired: true });
   }
 
   if (isRefundEvent || isChargebackEvent) {
