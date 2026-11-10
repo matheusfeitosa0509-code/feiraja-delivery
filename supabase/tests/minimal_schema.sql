@@ -1,9 +1,13 @@
 -- Ordem 197: esquema mínimo para PostgreSQL 17.
 -- Tudo abaixo existe SOMENTE no banco efêmero do GitHub Actions.
 -- STUB DE TESTE: papéis, auth, vault, net, HMAC e verificação de admin.
-CREATE ROLE anon NOLOGIN;
-CREATE ROLE authenticated NOLOGIN;
-CREATE ROLE service_role NOLOGIN;
+DO $roles$
+BEGIN
+ IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='anon') THEN CREATE ROLE anon NOLOGIN; END IF;
+ IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
+ IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN; END IF;
+END
+$roles$;
 CREATE SCHEMA auth;
 CREATE SCHEMA vault;
 CREATE SCHEMA net;
