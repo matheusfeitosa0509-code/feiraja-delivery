@@ -44,7 +44,7 @@ BEGIN
         CASE WHEN o.user_id IS NOT NULL THEN 'user:' || o.user_id::text END,
         CASE WHEN NULLIF(lower(btrim(o.customer_email)), '') IS NOT NULL
           THEN 'email:' || lower(btrim(o.customer_email)) END,
-        CASE WHEN COALESCE(NULLIF(btrim(cp.phone), ''), NULLIF(btrim(o.customer_phone), '')) IS NOT NULL
+        CASE WHEN NULLIF(regexp_replace(COALESCE(NULLIF(btrim(cp.phone), ''), NULLIF(btrim(o.customer_phone), '')), '[^0-9]', '', 'g'), '') IS NOT NULL
           THEN 'phone:' || regexp_replace(COALESCE(NULLIF(btrim(cp.phone), ''), NULLIF(btrim(o.customer_phone), '')), '[^0-9]', '', 'g') END,
         'order:' || o.id
       ) AS customer_key,
