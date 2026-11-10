@@ -88,19 +88,6 @@ BEGIN
     WHERE NOT is_canceled
     GROUP BY customer_key
   ),
-  paid_customer_rollup AS (
-    SELECT
-      customer_key,
-      (array_agg(customer_name ORDER BY created_at DESC NULLS LAST))[1] AS customer_name,
-      (array_agg(customer_email ORDER BY created_at DESC NULLS LAST))[1] AS customer_email,
-      (array_agg(customer_phone ORDER BY created_at DESC NULLS LAST))[1] AS customer_phone,
-      count(*)::integer AS order_count,
-      COALESCE(sum(total), 0)::numeric AS total_spent,
-      max(created_at) AS last_order_at
-    FROM base_orders
-    WHERE is_paid
-    GROUP BY customer_key
-  ),
   filtered_orders AS (
     SELECT * FROM base_orders
     WHERE NOT is_canceled AND created_at >= p_start AND created_at < p_end
