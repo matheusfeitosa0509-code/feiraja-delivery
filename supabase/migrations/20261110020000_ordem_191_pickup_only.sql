@@ -19,7 +19,7 @@ BEGIN
   v_definition := replace(v_definition,
     '    p_order->>''delivery_type'',' || chr(10) || '    p_order->>''payment_method'',',
     '    p_order->>''delivery_type'',' || chr(10) || '    p_order->>''pickup_code'',' || chr(10) || '    p_order->>''payment_method'',');
-  IF position('pickup_code' in v_definition) = 0 THEN
+  IF position('p_order->>''pickup_code''' in v_definition) = 0 THEN
     RAISE EXCEPTION 'Não foi possível preparar create_order_with_rate_limit';
   END IF;
   EXECUTE v_definition;
@@ -27,7 +27,7 @@ BEGIN
   v_definition := pg_get_functiondef('public.push_orders_notify()'::regprocedure);
   v_definition := replace(v_definition, '''Dinheiro na entrega''', '''Dinheiro na retirada'', ''Dinheiro na entrega''');
   v_definition := replace(v_definition, '''Cartão na entrega''', '''Cartão na retirada'', ''Cartão na entrega''');
-  IF position('Dinheiro na retirada' in v_definition) = 0 THEN
+  IF position('Dinheiro na retirada' in v_definition) = 0 OR position('Cartão na retirada' in v_definition) = 0 THEN
     RAISE EXCEPTION 'Não foi possível atualizar push_orders_notify';
   END IF;
   EXECUTE v_definition;
