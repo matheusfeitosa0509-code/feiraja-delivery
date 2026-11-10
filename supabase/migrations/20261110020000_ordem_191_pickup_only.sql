@@ -8,29 +8,75 @@ CHECK (
   OR (delivery_type <> 'pickup_uber' AND pickup_code IS NULL)
 );
 
-DO $$
+DO $
 DECLARE
   v_definition text;
+  v_old text;
+  v_new text;
 BEGIN
-  v_definition := pg_get_functiondef('public.create_order_with_rate_limit(jsonb)'::regprocedure);
-  v_definition := replace(v_definition,
-    '    delivery_type,' || chr(10) || '    payment_method,',
-    '    delivery_type,' || chr(10) || '    pickup_code,' || chr(10) || '    payment_method,');
-  v_definition := replace(v_definition,
-    '    p_order->>''delivery_type'',' || chr(10) || '    p_order->>''payment_method'',',
-    '    p_order->>''delivery_type'',' || chr(10) || '    p_order->>''pickup_code'',' || chr(10) || '    p_order->>''payment_method'',');
-  IF position('p_order->>''pickup_code''' in v_definition) = 0 THEN
-    RAISE EXCEPTION 'Não foi possível preparar create_order_with_rate_limit';
+  v_definition := pg_get_functiondef(
+    'public.create_order_with_rate_limit(jsonb)'::regprocedure
+  );
+
+  v_old := '    delivery_type,' || chr(10) || '    payment_method,';
+  v_new := '    delivery_type,' || chr(10) ||
+           '    pickup_code,' || chr(10) || '    payment_method,';
+  IF position(v_old IN v_definition) = 0 THEN
+    RAISE EXCEPTION
+      'Falha no replace 1/4: lista de colunas de create_order_with_rate_limit não encontrada';
   END IF;
+  v_definition := replace(v_definition, v_old, v_new);
+  IF position(v_new IN v_definition) = 0 THEN
+    RAISE EXCEPTION
+      'Falha no replace 1/4: lista de colunas de create_order_with_rate_limit não foi inserida';
+  END IF;
+
+  v_old := '    p_order->>''delivery_type'',' || chr(10) ||
+           '    p_order->>''payment_method'',';
+  v_new := '    p_order->>''delivery_type'',' || chr(10) ||
+           '    p_order->>''pickup_code'',' || chr(10) ||
+           '    p_order->>''payment_method'',';
+  IF position(v_old IN v_definition) = 0 THEN
+    RAISE EXCEPTION
+      'Falha no replace 2/4: lista de valores de create_order_with_rate_limit não encontrada';
+  END IF;
+  v_definition := replace(v_definition, v_old, v_new);
+  IF position(v_new IN v_definition) = 0 THEN
+    RAISE EXCEPTION
+      'Falha no replace 2/4: lista de valores de create_order_with_rate_limit não foi inserida';
+  END IF;
+
   EXECUTE v_definition;
 
-  v_definition := pg_get_functiondef('public.push_orders_notify()'::regprocedure);
-  v_definition := replace(v_definition, '''Dinheiro na entrega''', '''Dinheiro na retirada'', ''Dinheiro na entrega''');
-  v_definition := replace(v_definition, '''Cartão na entrega''', '''Cartão na retirada'', ''Cartão na entrega''');
-  IF position('Dinheiro na retirada' in v_definition) = 0 OR position('Cartão na retirada' in v_definition) = 0 THEN
-    RAISE EXCEPTION 'Não foi possível atualizar push_orders_notify';
+  v_definition := pg_get_functiondef(
+    'public.push_orders_notify()'::regprocedure
+  );
+
+  v_old := '''Dinheiro na entrega''';
+  v_new := '''Dinheiro na retirada'', ''Dinheiro na entrega''';
+  IF position(v_old IN v_definition) = 0 THEN
+    RAISE EXCEPTION
+      'Falha no replace 3/4: rótulo Dinheiro na entrega não encontrado em push_orders_notify';
   END IF;
+  v_definition := replace(v_definition, v_old, v_new);
+  IF position(v_new IN v_definition) = 0 THEN
+    RAISE EXCEPTION
+      'Falha no replace 3/4: rótulo Dinheiro na retirada não foi inserido em push_orders_notify';
+  END IF;
+
+  v_old := '''Cartão na entrega''';
+  v_new := '''Cartão na retirada'', ''Cartão na entrega''';
+  IF position(v_old IN v_definition) = 0 THEN
+    RAISE EXCEPTION
+      'Falha no replace 4/4: rótulo Cartão na entrega não encontrado em push_orders_notify';
+  END IF;
+  v_definition := replace(v_definition, v_old, v_new);
+  IF position(v_new IN v_definition) = 0 THEN
+    RAISE EXCEPTION
+      'Falha no replace 4/4: rótulo Cartão na retirada não foi inserido em push_orders_notify';
+  END IF;
+
   EXECUTE v_definition;
 END
-$$;
+$;
 COMMIT;
