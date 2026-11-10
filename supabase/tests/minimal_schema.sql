@@ -140,7 +140,7 @@ BEGIN
   RETURN QUERY
   SELECT v_order_id, v_status, v_total;
 END;
-$function$
+$function$;
 
 
 -- Cópia literal de pg_get_functiondef da produção (consulta somente leitura).
@@ -249,7 +249,7 @@ EXCEPTION
     -- Push nunca pode impedir a gravação do pedido/status.
     RETURN NEW;
 END;
-$function$
+$function$;
 
 CREATE TRIGGER trg_push_orders_notify AFTER INSERT OR UPDATE ON public.orders
 FOR EACH ROW EXECUTE FUNCTION public.push_orders_notify();
