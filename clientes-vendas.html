@@ -80,7 +80,7 @@ th{background:#f4f8f2;color:#425a49}
 <main class="wrap">
 <header>
   <div><h1>Clientes e vendas</h1><p class="subtitle">Feira On Delivery · indicadores administrativos</p></div>
-  <div class="actions"><button id="logout" type="button" class="secondary">Sair</button><a class="back" href="./painel.html">← Voltar ao painel</a></div>
+  <div class="actions"><button id="logout" type="button" class="secondary">Sair</button><a class="back" href="https://www.feiraondelivery.com.br/painel.html">← Voltar ao painel</a></div>
 </header>
 
 <section id="login" class="card login">
@@ -89,7 +89,10 @@ th{background:#f4f8f2;color:#425a49}
   <form id="loginForm">
     <label for="email">E-mail</label><input id="email" type="email" autocomplete="username" required>
     <label for="password">Senha</label><input id="password" type="password" autocomplete="current-password" required>
-    <button id="loginButton" type="submit" style="width:100%;margin-top:16px">Entrar</button>
+    <div id="salesTurnstile" style="margin:12px 0;min-height:65px"></div>
+    <p id="salesCaptchaMessage" class="muted" role="status">Conclua a verificação ou envie sem token se ela falhar.</p>
+    <button id="salesCaptchaRetry" type="button" hidden class="secondary" style="margin-top:4px">Tentar de novo</button>
+    <button id="loginButton" type="submit" disabled style="width:100%;margin-top:16px">Entrar</button>
   </form>
   <p id="loginMessage" class="muted" role="status"></p>
 </section>
@@ -149,6 +152,7 @@ th{background:#f4f8f2;color:#425a49}
 </section>
 </main>
 
+<script src="./turnstile.js" defer></script>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.1';
 
@@ -158,6 +162,13 @@ const db = createClient(
   { auth: { persistSession: true, autoRefreshToken: true } }
 );
 const $ = (id) => document.getElementById(id);
+const salesCaptcha = window.FeiraTurnstile.create({
+  containerId: 'salesTurnstile',
+  buttonId: 'loginButton',
+  messageId: 'salesCaptchaMessage',
+  retryButtonId: 'salesCaptchaRetry'
+});
+$('loginForm').addEventListener('focusin', () => salesCaptcha.init());
 const money = (value) => value == null || !Number.isFinite(Number(value))
   ? '—'
   : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value));
@@ -364,21 +375,26 @@ async function loadDashboard() {
 $('loginForm').addEventListener('submit', async (event) => {
   event.preventDefault();
   const button = $('loginButton');
+  const captchaToken = salesCaptcha.getToken();
   $('loginMessage').textContent = '';
   button.disabled = true;
   button.textContent = 'Entrando…';
   try {
     const { error } = await db.auth.signInWithPassword({
       email: $('email').value.trim(),
-      password: $('password').value
+      password: $('password').value,
+      options: { ...(captchaToken ? { captchaToken } : {}) }
     });
     if (error) throw error;
     $('login').classList.add('hidden');
     await loadDashboard();
   } catch (error) {
-    $('loginMessage').textContent = 'Não foi possível entrar. Confira e-mail e senha.';
+    console.error('Falha no login de clientes e vendas:', error);
+    $('loginMessage').textContent = error?.code === 'captcha_failed'
+      ? 'A verificação de segurança não foi aceita. Conclua o Turnstile e tente novamente.'
+      : 'Não foi possível entrar. Confira e-mail e senha.';
   } finally {
-    button.disabled = false;
+    salesCaptcha.reset();
     button.textContent = 'Entrar';
   }
 });
