@@ -929,8 +929,7 @@ const $=s=>document.querySelector(s), money=n=>new Intl.NumberFormat('pt-BR',{st
 const MIN_ORDER_AMOUNT=30;
 
 const WHATSAPP_NUMBER='559294444989';
-const WHATSAPP_DISPLAY='+55 '+WHATSAPP_NUMBER.slice(2,4)+' '+WHATSAPP_NUMBER.slice(4,8)+'-'+WHATSAPP_NUMBER.slice(8);
-const LEGAL_DATA={responsavel:'Dr Alimentos',documento:'65.414.756/0001-22',whatsapp:WHATSAPP_DISPLAY,email:'feiraondelivery2026@gmail.com',provedorPix:'Asaas',provedor:'Supabase',endereco:'Consulte pelo WhatsApp',horarios:'6h às 13h',data:'06/11/2026',prazoHoras:'Consulte pelo WhatsApp'};
+const LEGAL_DATA={responsavel:'Dr Alimentos',documento:'65.414.756/0001-22',whatsapp:'+55 '+WHATSAPP_NUMBER.slice(2,4)+' '+WHATSAPP_NUMBER.slice(4,8)+'-'+WHATSAPP_NUMBER.slice(8),email:'feiraondelivery2026@gmail.com',provedorPix:'Asaas',provedor:'Supabase',endereco:'Consulte pelo WhatsApp',horarios:'6h às 13h',data:'06/11/2026',prazoHoras:'Consulte pelo WhatsApp'};
 document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('[data-whatsapp-link]').forEach(link=>{link.href='https://wa.me/'+WHATSAPP_NUMBER;link.textContent=LEGAL_DATA.whatsapp;});});
 const TERMOS_TEXTO=[
  {heading:'Última atualização',body:LEGAL_DATA.data},
