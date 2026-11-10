@@ -276,6 +276,7 @@ Deno.serve(async (req: Request) => {
     const paymentMethod = String(body?.paymentMethod || "pix").toLowerCase();
     const asaasEnabled = Deno.env.get("ASAAS_ENABLED") === "true";
     const deliveryEnabled = Deno.env.get("DELIVERY_ENABLED") === "true";
+    const MIN_ORDER_SUBTOTAL_CENTS = 3000;
     const asaasApiKey = asaasEnabled ? (Deno.env.get("ASAAS_API_KEY") || "") : "";
     if (!["pix", "cash", "card_on_delivery"].includes(paymentMethod)) return json({ error: "Forma de pagamento inválida." }, 400);
     if (paymentMethod === "pix" && (asaasEnabled ? !asaasApiKey : !mpToken)) {
@@ -430,7 +431,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const subtotal = subtotalCents / 100;
-    if (subtotalCents < 3000) return json({ error: "Pedido mínimo de R$ 30,00 em produtos para retirada." }, 400);
+    if (subtotalCents < MIN_ORDER_SUBTOTAL_CENTS) return json({ error: "Pedido mínimo de R$ 30,00 em produtos para retirada." }, 400);
     const deliveryFeeCents = deliveryType === "delivery" && deliveryEnabled ? 1500 : 0;
     const deliveryFee = deliveryFeeCents / 100;
     const totalCents = subtotalCents + deliveryFeeCents;
