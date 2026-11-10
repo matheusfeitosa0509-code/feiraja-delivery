@@ -10,6 +10,7 @@ on:
     branches: [feat/ordem-191-retirada-only]
     paths:
       - 'supabase/tests/minimal_schema.sql'
+      - 'supabase/tests/test_rollback_191.sh'
       - 'supabase/migrations/20261110020000_ordem_191_pickup_only.sql'
       - '.github/workflows/ordem-197-postgres17.yml'
   workflow_dispatch:
@@ -85,3 +86,5 @@ jobs:
           SELECT 'PASS: RPC pickup_store' AS test;
           SELECT 'PASS: RPC pickup_uber preserves leading zero' AS test;
           SQL
+      - name: Test Ordem 191 rollback scenarios A-D
+        run: bash supabase/tests/test_rollback_191.sh
