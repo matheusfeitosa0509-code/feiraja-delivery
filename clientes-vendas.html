@@ -55,6 +55,26 @@ th{background:#f4f8f2;color:#425a49}
 .back{color:#fff;text-decoration:none;font-weight:800;border:1px solid #ffffff55;border-radius:999px;padding:9px 13px;white-space:nowrap}
 @media(max-width:720px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-two{grid-template-columns:1fr}.filters{grid-template-columns:1fr}}
 @media(max-width:380px){.wrap{padding-left:11px;padding-right:11px}header{margin-left:-11px;margin-right:-11px;padding:19px 13px}.card{padding:14px}.stats{gap:8px}.stat{padding:11px}}
+.report-period{font-weight:800;color:var(--ink)}
+@media print{
+  @page{size:auto;margin:12mm}
+  body{background:#fff!important;color:#17251b!important;font-size:10pt}
+  .wrap{max-width:none;padding:0}
+  header{margin:0 0 12px;padding:0 0 10px;background:#fff!important;color:#173525!important;border-radius:0;border-bottom:2px solid #176b3a}
+  .subtitle{color:#425a49!important}
+  header .actions,#refresh,#period,.export-actions,#login,#dataMessage{display:none!important}
+  #dashboard{display:block!important}
+  .card,.stat{box-shadow:none;break-inside:avoid;border-color:#ccd8cb}
+  .stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+  .stat{padding:9px}
+  .stat strong{font-size:15pt}
+  .grid-two{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .table-wrap{overflow:visible}
+  table{font-size:8pt}
+  th,td{padding:5px}
+  .customer{break-inside:avoid}
+  a{color:inherit;text-decoration:none}
+}
 </style>
 </head>
 <body>
@@ -86,9 +106,13 @@ th{background:#f4f8f2;color:#425a49}
           <option value="previous">Mês anterior</option>
         </select>
       </div>
-      <button id="refresh" type="button" class="secondary">Atualizar dados</button>
+      <div class="actions export-actions">
+        <button id="exportPdf" type="button" class="secondary">Exportar relatório</button>
+        <button id="exportCsv" type="button" class="secondary">Exportar CSV</button>
+      </div>
     </div>
-    <p class="muted" style="margin:10px 0 0">Dias e horários em America/Manaus (UTC−04:00). Clientes ativos/inativos consideram os últimos 30 dias; clientes novos e comparação de faturamento usam os meses do calendário de Manaus.</p>
+    <p id="reportPeriod" class="muted report-period" style="margin:10px 0 0">Período: —</p>
+    <p class="muted" style="margin:6px 0 0">Dias e horários em America/Manaus (UTC−04:00). Clientes ativos/inativos consideram os últimos 30 dias; clientes novos e comparação de faturamento usam os meses do calendário de Manaus.</p>
   </section>
 
   <div class="stats">
@@ -151,6 +175,46 @@ const timeZone = 'America/Manaus';
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
   dateStyle: 'short', timeZone
 });
+
+let lastDashboardData = null;
+let lastPeriodRange = null;
+const periodLabels = {
+  '7d': 'Últimos 7 dias',
+  '30d': 'Últimos 30 dias',
+  month: 'Mês atual',
+  previous: 'Mês anterior'
+};
+const csvCell = (value) => '"' + String(value ?? '').replace(/"/g, '""') + '"';
+const csvLine = (values) => values.map(csvCell).join(';');
+function exportDashboardCsv() {
+  if (!lastDashboardData) return;
+  const rows = [['Seção','Cliente','E-mail','Telefone','Pedidos','Total gasto','Último pedido']];
+  const appendSection = (label, items) => {
+    rows.push([label,'','','','','','']);
+    for (const item of items || []) {
+      rows.push([label,item.customer_name || 'Cliente sem nome',item.customer_email || '',
+        item.customer_phone || '',item.order_count ?? '',item.total_spent ?? '',item.last_order_at || '']);
+    }
+  };
+  appendSection('Ranking por valor gasto', lastDashboardData.rank_by_spend);
+  appendSection('Ranking por número de pedidos', lastDashboardData.rank_by_orders);
+  appendSection('Clientes inativos', lastDashboardData.inactive_customers);
+  const csv = '\\uFEFF' + rows.map(csvLine).join('\\r\\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'feira-on-delivery-relatorio-clientes-vendas.csv';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+function exportDashboardPdf() {
+  if (!lastDashboardData) return;
+  window.print();
+}
+
 const dateOnly = (date) => {
   const parts = new Intl.DateTimeFormat('en-CA', {
     year: 'numeric', month: '2-digit', day: '2-digit', timeZone
@@ -221,6 +285,14 @@ function renderBars(rows, labelKey) {
 }
 
 function renderDashboard(data) {
+  if (lastPeriodRange) {
+    const endInclusive = addDays(lastPeriodRange.end, -1);
+    const startLabel = dateFormatter.format(new Date(lastPeriodRange.start + 'T12:00:00-04:00'));
+    const endLabel = dateFormatter.format(new Date(endInclusive + 'T12:00:00-04:00'));
+    $('reportPeriod').textContent = 'Período do relatório: ' + startLabel + ' a ' + endLabel
+      + ' · ' + (periodLabels[$('period').value] || 'Período selecionado');
+  }
+
   const summary = data?.summary || {};
   $('activeCustomers').textContent = number(summary.active_customers);
   $('inactiveCustomers').textContent = number(summary.inactive_customers);
@@ -260,6 +332,7 @@ async function loadDashboard() {
   $('refresh').textContent = 'Carregando…';
   try {
     const range = rangeForPeriod($('period').value);
+    lastPeriodRange = range;
     const { data, error } = await db.rpc('admin_sales_dashboard', {
       p_start: localMidnightIso(range.start),
       p_end: localMidnightIso(range.end)
@@ -275,7 +348,8 @@ async function loadDashboard() {
       }
       throw error;
     }
-    renderDashboard(data || {});
+    lastDashboardData = data || {};
+    renderDashboard(lastDashboardData);
     $('dashboard').classList.remove('hidden');
   } catch (error) {
     console.error('Falha ao carregar indicadores:', error);
@@ -310,7 +384,13 @@ $('loginForm').addEventListener('submit', async (event) => {
   }
 });
 $('refresh').addEventListener('click', loadDashboard);
-$('logout').addEventListener('click', async () => { await db.auth.signOut(); });
+$('exportPdf').addEventListener('click', exportDashboardPdf);
+$('exportCsv').addEventListener('click', exportDashboardCsv);
+$('logout').addEventListener('click', async () => {
+  lastDashboardData = null;
+  lastPeriodRange = null;
+  await db.auth.signOut();
+});
 $('period').addEventListener('change', loadDashboard);
 
 const { data: sessionData } = await db.auth.getSession();
