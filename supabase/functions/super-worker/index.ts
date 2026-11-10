@@ -295,12 +295,14 @@ Deno.serve(async (req: Request) => {
     if (deliveryType === "delivery" && !deliveryEnabled) {
       return json({ error: "Entrega própria desativada. Escolha retirada na loja ou retirada com Uber." }, 400);
     }
-    const address = "Av. Lourenço da Silva Braga, 700 (em frente à feira)";
+    const address = deliveryType === "delivery"
+      ? String(customer.address ?? "").trim().slice(0, 300)
+      : "Av. Lourenço da Silva Braga, 700 (em frente à feira)";
     const pickupCode = deliveryType === "pickup_uber"
       ? String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, "0")
       : null;
-    if (!name || phone.replace(/\D/g, "").length < 8 || (paymentMethod === "pix" && (!validPixDocument || !/^\S+@\S+\.\S+$/.test(email))) || (email && !/^\S+@\S+\.\S+$/.test(email))) {
-      return json({ error: "Confira nome, telefone, CPF e e-mail." }, 400);
+    if (!name || phone.replace(/\D/g, "").length < 8 || (paymentMethod === "pix" && (!validPixDocument || !/^\S+@\S+\.\S+$/.test(email))) || (email && !/^\S+@\S+\.\S+$/.test(email)) || (deliveryType === "delivery" && !address)) {
+      return json({ error: "Confira nome, telefone, CPF, e-mail e endereço de entrega." }, 400);
     }
     const accountEmail = String(authData.user.email || "").trim().toLowerCase();
     if (paymentMethod === "pix" && accountEmail && email !== accountEmail) {
@@ -471,7 +473,7 @@ Deno.serve(async (req: Request) => {
         id: orderId, user_id: orderUserId, customer_name: name, customer_phone: phone,
         customer_cpf: null, customer_email: email || null, customer_address: address,
         delivery_type: deliveryType,
-        payment_method: paymentMethod === "cash" ? "Dinheiro na retirada" : "Cartão na retirada",
+        payment_method: paymentMethod === "cash" ? (deliveryType === "delivery" ? "Dinheiro na entrega" : "Dinheiro na retirada") : (deliveryType === "delivery" ? "Cartão na entrega" : "Cartão na retirada"),
         pickup_code: pickupCode,
         items, subtotal, delivery_fee: deliveryFee, total, status: "Pedido Recebido",
         market_checklist: { notes: String(body?.notes ?? "").trim().slice(0, 1000) },
