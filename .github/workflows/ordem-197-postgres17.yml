@@ -1,0 +1,77 @@
+name: Ordem 197 - PostgreSQL 17 pickup migration tests
+on:
+  push:
+    branches: [feat/ordem-191-retirada-only]
+    paths:
+      - 'supabase/tests/minimal_schema.sql'
+      - 'supabase/migrations/20261110020000_ordem_191_pickup_only.sql'
+      - '.github/workflows/ordem-197-postgres17.yml'
+  workflow_dispatch:
+jobs:
+  postgres-17:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pickup_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d pickup_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      PGPASSWORD: postgres
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGDATABASE: pickup_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply minimal test schema
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/minimal_schema.sql
+      - name: Apply only Ordem 191 migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261110020000_ordem_191_pickup_only.sql
+      - name: Assert schema, function bodies, constraints and pickup behavior
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE d text; n int;
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='pickup_code') THEN RAISE EXCEPTION 'FAIL pickup_code column'; END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='orders_pickup_code_format_check') THEN RAISE EXCEPTION 'FAIL pickup constraint'; END IF;
+            SELECT pg_get_functiondef('public.create_order_with_rate_limit(jsonb)'::regprocedure) INTO d;
+            IF position('pickup_code' IN d)=0 THEN RAISE EXCEPTION 'FAIL function 1 body'; END IF;
+            SELECT pg_get_functiondef('public.push_orders_notify()'::regprocedure) INTO d;
+            IF position('Dinheiro na retirada' IN d)=0 OR position('Cartão na retirada' IN d)=0 THEN RAISE EXCEPTION 'FAIL function 2 body'; END IF;
+            SELECT count(*) INTO n FROM pg_constraint WHERE conrelid='public.orders'::regclass AND conname IN ('orders_items_positive_quantity_check','orders_text_lengths_check','orders_pickup_code_format_check');
+            IF n<>3 THEN RAISE EXCEPTION 'FAIL expected 3 order checks, got %',n; END IF;
+          END $$;
+          INSERT INTO public.orders(id,customer_name,customer_phone,customer_address,delivery_type,payment_method,items,subtotal,delivery_fee,total,status,market_checklist,pickup_code)
+          VALUES ('legacy','Cliente','11999999999','Endereço antigo','delivery','pix','[{"qty":1}]',10,5,15,'Pagamento Pendente','{}',NULL);
+          INSERT INTO public.orders(id,customer_name,customer_phone,customer_address,delivery_type,payment_method,items,subtotal,delivery_fee,total,status,market_checklist,pickup_code)
+          VALUES ('uber-ok','Cliente','11999999999','Retirada na loja','pickup_uber','Dinheiro na retirada','[{"qty":1}]',10,0,10,'Pedido Recebido','{}','0042');
+          DO $$
+          BEGIN
+            BEGIN INSERT INTO public.orders(id,customer_name,customer_phone,customer_address,delivery_type,payment_method,items,subtotal,delivery_fee,total,status,market_checklist,pickup_code) VALUES ('uber-null','C','1','R','pickup_uber','pix','[{"qty":1}]',1,0,1,'x','{}',NULL); RAISE EXCEPTION 'FAIL expected null code rejection'; EXCEPTION WHEN check_violation THEN NULL; END;
+            BEGIN INSERT INTO public.orders(id,customer_name,customer_phone,customer_address,delivery_type,payment_method,items,subtotal,delivery_fee,total,status,market_checklist,pickup_code) VALUES ('uber-3','C','1','R','pickup_uber','pix','[{"qty":1}]',1,0,1,'x','{}','123'); RAISE EXCEPTION 'FAIL expected 3 digit rejection'; EXCEPTION WHEN check_violation THEN NULL; END;
+            BEGIN INSERT INTO public.orders(id,customer_name,customer_phone,customer_address,delivery_type,payment_method,items,subtotal,delivery_fee,total,status,market_checklist,pickup_code) VALUES ('uber-alpha','C','1','R','pickup_uber','pix','[{"qty":1}]',1,0,1,'x','{}','12AB'); RAISE EXCEPTION 'FAIL expected alpha rejection'; EXCEPTION WHEN check_violation THEN NULL; END;
+            BEGIN INSERT INTO public.orders(id,customer_name,customer_phone,customer_address,delivery_type,payment_method,items,subtotal,delivery_fee,total,status,market_checklist,pickup_code) VALUES ('store-code','C','1','R','pickup_store','pix','[{"qty":1}]',1,0,1,'x','{}','1234'); RAISE EXCEPTION 'FAIL expected store code rejection'; EXCEPTION WHEN check_violation THEN NULL; END;
+          END $$;
+          SELECT 'PASS: legacy delivery with null code' AS test;
+          SELECT 'PASS: pickup_uber with 4 digits' AS test;
+          SELECT 'PASS: invalid pickup codes rejected' AS test;
+          SELECT 'PASS: pickup_store with code rejected' AS test;
+          SQL
+      - name: Test order RPC for both pickup types
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          SELECT * FROM public.create_order_with_rate_limit('{"id":"rpc-store","user_id":"11111111-1111-1111-1111-111111111111","customer_name":"Cliente","customer_phone":"11999999999","customer_address":"Retirada na loja","delivery_type":"pickup_store","payment_method":"Dinheiro na retirada","payment_provider":null,"items":[{"qty":1}],"subtotal":10,"delivery_fee":0,"total":10,"status":"Pedido Recebido","market_checklist":{}}'::jsonb);
+          SELECT * FROM public.create_order_with_rate_limit('{"id":"rpc-uber","user_id":"22222222-2222-2222-2222-222222222222","customer_name":"Cliente","customer_phone":"11999999999","customer_address":"Retirada na loja","delivery_type":"pickup_uber","pickup_code":"0042","payment_method":"Cartão na retirada","payment_provider":null,"items":[{"qty":1}],"subtotal":10,"delivery_fee":0,"total":10,"status":"Pedido Recebido","market_checklist":{}}'::jsonb);
+          DO $$ BEGIN
+            IF NOT EXISTS(SELECT 1 FROM public.orders WHERE id='rpc-store' AND pickup_code IS NULL AND customer_address='Retirada na loja') THEN RAISE EXCEPTION 'FAIL RPC pickup_store'; END IF;
+            IF NOT EXISTS(SELECT 1 FROM public.orders WHERE id='rpc-uber' AND pickup_code='0042' AND customer_address='Retirada na loja') THEN RAISE EXCEPTION 'FAIL RPC pickup_uber'; END IF;
+          END $$;
+          SELECT 'PASS: RPC pickup_store' AS test;
+          SELECT 'PASS: RPC pickup_uber preserves leading zero' AS test;
+          SQL
