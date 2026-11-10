@@ -107,7 +107,10 @@ BEGIN
     SELECT
       NULLIF(btrim(item.value->>'name'), '') AS product_name,
       CASE
-        WHEN item.value->>'qty' ~ '^[0-9]+([.][0-9]+)?
+        WHEN item.value->>'qty' ~ '^[0-9]+([.][0-9]+)?$'
+          THEN (item.value->>'qty')::numeric
+        ELSE 1::numeric
+      END AS quantity
     FROM filtered_paid AS o
     CROSS JOIN LATERAL jsonb_array_elements(o.items_safe) AS item(value)
   ),
