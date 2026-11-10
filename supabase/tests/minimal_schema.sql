@@ -43,7 +43,7 @@ CREATE TABLE public.orders (
  payment_provider text,
  CONSTRAINT orders_items_positive_quantity_check CHECK (
   jsonb_typeof(items)='array' AND NOT jsonb_path_exists(items,
-  '$[*]?(((!(exists (@."qty")) && !(exists (@."quantity"))) || (exists (@."qty") && (@."qty".type() != "number" || @."qty" <= 0)) || (exists (@."quantity") && (@."quantity".type() != "number" || @."quantity" <= 0)))')
+  '$[*]?((!(exists (@."qty")) && !(exists (@."quantity")) || exists (@."qty") && (@."qty".type() != "number" || @."qty" <= 0)) || exists (@."quantity") && (@."quantity".type() != "number" || @."quantity" <= 0))')
  ),
  CONSTRAINT orders_text_lengths_check CHECK (
   char_length(id)<=64 AND char_length(customer_name)<=120 AND char_length(customer_phone)<=30
