@@ -49,9 +49,11 @@ jobs:
             SELECT pg_get_functiondef('public.create_order_with_rate_limit(jsonb)'::regprocedure) INTO d;
             IF position('pickup_code' IN d)=0 THEN RAISE EXCEPTION 'FAIL function 1 body'; END IF;
             SELECT pg_get_functiondef('public.push_orders_notify()'::regprocedure) INTO d;
-            IF position('Dinheiro na retirada' IN d)=0 OR position('Cartão na retirada' IN d)=0 THEN RAISE EXCEPTION 'FAIL function 2 body'; END IF;
+            IF position('Dinheiro na retirada' IN d)=0 OR position('Cartão na retirada' IN d)=0 OR position('Dinheiro na entrega' IN d)=0 OR position('Cartão na entrega' IN d)=0 THEN RAISE EXCEPTION 'FAIL function 2 body'; END IF;
             SELECT count(*) INTO n FROM pg_constraint WHERE conrelid='public.orders'::regclass AND conname IN ('orders_items_positive_quantity_check','orders_text_lengths_check','orders_pickup_code_format_check');
             IF n<>3 THEN RAISE EXCEPTION 'FAIL expected 3 order checks, got %',n; END IF;
+            RAISE NOTICE 'PASS: orders_items_positive_quantity_check and orders_text_lengths_check present';
+            RAISE NOTICE 'NOT COVERED: products_price_positive_check; customer_profiles_text_lengths_check';
           END $$;
           INSERT INTO public.orders(id,customer_name,customer_phone,customer_address,delivery_type,payment_method,items,subtotal,delivery_fee,total,status,market_checklist,pickup_code)
           VALUES ('legacy','Cliente','11999999999','Endereço antigo','delivery','pix','[{"qty":1}]',10,5,15,'Pagamento Pendente','{}',NULL);
