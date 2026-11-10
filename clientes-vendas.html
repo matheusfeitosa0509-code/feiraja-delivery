@@ -30,7 +30,6 @@ button:disabled{opacity:.5;cursor:wait}
 .actions button{flex:1}
 .muted{color:var(--muted)}
 .hidden{display:none!important}
-.login{max-width:460px;margin:36px auto}
 .filters{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}
 .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .stat{min-width:0;background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--shadow)}
@@ -62,7 +61,7 @@ th{background:#f4f8f2;color:#425a49}
   .wrap{max-width:none;padding:0}
   header{margin:0 0 12px;padding:0 0 10px;background:#fff!important;color:#173525!important;border-radius:0;border-bottom:2px solid #176b3a}
   .subtitle{color:#425a49!important}
-  header .actions,#refresh,#period,.export-actions,#login,#dataMessage{display:none!important}
+  header .actions,#refresh,#period,.export-actions,#dataMessage{display:none!important}
   .card,.stat{box-shadow:none;break-inside:avoid;border-color:#ccd8cb}
   .stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
   .stat{padding:9px}
@@ -80,22 +79,8 @@ th{background:#f4f8f2;color:#425a49}
 <main class="wrap">
 <header>
   <div><h1>Clientes e vendas</h1><p class="subtitle">Feira On Delivery · indicadores administrativos</p></div>
-  <div class="actions"><button id="logout" type="button" class="secondary">Sair</button><a class="back" href="https://www.feiraondelivery.com.br/painel.html">← Voltar ao painel</a></div>
+  <div class="actions"><a class="back" href="https://www.feiraondelivery.com.br/painel.html">← Voltar ao painel</a></div>
 </header>
-
-<section id="login" class="card login">
-  <h2>Entrar como administrador</h2>
-  <p class="muted">Use a mesma conta administrativa do painel.</p>
-  <form id="loginForm">
-    <label for="email">E-mail</label><input id="email" type="email" autocomplete="username" required>
-    <label for="password">Senha</label><input id="password" type="password" autocomplete="current-password" required>
-    <div id="salesTurnstile" style="margin:12px 0;min-height:65px"></div>
-    <p id="salesCaptchaMessage" class="muted" role="status">Conclua a verificação ou envie sem token se ela falhar.</p>
-    <button id="salesCaptchaRetry" type="button" hidden class="secondary" style="margin-top:4px">Tentar de novo</button>
-    <button id="loginButton" type="submit" disabled style="width:100%;margin-top:16px">Entrar</button>
-  </form>
-  <p id="loginMessage" class="muted" role="status"></p>
-</section>
 
 <section id="dashboard" class="hidden">
   <section class="card">
@@ -152,7 +137,6 @@ th{background:#f4f8f2;color:#425a49}
 </section>
 </main>
 
-<script src="./turnstile.js" defer></script>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.1';
 
@@ -162,13 +146,14 @@ const db = createClient(
   { auth: { persistSession: true, autoRefreshToken: true } }
 );
 const $ = (id) => document.getElementById(id);
-const salesCaptcha = window.FeiraTurnstile.create({
-  containerId: 'salesTurnstile',
-  buttonId: 'loginButton',
-  messageId: 'salesCaptchaMessage',
-  retryButtonId: 'salesCaptchaRetry'
-});
-$('loginForm').addEventListener('focusin', () => salesCaptcha.init());
+const PANEL_URL = 'https://www.feiraondelivery.com.br/painel.html';
+let redirectingToPanel = false;
+function returnToPanel(message) {
+  if (redirectingToPanel) return;
+  redirectingToPanel = true;
+  if (message) window.alert(message);
+  window.location.replace(PANEL_URL);
+}
 const money = (value) => value == null || !Number.isFinite(Number(value))
   ? '—'
   : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value));
@@ -349,11 +334,12 @@ async function loadDashboard() {
     });
     if (error) {
       if (error.code === '42501' || /administradores|permission denied/i.test(error.message || '')) {
-        $('loginMessage').textContent = 'Acesso negado. Esta conta não é administradora.';
-        message.classList.add('hidden');
         $('dashboard').classList.add('hidden');
-        await db.auth.signOut();
-        $('login').classList.remove('hidden');
+        returnToPanel('Acesso negado. Esta conta não tem permissão para consultar clientes e vendas.');
+        return;
+      }
+      if (error.status === 401 || error.code === 'PGRST301' || /jwt expired|invalid jwt|token is expired/i.test(error.message || '')) {
+        returnToPanel('Sua sessão expirou. Entre novamente pelo painel.');
         return;
       }
       throw error;
@@ -372,51 +358,20 @@ async function loadDashboard() {
   }
 }
 
-$('loginForm').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const button = $('loginButton');
-  const captchaToken = salesCaptcha.getToken();
-  $('loginMessage').textContent = '';
-  button.disabled = true;
-  button.textContent = 'Entrando…';
-  try {
-    const { error } = await db.auth.signInWithPassword({
-      email: $('email').value.trim(),
-      password: $('password').value,
-      options: { ...(captchaToken ? { captchaToken } : {}) }
-    });
-    if (error) throw error;
-    $('login').classList.add('hidden');
-    await loadDashboard();
-  } catch (error) {
-    console.error('Falha no login de clientes e vendas:', error);
-    $('loginMessage').textContent = error?.code === 'captcha_failed'
-      ? 'A verificação de segurança não foi aceita. Conclua o Turnstile e tente novamente.'
-      : 'Não foi possível entrar. Confira e-mail e senha.';
-  } finally {
-    salesCaptcha.reset();
-    button.textContent = 'Entrar';
-  }
-});
 $('refresh').addEventListener('click', loadDashboard);
 $('exportPdf').addEventListener('click', exportDashboardPdf);
 $('exportCsv').addEventListener('click', exportDashboardCsv);
-$('logout').addEventListener('click', async () => {
-  lastDashboardData = null;
-  lastPeriodRange = null;
-  await db.auth.signOut();
-});
 $('period').addEventListener('change', loadDashboard);
 
-const { data: sessionData } = await db.auth.getSession();
-if (sessionData?.session) {
-  $('login').classList.add('hidden');
+const { data: sessionData, error: sessionError } = await db.auth.getSession();
+if (sessionError || !sessionData?.session) {
+  returnToPanel('Entre pelo painel para acessar clientes e vendas.');
+} else {
   await loadDashboard();
 }
-db.auth.onAuthStateChange((event) => {
-  if (event === 'SIGNED_OUT') {
-    $('dashboard').classList.add('hidden');
-    $('login').classList.remove('hidden');
+db.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
+    returnToPanel('Sua sessão expirou. Entre novamente pelo painel.');
   }
 });
 </script>
