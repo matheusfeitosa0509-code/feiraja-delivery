@@ -109,6 +109,11 @@ BEGIN
     SELECT * FROM base_orders
     WHERE is_paid AND created_at >= p_start AND created_at < p_end
   ),
+  filtered_paid_customer_rollup AS (
+    SELECT customer_key, count(*)::integer AS order_count
+    FROM filtered_paid
+    GROUP BY customer_key
+  ),
   product_rows AS (
     SELECT
       NULLIF(btrim(item.value->>'name'), '') AS product_name,
@@ -175,11 +180,7 @@ BEGIN
             100.0 * count(*) FILTER (WHERE order_count > 1) / NULLIF(count(*), 0),
             2
           ) END
-        FROM paid_customer_rollup
-        WHERE EXISTS (
-          SELECT 1 FROM filtered_paid AS fp
-          WHERE fp.customer_key = paid_customer_rollup.customer_key
-        )
+        FROM filtered_paid_customer_rollup
       )
     ),
     'rank_by_spend', COALESCE((
