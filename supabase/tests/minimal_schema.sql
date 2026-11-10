@@ -68,14 +68,39 @@ BEGIN
  WHERE o.user_id=v_user_id AND o.created_at>=pg_catalog.now()-INTERVAL '10 minutes';
  IF v_recent_count>=5 THEN RAISE EXCEPTION 'ORDER_RATE_LIMIT' USING ERRCODE='P0001'; END IF;
  INSERT INTO public.orders (
-  id,user_id,customer_name,customer_phone,customer_cpf,customer_email,customer_address,
-  delivery_type,payment_method,payment_provider,items,subtotal,delivery_fee,total,status,market_checklist
+    id,
+    user_id,
+    customer_name,
+    customer_phone,
+    customer_cpf,
+    customer_email,
+    customer_address,
+    delivery_type,
+    payment_method,
+    payment_provider,
+    items,
+    subtotal,
+    delivery_fee,
+    total,
+    status,
+    market_checklist
  ) VALUES (
-  p_order->>'id',v_user_id,p_order->>'customer_name',p_order->>'customer_phone',
-  p_order->>'customer_cpf',p_order->>'customer_email',p_order->>'customer_address',
-  p_order->>'delivery_type',p_order->>'payment_method',p_order->>'payment_provider',
-  p_order->'items',(p_order->>'subtotal')::numeric,(p_order->>'delivery_fee')::numeric,
-  (p_order->>'total')::numeric,p_order->>'status',p_order->'market_checklist'
+    p_order->>'id',
+    v_user_id,
+    p_order->>'customer_name',
+    p_order->>'customer_phone',
+    p_order->>'customer_cpf',
+    p_order->>'customer_email',
+    p_order->>'customer_address',
+    p_order->>'delivery_type',
+    p_order->>'payment_method',
+    p_order->>'payment_provider',
+    p_order->'items',
+    (p_order->>'subtotal')::numeric,
+    (p_order->>'delivery_fee')::numeric,
+    (p_order->>'total')::numeric,
+    p_order->>'status',
+    p_order->'market_checklist'
  ) RETURNING id,status,total INTO v_order_id,v_status,v_total;
  RETURN QUERY SELECT v_order_id,v_status,v_total;
 END;
