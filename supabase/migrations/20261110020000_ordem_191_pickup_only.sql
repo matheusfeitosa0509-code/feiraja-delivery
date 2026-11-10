@@ -8,7 +8,7 @@ CHECK (
   OR (delivery_type <> 'pickup_uber' AND pickup_code IS NULL)
 );
 
-DO $
+DO $ordem193$
 DECLARE
   v_definition text;
   v_old text;
@@ -78,5 +78,5 @@ BEGIN
 
   EXECUTE v_definition;
 END
-$;
+$ordem193$;
 COMMIT;
