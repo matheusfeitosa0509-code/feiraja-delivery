@@ -106,8 +106,7 @@ BEGIN
   product_rows AS (
     SELECT
       NULLIF(btrim(item.value->>'name'), '') AS product_name,
-      CASE
-        WHEN COALESCE(item.value->>'qty', '') ~ '^[0-9]+([.][0-9]+)?
+      COALESCE((item.value->>'qty')::numeric, 1::numeric) AS quantity
     FROM filtered_paid AS o
     CROSS JOIN LATERAL jsonb_array_elements(o.items_safe) AS item(value)
   ),
