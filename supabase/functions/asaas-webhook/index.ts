@@ -7,6 +7,9 @@ const corsHeaders = {
 };
 
 const MAX_JSON_BODY_BYTES = 64 * 1024;
+
+// Compartilha o modo seguro com expire-pix: simulação é o padrão.
+const EXPIRE_PIX_SIMULATION_MODE = Deno.env.get("EXPIRE_PIX_SIMULATION_MODE") !== "false";
 async function readJsonBody(req: Request): Promise<any> {
   const contentLength = req.headers.get("content-length");
   if (contentLength !== null) {
@@ -261,6 +264,14 @@ Deno.serve(async (req: Request) => {
   if (isOverdueEvent) {
     if (normalizedStatus !== "pagamento pendente") {
       return json({ received: true, ignored: true, reason: "pedido_nao_pendente_ou_status_preservado" });
+    }
+    if (EXPIRE_PIX_SIMULATION_MODE) {
+      return json({
+        received: true,
+        ignored: true,
+        simulated: true,
+        reason: "EXPIRE_PIX_SIMULATION_MODE",
+      });
     }
     const { data: expiredOrder, error: overdueUpdateError } = await db.from("orders")
       .update({ status: "Cancelada" })
