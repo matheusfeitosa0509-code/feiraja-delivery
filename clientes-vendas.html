@@ -63,7 +63,6 @@ th{background:#f4f8f2;color:#425a49}
   header{margin:0 0 12px;padding:0 0 10px;background:#fff!important;color:#173525!important;border-radius:0;border-bottom:2px solid #176b3a}
   .subtitle{color:#425a49!important}
   header .actions,#refresh,#period,.export-actions,#login,#dataMessage{display:none!important}
-  #dashboard{display:block!important}
   .card,.stat{box-shadow:none;break-inside:avoid;border-color:#ccd8cb}
   .stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
   .stat{padding:9px}
@@ -199,7 +198,7 @@ function exportDashboardCsv() {
   appendSection('Ranking por valor gasto', lastDashboardData.rank_by_spend);
   appendSection('Ranking por número de pedidos', lastDashboardData.rank_by_orders);
   appendSection('Clientes inativos', lastDashboardData.inactive_customers);
-  const csv = '\\uFEFF' + rows.map(csvLine).join('\\r\\n');
+  const csv = '\uFEFF' + rows.map(csvLine).join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -208,7 +207,7 @@ function exportDashboardCsv() {
   document.body.appendChild(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 function exportDashboardPdf() {
   if (!lastDashboardData) return;
