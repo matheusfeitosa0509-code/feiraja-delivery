@@ -1,0 +1,40 @@
+name: Ordem 229-C - PostgreSQL 17 cancellation tests
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20261111170000_ordem_229_cancelamento_cliente.sql'
+      - 'supabase/rollback/ordem_229_cancelamento_cliente_rollback.sql'
+      - 'supabase/tests/ordem_229_*'
+      - '.github/workflows/ordem-229-postgres17.yml'
+  push:
+    branches: [fix/cancelamento-servidor]
+    paths:
+      - 'supabase/migrations/20261111170000_ordem_229_cancelamento_cliente.sql'
+      - 'supabase/rollback/ordem_229_cancelamento_cliente_rollback.sql'
+      - 'supabase/tests/ordem_229_*'
+      - '.github/workflows/ordem-229-postgres17.yml'
+  workflow_dispatch:
+jobs:
+  postgres-17:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ordem_229_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ordem_229_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      PGPASSWORD: postgres
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGDATABASE: ordem_229_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test migration, cancellation, notifications and exact rollback
+        run: bash supabase/tests/test_ordem_229_cancelamento.sh
