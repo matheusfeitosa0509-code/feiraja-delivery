@@ -111,6 +111,7 @@ th{background:#f4f8f2;color:#425a49}
         </select>
       </div>
       <div class="actions export-actions">
+        <button id="refresh" type="button" class="secondary">Atualizar dados</button>
         <button id="exportPdf" type="button" class="secondary">Exportar relatório</button>
         <button id="exportCsv" type="button" class="secondary">Exportar CSV</button>
       </div>
@@ -194,6 +195,10 @@ try {
 }
 
 const $ = (id) => document.getElementById(id);
+const on = (id, eventName, handler) => {
+  const element = $(id);
+  if (element) element.addEventListener(eventName, handler);
+};
 let salesCaptcha;
 try {
   if (!window.FeiraTurnstile || typeof window.FeiraTurnstile.create !== 'function') {
@@ -209,7 +214,7 @@ try {
       || typeof salesCaptcha.getToken !== 'function' || typeof salesCaptcha.reset !== 'function') {
     throw new Error('O objeto Turnstile foi criado sem os métodos esperados.');
   }
-  $('loginForm').addEventListener('focusin', () => salesCaptcha.init());
+  on('loginForm', 'focusin', () => salesCaptcha.init());
 } catch (error) {
   showInitializationError(2, error);
   return;
@@ -394,8 +399,11 @@ function renderDashboard(data) {
 async function loadDashboard() {
   const message = $('dataMessage');
   message.classList.add('hidden');
-  $('refresh').disabled = true;
-  $('refresh').textContent = 'Carregando…';
+  const refreshButton = $('refresh');
+  if (refreshButton) {
+    refreshButton.disabled = true;
+    refreshButton.textContent = 'Carregando…';
+  }
   try {
     const range = rangeForPeriod($('period').value);
     lastPeriodRange = range;
@@ -427,8 +435,10 @@ async function loadDashboard() {
     message.classList.add('error');
     showPageError('Não foi possível carregar os indicadores. Verifique sua conexão e tente novamente.');
   } finally {
-    $('refresh').disabled = false;
-    $('refresh').textContent = 'Atualizar dados';
+    if (refreshButton) {
+      refreshButton.disabled = false;
+      refreshButton.textContent = 'Atualizar dados';
+    }
   }
 }
 
@@ -443,7 +453,7 @@ async function isAdministrator(session) {
   return Boolean(member);
 }
 
-$('loginForm').addEventListener('submit', async (event) => {
+on('loginForm', 'submit', async (event) => {
   event.preventDefault();
   const button = $('loginButton');
   const captchaToken = salesCaptcha.getToken();
@@ -476,15 +486,15 @@ $('loginForm').addEventListener('submit', async (event) => {
     button.textContent = 'Entrar';
   }
 });
-$('refresh').addEventListener('click', loadDashboard);
-$('exportPdf').addEventListener('click', exportDashboardPdf);
-$('exportCsv').addEventListener('click', exportDashboardCsv);
-$('logout').addEventListener('click', async () => {
+on('refresh', 'click', loadDashboard);
+on('exportPdf', 'click', exportDashboardPdf);
+on('exportCsv', 'click', exportDashboardCsv);
+on('logout', 'click', async () => {
   lastDashboardData = null;
   lastPeriodRange = null;
   await db.auth.signOut();
 });
-$('period').addEventListener('change', loadDashboard);
+on('period', 'change', loadDashboard);
 
 db.auth.onAuthStateChange((event) => {
   if (event === 'SIGNED_OUT') {
