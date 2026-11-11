@@ -105,5 +105,3 @@ EXCEPTION
 END;
 $function$;
 
-CREATE TRIGGER trg_push_orders_notify AFTER INSERT OR UPDATE ON public.orders
-FOR EACH ROW EXECUTE FUNCTION public.push_orders_notify();
