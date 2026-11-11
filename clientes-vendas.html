@@ -165,12 +165,12 @@ function showInitializationError(stage, error) {
   const errorName = error?.name || 'Error';
   const rawMessage = error?.message || String(error || 'sem mensagem');
   const safeMessage = String(rawMessage)
-    .replace(/(authorization|access[_-]?token|refresh[_-]?token|api[_-]?key|apikey|token|key)(\\s*[:=]\\s*)[^\\s,;]+/gi, '$1$2[redigido]')
-    .replace(/Bearer\\s+[A-Za-z0-9._~+\\/-]+=*/gi, 'Bearer [redigido]')
-    .replace(/\\beyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\b/g, '[token redigido]')
+    .replace(/(authorization|access[_-]?token|refresh[_-]?token|api[_-]?key|apikey|token|key)(\s*[:=]\s*)[^\s,;]+/gi, '$1$2[redigido]')
+    .replace(/Bearer\s+[A-Za-z0-9._~+\/-]+=*/gi, 'Bearer [redigido]')
+    .replace(/\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, '[token redigido]')
     .slice(0, 300);
   console.error('Falha na etapa ' + stage + ' da inicialização de Clientes e vendas:', error);
-  showPageError('Não foi possível iniciar a tela. Atualize a página; se o problema continuar, contate o suporte.\\nDetalhe: etapa ' + stage + ' — ' + errorName + ': ' + safeMessage);
+  showPageError('Não foi possível iniciar a tela. Atualize a página; se o problema continuar, contate o suporte.\nDetalhe: etapa ' + stage + ' — ' + errorName + ': ' + safeMessage);
 }
 window.addEventListener('error', (event) => {
   if (event.target !== window && event.target?.tagName !== 'SCRIPT') return;
@@ -205,6 +205,10 @@ try {
     messageId: 'salesCaptchaMessage',
     retryButtonId: 'salesCaptchaRetry'
   });
+  if (!salesCaptcha || typeof salesCaptcha.init !== 'function'
+      || typeof salesCaptcha.getToken !== 'function' || typeof salesCaptcha.reset !== 'function') {
+    throw new Error('O objeto Turnstile foi criado sem os métodos esperados.');
+  }
   $('loginForm').addEventListener('focusin', () => salesCaptcha.init());
 } catch (error) {
   showInitializationError(2, error);
