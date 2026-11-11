@@ -1061,7 +1061,7 @@ async function loadProfile(knownUser){
   showRequiredProfileStep();
  }
  $('#email').value=currentUser.email||'';$('#email').readOnly=!!currentUser.email;const homeAddress=$('#homeAddress');if(homeAddress)homeAddress.textContent=$('#address').value.trim()||'Informe no pagamento';const addressChoice=$('#addressChoiceText');if(addressChoice){const address=$('#address').value.trim();addressChoice.textContent=address?'Casa · '+address:'Informe seu endereço';}
- if(knownUser){await loadMyOrders(currentUser);$('#accountStatus').classList.remove('load-error');updateAccountUI();}
+ if(knownUser){await loadMyOrders(currentUser);$('#accountStatus').classList.remove('load-error');updateAccountUI();if(!customerPhoneReady)showRequiredProfileStep();}
  else{await loadMyOrders();}
  resumeCheckoutIfReady();
 }
@@ -1168,6 +1168,8 @@ $('#requiredProfileForm').addEventListener('submit',async event=>{
    $('#accountModal').classList.remove('open');
    resumeCheckoutIfReady();
   }else{
+   $('#accountTitle').textContent='Sua conta';
+   $('#loginIntro').textContent='Sua conta está conectada.';
    $('#accountProfile').classList.remove('hidden');
    void loadAccountProfile();
   }
@@ -1181,7 +1183,15 @@ $('#requiredProfileForm').addEventListener('submit',async event=>{
 $('#requiredProfileRetry').addEventListener('click',async()=>{
  const button=$('#requiredProfileRetry');
  button.disabled=true;button.textContent='Verificando…';
- try{await loadProfile(currentUser);}catch(error){$('#requiredProfileMessage').textContent='Não foi possível verificar seu cadastro. Tente novamente.';}
+ try{
+  await loadProfile(currentUser);
+  if(customerPhoneReady&&$('#accountModal').classList.contains('open')){
+   $('#accountTitle').textContent='Sua conta';
+   $('#loginIntro').textContent='Sua conta está conectada.';
+   $('#accountProfile').classList.remove('hidden');
+   void loadAccountProfile();
+  }
+ }catch(error){$('#requiredProfileMessage').textContent='Não foi possível verificar seu cadastro. Tente novamente.';}
  finally{button.disabled=false;button.textContent='Tentar verificar novamente';}
 });
 $('#authForm').addEventListener('focusin',()=>{if(authCaptcha.isRequired())authCaptcha.init();});
