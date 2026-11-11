@@ -28,6 +28,8 @@ const KNOWN_STATUSES = new Set([
   "Pronto para Retirada",
   "Entregue",
   "Cancelada",
+  "Pix pago em pedido cancelado — devolver",
+  "Pedido pago cancelado pelo cliente — devolver Pix",
   "Pagamento cancelado",
   "Pagamento em análise",
   "Pagamento reembolsado",
@@ -104,6 +106,8 @@ function getNotificationText(kind: PushKind, status: string): string | null {
   if (kind === "admin") {
     if (status === "Pedido Recebido") return "Novo pedido recebido";
     if (status === "Pagamento Confirmado") return "Pagamento Pix confirmado";
+    if (status === "Pix pago em pedido cancelado — devolver") return "Pix pago em pedido cancelado — devolver";
+    if (status === "Pedido pago cancelado pelo cliente — devolver Pix") return "Pedido pago cancelado pelo cliente — devolver Pix";
     return null;
   }
   return CUSTOMER_MESSAGES[status] ?? null;
@@ -161,7 +165,9 @@ Deno.serve(async (req: Request) => {
     typeof kind !== "string" ||
     (kind !== "admin" && kind !== "customer") ||
     typeof new_status !== "string" ||
-    !KNOWN_STATUSES.has(new_status)
+    !KNOWN_STATUSES.has(new_status) ||
+    (new_status.startsWith("Pix pago em pedido cancelado") ||
+      new_status.startsWith("Pedido pago cancelado pelo cliente")) && kind !== "admin"
   ) {
     return jsonResponse(400, { error: "INVALID_REQUEST" });
   }
@@ -213,15 +219,27 @@ Deno.serve(async (req: Request) => {
   try {
     const { data: order, error: orderError } = await supabase
       .from("orders")
-      .select("id,user_id,status")
+      .select("id,user_id,status,refund_pending,cancelled_by")
       .eq("id", order_id)
       .maybeSingle();
 
     if (orderError) throw new Error("ORDER_LOOKUP_FAILED");
     if (!order) return jsonResponse(404, { error: "ORDER_NOT_FOUND" });
 
-    // A delayed event must not notify about a status that is no longer current.
-    if (order.status !== new_status) {
+    // Eventos de devolução são códigos administrativos; exigem pedido cancelado
+    // e refund_pending ativo. Os demais eventos preservam a validação de status atual.
+    const isRefundNotice =
+      new_status === "Pix pago em pedido cancelado — devolver" ||
+      new_status === "Pedido pago cancelado pelo cliente — devolver Pix";
+    if (isRefundNotice) {
+      const cancelled = ["Cancelada", "Cancelado"].includes(String(order.status || ""));
+      const expectedNotice = order.cancelled_by === "cliente"
+        ? "Pedido pago cancelado pelo cliente — devolver Pix"
+        : "Pix pago em pedido cancelado — devolver";
+      if (kind !== "admin" || !cancelled || order.refund_pending !== true || new_status !== expectedNotice) {
+        return jsonResponse(200, { ok: true, skipped: "STALE_EVENT" });
+      }
+    } else if (order.status !== new_status) {
       return jsonResponse(200, { ok: true, skipped: "STALE_EVENT" });
     }
 
