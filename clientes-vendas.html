@@ -214,7 +214,7 @@ try {
       || typeof salesCaptcha.getToken !== 'function' || typeof salesCaptcha.reset !== 'function') {
     throw new Error('O objeto Turnstile foi criado sem os métodos esperados.');
   }
-  $('loginForm').addEventListener('focusin', () => salesCaptcha.init());
+  on('loginForm', 'focusin', () => salesCaptcha.init());
 } catch (error) {
   showInitializationError(2, error);
   return;
