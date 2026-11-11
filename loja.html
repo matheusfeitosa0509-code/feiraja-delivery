@@ -1063,6 +1063,7 @@ async function loadProfile(knownUser){
  $('#email').value=currentUser.email||'';$('#email').readOnly=!!currentUser.email;const homeAddress=$('#homeAddress');if(homeAddress)homeAddress.textContent=$('#address').value.trim()||'Informe no pagamento';const addressChoice=$('#addressChoiceText');if(addressChoice){const address=$('#address').value.trim();addressChoice.textContent=address?'Casa · '+address:'Informe seu endereço';}
  if(knownUser){await loadMyOrders(currentUser);$('#accountStatus').classList.remove('load-error');updateAccountUI();}
  else{await loadMyOrders();}
+ resumeCheckoutIfReady();
 }
 async function loadMyOrders(knownUser){
  const boxes=[$('#myOrdersList'),$('#ordersList')];
