@@ -116,14 +116,14 @@ EXECUTE FUNCTION public.set_order_cancel_metadata();
 REVOKE ALL ON FUNCTION public.set_order_cancel_metadata()
   FROM PUBLIC, anon, authenticated, service_role;
 
--- Mantém o contrato HMAC e o formato do payload atuais.
--- Os avisos de devolução usam new_status como código de evento administrativo.
+-- Preserva integralmente os avisos antigos e acrescenta apenas os dois eventos
+-- administrativos de devolução, disparados na transição refund_pending false -> true.
 CREATE OR REPLACE FUNCTION public.push_orders_notify()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
-AS $$
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
 DECLARE
   v_secret text;
   v_timestamp text;
@@ -139,6 +139,7 @@ BEGIN
    WHERE name = 'push_hmac_secret'
    LIMIT 1;
 
+  -- Sem segredo, não envia nada. A Edge Function também recusa chamadas sem segredo.
   IF v_secret IS NULL OR pg_catalog.btrim(v_secret) = '' THEN
     RETURN NEW;
   END IF;
@@ -147,15 +148,15 @@ BEGIN
     IF NEW.status = 'Pedido Recebido'
        AND NEW.payment_method IN (
          'cash',
-         'Dinheiro na entrega',
-         'Cartão na entrega'
+         'Dinheiro na retirada', 'Dinheiro na entrega',
+         'Cartão na retirada', 'Cartão na entrega'
        ) THEN
       v_kinds := pg_catalog.array_append(v_kinds, 'admin');
     END IF;
   ELSIF TG_OP = 'UPDATE' THEN
     IF NEW.status IS DISTINCT FROM OLD.status THEN
-      -- Aviso ao cliente: mantém o comportamento atual.
-      -- Exclui cancelamento automático de checkout Pix sem cobrança.
+      -- Aviso ao cliente: somente atualização de status e pedido vinculado a usuário.
+      -- Exclui cancelamento automático de checkout Pix que falhou antes da cobrança.
       IF NEW.user_id IS NOT NULL
          AND NEW.status NOT IN (
            'Pedido Recebido',
@@ -173,7 +174,8 @@ BEGIN
         v_kinds := pg_catalog.array_append(v_kinds, 'customer');
       END IF;
 
-      -- Aviso administrativo de Pix confirmado: mantém o comportamento atual.
+      -- Aviso ao dono quando Pix é confirmado por webhook/servidor.
+      -- Qualquer alteração feita por administrador autenticado fica excluída.
       IF NEW.status = 'Pagamento Confirmado'
          AND NEW.payment_method IN (
            'pix',
@@ -189,10 +191,9 @@ BEGIN
       END IF;
     END IF;
 
-    -- O alerta de devolução é independente da mudança de status.
-    -- A falha do endpoint nunca pode impedir o cancelamento/atualização.
+    -- Evento novo somente na transição de refund_pending para true.
     IF NEW.refund_pending IS TRUE
-       AND OLD.refund_pending IS DISTINCT FROM NEW.refund_pending THEN
+       AND OLD.refund_pending IS DISTINCT FROM TRUE THEN
       v_notification_status := CASE
         WHEN NEW.cancelled_by = 'cliente'
           THEN 'Pedido pago cancelado pelo cliente — devolver Pix'
@@ -266,13 +267,11 @@ EXCEPTION
     -- Push nunca pode impedir a gravação do pedido/status.
     RETURN NEW;
 END;
-$$;
+$function$;
 
 DROP TRIGGER IF EXISTS trg_push_orders_notify ON public.orders;
-CREATE TRIGGER trg_push_orders_notify
-AFTER INSERT OR UPDATE ON public.orders
-FOR EACH ROW
-EXECUTE FUNCTION public.push_orders_notify();
+CREATE TRIGGER trg_push_orders_notify AFTER INSERT OR UPDATE ON public.orders
+FOR EACH ROW EXECUTE FUNCTION public.push_orders_notify();
 
 REVOKE ALL ON FUNCTION public.push_orders_notify()
   FROM PUBLIC, anon, authenticated, service_role;
