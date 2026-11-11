@@ -125,6 +125,7 @@ Deno.serve(async (req: Request) => {
 
   if (!paymentId || !externalReference || billingType !== "PIX" ||
       !Number.isFinite(paymentValue) || paymentValue <= 0) {
+    console.warn("Webhook Asaas sem dados mínimos para validar cobrança Pix.");
     return json({ received: true, ignored: true });
   }
 
@@ -132,7 +133,7 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data: order, error: orderReadError } = await db.from("orders")
-    .select("id,status,total,payment_id,payment_provider,created_at")
+    .select("id,status,total,payment_id,payment_provider,created_at,refund_pending,cancelled_by")
     .eq("id", externalReference)
     .eq("payment_provider", "asaas")
     .maybeSingle();
@@ -143,37 +144,36 @@ Deno.serve(async (req: Request) => {
   }
   if (!order || String(order.payment_provider || "") !== "asaas" ||
       String(order.id || "") !== externalReference) {
+    console.warn("Webhook Asaas sem pedido correspondente à referência externa.");
     return json({ received: true, ignored: true });
   }
   const normalizedStatus = String(order.status || "").trim().toLowerCase();
   const isCancelledOrder = normalizedStatus === "cancelada" || normalizedStatus === "cancelado";
   const storedPaymentId = String(order.payment_id || "");
 
-  // Cancelled orders without a stored charge, or with a different charge, are never changed.
-  if (isCancelledOrder && !storedPaymentId) {
-    return json({ received: true, ignored: true, reason: "pedido_cancelado_sem_payment_id" });
-  }
-  if (isCancelledOrder && storedPaymentId !== paymentId) {
+  // Pedido cancelado sem payment_id pode ser reconciliado, mas somente após
+  // consulta direta ao Asaas e validação integral de ID, referência, tipo, status e valor.
+  const isUnlinkedCancelledOrder = isCancelledOrder && !storedPaymentId;
+  if (isCancelledOrder && storedPaymentId && storedPaymentId !== paymentId) {
+    console.warn("Webhook Asaas ignorado: ID de cobrança divergente em pedido cancelado.");
     return json({ received: true, ignored: true, reason: "pedido_cancelado_payment_id_diferente" });
   }
 
-  // Give checkout ten minutes to link the charge. After that, acknowledge for manual
-  // review without linking or mutating the order, regardless of its non-cancelled status.
-  if (!storedPaymentId) {
+  // Para pedidos não cancelados, mantém a janela atual de dez minutos para vincular a cobrança.
+  if (!storedPaymentId && !isUnlinkedCancelledOrder) {
     const createdAtMs = Date.parse(String(order.created_at || ""));
     const ageMs = Date.now() - createdAtMs;
     if (Number.isFinite(createdAtMs) && ageMs >= 10 * 60 * 1000) {
       console.warn(
-        "Pedido Asaas sem payment_id há pelo menos 10 minutos; revisão manual necessária. Pedido:",
-        "charge_id_present:",
-        Boolean(paymentId),
+        "Pedido Asaas sem payment_id há pelo menos 10 minutos; revisão manual necessária.",
+        { charge_id_present: Boolean(paymentId) },
       );
       return json({ received: true, ignored: true, reason: "payment_id_missing_stale_order" });
     }
     console.error("Cobrança Asaas ainda não vinculada; solicitando nova entrega.");
     return json({ error: "Cobrança ainda não vinculada ao pedido." }, 503);
   }
-  if (storedPaymentId !== paymentId) {
+  if (storedPaymentId && storedPaymentId !== paymentId) {
     return json({ received: true, ignored: true });
   }
 
@@ -255,6 +255,27 @@ Deno.serve(async (req: Request) => {
     return json({ received: true, ignored: true, reason: "divergencia_permanente" });
   }
 
+  if (isRefundEvent && isCancelledOrder) {
+    if (order.refund_pending !== true) {
+      return json({ received: true, ignored: true, reason: "devolucao_nao_pendente" });
+    }
+    const { data: clearedRefund, error: clearRefundError } = await db.from("orders")
+      .update({ refund_pending: false })
+      .eq("id", order.id)
+      .eq("payment_provider", "asaas")
+      .eq("status", order.status)
+      .eq("refund_pending", true)
+      .select("id")
+      .maybeSingle();
+
+    if (clearRefundError) {
+      console.error("Falha ao registrar devolução Pix de pedido cancelado.");
+      return json({ error: "Falha ao atualizar pedido." }, 500);
+    }
+    if (!clearedRefund) return json({ received: true, ignored: true });
+    return json({ received: true, refund_pending: false });
+  }
+
   if (isRefundEvent || isChargebackEvent) {
     const targetStatus = isRefundEvent ? "Pagamento reembolsado" : "Pagamento contestado";
     const normalizedTargetStatus = targetStatus.toLowerCase();
@@ -292,11 +313,28 @@ Deno.serve(async (req: Request) => {
   }
 
   if (isCancelledOrder) {
-    console.warn(
-      "Pagamento Asaas recebido para pedido cancelado; restauração validada por ID e valor.",
-      "charge_id_present:",
-      Boolean(paymentId),
-    );
+    if (!isPaymentConfirmationEvent) {
+      return json({ received: true, ignored: true, reason: "evento_nao_confirma_pagamento" });
+    }
+    if (order.refund_pending === true) {
+      return json({ received: true, ignored: true, reason: "devolucao_ja_pendente" });
+    }
+    const { data: flaggedOrder, error: flagError } = await db.from("orders")
+      .update({ refund_pending: true })
+      .eq("id", order.id)
+      .eq("payment_provider", "asaas")
+      .eq("status", order.status)
+      .eq("refund_pending", false)
+      .select("id")
+      .maybeSingle();
+
+    if (flagError) {
+      console.error("Falha ao marcar devolução Pix pendente em pedido cancelado.");
+      return json({ error: "Falha ao atualizar pedido." }, 500);
+    }
+    if (!flaggedOrder) return json({ received: true, ignored: true });
+    console.warn("Cobrança Pix paga validada para pedido cancelado; devolução manual pendente.");
+    return json({ received: true, refund_pending: true });
   }
 
   if (normalizedStatus === "pagamento confirmado") {
