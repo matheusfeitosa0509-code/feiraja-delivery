@@ -8,6 +8,7 @@ on:
     paths:
       - "loja.html"
       - "painel.html"
+      - "clientes-vendas.html"
       - "sw.js"
       - ".github/workflows/push-ui-syntax-check.yml"
   pull_request:
@@ -16,6 +17,7 @@ on:
     paths:
       - "loja.html"
       - "painel.html"
+      - "clientes-vendas.html"
       - "sw.js"
       - ".github/workflows/push-ui-syntax-check.yml"
 
@@ -36,13 +38,13 @@ jobs:
         run: |
           python3 - <<'PY'
           import pathlib, re
-          files = ["loja.html", "painel.html"]
+          files = ["loja.html", "painel.html", "clientes-vendas.html"]
           out = pathlib.Path("/tmp/push-ui-syntax")
           out.mkdir(exist_ok=True)
           count = 0
           for name in files:
               source = pathlib.Path(name).read_text(encoding="utf-8")
-              for match in re.finditer(r"<script\b[^>]*>([\s\S]*?)</script\s*>", source, re.I):
+              for match in re.finditer(r"<script\\b[^>]*>([\\s\\S]*?)</script\\s*>", source, re.I):
                   code = match.group(1)
                   if code.strip():
                       count += 1
