@@ -62,7 +62,7 @@ th{background:#f4f8f2;color:#425a49}
   .wrap{max-width:none;padding:0}
   header{margin:0 0 12px;padding:0 0 10px;background:#fff!important;color:#173525!important;border-radius:0;border-bottom:2px solid #176b3a}
   .subtitle{color:#425a49!important}
-  header .actions,#refresh,#period,.export-actions,#login,#dataMessage{display:none!important}
+  header .actions,#refresh,#period,.export-actions,#login,#dataMessage,#globalError{display:none!important}
   .card,.stat{box-shadow:none;break-inside:avoid;border-color:#ccd8cb}
   .stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
   .stat{padding:9px}
@@ -82,6 +82,8 @@ th{background:#f4f8f2;color:#425a49}
   <div><h1>Clientes e vendas</h1><p class="subtitle">Feira On Delivery · indicadores administrativos</p></div>
   <div class="actions"><button id="logout" type="button" class="secondary">Sair</button><a class="back" href="https://www.feiraondelivery.com.br/painel.html">← Voltar ao painel</a></div>
 </header>
+
+<p id="globalError" class="message error hidden" role="alert" aria-live="assertive"></p>
 
 <section id="login" class="card login hidden">
   <h2>Entrar como administrador</h2>
@@ -152,9 +154,28 @@ th{background:#f4f8f2;color:#425a49}
 </section>
 </main>
 
+<script>
+function showPageError(message) {
+  const banner = document.getElementById('globalError');
+  if (!banner) return;
+  banner.textContent = message;
+  banner.classList.remove('hidden');
+}
+window.addEventListener('error', (event) => {
+  if (event.target !== window && event.target?.tagName !== 'SCRIPT') return;
+  console.error('Erro de inicialização em Clientes e vendas:', event.error || event.message || event.target?.src || 'erro desconhecido');
+  showPageError('Não foi possível carregar um recurso necessário da tela. Atualize a página; se o problema continuar, contate o suporte.');
+}, true);
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Falha assíncrona não tratada em Clientes e vendas:', event.reason);
+  showPageError('Ocorreu uma falha ao iniciar ou atualizar a tela. Atualize a página; se o problema continuar, contate o suporte.');
+});
+</script>
 <script src="./turnstile.js" defer></script>
 <script type="module">
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.1';
+async function initializePage() {
+try {
+const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.117.1');
 
 const db = createClient(
   'https://juhwdevvwstmyxyyagzh.supabase.co',
@@ -352,6 +373,8 @@ async function loadDashboard() {
       p_end: localMidnightIso(range.end)
     });
     if (error) {
+      console.error('Falha ao executar admin_sales_dashboard:', error);
+      showPageError('Não foi possível carregar os indicadores. Verifique sua conexão e tente novamente.');
       if (error.code === '42501' || /administradores|permission denied/i.test(error.message || '')) {
         $('loginMessage').textContent = 'Acesso negado. Esta conta não é administradora.';
         message.classList.add('hidden');
@@ -365,11 +388,13 @@ async function loadDashboard() {
     lastDashboardData = data || {};
     renderDashboard(lastDashboardData);
     $('dashboard').classList.remove('hidden');
+    $('globalError').classList.add('hidden');
   } catch (error) {
     console.error('Falha ao carregar indicadores:', error);
     message.textContent = 'Não foi possível carregar os indicadores. Verifique sua conexão e tente novamente.';
     message.classList.remove('hidden', 'error');
     message.classList.add('error');
+    showPageError('Não foi possível carregar os indicadores. Verifique sua conexão e tente novamente.');
   } finally {
     $('refresh').disabled = false;
     $('refresh').textContent = 'Atualizar dados';
@@ -457,6 +482,13 @@ try {
   $('loginMessage').textContent = 'Não foi possível verificar a sessão. Atualize a página e tente novamente.';
   $('login').classList.remove('hidden');
 }
+} catch (error) {
+  console.error('Falha ao inicializar Clientes e vendas:', error);
+  showPageError('Não foi possível iniciar a tela. Um recurso necessário (Supabase ou verificação de segurança) não carregou. Atualize a página; se o problema continuar, contate o suporte.');
+}
+}
+
+initializePage();
 </script>
 </body>
 </html>
