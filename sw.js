@@ -20,10 +20,14 @@ self.addEventListener('push', function (event) {
     ? payload.body.trim()
     : 'Você tem uma atualização.';
   const tag = typeof payload.tag === 'string' ? payload.tag : 'feira-on-delivery';
+  const title = typeof payload.title === 'string' && payload.title.trim()
+    ? payload.title.trim()
+    : 'Feira On Delivery';
   event.waitUntil(
-    self.registration.showNotification('Feira On Delivery', {
+    self.registration.showNotification(title, {
       body: body,
       tag: tag,
+      icon: './icons/icon-192.png',
       data: { url: targetUrl }
     })
   );
