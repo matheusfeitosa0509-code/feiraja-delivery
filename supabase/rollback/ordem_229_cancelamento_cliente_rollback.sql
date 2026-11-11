@@ -11,13 +11,14 @@ ALTER TABLE public.orders
   DROP COLUMN IF EXISTS cancelled_by,
   DROP COLUMN IF EXISTS refund_pending;
 
--- Restaura literalmente a função e o gatilho push_orders_notify() anteriores à Ordem 229-B.
+-- Restaura exatamente a definição lida de public.push_orders_notify()
+-- e o gatilho trg_push_orders_notify ativos antes da Ordem 229.
 CREATE OR REPLACE FUNCTION public.push_orders_notify()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
-AS $$
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
 DECLARE
   v_secret text;
   v_timestamp text;
@@ -32,6 +33,7 @@ BEGIN
    WHERE name = 'push_hmac_secret'
    LIMIT 1;
 
+  -- Sem segredo, não envia nada. A Edge Function também recusa chamadas sem segredo.
   IF v_secret IS NULL OR pg_catalog.btrim(v_secret) = '' THEN
     RETURN NEW;
   END IF;
@@ -40,8 +42,8 @@ BEGIN
     IF NEW.status = 'Pedido Recebido'
        AND NEW.payment_method IN (
          'cash',
-         'Dinheiro na entrega',
-         'Cartão na entrega'
+         'Dinheiro na retirada', 'Dinheiro na entrega',
+         'Cartão na retirada', 'Cartão na entrega'
        ) THEN
       v_kinds := pg_catalog.array_append(v_kinds, 'admin');
     END IF;
@@ -116,13 +118,11 @@ EXCEPTION
     -- Push nunca pode impedir a gravação do pedido/status.
     RETURN NEW;
 END;
-$$;
+$function$;
 
 DROP TRIGGER IF EXISTS trg_push_orders_notify ON public.orders;
-CREATE TRIGGER trg_push_orders_notify
-AFTER INSERT OR UPDATE ON public.orders
-FOR EACH ROW
-EXECUTE FUNCTION public.push_orders_notify();
+CREATE TRIGGER trg_push_orders_notify AFTER INSERT OR UPDATE ON public.orders
+FOR EACH ROW EXECUTE FUNCTION public.push_orders_notify();
 
 REVOKE ALL ON FUNCTION public.push_orders_notify()
   FROM PUBLIC, anon, authenticated, service_role;
