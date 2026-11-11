@@ -161,6 +161,17 @@ function showPageError(message) {
   banner.textContent = message;
   banner.classList.remove('hidden');
 }
+function showInitializationError(stage, error) {
+  const errorName = error?.name || 'Error';
+  const rawMessage = error?.message || String(error || 'sem mensagem');
+  const safeMessage = String(rawMessage)
+    .replace(/(authorization|access[_-]?token|refresh[_-]?token|api[_-]?key|apikey|token|key)(\\s*[:=]\\s*)[^\\s,;]+/gi, '$1$2[redigido]')
+    .replace(/Bearer\\s+[A-Za-z0-9._~+\\/-]+=*/gi, 'Bearer [redigido]')
+    .replace(/\\beyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\b/g, '[token redigido]')
+    .slice(0, 300);
+  console.error('Falha na etapa ' + stage + ' da inicialização de Clientes e vendas:', error);
+  showPageError('Não foi possível iniciar a tela. Atualize a página; se o problema continuar, contate o suporte.\\nDetalhe: etapa ' + stage + ' — ' + errorName + ': ' + safeMessage);
+}
 window.addEventListener('error', (event) => {
   if (event.target !== window && event.target?.tagName !== 'SCRIPT') return;
   console.error('Erro de inicialização em Clientes e vendas:', event.error || event.message || event.target?.src || 'erro desconhecido');
@@ -174,9 +185,33 @@ window.addEventListener('unhandledrejection', (event) => {
 <script src="./turnstile.js" defer></script>
 <script type="module">
 async function initializePage() {
+let createClient;
 try {
-const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.117.1');
+  ({ createClient } = await import('https://esm.sh/@supabase/supabase-js@2.117.1'));
+} catch (error) {
+  showInitializationError(1, error);
+  return;
+}
 
+const $ = (id) => document.getElementById(id);
+let salesCaptcha;
+try {
+  if (!window.FeiraTurnstile || typeof window.FeiraTurnstile.create !== 'function') {
+    throw new Error('window.FeiraTurnstile indisponível; turnstile.js não carregou ou não inicializou.');
+  }
+  salesCaptcha = window.FeiraTurnstile.create({
+    containerId: 'salesTurnstile',
+    buttonId: 'loginButton',
+    messageId: 'salesCaptchaMessage',
+    retryButtonId: 'salesCaptchaRetry'
+  });
+  $('loginForm').addEventListener('focusin', () => salesCaptcha.init());
+} catch (error) {
+  showInitializationError(2, error);
+  return;
+}
+
+try {
 const db = createClient(
   'https://juhwdevvwstmyxyyagzh.supabase.co',
   'sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',
@@ -186,14 +221,6 @@ const db = createClient(
     storageKey: 'sb-juhwdevvwstmyxyyagzh-auth-token'
   } }
 );
-const $ = (id) => document.getElementById(id);
-const salesCaptcha = window.FeiraTurnstile.create({
-  containerId: 'salesTurnstile',
-  buttonId: 'loginButton',
-  messageId: 'salesCaptchaMessage',
-  retryButtonId: 'salesCaptchaRetry'
-});
-$('loginForm').addEventListener('focusin', () => salesCaptcha.init());
 const money = (value) => value == null || !Number.isFinite(Number(value))
   ? '—'
   : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value));
@@ -483,8 +510,7 @@ try {
   $('login').classList.remove('hidden');
 }
 } catch (error) {
-  console.error('Falha ao inicializar Clientes e vendas:', error);
-  showPageError('Não foi possível iniciar a tela. Um recurso necessário (Supabase ou verificação de segurança) não carregou. Atualize a página; se o problema continuar, contate o suporte.');
+  showInitializationError(3, error);
 }
 }
 
