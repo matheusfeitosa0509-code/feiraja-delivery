@@ -1,0 +1,31 @@
+name: Teste Assistente (Node)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Commit SHA a testar"
+        required: true
+        type: string
+        default: "902905fb20a4057377ca4f7606f391733e0cc573"
+
+permissions:
+  contents: read
+
+jobs:
+  photo-tests:
+    name: photo.test.mjs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run photo tests
+        run: node --test supabase/functions/assistente/photo.test.mjs
