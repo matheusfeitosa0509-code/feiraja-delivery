@@ -210,6 +210,7 @@ async function readJsonBody(req: Request, maxBytes: number): Promise<{ body: any
   catch { return { body: null, tooLarge: false }; }
 }
 
+// Borda conhecida: o estorno usa a data de Manaus do momento do estorno; só difere do consumo se a requisição atravessar a meia-noite.
 async function refundQuotaUses(client: SupabaseAdmin, userId: string, quantity: number, checkBoolean: boolean): Promise<void> {
   let notApplied = 0;
   for (let i = 0; i < quantity; i++) {
@@ -259,9 +260,7 @@ Deno.serve(async (req) => {
       return json({ error: "Não foi possível processar a mensagem." }, 400);
     }
     const hasImage = Object.prototype.hasOwnProperty.call(body, "image");
-    const multipleImages = Array.isArray(body.image) ||
-      (Array.isArray(body.images) && (body.images.length > 1 || (hasImage && body.images.length > 0))) ||
-      (!hasImage && Array.isArray(body.images) && body.images.length > 0);
+    const multipleImages = Array.isArray(body.image) || Object.prototype.hasOwnProperty.call(body, "images");
     const photoValidation = hasImage || multipleImages ? validatePhoto(body.image, multipleImages) : null;
     if (photoValidation && !photoValidation.ok) return json({ error: photoValidation.error }, 400);
     const photo = photoValidation?.ok ? { media_type: "image/jpeg", data: photoValidation.data } : null;
@@ -503,6 +502,7 @@ Deno.serve(async (req) => {
         total_linhas: { type: "integer" },
         linhas: {
           type: "array",
+          maxItems: 30,
           items: {
             type: "object",
             properties: {
