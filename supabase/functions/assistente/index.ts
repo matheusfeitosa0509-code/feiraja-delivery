@@ -28,7 +28,7 @@ type CatalogEntry = {
 };
 type CompactCatalogEntry = { id: string; nome: string };
 type AssistantItem = { product_id?: unknown; quantidade?: unknown; unidade?: unknown } | null;
-type PhotoLine = { numero?: unknown; status?: unknown; texto?: unknown; product_id?: unknown; quantidade?: unknown; unidade?: unknown };
+type PhotoLine = { numero?: unknown; status?: unknown; texto?: unknown; product_id?: unknown; quantidade?: unknown; unidade?: unknown; pergunta?: unknown };
 type AssistantOutput = { resposta?: unknown; itens?: AssistantItem[]; perguntas?: unknown[]; total_linhas?: unknown; linhas?: PhotoLine[] };
 type AnthropicContentBlock = { type?: string; text?: string };
 
@@ -188,6 +188,17 @@ Quando o cliente pedir uma receita ou montar a feira para um prato (por exemplo,
 Nunca invente preços, descontos, disponibilidade fora do catálogo recebido, pedidos existentes ou ações já realizadas. Não afirme promoções: pedidos sobre promoções são respondidos exclusivamente pelo servidor com dados atuais do banco.
 Seja conciso: o campo resposta deve ter no máximo 2 frases curtas; proponha no máximo 12 itens; use perguntas apenas quando indispensável e com no máximo 3 perguntas, curtas.`;
 
+const photoSystemPrompt = systemPrompt + "\n\n" + [
+  "Nesta requisição, responda SOMENTE no formato de linhas (resposta, total_linhas, linhas). Ignore as instruções de itens e perguntas do restante do prompt.",
+  "A foto pode ser (a) uma lista de compras, escrita à mão ou impressa, ou (b) um produto ou alguns itens fotografados. Cada item é uma linha, na ordem em que aparece (de cima para baixo, da esquerda para a direita).",
+  "Em uma lista, leia quantidade e unidade quando existirem. Sem quantidade: produto vendido por unidade = quantidade 1; produto vendido por kg = status ambiguo e pergunta \"Quantos kg de NOME?\" (múltiplos do passo do produto).",
+  "Para produto fotografado, identifique o item e associe ao catálogo. Se houver mais de uma possibilidade plausível, use status ambiguo e pergunte com até 3 nomes EXATOS do catálogo (\"É X, Y ou Z?\"). Nunca chute. Sem correspondência: status nao_encontrado e texto = o que parece ser.",
+  "Só use status ok com product_id EXATO do catálogo recebido. Nunca invente produto, id, preço, desconto ou disponibilidade. Linha ilegível: status ilegivel.",
+  "Foto borrada, escura ou sem lista nem produto reconhecível: total_linhas 0, linhas vazia e, na resposta, peça outra foto mais nítida.",
+  "Ignore rostos, nomes de pessoas, telefones, endereços e outros dados pessoais que apareçam na foto; não os transcreva.",
+  "total_linhas é o número real de itens que você enxerga e linhas tem uma entrada para cada um."
+].join("\n");
+
 async function readJsonBody(req: Request, maxBytes: number): Promise<{ body: any; tooLarge: boolean }> {
   const reader = req.body?.getReader();
   if (!reader) return { body: null, tooLarge: false };
@@ -294,6 +305,7 @@ Deno.serve(async (req) => {
         p_user_id: authData.user.id,
       } as never);
       if (limitError) {
+        if (photo && quotaConsumed > 0) await refundQuotaWithoutBlocking();
         console.error("assistente", { code: "DAILY_LIMIT_CHECK_FAILED" });
         return json({ error: "Assistente temporariamente indisponível." }, 503);
       }
@@ -502,18 +514,18 @@ Deno.serve(async (req) => {
         total_linhas: { type: "integer" },
         linhas: {
           type: "array",
-          maxItems: 30,
           items: {
             type: "object",
             properties: {
               numero: { type: "integer" },
               status: { type: "string", enum: ["ok", "nao_encontrado", "ambiguo", "ilegivel"] },
               texto: { type: "string" },
-              product_id: { type: ["string", "null"] },
-              quantidade: { type: ["number", "null"] },
-              unidade: { type: ["string", "null"] },
+              product_id: { anyOf: [{ type: "string" }, { type: "null" }] },
+              quantidade: { anyOf: [{ type: "number" }, { type: "null" }] },
+              unidade: { anyOf: [{ type: "string" }, { type: "null" }] },
+              pergunta: { anyOf: [{ type: "string" }, { type: "null" }] },
             },
-            required: ["numero", "status", "texto", "product_id", "quantidade", "unidade"],
+            required: ["numero", "status", "texto", "product_id", "quantidade", "unidade", "pergunta"],
             additionalProperties: false,
           },
         },
@@ -546,7 +558,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             model,
             max_tokens: maxTokensRetried ? 2400 : 1200,
-            system: systemPrompt,
+            system: photo ? photoSystemPrompt : systemPrompt,
             messages,
             output_config: { format: { type: "json_schema", schema: photo ? photoOutputSchema : outputSchema } },
           }),
@@ -636,12 +648,19 @@ Deno.serve(async (req) => {
     }
 
     if (photo) {
-      const reconciled = reconcilePhotoLines(parsed, catalog, new Set(promptCatalog.map((product) => product.id)));
-      const rawPhotoResponse = parsed.resposta.trim().slice(0, 400);
-      const photoResponse = reconciled.itens.length
-        ? "Separei isto para você. Toque em Adicionar ao carrinho para confirmar."
-        : rawPhotoResponse || "Confira as linhas identificadas na foto antes de adicionar.";
-      return json({ resposta: photoResponse, itens: reconciled.itens, perguntas: reconciled.perguntas.slice(0, 8) });
+      const reconciled = reconcilePhotoLines(
+        parsed,
+        catalog,
+        new Set(promptCatalog.map((product) => product.id)),
+        compactCatalogMode,
+      );
+      const catalogById = new Map(catalog.map((product) => [product.id, product]));
+      parsed.itens = reconciled.itens.map((item) => ({
+        product_id: item.product_id,
+        quantidade: item.quantidade,
+        unidade: catalogById.get(item.product_id)?.unidade ?? "",
+      }));
+      parsed.perguntas = reconciled.perguntas;
     }
 
     const byId = new Map(catalog.map((product) => [product.id, product]));

@@ -18,6 +18,19 @@ test('linha ok válida vira item', () => {
   const result = reconcilePhotoLines({ total_linhas: 1, linhas: [{ numero: 1, status: 'ok', texto: 'maçã', product_id: 'p1', quantidade: 1, unidade: 'kg' }] }, catalog);
   assert.deepEqual(result.itens, [{ product_id: 'p1', quantidade: 1 }]);
 });
+test('pergunta por linha é usada e sanitizada', () => {
+  const result = reconcilePhotoLines({ total_linhas: 1, linhas: [{ numero: 1, status: 'ambiguo', texto: 'maçã', pergunta: 'É Maçã ou Pera?\nConfirme.' }] }, catalog);
+  assert.deepEqual(result.perguntas, ['É Maçã ou Pera? Confirme.']);
+});
+test('total_linhas zero retorna pergunta específica sem conferência', () => {
+  const result = reconcilePhotoLines({ total_linhas: 0, linhas: [] }, catalog);
+  assert.deepEqual(result, { itens: [], perguntas: ['Não consegui identificar lista nem produto nessa foto. Tente outra foto mais nítida.'] });
+});
+test('modo compacto aceita item inteiro sem unidade no catálogo', () => {
+  const compactCatalog = [{ id: 'p1', nome: 'Maçã', passo: 0.5, minimo: 1, maximo: 100 }];
+  const result = reconcilePhotoLines({ total_linhas: 1, linhas: [{ numero: 1, status: 'ok', texto: 'maçã', product_id: 'p1', quantidade: 2, unidade: null }] }, compactCatalog, new Set(['p1']), true);
+  assert.deepEqual(result.itens, [{ product_id: 'p1', quantidade: 2 }]);
+});
 test('linha ok com ID fora do catálogo vira nao_encontrado', () => {
   const result = reconcilePhotoLines({ total_linhas: 1, linhas: [{ numero: 1, status: 'ok', texto: 'pera', product_id: 'fora', quantidade: 1, unidade: 'kg' }] }, catalog);
   assert.match(result.perguntas.join(' '), /nao_encontrado: pera/);
@@ -26,7 +39,7 @@ test('linhas ambígua e ilegível viram perguntas', () => {
   const result = reconcilePhotoLines({ total_linhas: 2, linhas: [{ numero: 1, status: 'ambiguo', texto: 'maçã ou pera' }, { numero: 2, status: 'ilegivel', texto: 'linha apagada' }] }, catalog);
   assert.equal(result.perguntas.length, 2);
 });
-test('linha faltando pede conferência', () => {
+test('linha faltando continua pedindo conferência', () => {
   const result = reconcilePhotoLines({ total_linhas: 2, linhas: [{ numero: 1, status: 'ok', texto: 'maçã', product_id: 'p1', quantidade: 1, unidade: 'kg' }] }, catalog);
   assert.match(result.perguntas.join(' '), /linhas faltando/);
 });

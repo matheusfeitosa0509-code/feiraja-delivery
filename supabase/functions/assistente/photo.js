@@ -17,22 +17,30 @@ export function validatePhoto(image, multipleImages = false) {
   return { ok: true, data: image.data };
 }
 
-export function reconcilePhotoLines(output, catalog, allowedIds = new Set(catalog.map((product) => product.id))) {
+export function reconcilePhotoLines(output, catalog, allowedIds = new Set(catalog.map((product) => product.id)), compactCatalogMode = false) {
   const itens = [];
   const perguntas = [];
-  const lines = Array.isArray(output?.linhas) ? output.linhas : [];
+  const rawLines = Array.isArray(output?.linhas) ? output.linhas : [];
   const total = output?.total_linhas;
+  if (total === 0 && rawLines.length === 0) {
+    return { itens, perguntas: ["Não consegui identificar lista nem produto nessa foto. Tente outra foto mais nítida."] };
+  }
+  const lines = rawLines.slice(0, 30);
   const indexes = new Set(lines.map((line) => line?.numero));
-  const expectedValid = Number.isInteger(total) && total >= 1 && total <= 30 &&
+  const exceededLimit = rawLines.length > 30 || (Number.isInteger(total) && total > 30);
+  const expectedValid = !exceededLimit && Number.isInteger(total) && total >= 1 && total <= 30 &&
     lines.length === total && Array.from({ length: total }, (_, i) => i + 1).every((n) => indexes.has(n));
-  if (!expectedValid) perguntas.push("Confira a foto: pode haver linhas faltando ou que não consegui separar. Revise a lista antes de adicionar.");
+  if (!expectedValid) perguntas.push("Confira a foto: pode haver linhas faltando ou mais de 30 itens. Revise a lista antes de adicionar.");
   const byId = new Map(catalog.map((product) => [product.id, product]));
   const promptIds = allowedIds;
   const byProduct = new Map();
   for (const line of lines) {
     const label = String(line?.texto || line?.produto || `linha ${line?.numero || "não identificada"}`).trim().slice(0, 100);
     if (line?.status === "ambiguo" || line?.status === "ilegivel") {
-      perguntas.push(`Não consegui identificar com segurança: ${label}. Pode confirmar o produto e a quantidade?`);
+      const suppliedQuestion = typeof line?.pergunta === "string"
+        ? line.pergunta.replace(/[\r\n]+/g, " ").trim().slice(0, 160)
+        : "";
+      perguntas.push(suppliedQuestion || `Não consegui identificar com segurança: ${label}. Pode confirmar o produto e a quantidade?`);
       continue;
     }
     if (line?.status === "nao_encontrado") {
@@ -51,14 +59,16 @@ export function reconcilePhotoLines(output, catalog, allowedIds = new Set(catalo
     const product = byId.get(id);
     const quantity = line.quantidade;
     const step = product.passo ?? 1;
-    if (!product.unidade || typeof quantity !== "number" || !Number.isFinite(quantity) ||
+    if (typeof quantity !== "number" || !Number.isFinite(quantity) ||
         quantity < product.minimo || quantity > Math.min(100, product.maximo) ||
-        !Number.isInteger(quantity / step) || line.unidade !== product.unidade) {
-      perguntas.push(`Confira a quantidade ou unidade de ${label}; não incluí esta linha.`);
+        !Number.isInteger(quantity / step) ||
+        (compactCatalogMode && !Number.isInteger(quantity))) {
+      perguntas.push(`Confira a quantidade de ${label}; não incluí esta linha.`);
       continue;
     }
     const combined = (byProduct.get(id) || 0) + quantity;
-    if (combined > Math.min(100, product.maximo) || !Number.isInteger(combined / step)) {
+    if (combined > Math.min(100, product.maximo) || !Number.isInteger(combined / step) ||
+        (compactCatalogMode && !Number.isInteger(combined))) {
       perguntas.push(`Confira a quantidade total de ${label}; não incluí esta linha.`);
       continue;
     }
