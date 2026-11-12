@@ -8,23 +8,23 @@
 <meta property="og:url" content="https://www.feiraondelivery.com.br/loja.html"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--g:#2f6a14;--g2:#7fb237;--ink:#1d2a12;--mut:#44503a;--bg:#f6f4ea;--card:#fff;--line:#e4e7d6;--soft:#e6efd3;--warn:#c2410c;--pix:#0f8f7e}
-.home-bubbles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 6px;padding:14px 12px 6px}
+.home-bubbles{display:flex;flex-wrap:nowrap;gap:10px;padding:14px 12px 6px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .home-bubbles[hidden]{display:none}
 .home-bubble{border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:6px;font:inherit;color:var(--ink)}
 .home-bubble-icon{width:58px;height:58px;border-radius:50%;background:var(--soft);border:2px solid var(--g2);display:flex;align-items:center;justify-content:center;font-size:26px;line-height:1}
 .home-bubble-name{font-size:11px;font-weight:700;line-height:1.2;text-align:center;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;max-width:100%}
 #pageHome .home-search{background:#fff!important;border:0!important;border-radius:26px!important;height:54px!important;padding:0 20px!important;box-shadow:0 4px 16px rgba(29,42,18,.12)!important;margin:6px 0 10px!important}
-#pageHome #requestProductFab{display:inline-flex!important;align-items:center!important;margin:0 0 12px!important;padding:9px 16px!important;border:0!important;border-radius:18px!important;background:#fff!important;color:var(--g)!important;font-weight:800!important;font-size:13px!important;text-decoration:none!important;box-shadow:0 2px 8px rgba(29,42,18,.08)!important}
+#pageHome #requestProductFab{display:none!important}
 #pageHome #repeatOrder{display:none!important}
 .home-banners{margin:14px 0 6px}
 .home-banner-track{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .home-banner-track::-webkit-scrollbar{display:none}
-.home-banner{flex:0 0 100%;scroll-snap-align:start;box-sizing:border-box;min-height:128px;border-radius:20px;padding:18px;color:#fff;background:linear-gradient(135deg,#2f6a14,#3f7a1b);display:flex;flex-direction:column;justify-content:center;gap:6px}
+.home-banner{flex:0 0 100%;scroll-snap-align:start;box-sizing:border-box;min-height:104px;border-radius:20px;padding:18px;color:#fff;background:linear-gradient(135deg,#2f6a14,#3f7a1b);display:flex;flex-direction:column;justify-content:center;gap:6px}
 .home-banner:nth-child(2){background:linear-gradient(135deg,#245b17,#357318)}
 .home-banner:nth-child(3){background:linear-gradient(135deg,#1d4f12,#2f6a14)}
 .home-banner b{font-size:19px;line-height:1.2}
 .home-banner p{margin:0;font-size:13px;line-height:1.45}
-.home-banner button{align-self:flex-start;margin-top:6px;border:0;border-radius:14px;background:#fff;color:var(--g);font-weight:800;font-size:13px;padding:10px 14px;min-height:40px}
+.home-banner button,.home-banner .home-banner-link{align-self:flex-start;margin-top:6px;border:0;border-radius:14px;background:#fff;color:var(--g);font-weight:800;font-size:13px;padding:10px 14px;min-height:40px;display:inline-flex;align-items:center;text-decoration:none}
 .home-banner-dots{display:flex;justify-content:center;gap:6px;margin-top:8px}
 .home-banner-dots span{width:7px;height:7px;border-radius:4px;background:#c5cdb4}
 .home-banner-dots span.on{width:18px;background:var(--g)}
@@ -614,6 +614,23 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type=
 .pickup-uber-box>.btn{display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:100%;height:56px;min-height:56px;flex:none;padding:10px 14px;border-radius:16px;font-size:16px;font-weight:800;line-height:1.35;text-align:center;text-decoration:none!important;white-space:normal;overflow-wrap:anywhere}
 #pageOrders.active{padding-bottom:calc(150px + env(safe-area-inset-bottom,0px))!important}
 
+
+/* Ordem 284 — topo integrado e ajustes visuais isolados da Home */
+.app-header:has(.home-search){height:auto;max-height:none;flex-direction:column;align-items:stretch;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 16px;border-radius:0 0 22px 22px}
+.app-header .home-search{position:static!important;top:auto!important;z-index:auto!important;width:100%;height:52px!important;margin:0!important;padding:0 18px!important;border:0!important;border-radius:26px!important;background:#fff!important;box-shadow:0 4px 16px rgba(29,42,18,.12)!important}
+body:not(:has(#pageHome.active)) .app-header{height:64px;max-height:64px;flex-direction:row;align-items:center;gap:0;padding:env(safe-area-inset-top,0px) 16px 0;border-radius:0}
+body:not(:has(#pageHome.active)) .app-header .home-search{display:none!important}
+#pageHome.active{margin-top:-18px;padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))!important}
+.home-info-strip{display:grid;grid-template-columns:1fr 1fr;align-items:center;background:#fff;border-radius:18px 18px 14px 14px;margin:0 0 14px;padding:13px 12px;box-shadow:0 3px 12px rgba(29,42,18,.06)}
+.home-info-item{display:flex;align-items:center;justify-content:center;gap:8px;min-width:0;color:var(--ink)}
+.home-info-item+ .home-info-item{border-left:1px solid var(--line);padding-left:8px}
+.home-info-icon{font-size:19px;line-height:1;flex:none}
+.home-info-item strong{display:block;font-size:12px;line-height:1.25}
+.home-info-item small{display:block;margin-top:2px;color:var(--mut);font-size:10px;line-height:1.2}
+.home-bubbles::-webkit-scrollbar{display:none}
+.home-bubble{flex:0 0 76px;width:76px}
+.mobile-nav .tab-button b#tabCartCount.hidden{display:none!important}
+#pageHome .home-catalog-category,#pageHome [data-home-product-category]{scroll-margin-top:calc(env(safe-area-inset-top,0px) + 140px)}
 </style>
 <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -714,17 +731,17 @@ try {
 })();
 </script>
 </head><body>
-<header class="app-header" aria-label="Feira On Delivery"><a class="brand" href="#" aria-label="Feira On Delivery">Feira On Delivery<small>Tudo da feira, pronto para retirada</small></a></header>
+<header class="app-header" aria-label="Feira On Delivery"><a class="brand" href="#" aria-label="Feira On Delivery">Feira On Delivery<small>Tudo da feira, pronto para retirada</small></a><div class="search home-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="homeSearch" placeholder="Buscar produtos da feira…" aria-label="Buscar produtos da feira"></div></header>
 <main class="wrap">
  <section id="pageHome" class="app-page active" aria-label="Produtos">
+  <div class="home-info-strip" aria-label="Informações da loja"><div class="home-info-item"><span class="home-info-icon" aria-hidden="true">🧺</span><span><strong>Retirada na loja</strong><small>ou com Uber</small></span></div><div class="home-info-item"><span class="home-info-icon" aria-hidden="true">🕒</span><span><strong>Horário: 6h às 13h</strong></span></div></div>
   <div class="home-top" id="homeTopAddress" aria-hidden="true"><div class="home-address"><span class="sm">Retirada em</span><strong id="homeAddress">Retirada na loja</strong></div><button class="icon-button" type="button" data-go-page="Orders" aria-label="Notificações"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button></div>
-  <div class="search home-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="homeSearch" placeholder="Buscar produtos da feira…" aria-label="Buscar produtos da feira"></div>
    <button id="requestProductFab" class="request-product-link" type="button">Não achou? Peça um produto</button>
    <div id="homeBubbles" class="home-bubbles" aria-label="Categorias"></div>
   <section class="home-hero" hidden><b>Retirada na loja ou com Uber</b><p>Produtos da feira prontos para retirada, com praticidade e cuidado.</p><div class="home-hero-seals"><span>Retirada na loja</span><span>Retirada com Uber</span></div></section>
   <div class="home-section-title" hidden><b>Categorias</b><button type="button" class="link" data-go-page="products">Ver tudo</button></div>
   <div id="homeCategories" class="real-categories" hidden></div>
-  <section id="homeBanners" class="home-banners" aria-label="Destaques"><div id="homeBannerTrack" class="home-banner-track"><article class="home-banner"><b>Fale com o Assistente</b><p>Diga o que você precisa, por voz ou texto. Ele monta uma sugestão para você conferir.</p><button type="button" data-banner-action="assistant">Abrir assistente</button></article><article class="home-banner"><b>Não achou o produto?</b><p>Envie o nome do que você procura.</p><button type="button" data-banner-action="request">Pedir um produto</button></article><article class="home-banner"><b>Retire na feira</b><p>Av. Lourenço da Silva Braga, 700, Manaus. Retire na loja ou chame seu Uber.</p></article></div><div id="homeBannerDots" class="home-banner-dots" aria-hidden="true"><span class="on"></span><span></span><span></span></div></section>
+  <section id="homeBanners" class="home-banners" aria-label="Destaques"><div id="homeBannerTrack" class="home-banner-track"><article class="home-banner"><b>Fale com o Assistente</b><p>Diga o que você precisa, por voz ou texto. Ele monta uma sugestão para você conferir.</p><button type="button" data-banner-action="assistant">Abrir assistente</button></article><article class="home-banner"><b>Não achou o produto?</b><p>Envie o nome do que você procura.</p><button type="button" data-banner-action="request">Pedir um produto</button></article><article class="home-banner"><b>Retire na feira</b><p>Av. Lourenço da Silva Braga, 700, Manaus. Retire na loja ou chame seu Uber.</p><a class="home-banner-link" href="https://www.google.com/maps/search/?api=1&query=Av.+Louren%C3%A7o+da+Silva+Braga%2C+700%2C+Manaus" target="_blank" rel="noopener noreferrer">Como chegar</a></article></div><div id="homeBannerDots" class="home-banner-dots" aria-hidden="true"><span class="on"></span><span></span><span></span></div></section>
 <section id="repeatOrder" class="repeat-section" hidden><div class="home-section-title repeat-heading"><b>Pedir de novo</b></div><div class="again"><div class="repeat-copy"><b id="repeatOrderTitle">Último pedido</b><div id="repeatOrderItems" class="sm"></div></div><button type="button" id="repeatOrderButton">Repetir</button></div></section>
   <section id="homeProductSections" aria-label="Produtos por categoria" class="home-product-sections"></section>
   <section id="homeNoResults" class="home-no-results" hidden aria-live="polite">
