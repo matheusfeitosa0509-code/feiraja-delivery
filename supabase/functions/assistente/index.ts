@@ -655,12 +655,16 @@ Deno.serve(async (req) => {
         compactCatalogMode,
       );
       const catalogById = new Map(catalog.map((product) => [product.id, product]));
-      parsed.itens = reconciled.itens.map((item) => ({
+      const photoMaxItems = 15;
+      const photoHasMoreItems = reconciled.itens.length > photoMaxItems;
+      parsed.itens = reconciled.itens.slice(0, photoMaxItems).map((item) => ({
         product_id: item.product_id,
         quantidade: item.quantidade,
         unidade: catalogById.get(item.product_id)?.unidade ?? "",
       }));
-      parsed.perguntas = reconciled.perguntas;
+      parsed.perguntas = photoHasMoreItems
+        ? ["A foto tem mais de 15 itens. Separei os 15 primeiros; envie o restante em outra foto depois.", ...reconciled.perguntas]
+        : reconciled.perguntas;
     }
 
     const byId = new Map(catalog.map((product) => [product.id, product]));
