@@ -10,7 +10,8 @@ export function validatePhoto(image, multipleImages = false) {
   let binary;
   try { binary = atob(image.data); } catch { return { ok: false, error: "A foto enviada é inválida." }; }
   if (binary.length > 450 * 1024) return { ok: false, error: "A foto deve ter no máximo 450 KB." };
-  if (binary.length < 3 || binary.charCodeAt(0) !== 0xff || binary.charCodeAt(1) !== 0xd8 || binary.charCodeAt(2) !== 0xff) {
+  if (binary.length < 4 || binary.charCodeAt(0) !== 0xff || binary.charCodeAt(1) !== 0xd8 || binary.charCodeAt(2) !== 0xff ||
+      binary.charCodeAt(binary.length - 2) !== 0xff || binary.charCodeAt(binary.length - 1) !== 0xd9) {
     return { ok: false, error: "O arquivo enviado não é uma imagem JPEG válida." };
   }
   return { ok: true, data: image.data };
