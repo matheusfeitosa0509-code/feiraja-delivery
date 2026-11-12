@@ -630,6 +630,7 @@ body:not(:has(#pageHome.active)) .app-header .home-search{display:none!important
 .home-bubbles::-webkit-scrollbar{display:none}
 .home-bubble{flex:0 0 76px;width:76px}
 .mobile-nav .tab-button b#tabCartCount.hidden{display:none!important}
+#pageHome .home-catalog-category,#pageHome [data-home-product-category]{scroll-margin-top:calc(env(safe-area-inset-top,0px) + 140px)}
 </style>
 <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -733,7 +734,7 @@ try {
 <header class="app-header" aria-label="Feira On Delivery"><a class="brand" href="#" aria-label="Feira On Delivery">Feira On Delivery<small>Tudo da feira, pronto para retirada</small></a><div class="search home-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="homeSearch" placeholder="Buscar produtos da feira…" aria-label="Buscar produtos da feira"></div></header>
 <main class="wrap">
  <section id="pageHome" class="app-page active" aria-label="Produtos">
-  <div class="home-info-strip" aria-label="Informações da loja"><div class="home-info-item"><span class="home-info-icon" aria-hidden="true">🧺</span><span><strong>Retirada na loja</strong><small>ou com Uber</small></span></div><div class="home-info-item"><span class="home-info-icon" aria-hidden="true">🕒</span><span><strong>Aberto das 6h às 13h</strong></span></div></div>
+  <div class="home-info-strip" aria-label="Informações da loja"><div class="home-info-item"><span class="home-info-icon" aria-hidden="true">🧺</span><span><strong>Retirada na loja</strong><small>ou com Uber</small></span></div><div class="home-info-item"><span class="home-info-icon" aria-hidden="true">🕒</span><span><strong>Horário: 6h às 13h</strong></span></div></div>
   <div class="home-top" id="homeTopAddress" aria-hidden="true"><div class="home-address"><span class="sm">Retirada em</span><strong id="homeAddress">Retirada na loja</strong></div><button class="icon-button" type="button" data-go-page="Orders" aria-label="Notificações"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button></div>
    <button id="requestProductFab" class="request-product-link" type="button">Não achou? Peça um produto</button>
    <div id="homeBubbles" class="home-bubbles" aria-label="Categorias"></div>
