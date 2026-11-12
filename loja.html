@@ -1571,7 +1571,7 @@ $('#assistantSend').addEventListener('click',async()=>{
  if(message.length>300){setAssistantStatus('O pedido deve ter até 300 caracteres.',true);return;}
  const history=assistantHistory.slice(-6);
  const historyContent=photo?(message.slice(0,280)+(message?'\n':'')+'[foto enviada]'):message;
- const requestHistory=photo?[...history,{role:'user',content:historyContent}].slice(-6):history;
+
  document.querySelector('.assistant-examples').hidden=true;
  appendAssistantBubble('user',[message,photo?'📷 Foto enviada':''].filter(Boolean).join('\n')||'📷 Foto enviada');
  assistantHistory.push({role:'user',content:photo?historyContent:message});
@@ -1582,7 +1582,7 @@ $('#assistantSend').addEventListener('click',async()=>{
  const timeoutMs=photo?40000:20000;
  try{
   const body=photo
-   ?{text:message,history:requestHistory,image:{media_type:'image/jpeg',data:photo.data}}
+   ?{text:message,history,image:{media_type:'image/jpeg',data:photo.data}}
    :{text:message,history};
   const request=supabase.functions.invoke('assistente',{
    body,
