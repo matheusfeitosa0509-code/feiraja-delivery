@@ -16,7 +16,7 @@ export function validatePhoto(image, multipleImages = false) {
   return { ok: true, data: image.data };
 }
 
-export function reconcilePhotoLines(output, catalog) {
+export function reconcilePhotoLines(output, catalog, allowedIds = new Set(catalog.map((product) => product.id))) {
   const itens = [];
   const perguntas = [];
   const lines = Array.isArray(output?.linhas) ? output.linhas : [];
@@ -26,7 +26,7 @@ export function reconcilePhotoLines(output, catalog) {
     lines.length === total && Array.from({ length: total }, (_, i) => i + 1).every((n) => indexes.has(n));
   if (!expectedValid) perguntas.push("Confira a foto: pode haver linhas faltando ou que não consegui separar. Revise a lista antes de adicionar.");
   const byId = new Map(catalog.map((product) => [product.id, product]));
-  const promptIds = new Set(catalog.map((product) => product.id));
+  const promptIds = allowedIds;
   const byProduct = new Map();
   for (const line of lines) {
     const label = String(line?.texto || line?.produto || `linha ${line?.numero || "não identificada"}`).trim().slice(0, 100);
