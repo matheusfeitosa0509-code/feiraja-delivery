@@ -274,6 +274,24 @@ Deno.serve(async (req: Request) => {
     if (authError || !authData?.user) return json({ error: "Sessão expirada. Entre novamente e tente o pedido." }, 401);
     if (authData.user.is_anonymous) return json({ error: 'Crie uma conta ou entre na sua conta antes de concluir o pedido, para manter seu histórico salvo.' }, 403);
     const orderUserId = authData.user.id;
+    const { data: priorAttempt, error: priorAttemptError } = await db.from("checkout_idempotency")
+      .select("order_id,user_id,request_hash")
+      .eq("idempotency_key", checkoutIdempotencyKey)
+      .maybeSingle();
+    if (priorAttemptError) return json({ error: "Não foi possível verificar esta tentativa de checkout." }, 503);
+    if (priorAttempt && String(priorAttempt.user_id) !== orderUserId) {
+      return json({ error: "Esta chave de checkout pertence a outra conta." }, 409);
+    }
+    let priorOrder: any = null;
+    if (priorAttempt) {
+      const { data: existingOrder, error: existingOrderError } = await db.from("orders")
+        .select("id,status,total,payment_id,pix_qr_code,pix_qr_code_base64,pickup_code,payment_provider,payment_method")
+        .eq("id", String(priorAttempt.order_id)).eq("user_id", orderUserId).maybeSingle();
+      if (existingOrderError || !existingOrder) return json({ error: "Não foi possível recuperar o pedido desta tentativa." }, 503);
+      priorOrder = existingOrder;
+      asaasEnabled = String(existingOrder.payment_provider || "") === "asaas" || String(existingOrder.payment_method || "") === "Asaas Pix";
+      asaasApiKey = asaasEnabled ? (Deno.env.get("ASAAS_API_KEY") || "") : "";
+    }
 
     const customer = body?.customer;
     const requestedItems = body?.items;
@@ -282,9 +300,6 @@ Deno.serve(async (req: Request) => {
     const MIN_ORDER_SUBTOTAL_CENTS = 3000;
     let asaasApiKey = asaasEnabled ? (Deno.env.get("ASAAS_API_KEY") || "") : "";
     if (!["pix", "cash", "card_on_delivery"].includes(paymentMethod)) return json({ error: "Forma de pagamento inválida." }, 400);
-    if (paymentMethod === "pix" && (asaasEnabled ? !asaasApiKey : !mpToken)) {
-      return json({ error: asaasEnabled ? "Asaas Pix ainda não está configurado." : "Pagamento Pix ainda não está configurado." }, 503);
-    }
     if (!customer || !Array.isArray(requestedItems) || requestedItems.length < 1 || requestedItems.length > 50) {
       return json({ error: "Pedido inválido: informe os dados do cliente e os produtos." }, 400);
     }
@@ -301,10 +316,13 @@ Deno.serve(async (req: Request) => {
     if (deliveryType === "pickup_uber" && paymentMethod !== "pix") {
       return json({ error: "Na retirada com Uber, o pagamento é somente por Pix." }, 400);
     }
+    if (paymentMethod === "pix" && (asaasEnabled ? !asaasApiKey : !mpToken)) {
+      return json({ error: asaasEnabled ? "Asaas Pix ainda não está configurado." : "Pagamento Pix ainda não está configurado." }, 503);
+    }
     const address = "Av. Lourenço da Silva Braga, 700 (em frente à feira)";
-    let pickupCode = deliveryType === "pickup_uber"
+    let pickupCode = priorOrder?.pickup_code || (deliveryType === "pickup_uber"
       ? String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, "0")
-      : null;
+      : null);
     if (!name || phone.replace(/\D/g, "").length < 8 || (paymentMethod === "pix" && (!validPixDocument || !/^\S+@\S+\.\S+$/.test(email))) || (email && !/^\S+@\S+\.\S+$/.test(email))) {
       return json({ error: "Confira nome, telefone, CPF e e-mail." }, 400);
     }
@@ -449,37 +467,20 @@ Deno.serve(async (req: Request) => {
     });
     const hashBytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(hashPayload));
     const checkoutRequestHash = Array.from(new Uint8Array(hashBytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
-    const { data: priorAttempt, error: priorAttemptError } = await db.from("checkout_idempotency")
-      .select("order_id,user_id,request_hash")
-      .eq("idempotency_key", checkoutIdempotencyKey)
-      .maybeSingle();
-    if (priorAttemptError) return json({ error: "Não foi possível verificar esta tentativa de checkout." }, 503);
-    if (priorAttempt && (String(priorAttempt.user_id) !== orderUserId || String(priorAttempt.request_hash) !== checkoutRequestHash)) {
-      return json({ error: "Esta chave já foi usada em outra tentativa. Atualize a feira e inicie um novo checkout." }, 409);
+    if (priorAttempt && String(priorAttempt.request_hash) !== checkoutRequestHash) {
+      return json({ error: "Esta chave já foi usada com dados diferentes. Atualize a feira e inicie um novo checkout." }, 409);
     }
-
-    if (priorAttempt) {
-      const { data: existingOrder, error: existingOrderError } = await db.from("orders")
-        .select("id,status,total,payment_id,pix_qr_code,pix_qr_code_base64,pickup_code,payment_provider,payment_method")
-        .eq("id", String(priorAttempt.order_id))
-        .eq("user_id", orderUserId)
-        .maybeSingle();
-      if (existingOrderError || !existingOrder) return json({ error: "Não foi possível recuperar o pedido desta tentativa." }, 503);
-      pickupCode = existingOrder.pickup_code || null;
-      asaasEnabled = String(existingOrder.payment_provider || "") === "asaas" || String(existingOrder.payment_method || "") === "Asaas Pix";
-      asaasApiKey = asaasEnabled ? (Deno.env.get("ASAAS_API_KEY") || "") : "";
-      if (String(existingOrder.status || "").toLowerCase() === "cancelada") {
-        return json({ error: "Este pedido desta tentativa já foi cancelado. Confira Meus pedidos antes de iniciar outro checkout." }, 409);
-      }
-      if (paymentMethod === "pix" && existingOrder.pix_qr_code) {
-        return json({
-          order: { id: existingOrder.id, status: existingOrder.status, total: existingOrder.total, pickupCode },
-          paymentId: existingOrder.payment_id,
-          qrCode: existingOrder.pix_qr_code,
-          qrCodeBase64: existingOrder.pix_qr_code_base64,
-          paymentStatus: String(existingOrder.status || "").toLowerCase() === "pagamento confirmado" ? "CONFIRMED" : "PENDING",
-        });
-      }
+    if (priorOrder && String(priorOrder.status || "").toLowerCase() === "cancelada") {
+      return json({ error: "Este pedido desta tentativa já foi cancelado. Confira Meus pedidos antes de iniciar outro checkout." }, 409);
+    }
+    if (priorOrder && paymentMethod === "pix" && priorOrder.pix_qr_code) {
+      return json({
+        order: { id: priorOrder.id, status: priorOrder.status, total: priorOrder.total, pickupCode },
+        paymentId: priorOrder.payment_id,
+        qrCode: priorOrder.pix_qr_code,
+        qrCodeBase64: priorOrder.pix_qr_code_base64,
+        paymentStatus: String(priorOrder.status || "").toLowerCase() === "pagamento confirmado" ? "CONFIRMED" : "PENDING",
+      });
     }
 
     let asaasBaseUrl = "";
