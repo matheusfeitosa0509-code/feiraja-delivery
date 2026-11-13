@@ -1146,6 +1146,11 @@ async function loadProfile(knownUser){
   await loadMyOrders();return;
  }
  const profileUser=currentUser;
+ if(!profileUser?.id){
+  currentUser=null;customerPhoneReady=false;updateAccountUI();
+  $('#requiredProfileStep').classList.add('hidden');$('#authForm').classList.remove('hidden');$('#googleAuthArea').classList.remove('hidden');
+  await loadMyOrders();return;
+ }
  const {data,error}=await supabase.from('customer_profiles').select('full_name,phone,cpf,address').eq('user_id',profileUser.id).maybeSingle();
  if(currentUser?.id!==profileUser.id)return;
  if(error){
@@ -1178,8 +1183,8 @@ async function loadMyOrders(knownUser){
  const paint=html=>boxes.forEach(box=>{if(box)box.innerHTML=html});
  let sessionUser=knownUser||null;
  if(!sessionUser){const {data:{session}}=await supabase.auth.getSession();sessionUser=session?.user||null;}
- currentUser=sessionUser;
- if(!currentUser){paint('<p class="sm">Entre na sua conta para consultar pedidos.</p>');$('#ordersMessage').textContent='Entre na sua conta para consultar seu histórico.';$('#repeatOrder').hidden=true;return;}
+ currentUser=sessionUser?.id?sessionUser:null;
+ if(!currentUser?.id){currentUser=null;paint('<p class="sm">Entre na sua conta para consultar pedidos.</p>');$('#ordersMessage').textContent='Entre na sua conta para consultar seu histórico.';$('#repeatOrder').hidden=true;window.__lastRealOrderItems=[];return;}
  paint('<p class="sm">Carregando pedidos…</p>');
  const {data,error}=await supabase.from('orders').select('id,created_at,items,total,status,payment_method,delivery_type,pickup_code').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(50);
  if(error){paint('<p class="sm">Não foi possível carregar o histórico agora. Tente novamente.</p>');$('#ordersMessage').textContent='Não foi possível carregar os pedidos. Tente novamente.';$('#repeatOrder').hidden=true;console.warn('Histórico:',error.message);if(knownUser)throw error;return;}

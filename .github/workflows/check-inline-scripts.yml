@@ -1,5 +1,10 @@
 name: Check inline JavaScript syntax
 on:
+  pull_request:
+    paths:
+      - "loja.html"
+      - "recuperar-senha.html"
+      - ".github/workflows/check-inline-scripts.yml"
   push:
     branches: [main]
   workflow_dispatch:
