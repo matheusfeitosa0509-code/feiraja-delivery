@@ -192,7 +192,7 @@ Deno.serve(async (req: Request) => {
 
   // Non-cancelled orders retain the existing payment-linking guard. Cancelled orders
   // are resolved by the Asaas-verified externalReference, even if payment_id is absent/different.
-  if (isAsaasOrder && !isCancelledOrder && !storedPaymentId) {
+  if (isAsaasOrder && order && !isCancelledOrder && !storedPaymentId) {
     const createdAtMs = Date.parse(String(order.created_at || ""));
     const ageMs = Date.now() - createdAtMs;
     if (Number.isFinite(createdAtMs) && ageMs >= 10 * 60 * 1000) {
@@ -206,7 +206,7 @@ Deno.serve(async (req: Request) => {
     console.error("Cobrança Asaas ainda não vinculada; solicitando nova entrega.");
     return json({ error: "Cobrança ainda não vinculada ao pedido." }, 503);
   }
-  if (isAsaasOrder && !isCancelledOrder && storedPaymentId !== paymentId) {
+  if (isAsaasOrder && order && !isCancelledOrder && storedPaymentId !== paymentId) {
     return json({ received: true, ignored: true });
   }
 
@@ -286,7 +286,7 @@ Deno.serve(async (req: Request) => {
       verifiedExternalReference: String(verifiedPayment?.externalReference || ""),
       verifiedBillingType: String(verifiedPayment?.billingType || ""),
       verifiedValue,
-      expectedTotal: noMatchingOrder ? null : Number(order.total),
+      expectedTotal: noMatchingOrder ? null : Number(order?.total),
     })
     : verifiedIdentityAndType && verifiedStatusAccepted &&
       Number.isFinite(expectedCents) && expectedCents > 0 &&
