@@ -1,5 +1,7 @@
 -- ORDEM F: idempotência atômica do checkout e recuperação da mesma cobrança Pix.
--- Preparada para revisão. NÃO APLICAR sem autorização explícita do proprietário.
+-- Compatível com super-worker v52 durante a transição: payloads sem chave/hash
+-- continuam no caminho legado; payloads com ambos usam idempotência atômica.
+-- NÃO APLICAR em produção sem autorização explícita do proprietário.
 BEGIN;
 
 CREATE TABLE public.checkout_idempotency (
@@ -32,6 +34,8 @@ DECLARE
   v_order_id text;
   v_status text;
   v_total numeric;
+  v_has_key boolean;
+  v_has_hash boolean;
 BEGIN
   IF p_order IS NULL OR pg_catalog.jsonb_typeof(p_order) IS DISTINCT FROM 'object' THEN
     RAISE EXCEPTION 'INVALID_ORDER_PAYLOAD' USING ERRCODE = '22023';
@@ -42,44 +46,53 @@ BEGIN
     RAISE EXCEPTION 'INVALID_USER_ID' USING ERRCODE = '22023';
   END IF;
 
-  IF COALESCE(p_order->>'checkout_idempotency_key', '') !~
-       '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
-     OR COALESCE(p_order->>'checkout_request_hash', '') !~ '^[0-9a-f]{64}$' THEN
+  v_has_key := NULLIF(p_order->>'checkout_idempotency_key', '') IS NOT NULL;
+  v_has_hash := NULLIF(p_order->>'checkout_request_hash', '') IS NOT NULL;
+
+  IF v_has_key IS DISTINCT FROM v_has_hash THEN
     RAISE EXCEPTION 'INVALID_CHECKOUT_IDEMPOTENCY' USING ERRCODE = '22023';
   END IF;
 
-  v_idempotency_key := (p_order->>'checkout_idempotency_key')::uuid;
-  v_request_hash := p_order->>'checkout_request_hash';
-
-  PERFORM pg_catalog.pg_advisory_xact_lock(
-    pg_catalog.hashtextextended(v_idempotency_key::text, 0)
-  );
-
-  SELECT i.order_id, i.user_id, i.request_hash
-    INTO v_existing_order_id, v_existing_user_id, v_existing_request_hash
-    FROM public.checkout_idempotency AS i
-   WHERE i.idempotency_key = v_idempotency_key;
-
-  IF FOUND THEN
-    IF v_existing_user_id IS DISTINCT FROM v_user_id
-       OR v_existing_request_hash IS DISTINCT FROM v_request_hash THEN
-      RAISE EXCEPTION 'CHECKOUT_IDEMPOTENCY_CONFLICT' USING ERRCODE = '23505';
+  IF v_has_key THEN
+    IF p_order->>'checkout_idempotency_key' !~
+         '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+       OR p_order->>'checkout_request_hash' !~ '^[0-9a-f]{64}$' THEN
+      RAISE EXCEPTION 'INVALID_CHECKOUT_IDEMPOTENCY' USING ERRCODE = '22023';
     END IF;
+    v_idempotency_key := (p_order->>'checkout_idempotency_key')::uuid;
+    v_request_hash := p_order->>'checkout_request_hash';
 
-    SELECT o.id, o.status, o.total
-      INTO v_order_id, v_status, v_total
-      FROM public.orders AS o
-     WHERE o.id = v_existing_order_id
-       AND o.user_id = v_user_id;
+    PERFORM pg_catalog.pg_advisory_xact_lock(
+      pg_catalog.hashtextextended(v_idempotency_key::text, 0)
+    );
 
-    IF NOT FOUND THEN
-      RAISE EXCEPTION 'CHECKOUT_ORDER_NOT_FOUND' USING ERRCODE = 'P0002';
+    SELECT i.order_id, i.user_id, i.request_hash
+      INTO v_existing_order_id, v_existing_user_id, v_existing_request_hash
+      FROM public.checkout_idempotency AS i
+     WHERE i.idempotency_key = v_idempotency_key;
+
+    IF FOUND THEN
+      IF v_existing_user_id IS DISTINCT FROM v_user_id
+         OR v_existing_request_hash IS DISTINCT FROM v_request_hash THEN
+        RAISE EXCEPTION 'CHECKOUT_IDEMPOTENCY_CONFLICT' USING ERRCODE = '23505';
+      END IF;
+
+      SELECT o.id, o.status, o.total
+        INTO v_order_id, v_status, v_total
+        FROM public.orders AS o
+       WHERE o.id = v_existing_order_id
+         AND o.user_id = v_user_id;
+
+      IF NOT FOUND THEN
+        RAISE EXCEPTION 'CHECKOUT_ORDER_NOT_FOUND' USING ERRCODE = 'P0002';
+      END IF;
+
+      RETURN QUERY SELECT v_order_id, v_status, v_total;
+      RETURN;
     END IF;
-
-    RETURN QUERY SELECT v_order_id, v_status, v_total;
-    RETURN;
   END IF;
 
+  -- O lock por usuário mantém o limite de 5 pedidos/10 minutos em ambos os caminhos.
   PERFORM pg_catalog.pg_advisory_xact_lock(
     pg_catalog.hashtextextended(v_user_id::text, 0)
   );
@@ -109,10 +122,14 @@ BEGIN
   )
   RETURNING id, status, total INTO v_order_id, v_status, v_total;
 
-  INSERT INTO public.checkout_idempotency (
-    idempotency_key, user_id, request_hash, order_id
-  )
-  VALUES (v_idempotency_key, v_user_id, v_request_hash, v_order_id);
+  -- v52 omite os dois campos: cria o pedido legado sem gravar mapeamento.
+  -- A main nova sempre envia ambos, ativando o registro atômico da tentativa.
+  IF v_has_key THEN
+    INSERT INTO public.checkout_idempotency (
+      idempotency_key, user_id, request_hash, order_id
+    )
+    VALUES (v_idempotency_key, v_user_id, v_request_hash, v_order_id);
+  END IF;
 
   RETURN QUERY SELECT v_order_id, v_status, v_total;
 END;
