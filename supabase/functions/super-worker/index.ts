@@ -153,10 +153,6 @@ Deno.serve(async (req: Request) => {
     const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
     const body = requestBody;
-    const checkoutIdempotencyKey = String(body?.checkout_idempotency_key || "").trim().toLowerCase();
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(checkoutIdempotencyKey)) {
-      return json({ error: "Chave de tentativa de checkout inválida. Atualize a página e tente novamente." }, 400);
-    }
     const noticeType = String(url.searchParams.get("type") || url.searchParams.get("topic") || body?.type || body?.topic || "");
     const paymentIdFromNotice = String(url.searchParams.get("data.id") || url.searchParams.get("id") || body?.data?.id || "");
     if (noticeType && noticeType !== "payment") return json({ received: true, ignored: true });
@@ -265,6 +261,10 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Falha ao atualizar pedido." }, 500);
       }
       return json({ received: true });
+    }
+    const checkoutIdempotencyKey = String(body?.checkout_idempotency_key || "").trim().toLowerCase();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(checkoutIdempotencyKey)) {
+      return json({ error: "Chave de tentativa de checkout inválida. Atualize a página e tente novamente." }, 400);
     }
     const bearer = req.headers.get("Authorization") || "";
     const accessToken = bearer.startsWith("Bearer ") ? bearer.slice(7) : "";
