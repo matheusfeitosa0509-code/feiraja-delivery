@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { calculateLineTotalCents, isValidSalesQuantity, selectEffectiveUnitPriceCents, sumDecimalQuantities } from "../_shared/sales-rules.js";
+import { resolveMercadoPagoOrderStatus } from "./payment-status.ts";
 
 function isValidCpf(value: string) { const cpf = String(value || "").replace(/\D/g, ""); if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false; const calc = (base: string, factor: number) => { let sum = 0; for (const digit of base) sum += Number(digit) * factor--; const mod = (sum * 10) % 11; return mod === 10 ? 0 : mod; }; return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10]); }
 
@@ -223,31 +224,30 @@ Deno.serve(async (req: Request) => {
       }
       const incomingStatus = String(verifiedPayment.status || "");
       const normalizedOrderStatus = String(linkedOrder.status || "").trim().toLowerCase();
+      const decision = resolveMercadoPagoOrderStatus({
+        orderStatus: linkedOrder.status,
+        incomingStatus,
+        storedPaymentId: linkedOrder.payment_id ? String(linkedOrder.payment_id) : null,
+        incomingPaymentId: paymentIdFromNotice,
+      });
+      if (decision.ignored) {
+        if (decision.reason === "pedido_cancelado_pagamento_aprovado") {
+          console.warn("Mercado Pago: pagamento aprovado ignorado para pedido cancelado; revisar devolução manual do Pix.", {
+            order_id: String(linkedOrder.id),
+            reason: "approved_payment_for_cancelled_order",
+          });
+        }
+        return json({ received: true, ignored: true, reason: decision.reason });
+      }
       const protectedAdministrativeStatuses = new Set(["saiu para entrega", "cancelada", "cancelado", "preparando", "pronto para retirada", "entregue", "preparando pedido", "concluído", "concluido", "received", "recebido"]);
-      const isCancelledOrder = normalizedOrderStatus === "cancelada" || normalizedOrderStatus === "cancelado";
-      const paymentIdMatches = String(linkedOrder.payment_id || "") === paymentIdFromNotice;
-      // Only a verified approval for this exact payment may restore a cancelled Pix order.
-      if (incomingStatus === "approved" && isCancelledOrder && paymentIdMatches) {
-        // Continue to the existing status map, which sets "Pagamento Confirmado".
-      } else if (incomingStatus === "approved" && protectedAdministrativeStatuses.has(normalizedOrderStatus)) {
+      if (incomingStatus === "approved" && protectedAdministrativeStatuses.has(normalizedOrderStatus)) {
         return json({ received: true, ignored: true, reason: "status_administrativo_preservado" });
       }
       // Make repeated approval notifications idempotent.
       if (incomingStatus === "approved" && normalizedOrderStatus === "pagamento confirmado") {
         return json({ received: true, ignored: true, reason: "pagamento_ja_confirmado" });
       }
-      const statusMap: Record<string, string> = {
-        approved: "Pagamento Confirmado",
-        pending: "Pagamento Pendente",
-        in_process: "Pagamento Pendente",
-        rejected: "Cancelada",
-        cancelled: "Cancelada",
-        refunded: "Cancelada",
-        expired: "Cancelada",
-        charged_back: "Cancelada",
-      };
-      const nextStatus = statusMap[incomingStatus];
-      if (!nextStatus) return json({ received: true, ignored: true });
+      const nextStatus = decision.nextStatus;
       // Ignore delayed non-final events after approval, but keep refunds and chargebacks visible.
       const nonFinalStatuses = new Set(["pending", "in_process", "rejected", "cancelled"]);
       if (["Pagamento Confirmado", "Saiu para Entrega", "Cancelada"].includes(linkedOrder.status) && nonFinalStatuses.has(incomingStatus)) {

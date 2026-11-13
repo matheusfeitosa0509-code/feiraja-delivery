@@ -44,6 +44,9 @@ jobs:
       - name: Check super-worker
         run: deno check supabase/functions/super-worker/index.ts
 
+      - name: Test Mercado Pago cancelled-order handling
+        run: deno test supabase/functions/super-worker/payment-status_test.ts
+
       - name: Check expire-pix
         run: deno check supabase/functions/expire-pix/index.ts
 
