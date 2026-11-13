@@ -224,7 +224,12 @@ Deno.serve(async (req: Request) => {
       }
       const incomingStatus = String(verifiedPayment.status || "");
       const normalizedOrderStatus = String(linkedOrder.status || "").trim().toLowerCase();
-      const decision = resolveMercadoPagoOrderStatus(linkedOrder.status, incomingStatus);
+      const decision = resolveMercadoPagoOrderStatus({
+        orderStatus: linkedOrder.status,
+        incomingStatus,
+        storedPaymentId: linkedOrder.payment_id ? String(linkedOrder.payment_id) : null,
+        incomingPaymentId: paymentIdFromNotice,
+      });
       if (decision.ignored) {
         if (decision.reason === "pedido_cancelado_pagamento_aprovado") {
           console.warn("Mercado Pago: pagamento aprovado ignorado para pedido cancelado; revisar devolução manual do Pix.", {

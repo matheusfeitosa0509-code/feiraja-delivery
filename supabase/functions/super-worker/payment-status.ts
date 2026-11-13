@@ -2,10 +2,16 @@ export type MercadoPagoStatusDecision =
   | { ignored: true; reason: string }
   | { ignored: false; nextStatus: string };
 
-export function resolveMercadoPagoOrderStatus(
-  orderStatus: string,
-  incomingStatus: string,
-): MercadoPagoStatusDecision {
+export function resolveMercadoPagoOrderStatus(input: {
+  orderStatus: string;
+  incomingStatus: string;
+  storedPaymentId: string | null;
+  incomingPaymentId: string;
+}): MercadoPagoStatusDecision {
+  const { orderStatus, incomingStatus, storedPaymentId, incomingPaymentId } = input;
+  if (storedPaymentId && storedPaymentId !== incomingPaymentId) {
+    return { ignored: true, reason: "payment_id_mismatch" };
+  }
   const normalizedOrderStatus = String(orderStatus || "").trim().toLowerCase();
   const isCancelledOrder = normalizedOrderStatus === "cancelada" || normalizedOrderStatus === "cancelado";
 
