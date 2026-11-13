@@ -14,6 +14,9 @@ on:
     branches: [fix/cancelamento-servidor]
     paths:
       - 'supabase/migrations/20261111170000_ordem_229_cancelamento_cliente.sql'
+      - 'supabase/migrations/20261113140000_admin_order_item_separation.sql'
+      - 'supabase/migrations/20261113160000_order_separation_cancel_lock.sql'
+      - 'supabase/tests/test_ordem_229_cancelamento.sh'
       - 'supabase/rollback/ordem_229_cancelamento_cliente_rollback.sql'
       - 'supabase/tests/ordem_229_*'
       - '.github/workflows/ordem-229-postgres17.yml'
@@ -48,11 +51,11 @@ jobs:
           const { spawnSync } = require('node:child_process');
           for (const file of ['loja.html', 'painel.html']) {
             const html = fs.readFileSync(file, 'utf8');
-            const scripts = [...html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)];
+            const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
             let checked = 0;
             for (const match of scripts) {
               const attrs = match[1] || '';
-              const type = (attrs.match(/\\btype\\s*=\\s*["']([^"']+)["']/i) || [])[1] || '';
+              const type = (attrs.match(/\btype\s*=\s*["']([^"']+)["']/i) || [])[1] || '';
               if (type && !/(javascript|module)/i.test(type)) continue;
               if (!match[2].trim()) continue;
               const ext = /module/i.test(type) ? '.mjs' : '.js';
