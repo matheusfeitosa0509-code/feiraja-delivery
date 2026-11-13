@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import webpush from "npm:web-push@3.6.7";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -58,6 +59,45 @@ function constantTimeEqual(left: string, right: string) {
   const length = Math.max(a.length, b.length);
   for (let i = 0; i < length; i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
   return diff === 0;
+}
+
+
+async function notifyAdminUnmatchedPayment(db: ReturnType<typeof createClient>, paymentId: string) {
+  console.error("Pagamento Pix Asaas confirmado sem pedido correspondente.", { payment_id: paymentId });
+  const publicKey = Deno.env.get("VAPID_PUBLIC_KEY");
+  const privateKey = Deno.env.get("VAPID_PRIVATE_KEY");
+  const subject = Deno.env.get("VAPID_SUBJECT");
+  if (!publicKey || !privateKey || !subject) {
+    console.error("Aviso administrativo de Pix sem pedido não enviado: VAPID indisponível.");
+    return;
+  }
+  const { data: admins, error: adminsError } = await db.from("admin_users").select("user_id");
+  if (adminsError) {
+    console.error("Falha ao localizar administradores para Pix sem pedido.");
+    return;
+  }
+  const ids = [...new Set((admins ?? []).map((row: { user_id: string }) => row.user_id).filter(Boolean))];
+  if (!ids.length) return;
+  const { data: subscriptions, error: subscriptionsError } = await db.from("push_subscriptions")
+    .select("endpoint,p256dh,auth_secret").eq("ativo", true).in("user_id", ids);
+  if (subscriptionsError) {
+    console.error("Falha ao localizar inscrições push para Pix sem pedido.");
+    return;
+  }
+  webpush.setVapidDetails(subject, publicKey, privateKey);
+  const payload = JSON.stringify({
+    title: "Feira On Delivery",
+    body: "Pix recebido sem pedido correspondente — conferir no Asaas",
+    url: "/painel.html",
+    tag: `feira-asaas-sem-pedido-${paymentId}`,
+  });
+  for (const row of subscriptions ?? []) {
+    try {
+      await webpush.sendNotification({ endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth_secret } }, payload, { TTL: 3600, urgency: "high" });
+    } catch {
+      console.error("Falha no envio de aviso administrativo de Pix sem pedido.");
+    }
+  }
 }
 
 const protectedAdministrativeStatuses = new Set([
@@ -138,32 +178,20 @@ Deno.serve(async (req: Request) => {
   const { data: order, error: orderReadError } = await db.from("orders")
     .select("id,status,total,payment_id,payment_provider,created_at")
     .eq("id", externalReference)
-    .eq("payment_provider", "asaas")
     .maybeSingle();
 
   if (orderReadError) {
     console.error("Falha ao consultar pedido para webhook Asaas.");
     return json({ error: "Falha ao consultar pedido." }, 500);
   }
-  if (!order || String(order.payment_provider || "") !== "asaas" ||
-      String(order.id || "") !== externalReference) {
-    return json({ received: true, ignored: true });
-  }
-  const normalizedStatus = String(order.status || "").trim().toLowerCase();
-  const isCancelledOrder = normalizedStatus === "cancelada" || normalizedStatus === "cancelado";
-  const storedPaymentId = String(order.payment_id || "");
+  const normalizedStatus = String(order?.status || "").trim().toLowerCase();
+  const isCancelledOrder = Boolean(order) && (normalizedStatus === "cancelada" || normalizedStatus === "cancelado");
+  const storedPaymentId = String(order?.payment_id || "");
+  const isAsaasOrder = Boolean(order) && String(order.payment_provider || "") === "asaas" && String(order.id || "") === externalReference;
 
-  // Cancelled orders without a stored charge, or with a different charge, are never changed.
-  if (isCancelledOrder && !storedPaymentId) {
-    return json({ received: true, ignored: true, reason: "pedido_cancelado_sem_payment_id" });
-  }
-  if (isCancelledOrder && storedPaymentId !== paymentId) {
-    return json({ received: true, ignored: true, reason: "pedido_cancelado_payment_id_diferente" });
-  }
-
-  // Give checkout ten minutes to link the charge. After that, acknowledge for manual
-  // review without linking or mutating the order, regardless of its non-cancelled status.
-  if (!storedPaymentId) {
+  // Non-cancelled orders retain the existing payment-linking guard. Cancelled orders
+  // are resolved by the Asaas-verified externalReference, even if payment_id is absent/different.
+  if (isAsaasOrder && !isCancelledOrder && !storedPaymentId) {
     const createdAtMs = Date.parse(String(order.created_at || ""));
     const ageMs = Date.now() - createdAtMs;
     if (Number.isFinite(createdAtMs) && ageMs >= 10 * 60 * 1000) {
@@ -177,7 +205,7 @@ Deno.serve(async (req: Request) => {
     console.error("Cobrança Asaas ainda não vinculada; solicitando nova entrega.");
     return json({ error: "Cobrança ainda não vinculada ao pedido." }, 503);
   }
-  if (storedPaymentId !== paymentId) {
+  if (isAsaasOrder && !isCancelledOrder && storedPaymentId !== paymentId) {
     return json({ received: true, ignored: true });
   }
 
@@ -233,9 +261,9 @@ Deno.serve(async (req: Request) => {
 
   const verifiedStatus = String(verifiedPayment?.status || "").toUpperCase();
   const verifiedValue = Number(verifiedPayment?.value);
-  const expectedCents = Math.round(Number(order.total) * 100);
   const paidCents = Math.round(paymentValue * 100);
   const verifiedCents = Math.round(verifiedValue * 100);
+  const expectedCents = order ? Math.round(Number(order.total) * 100) : NaN;
   const verifiedChargebackStatus = String(verifiedPayment?.chargeback?.status || "").toUpperCase();
   const verifiedStatusAccepted = isRefundEvent
     ? verifiedStatus === "REFUNDED"
@@ -244,13 +272,14 @@ Deno.serve(async (req: Request) => {
     : isOverdueEvent
     ? verifiedStatus === "OVERDUE"
     : ["RECEIVED", "CONFIRMED"].includes(verifiedStatus);
+  const noMatchingOrder = !isAsaasOrder;
+  const amountIsValid = noMatchingOrder
+    ? Number.isFinite(paidCents) && paidCents > 0 && paidCents === verifiedCents
+    : Number.isFinite(expectedCents) && expectedCents > 0 && paidCents === expectedCents && verifiedCents === expectedCents;
   if (String(verifiedPayment?.id || "") !== paymentId ||
       String(verifiedPayment?.externalReference || "") !== externalReference ||
       String(verifiedPayment?.billingType || "").toUpperCase() !== "PIX" ||
-      !verifiedStatusAccepted ||
-      !Number.isFinite(expectedCents) || expectedCents <= 0 ||
-      !Number.isFinite(paidCents) || paidCents !== expectedCents ||
-      !Number.isFinite(verifiedCents) || verifiedCents !== expectedCents) {
+      !verifiedStatusAccepted || !amountIsValid) {
     const mismatch = String(verifiedPayment?.id || "") !== paymentId ? "id_divergente" :
       String(verifiedPayment?.externalReference || "") !== externalReference ? "referencia_divergente" :
       String(verifiedPayment?.billingType || "").toUpperCase() !== "PIX" ? "tipo_divergente" :
@@ -259,6 +288,32 @@ Deno.serve(async (req: Request) => {
         !Number.isFinite(verifiedCents) || verifiedCents !== expectedCents) ? "valor_divergente" : "dados_divergentes";
     console.warn("Webhook Asaas ignorado após consulta bem-sucedida: divergência permanente.", { mismatch });
     return json({ received: true, ignored: true, reason: "divergencia_permanente" });
+  }
+
+  if (noMatchingOrder) {
+    if (isPaymentConfirmationEvent) await notifyAdminUnmatchedPayment(db, paymentId);
+    return json({ received: true, ignored: true, reason: "pedido_nao_encontrado_ou_nao_asaas" });
+  }
+
+  if (isCancelledOrder && isPaymentConfirmationEvent) {
+    const update = db.from("orders").update({
+      refund_pending: true,
+      ...(!storedPaymentId ? { payment_id: paymentId } : {}),
+    }).eq("id", order.id).eq("payment_provider", "asaas").eq("status", order.status);
+    const guardedUpdate = storedPaymentId ? update.eq("payment_id", storedPaymentId) : update.is("payment_id", null);
+    const { data: refundOrder, error: refundUpdateError } = await guardedUpdate.select("id").maybeSingle();
+    if (refundUpdateError) {
+      console.error("Falha ao marcar devolução de Pix em pedido cancelado.");
+      return json({ error: "Falha ao registrar devolução pendente." }, 500);
+    }
+    if (refundOrder) return json({ received: true, refund_pending: true });
+    const { data: currentOrder, error: currentOrderError } = await db.from("orders")
+      .select("status,refund_pending").eq("id", order.id).maybeSingle();
+    if (currentOrderError) return json({ error: "Falha ao confirmar registro de devolução." }, 500);
+    if (String(currentOrder?.status || "").toLowerCase() === "cancelada" && currentOrder?.refund_pending === true) {
+      return json({ received: true, refund_pending: true, duplicate: true });
+    }
+    return json({ received: true, ignored: true, reason: "pedido_alterado_concorrentemente" });
   }
 
   if (isOverdueEvent) {
