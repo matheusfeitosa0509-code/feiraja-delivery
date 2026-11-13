@@ -182,8 +182,6 @@ Deno.serve(async (req: Request) => {
     eligible_count: results.length,
     changed_orders: changedOrders,
     results,
-    note: SIMULATION_MODE
-      ? "Modo de simulação: nenhum pedido foi alterado. Para ativar, configure EXPIRE_PIX_SIMULATION_MODE=false."
-      : "Modo ativo: somente pedidos Asaas com cobrança validada como OVERDUE podem ser marcados como Cancelada.",
+    note: "Modo de simulação fixo: nenhum pedido foi alterado. A ativação real exige alteração de código e autorização explícita.",
   }, 200, origin);
 });
