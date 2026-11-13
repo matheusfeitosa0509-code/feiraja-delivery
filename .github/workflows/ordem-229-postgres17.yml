@@ -4,6 +4,9 @@ on:
     branches: [main]
     paths:
       - 'supabase/migrations/20261111170000_ordem_229_cancelamento_cliente.sql'
+      - 'supabase/migrations/20261113140000_admin_order_item_separation.sql'
+      - 'supabase/migrations/20261113160000_order_separation_cancel_lock.sql'
+      - 'supabase/tests/test_ordem_229_cancelamento.sh'
       - 'supabase/rollback/ordem_229_cancelamento_cliente_rollback.sql'
       - 'supabase/tests/ordem_229_*'
       - '.github/workflows/ordem-229-postgres17.yml'
