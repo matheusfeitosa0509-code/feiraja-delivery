@@ -285,9 +285,9 @@ let allOrders=[],seenOrderIds=new Set(),firstLoadDone=false,hasMoreOrders=true,n
     if(isMissingSeparationSchema(error)){separatedColumnAvailable=false;separatedMemory.set(id,next);separatedPending.delete(id);return;}
     throw error;
    }
-   order.separated_items=next;separatedMemory.delete(id);separatedPending.delete(id);render();
+   const latestOrder=allOrders.find(o=>String(o.id)===id);if(latestOrder)latestOrder.separated_items=next;separatedMemory.delete(id);separatedPending.delete(id);render();
   }catch(error){
-   order.separated_items=previous;separatedPending.delete(id);separatedMemory.delete(id);render();notice('Não deu para salvar, tente de novo',true);
+   const latestOrder=allOrders.find(o=>String(o.id)===id);if(latestOrder)latestOrder.separated_items=previous;separatedPending.delete(id);separatedMemory.delete(id);render();notice('Não deu para salvar, tente de novo',true);
   }
  }
 const money=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(n)||0);
