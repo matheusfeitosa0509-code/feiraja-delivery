@@ -482,6 +482,13 @@ Deno.serve(async (req: Request) => {
         paymentStatus: String(priorOrder.status || "").toLowerCase() === "pagamento confirmado" ? "CONFIRMED" : "PENDING",
       });
     }
+    if (priorOrder && paymentMethod === "pix" && String(priorOrder.status || "").toLowerCase() !== "pagamento pendente") {
+      return json({
+        order: { id: priorOrder.id, status: priorOrder.status, total: priorOrder.total, pickupCode },
+        paymentId: priorOrder.payment_id,
+        paymentStatus: String(priorOrder.status || "").toUpperCase(),
+      });
+    }
 
     let asaasBaseUrl = "";
     if (asaasEnabled) {
@@ -796,6 +803,8 @@ Deno.serve(async (req: Request) => {
           if (recoveredPayment?.id) {
             createPaymentResponse = new Response(JSON.stringify(recoveredPayment), { status: 200 });
           } else {
+            await db.from("checkout_idempotency").update({ payment_lock_until: null })
+              .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
             console.error("super-worker", { code: "PAYMENT_CREATE_INCONCLUSIVE", stage: "create_payment" });
             return json({ error: "Não foi possível confirmar se a cobrança foi criada. O pedido permanece pendente para nova tentativa de reconciliação." }, 503);
           }
@@ -806,6 +815,8 @@ Deno.serve(async (req: Request) => {
         if (recoveredPayment?.id) {
           createPaymentResponse = new Response(JSON.stringify(recoveredPayment), { status: 200 });
         } else {
+          await db.from("checkout_idempotency").update({ payment_lock_until: null })
+            .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
           console.error("super-worker", { code: "PAYMENT_RECONCILIATION_FAILED", stage: "reconcile_payment" });
           return json({ error: "Não foi possível confirmar se a cobrança foi criada. O pedido permanece pendente para nova tentativa de reconciliação." }, 503);
         }
@@ -941,24 +952,32 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${mpToken}`,
-        "Content-Type": "application/json",
-        "X-Idempotency-Key": orderId,
-      },
-      body: JSON.stringify({
-        transaction_amount: total,
-        description: `FeiraJá - Pedido ${orderId}`,
-        payment_method_id: "pix",
-        payer: { email, first_name: name.split(" ")[0], last_name: name.split(" ").slice(1).join(" ") || name.split(" ")[0], identification: { type: "CPF", number: cpf } },
-        date_of_expiration: new Date(Date.now() + 30 * 60 * 1000 - 4 * 60 * 60 * 1000).toISOString().slice(0, -1) + "-04:00",
-        notification_url: "https://juhwdevvwstmyxyyagzh.supabase.co/functions/v1/super-worker",
-        external_reference: orderId,
-        metadata: { order_id: orderId },
-      }),
-    });
+    let mpResponse: Response;
+    try {
+      mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${mpToken}`,
+          "Content-Type": "application/json",
+          "X-Idempotency-Key": orderId,
+        },
+        body: JSON.stringify({
+          transaction_amount: total,
+          description: `FeiraJá - Pedido ${orderId}`,
+          payment_method_id: "pix",
+          payer: { email, first_name: name.split(" ")[0], last_name: name.split(" ").slice(1).join(" ") || name.split(" ")[0], identification: { type: "CPF", number: cpf } },
+          date_of_expiration: new Date(Date.now() + 30 * 60 * 1000 - 4 * 60 * 60 * 1000).toISOString().slice(0, -1) + "-04:00",
+          notification_url: "https://juhwdevvwstmyxyyagzh.supabase.co/functions/v1/super-worker",
+          external_reference: orderId,
+          metadata: { order_id: orderId },
+        }),
+      });
+    } catch {
+      await db.from("checkout_idempotency").update({ payment_lock_until: null })
+        .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
+      console.error("super-worker", { code: "PAYMENT_PROVIDER_INCONCLUSIVE", stage: "create_pix" });
+      return json({ error: "Não foi possível confirmar a criação do Pix no Mercado Pago. O pedido permanece pendente; tente novamente para recuperar a mesma cobrança." }, 503);
+    }
     const payment = await mpResponse.json();
     if (!mpResponse.ok) {
       if (mpResponse.status === 408 || mpResponse.status === 429 || mpResponse.status >= 500) {
@@ -990,8 +1009,10 @@ Deno.serve(async (req: Request) => {
       .select("id,status,total")
       .single();
     if (savePaymentError || !savedOrder) {
+      await db.from("checkout_idempotency").update({ payment_lock_until: null })
+        .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
       console.error("super-worker", { code: "PAYMENT_METADATA_RECONCILIATION_PENDING", stage: "reconcile_payment_metadata" });
-      return json({ error: "O Pix foi iniciado e o pedido está salvo com o código " + orderId + ". Atualize seus pedidos ou fale com a loja se os dados do Pix não aparecerem." }, 500);
+      return json({ error: "O Pix foi iniciado e o pedido está salvo com o código " + orderId + ". Tente novamente para recuperar a mesma cobrança." }, 503);
     }
     const initialStatus = payment.status === "approved" ? "Pagamento Confirmado" :
       (["rejected", "cancelled"].includes(String(payment.status)) ? "Cancelada" : "Pagamento Pendente");
