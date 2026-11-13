@@ -293,6 +293,9 @@ Deno.serve(async (req: Request) => {
     const requestedDeliveryType = String(customer.deliveryType ?? "");
     const deliveryType = requestedDeliveryType === "pickup_uber" ? "pickup_uber" :
       requestedDeliveryType === "pickup_store" || requestedDeliveryType === "pickup" ? "pickup_store" : "delivery";
+    if (deliveryType === "pickup_uber" && paymentMethod !== "pix") {
+      return json({ error: "Na retirada com Uber, o pagamento é somente por Pix." }, 400);
+    }
     if (deliveryType === "delivery" && !deliveryEnabled) {
       return json({ error: "Entrega própria desativada. Escolha retirada na loja ou retirada com Uber." }, 400);
     }
