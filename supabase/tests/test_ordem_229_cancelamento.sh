@@ -74,7 +74,8 @@ VALUES
  ('cancel-before-separation','T','1','A','pickup_store','pix','[{"qty":1}]',30,0,30,'Pagamento Confirmado','{}','11111111-1111-1111-1111-111111111111'),
  ('cancel-after-separation','T','1','A','pickup_store','pix','[{"qty":1}]',30,0,30,'Pagamento Confirmado','{}','11111111-1111-1111-1111-111111111111'),
  ('unmark-keeps-lock','T','1','A','pickup_store','pix','[{"qty":1}]',30,0,30,'Pagamento Confirmado','{}','11111111-1111-1111-1111-111111111111'),
- ('cannot-mark-cancelled','T','1','A','pickup_store','pix','[{"qty":1}]',30,0,30,'Cancelada','{}','11111111-1111-1111-1111-111111111111');
+ ('cannot-mark-cancelled','T','1','A','pickup_store','pix','[{"qty":1}]',30,0,30,'Cancelada','{}','11111111-1111-1111-1111-111111111111'),
+ ('cannot-mark-cancelado-alias','T','1','A','pickup_store','pix','[{"qty":1}]',30,0,30,'Cancelado','{}','11111111-1111-1111-1111-111111111111');
 SELECT pg_catalog.set_config('test.uid','33333333-3333-3333-3333-333333333333',false);
 SELECT public.set_order_separated_items('cancel-after-separation','["line-a"]'::jsonb);
 SELECT public.set_order_separated_items('unmark-keeps-lock','["line-a"]'::jsonb);
@@ -88,6 +89,8 @@ END $test$;
 DO $test$ BEGIN
  BEGIN PERFORM public.set_order_separated_items('cannot-mark-cancelled','["line-a"]'::jsonb); RAISE EXCEPTION 'FAIL: marcou pedido cancelado';
  EXCEPTION WHEN SQLSTATE 'P0001' THEN IF SQLERRM NOT LIKE 'pedido_cancelado:%' THEN RAISE; END IF; RAISE NOTICE 'PASS: pedido cancelado não aceita marcação'; END;
+ BEGIN PERFORM public.set_order_separated_items('cannot-mark-cancelado-alias','["line-a"]'::jsonb); RAISE EXCEPTION 'FAIL: marcou pedido com status legado Cancelado';
+ EXCEPTION WHEN SQLSTATE 'P0001' THEN IF SQLERRM NOT LIKE 'pedido_cancelado:%' THEN RAISE; END IF; RAISE NOTICE 'PASS: status legado Cancelado também bloqueia marcação'; END;
 END $test$;
 SELECT pg_catalog.set_config('test.uid','11111111-1111-1111-1111-111111111111',false);
 SELECT public.cancel_my_order('cancel-before-separation');
