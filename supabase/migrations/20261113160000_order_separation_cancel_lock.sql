@@ -2,6 +2,7 @@
 -- Aplicar manualmente após revisão e autorização do proprietário.
 BEGIN;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS separation_started_at timestamptz NULL;
+UPDATE public.orders SET separation_started_at=pg_catalog.clock_timestamp() WHERE separation_started_at IS NULL AND jsonb_typeof(separated_items)='array' AND jsonb_array_length(separated_items)>0;
 COMMENT ON COLUMN public.orders.separation_started_at IS 'Momento em que o administrador marcou o primeiro item como separado; nunca é apagado ao desmarcar itens.';
 GRANT SELECT (separation_started_at) ON TABLE public.orders TO authenticated;
 REVOKE UPDATE (separation_started_at) ON TABLE public.orders FROM PUBLIC, anon, authenticated;
