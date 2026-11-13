@@ -329,7 +329,7 @@ async function show(){
  try{
   const{data:{session},error:sessionError}=await db.auth.getSession();
   if(sessionError)throw sessionError;
-  if(!session){panelCurrentUser=null;setLoggedIn(false);return}panelCurrentUser=session.user;
+  if(!session?.user?.id){panelCurrentUser=null;setLoggedIn(false);return}panelCurrentUser=session.user;
   const{data:membership,error:membershipError}=await db.from('admin_users').select('user_id').eq('user_id',session.user.id).maybeSingle();
   if(membershipError)throw membershipError;
   if(!membership){await cleanupPanelPushAndSignOut();setLoggedIn(false);$('message').textContent='Esta conta não tem autorização de administrador.';return}
