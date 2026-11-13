@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import webpush from "npm:web-push@3.6.7";
+import { buildCancelledPaymentPatch, isCancelledOrderStatus, isVerifiedPixPayment, shouldNotifyAdminWithoutOrder } from "./payment-routing.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -185,7 +186,7 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Falha ao consultar pedido." }, 500);
   }
   const normalizedStatus = String(order?.status || "").trim().toLowerCase();
-  const isCancelledOrder = Boolean(order) && (normalizedStatus === "cancelada" || normalizedStatus === "cancelado");
+  const isCancelledOrder = Boolean(order) && isCancelledOrderStatus(order.status);
   const storedPaymentId = String(order?.payment_id || "");
   const isAsaasOrder = Boolean(order) && String(order.payment_provider || "") === "asaas" && String(order.id || "") === externalReference;
 
@@ -273,13 +274,24 @@ Deno.serve(async (req: Request) => {
     ? verifiedStatus === "OVERDUE"
     : ["RECEIVED", "CONFIRMED"].includes(verifiedStatus);
   const noMatchingOrder = !isAsaasOrder;
-  const amountIsValid = noMatchingOrder
-    ? Number.isFinite(paidCents) && paidCents > 0 && paidCents === verifiedCents
-    : Number.isFinite(expectedCents) && expectedCents > 0 && paidCents === expectedCents && verifiedCents === expectedCents;
-  if (String(verifiedPayment?.id || "") !== paymentId ||
-      String(verifiedPayment?.externalReference || "") !== externalReference ||
-      String(verifiedPayment?.billingType || "").toUpperCase() !== "PIX" ||
-      !verifiedStatusAccepted || !amountIsValid) {
+  const verifiedIdentityAndType = String(verifiedPayment?.id || "") === paymentId &&
+    String(verifiedPayment?.externalReference || "") === externalReference &&
+    String(verifiedPayment?.billingType || "").toUpperCase() === "PIX";
+  const amountIsValid = isPaymentConfirmationEvent
+    ? isVerifiedPixPayment({
+      paymentId, externalReference, billingType,
+      status: verifiedStatus,
+      webhookValue: paymentValue,
+      verifiedId: String(verifiedPayment?.id || ""),
+      verifiedExternalReference: String(verifiedPayment?.externalReference || ""),
+      verifiedBillingType: String(verifiedPayment?.billingType || ""),
+      verifiedValue,
+      expectedTotal: noMatchingOrder ? null : Number(order.total),
+    })
+    : verifiedIdentityAndType && verifiedStatusAccepted &&
+      Number.isFinite(expectedCents) && expectedCents > 0 &&
+      paidCents === expectedCents && verifiedCents === expectedCents;
+  if (!amountIsValid) {
     const mismatch = String(verifiedPayment?.id || "") !== paymentId ? "id_divergente" :
       String(verifiedPayment?.externalReference || "") !== externalReference ? "referencia_divergente" :
       String(verifiedPayment?.billingType || "").toUpperCase() !== "PIX" ? "tipo_divergente" :
@@ -296,10 +308,7 @@ Deno.serve(async (req: Request) => {
   }
 
   if (isCancelledOrder && isPaymentConfirmationEvent) {
-    const update = db.from("orders").update({
-      refund_pending: true,
-      ...(!storedPaymentId ? { payment_id: paymentId } : {}),
-    }).eq("id", order.id).eq("payment_provider", "asaas").eq("status", order.status);
+    const update = db.from("orders").update(buildCancelledPaymentPatch(storedPaymentId, paymentId)).eq("id", order.id).eq("payment_provider", "asaas").eq("status", order.status);
     const guardedUpdate = storedPaymentId ? update.eq("payment_id", storedPaymentId) : update.is("payment_id", null);
     const { data: refundOrder, error: refundUpdateError } = await guardedUpdate.select("id").maybeSingle();
     if (refundUpdateError) {
