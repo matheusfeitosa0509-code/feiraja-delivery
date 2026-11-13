@@ -262,6 +262,10 @@ Deno.serve(async (req: Request) => {
       }
       return json({ received: true });
     }
+    const checkoutIdempotencyKey = String(body?.checkout_idempotency_key || "").trim().toLowerCase();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(checkoutIdempotencyKey)) {
+      return json({ error: "Chave de tentativa de checkout inválida. Atualize a página e tente novamente." }, 400);
+    }
     const bearer = req.headers.get("Authorization") || "";
     const accessToken = bearer.startsWith("Bearer ") ? bearer.slice(7) : "";
     if (!accessToken) return json({ error: "Sessão inválida. Entre novamente e tente o pedido." }, 401);
@@ -270,17 +274,32 @@ Deno.serve(async (req: Request) => {
     if (authError || !authData?.user) return json({ error: "Sessão expirada. Entre novamente e tente o pedido." }, 401);
     if (authData.user.is_anonymous) return json({ error: 'Crie uma conta ou entre na sua conta antes de concluir o pedido, para manter seu histórico salvo.' }, 403);
     const orderUserId = authData.user.id;
+    let asaasEnabled = Deno.env.get("ASAAS_ENABLED") === "true";
+    let asaasApiKey = asaasEnabled ? (Deno.env.get("ASAAS_API_KEY") || "") : "";
+    const { data: priorAttempt, error: priorAttemptError } = await db.from("checkout_idempotency")
+      .select("order_id,user_id,request_hash")
+      .eq("idempotency_key", checkoutIdempotencyKey)
+      .maybeSingle();
+    if (priorAttemptError) return json({ error: "Não foi possível verificar esta tentativa de checkout." }, 503);
+    if (priorAttempt && String(priorAttempt.user_id) !== orderUserId) {
+      return json({ error: "Esta chave de checkout pertence a outra conta." }, 409);
+    }
+    let priorOrder: any = null;
+    if (priorAttempt) {
+      const { data: existingOrder, error: existingOrderError } = await db.from("orders")
+        .select("id,status,total,payment_id,pix_qr_code,pix_qr_code_base64,pickup_code,payment_provider,payment_method")
+        .eq("id", String(priorAttempt.order_id)).eq("user_id", orderUserId).maybeSingle();
+      if (existingOrderError || !existingOrder) return json({ error: "Não foi possível recuperar o pedido desta tentativa." }, 503);
+      priorOrder = existingOrder;
+      asaasEnabled = String(existingOrder.payment_provider || "") === "asaas" || String(existingOrder.payment_method || "") === "Asaas Pix";
+      asaasApiKey = asaasEnabled ? (Deno.env.get("ASAAS_API_KEY") || "") : "";
+    }
 
     const customer = body?.customer;
     const requestedItems = body?.items;
     const paymentMethod = String(body?.paymentMethod || "pix").toLowerCase();
-    const asaasEnabled = Deno.env.get("ASAAS_ENABLED") === "true";
     const MIN_ORDER_SUBTOTAL_CENTS = 3000;
-    const asaasApiKey = asaasEnabled ? (Deno.env.get("ASAAS_API_KEY") || "") : "";
     if (!["pix", "cash", "card_on_delivery"].includes(paymentMethod)) return json({ error: "Forma de pagamento inválida." }, 400);
-    if (paymentMethod === "pix" && (asaasEnabled ? !asaasApiKey : !mpToken)) {
-      return json({ error: asaasEnabled ? "Asaas Pix ainda não está configurado." : "Pagamento Pix ainda não está configurado." }, 503);
-    }
     if (!customer || !Array.isArray(requestedItems) || requestedItems.length < 1 || requestedItems.length > 50) {
       return json({ error: "Pedido inválido: informe os dados do cliente e os produtos." }, 400);
     }
@@ -297,10 +316,13 @@ Deno.serve(async (req: Request) => {
     if (deliveryType === "pickup_uber" && paymentMethod !== "pix") {
       return json({ error: "Na retirada com Uber, o pagamento é somente por Pix." }, 400);
     }
+    if (paymentMethod === "pix" && (asaasEnabled ? !asaasApiKey : !mpToken)) {
+      return json({ error: asaasEnabled ? "Asaas Pix ainda não está configurado." : "Pagamento Pix ainda não está configurado." }, 503);
+    }
     const address = "Av. Lourenço da Silva Braga, 700 (em frente à feira)";
-    const pickupCode = deliveryType === "pickup_uber"
+    let pickupCode = priorOrder?.pickup_code || (deliveryType === "pickup_uber"
       ? String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, "0")
-      : null;
+      : null);
     if (!name || phone.replace(/\D/g, "").length < 8 || (paymentMethod === "pix" && (!validPixDocument || !/^\S+@\S+\.\S+$/.test(email))) || (email && !/^\S+@\S+\.\S+$/.test(email))) {
       return json({ error: "Confira nome, telefone, CPF e e-mail." }, 400);
     }
@@ -435,6 +457,39 @@ Deno.serve(async (req: Request) => {
     const total = totalCents / 100;
     if (!Number.isFinite(total) || totalCents <= 0 || totalCents > 10000000) return json({ error: "Valor total inválido." }, 400);
 
+    const hashPayload = JSON.stringify({
+      user_id: orderUserId,
+      customer: { name, phone, cpf, email, delivery_type: deliveryType },
+      payment_method: paymentMethod,
+      items: items.slice().sort((a: any, b: any) => String(a.id).localeCompare(String(b.id))),
+      subtotal_cents: subtotalCents,
+      notes: String(body?.notes ?? "").trim().slice(0, paymentMethod === "pix" ? 500 : 1000),
+    });
+    const hashBytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(hashPayload));
+    const checkoutRequestHash = Array.from(new Uint8Array(hashBytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
+    if (priorAttempt && String(priorAttempt.request_hash) !== checkoutRequestHash) {
+      return json({ error: "Esta chave já foi usada com dados diferentes. Atualize a feira e inicie um novo checkout." }, 409);
+    }
+    if (priorOrder && String(priorOrder.status || "").toLowerCase() === "cancelada") {
+      return json({ error: "Este pedido desta tentativa já foi cancelado. Confira Meus pedidos antes de iniciar outro checkout." }, 409);
+    }
+    if (priorOrder && paymentMethod === "pix" && priorOrder.pix_qr_code) {
+      return json({
+        order: { id: priorOrder.id, status: priorOrder.status, total: priorOrder.total, pickupCode },
+        paymentId: priorOrder.payment_id,
+        qrCode: priorOrder.pix_qr_code,
+        qrCodeBase64: priorOrder.pix_qr_code_base64,
+        paymentStatus: String(priorOrder.status || "").toLowerCase() === "pagamento confirmado" ? "CONFIRMED" : "PENDING",
+      });
+    }
+    if (priorOrder && paymentMethod === "pix" && String(priorOrder.status || "").toLowerCase() !== "pagamento pendente") {
+      return json({
+        order: { id: priorOrder.id, status: priorOrder.status, total: priorOrder.total, pickupCode },
+        paymentId: priorOrder.payment_id,
+        paymentStatus: String(priorOrder.status || "").toUpperCase(),
+      });
+    }
+
     let asaasBaseUrl = "";
     if (asaasEnabled) {
       try {
@@ -451,24 +506,27 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Integração Asaas indisponível." }, 503);
       }
 
-      const { data: pendingSameAmount, error: pendingSameAmountError } = await db.from("orders")
-        .select("id")
-        .eq("user_id", orderUserId)
-        .eq("payment_provider", "asaas")
-        .eq("status", "Pagamento Pendente")
-        .eq("total", total)
-        .gte("created_at", new Date(Date.now() - 10 * 60 * 1000).toISOString())
-        .limit(1);
-      if (pendingSameAmountError) return json({ error: "Não foi possível verificar um Pix Asaas pendente. Tente novamente." }, 503);
-      if (pendingSameAmount?.length) {
-        return json({ error: "Você já tem um Pix Asaas pendente desse valor. Confira seus pedidos antes de tentar novamente." }, 409);
+      if (!priorAttempt) {
+        const { data: pendingSameAmount, error: pendingSameAmountError } = await db.from("orders")
+          .select("id")
+          .eq("user_id", orderUserId)
+          .eq("payment_provider", "asaas")
+          .eq("status", "Pagamento Pendente")
+          .eq("total", total)
+          .gte("created_at", new Date(Date.now() - 10 * 60 * 1000).toISOString())
+          .limit(1);
+        if (pendingSameAmountError) return json({ error: "Não foi possível verificar um Pix Asaas pendente. Tente novamente." }, 503);
+        if (pendingSameAmount?.length) {
+          return json({ error: "Você já tem um Pix Asaas pendente desse valor. Confira seus pedidos antes de tentar novamente." }, 409);
+        }
       }
     }
 
-    const orderId = `FEIRA-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+    let orderId = priorAttempt ? String(priorAttempt.order_id) : `FEIRA-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
     if (paymentMethod !== "pix") {
       const orderPayload = {
-        id: orderId, user_id: orderUserId, customer_name: name, customer_phone: phone,
+        id: orderId, user_id: orderUserId, checkout_idempotency_key: checkoutIdempotencyKey, checkout_request_hash: checkoutRequestHash,
+        customer_name: name, customer_phone: phone,
         customer_cpf: null, customer_email: email || null, customer_address: address,
         delivery_type: deliveryType,
         payment_method: paymentMethod === "cash" ? "Dinheiro na retirada" : "Cartão na retirada",
@@ -489,25 +547,31 @@ Deno.serve(async (req: Request) => {
         console.error("super-worker", { code: "DB_ERROR", stage: "read_created_order_non_pix" });
         return json({ error: "Não foi possível registrar o pedido." }, 500);
       }
+      orderId = String(createdOrder.order_id);
+      const { data: savedOrderRow, error: savedOrderReadError } = await db.from("orders")
+        .select("pickup_code")
+        .eq("id", orderId).eq("user_id", orderUserId).maybeSingle();
+      if (savedOrderReadError || !savedOrderRow) return json({ error: "Não foi possível recuperar o pedido registrado." }, 500);
       const savedOrder = {
-        id: createdOrder.order_id,
+        id: orderId,
         status: createdOrder.order_status,
         total: createdOrder.order_total,
-        pickupCode,
+        pickupCode: savedOrderRow.pickup_code || null,
       };
       return json({ order: savedOrder, id: savedOrder.id, paymentStatus: savedOrder.status });
     }
     // Save the order before creating the Pix payment so a provider/database failure
     // cannot leave a payment with no corresponding order record.
     const draftOrder = {
-      id: orderId, user_id: orderUserId, customer_name: name, customer_phone: phone,
+      id: orderId, user_id: orderUserId, checkout_idempotency_key: checkoutIdempotencyKey, checkout_request_hash: checkoutRequestHash,
+      customer_name: name, customer_phone: phone,
       customer_cpf: cpf, customer_email: email, customer_address: address,
       delivery_type: deliveryType, pickup_code: pickupCode, payment_method: asaasEnabled ? "Asaas Pix" : "Mercado Pago Pix",
       ...(asaasEnabled ? { payment_provider: "asaas" } : {}),
       items, subtotal, delivery_fee: 0, total, status: "Pagamento Pendente",
       market_checklist: { items: items.map((item: any) => ({ id: item.id, name: item.name, qty: item.qty, bought: false })), notes: String(body?.notes ?? "").trim().slice(0, 500) },
     };
-    const { error: draftError } = await db.rpc("create_order_with_rate_limit", { p_order: draftOrder });
+    const { data: draftOrderRows, error: draftError } = await db.rpc("create_order_with_rate_limit", { p_order: draftOrder });
     if (draftError) {
       if (isOrderRateLimitError(draftError)) {
         return json({ error: "Limite de 5 pedidos em 10 minutos atingido. Aguarde antes de tentar novamente." }, 429);
@@ -515,6 +579,36 @@ Deno.serve(async (req: Request) => {
       console.error("super-worker", { code: "DB_ERROR", stage: "insert_order_pix_draft" });
       return json({ error: "Não foi possível registrar o pedido. Nenhum Pix foi criado." }, 500);
     }
+    const createdDraftOrder = Array.isArray(draftOrderRows) ? draftOrderRows[0] : draftOrderRows;
+    if (!createdDraftOrder?.order_id) return json({ error: "Não foi possível recuperar o pedido registrado." }, 500);
+    orderId = String(createdDraftOrder.order_id);
+    const { data: storedPixOrder, error: storedPixOrderError } = await db.from("orders")
+      .select("id,status,total,payment_id,pix_qr_code,pix_qr_code_base64,pickup_code,payment_provider,payment_method")
+      .eq("id", orderId).eq("user_id", orderUserId).maybeSingle();
+    if (storedPixOrderError || !storedPixOrder) return json({ error: "Não foi possível recuperar o pedido registrado." }, 500);
+    pickupCode = storedPixOrder.pickup_code || null;
+    if (String(storedPixOrder.status || "").toLowerCase() === "cancelada") {
+      return json({ error: "Este pedido desta tentativa já foi cancelado. Confira Meus pedidos antes de iniciar outro checkout." }, 409);
+    }
+    if (storedPixOrder.pix_qr_code) {
+      return json({
+        order: { id: storedPixOrder.id, status: storedPixOrder.status, total: storedPixOrder.total, pickupCode },
+        paymentId: storedPixOrder.payment_id,
+        qrCode: storedPixOrder.pix_qr_code,
+        qrCodeBase64: storedPixOrder.pix_qr_code_base64,
+        paymentStatus: String(storedPixOrder.status || "").toLowerCase() === "pagamento confirmado" ? "CONFIRMED" : "PENDING",
+      });
+    }
+    const { data: paymentClaimRows, error: paymentClaimError } = await db.rpc("claim_checkout_payment", {
+      p_idempotency_key: checkoutIdempotencyKey,
+      p_user_id: orderUserId,
+    });
+    const paymentClaim = Array.isArray(paymentClaimRows) ? paymentClaimRows[0] : paymentClaimRows;
+    if (paymentClaimError) return json({ error: "Não foi possível reservar a preparação do Pix. Tente novamente." }, 503);
+    if (!paymentClaim?.claimed) {
+      return json({ error: "Este Pix já está sendo preparado. Aguarde alguns instantes e tente novamente; nenhum novo pedido foi criado." }, 409);
+    }
+
     if (asaasEnabled) {
       asaasFailureContext = {
         db, orderId, total, baseUrl: "", paymentId: "", customerId: "",
@@ -676,30 +770,30 @@ Deno.serve(async (req: Request) => {
       if (asaasFailureContext) asaasFailureContext.paymentRequestStarted = true;
       // If reconciliation stays inconclusive, keep the order as "Pagamento Pendente" for manual review; do not retry payment blindly.
       const reconcileCreatedPayment = async (): Promise<any | null> => {
-        try {
-          const reconcileUrl = new URL(asaasBaseUrl + "/v3/payments");
-          reconcileUrl.searchParams.set("externalReference", orderId);
-          reconcileUrl.searchParams.set("limit", "100");
-          const reconcileResponse = await fetch(reconcileUrl, { method: "GET", headers: asaasHeaders });
-          if (!reconcileResponse.ok) return null;
-          const reconcileData = await reconcileResponse.json().catch(() => ({}));
-          return Array.isArray(reconcileData?.data)
-            ? reconcileData.data.find((candidate: any) =>
-                String(candidate?.externalReference || "") === orderId &&
-                String(candidate?.billingType || "").toUpperCase() === "PIX" &&
-                String(candidate?.customer || "") === asaasCustomerId &&
-                Math.round(Number(candidate?.value) * 100) === Math.round(total * 100))
-            : null;
-        } catch {
-          return null;
-        }
+        const reconcileUrl = new URL(asaasBaseUrl + "/v3/payments");
+        reconcileUrl.searchParams.set("externalReference", orderId);
+        reconcileUrl.searchParams.set("limit", "100");
+        const reconcileResponse = await fetch(reconcileUrl, { method: "GET", headers: asaasHeaders });
+        if (!reconcileResponse.ok) throw new Error("ASAAS_RECONCILIATION_UNAVAILABLE");
+        const reconcileData = await reconcileResponse.json().catch(() => null);
+        if (!reconcileData || !Array.isArray(reconcileData?.data)) throw new Error("ASAAS_RECONCILIATION_INVALID");
+        return reconcileData.data.find((candidate: any) =>
+          String(candidate?.externalReference || "") === orderId &&
+          String(candidate?.billingType || "").toUpperCase() === "PIX" &&
+          String(candidate?.customer || "") === asaasCustomerId &&
+          Math.round(Number(candidate?.value) * 100) === Math.round(total * 100)) || null;
       };
       try {
-        createPaymentResponse = await fetch(asaasBaseUrl + "/v3/payments", {
-          method: "POST",
-          headers: asaasHeaders,
-          body: JSON.stringify(paymentPayload),
-        });
+        const previouslyCreatedPayment = await reconcileCreatedPayment();
+        if (previouslyCreatedPayment?.id) {
+          createPaymentResponse = new Response(JSON.stringify(previouslyCreatedPayment), { status: 200 });
+        } else {
+          createPaymentResponse = await fetch(asaasBaseUrl + "/v3/payments", {
+            method: "POST",
+            headers: asaasHeaders,
+            body: JSON.stringify(paymentPayload),
+          });
+        }
         if (createPaymentResponse.status >= 400 && createPaymentResponse.status < 500) {
           // A 4xx response is a definitive rejection; the order may be cancelled below.
           if (asaasFailureContext) asaasFailureContext.paymentRequestResolved = true;
@@ -709,6 +803,8 @@ Deno.serve(async (req: Request) => {
           if (recoveredPayment?.id) {
             createPaymentResponse = new Response(JSON.stringify(recoveredPayment), { status: 200 });
           } else {
+            await db.from("checkout_idempotency").update({ payment_lock_until: null })
+              .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
             console.error("super-worker", { code: "PAYMENT_CREATE_INCONCLUSIVE", stage: "create_payment" });
             return json({ error: "Não foi possível confirmar se a cobrança foi criada. O pedido permanece pendente para nova tentativa de reconciliação." }, 503);
           }
@@ -719,6 +815,8 @@ Deno.serve(async (req: Request) => {
         if (recoveredPayment?.id) {
           createPaymentResponse = new Response(JSON.stringify(recoveredPayment), { status: 200 });
         } else {
+          await db.from("checkout_idempotency").update({ payment_lock_until: null })
+            .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
           console.error("super-worker", { code: "PAYMENT_RECONCILIATION_FAILED", stage: "reconcile_payment" });
           return json({ error: "Não foi possível confirmar se a cobrança foi criada. O pedido permanece pendente para nova tentativa de reconciliação." }, 503);
         }
@@ -808,13 +906,10 @@ Deno.serve(async (req: Request) => {
         .eq("id", orderId).eq("payment_provider", "asaas").eq("status", "Pagamento Pendente")
         .select("id").maybeSingle();
       if (paymentLinkError || !linkedAsaasOrder) {
-        const deleted = await deleteAsaasPayment(asaasPaymentId);
-        if (!deleted) {
-          return json({ error: "Não foi possível confirmar a remoção da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 502);
-        }
-        await cancelPendingOrder();
+        await db.from("checkout_idempotency").update({ payment_lock_until: null })
+          .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
         console.error("super-worker", { code: "DB_ERROR", stage: "link_payment_to_order" });
-        return json({ error: "Não foi possível vincular a cobrança ao pedido. O pedido foi cancelado." }, 500);
+        return json({ error: "A cobrança foi criada, mas ainda não foi possível vinculá-la. O pedido permanece pendente; tente novamente para recuperar o mesmo Pix." }, 503);
       }
 
       let qrResponse: Response;
@@ -829,13 +924,10 @@ Deno.serve(async (req: Request) => {
       const qrCode = String(pixQr?.payload || "");
       const qrCodeBase64 = String(pixQr?.encodedImage || "");
       if (!qrResponse.ok || !qrCode || !qrCodeBase64) {
-        const deleted = await deleteAsaasPayment(asaasPaymentId);
-        if (!deleted) {
-          return json({ error: "Não foi possível confirmar a remoção da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 502);
-        }
-        await cancelPendingOrder();
-        console.error("super-worker", { code: "PROVIDER_QR_MISSING", stage: "read_pix_qr" });
-        return json({ error: "O Asaas não retornou os dados do Pix. O pedido foi cancelado." }, 502);
+        await db.from("checkout_idempotency").update({ payment_lock_until: null })
+          .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
+        console.error("super-worker", { code: "PROVIDER_QR_UNAVAILABLE", stage: "read_pix_qr" });
+        return json({ error: "O Pix foi criado, mas o QR Code ainda não está disponível. O pedido permanece pendente; tente novamente para recuperar a mesma cobrança." }, 503);
       }
 
       const { data: savedAsaasOrder, error: saveAsaasQrError } = await db.from("orders")
@@ -843,15 +935,14 @@ Deno.serve(async (req: Request) => {
         .eq("id", orderId).eq("payment_provider", "asaas").eq("status", "Pagamento Pendente")
         .select("id,status,total").maybeSingle();
       if (saveAsaasQrError || !savedAsaasOrder) {
-        const deleted = await deleteAsaasPayment(asaasPaymentId);
-        if (!deleted) {
-          return json({ error: "Não foi possível confirmar a remoção da cobrança. O pedido permanece pendente para revisão; não tente pagar novamente." }, 502);
-        }
-        await cancelPendingOrder();
+        await db.from("checkout_idempotency").update({ payment_lock_until: null })
+          .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
         console.error("super-worker", { code: "DB_ERROR", stage: "save_pix_qr" });
-        return json({ error: "Não foi possível salvar os dados do Pix. O pedido foi cancelado." }, 500);
+        return json({ error: "O Pix foi criado, mas não foi possível salvar o QR Code. O pedido permanece pendente; tente novamente para recuperar a mesma cobrança." }, 503);
       }
 
+      await db.from("checkout_idempotency").update({ payment_lock_until: null })
+        .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
       return json({
         order: { ...savedAsaasOrder, pickupCode },
         paymentId: asaasPaymentId,
@@ -861,34 +952,51 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${mpToken}`,
-        "Content-Type": "application/json",
-        "X-Idempotency-Key": orderId,
-      },
-      body: JSON.stringify({
-        transaction_amount: total,
-        description: `FeiraJá - Pedido ${orderId}`,
-        payment_method_id: "pix",
-        payer: { email, first_name: name.split(" ")[0], last_name: name.split(" ").slice(1).join(" ") || name.split(" ")[0], identification: { type: "CPF", number: cpf } },
-        date_of_expiration: new Date(Date.now() + 30 * 60 * 1000 - 4 * 60 * 60 * 1000).toISOString().slice(0, -1) + "-04:00",
-        notification_url: "https://juhwdevvwstmyxyyagzh.supabase.co/functions/v1/super-worker",
-        external_reference: orderId,
-        metadata: { order_id: orderId },
-      }),
-    });
+    let mpResponse: Response;
+    try {
+      mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${mpToken}`,
+          "Content-Type": "application/json",
+          "X-Idempotency-Key": orderId,
+        },
+        body: JSON.stringify({
+          transaction_amount: total,
+          description: `FeiraJá - Pedido ${orderId}`,
+          payment_method_id: "pix",
+          payer: { email, first_name: name.split(" ")[0], last_name: name.split(" ").slice(1).join(" ") || name.split(" ")[0], identification: { type: "CPF", number: cpf } },
+          date_of_expiration: new Date(Date.now() + 30 * 60 * 1000 - 4 * 60 * 60 * 1000).toISOString().slice(0, -1) + "-04:00",
+          notification_url: "https://juhwdevvwstmyxyyagzh.supabase.co/functions/v1/super-worker",
+          external_reference: orderId,
+          metadata: { order_id: orderId },
+        }),
+      });
+    } catch {
+      await db.from("checkout_idempotency").update({ payment_lock_until: null })
+        .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
+      console.error("super-worker", { code: "PAYMENT_PROVIDER_INCONCLUSIVE", stage: "create_pix" });
+      return json({ error: "Não foi possível confirmar a criação do Pix no Mercado Pago. O pedido permanece pendente; tente novamente para recuperar a mesma cobrança." }, 503);
+    }
     const payment = await mpResponse.json();
     if (!mpResponse.ok) {
+      if (mpResponse.status === 408 || mpResponse.status === 429 || mpResponse.status >= 500) {
+        await db.from("checkout_idempotency").update({ payment_lock_until: null })
+          .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
+        console.error("super-worker", { code: "PAYMENT_PROVIDER_INCONCLUSIVE", stage: "create_pix", http_status: mpResponse.status });
+        return json({ error: "Não foi possível confirmar a criação do Pix no Mercado Pago. O pedido permanece pendente; tente novamente para recuperar a mesma cobrança." }, 503);
+      }
       await db.from("orders").update({ status: "Cancelada" }).eq("id", orderId).eq("status", "Pagamento Pendente");
+      await db.from("checkout_idempotency").update({ payment_lock_until: null }).eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
       console.error("super-worker", { code: "PAYMENT_PROVIDER_REJECTED", stage: "create_pix" });
-      return json({ error: "O Mercado Pago não conseguiu gerar o Pix. O pedido foi marcado como cancelado; tente novamente." }, 502);
+      return json({ error: "O Mercado Pago recusou a criação do Pix. O pedido foi marcado como cancelado." }, 502);
     }
     const tx = payment?.point_of_interaction?.transaction_data;
     if (!payment?.id || !tx?.qr_code) {
-      await db.from("orders").update({ status: "Cancelada" }).eq("id", orderId).eq("status", "Pagamento Pendente");
-      return json({ error: "O Mercado Pago não retornou os dados do Pix. O pedido foi marcado como cancelado." }, 502);
+      await db.from("checkout_idempotency").update({ payment_lock_until: null })
+        .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
+      console.error("super-worker", { code: "PAYMENT_PROVIDER_QR_INCONCLUSIVE", stage: "read_pix_qr" });
+      return json({ error: "O Mercado Pago ainda não retornou os dados do Pix. O pedido permanece pendente; tente novamente para recuperar a mesma cobrança." }, 503);
     }
 
     const { data: savedOrder, error: savePaymentError } = await db.from("orders")
@@ -901,8 +1009,10 @@ Deno.serve(async (req: Request) => {
       .select("id,status,total")
       .single();
     if (savePaymentError || !savedOrder) {
+      await db.from("checkout_idempotency").update({ payment_lock_until: null })
+        .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
       console.error("super-worker", { code: "PAYMENT_METADATA_RECONCILIATION_PENDING", stage: "reconcile_payment_metadata" });
-      return json({ error: "O Pix foi iniciado e o pedido está salvo com o código " + orderId + ". Atualize seus pedidos ou fale com a loja se os dados do Pix não aparecerem." }, 500);
+      return json({ error: "O Pix foi iniciado e o pedido está salvo com o código " + orderId + ". Tente novamente para recuperar a mesma cobrança." }, 503);
     }
     const initialStatus = payment.status === "approved" ? "Pagamento Confirmado" :
       (["rejected", "cancelled"].includes(String(payment.status)) ? "Cancelada" : "Pagamento Pendente");
@@ -912,6 +1022,8 @@ Deno.serve(async (req: Request) => {
     }
     const { data: finalOrder } = await db.from("orders").select("id,status,total").eq("id", orderId).single();
     const responseOrder = finalOrder || savedOrder;
+    await db.from("checkout_idempotency").update({ payment_lock_until: null })
+      .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
     return json({
       order: { ...responseOrder, pickupCode },
       paymentId: String(payment.id),
