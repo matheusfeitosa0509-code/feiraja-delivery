@@ -274,6 +274,8 @@ Deno.serve(async (req: Request) => {
     if (authError || !authData?.user) return json({ error: "Sessão expirada. Entre novamente e tente o pedido." }, 401);
     if (authData.user.is_anonymous) return json({ error: 'Crie uma conta ou entre na sua conta antes de concluir o pedido, para manter seu histórico salvo.' }, 403);
     const orderUserId = authData.user.id;
+    let asaasEnabled = Deno.env.get("ASAAS_ENABLED") === "true";
+    let asaasApiKey = asaasEnabled ? (Deno.env.get("ASAAS_API_KEY") || "") : "";
     const { data: priorAttempt, error: priorAttemptError } = await db.from("checkout_idempotency")
       .select("order_id,user_id,request_hash")
       .eq("idempotency_key", checkoutIdempotencyKey)
@@ -296,9 +298,7 @@ Deno.serve(async (req: Request) => {
     const customer = body?.customer;
     const requestedItems = body?.items;
     const paymentMethod = String(body?.paymentMethod || "pix").toLowerCase();
-    let asaasEnabled = Deno.env.get("ASAAS_ENABLED") === "true";
     const MIN_ORDER_SUBTOTAL_CENTS = 3000;
-    let asaasApiKey = asaasEnabled ? (Deno.env.get("ASAAS_API_KEY") || "") : "";
     if (!["pix", "cash", "card_on_delivery"].includes(paymentMethod)) return json({ error: "Forma de pagamento inválida." }, 400);
     if (!customer || !Array.isArray(requestedItems) || requestedItems.length < 1 || requestedItems.length > 50) {
       return json({ error: "Pedido inválido: informe os dados do cliente e os produtos." }, 400);
