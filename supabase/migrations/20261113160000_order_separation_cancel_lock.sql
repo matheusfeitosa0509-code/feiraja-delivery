@@ -15,11 +15,11 @@ BEGIN
  IF NOT EXISTS (SELECT 1 FROM public.admin_users a WHERE a.user_id=auth.uid()) THEN RAISE EXCEPTION 'Apenas administradores podem marcar itens separados' USING ERRCODE='42501'; END IF;
  IF jsonb_typeof(p_item_keys) IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'A lista de itens separados deve ser um array JSON' USING ERRCODE='22023'; END IF;
  IF EXISTS (SELECT 1 FROM jsonb_array_elements(p_item_keys) item(value) WHERE jsonb_typeof(item.value) IS DISTINCT FROM 'string') THEN RAISE EXCEPTION 'Cada identificação de item deve ser texto' USING ERRCODE='22023'; END IF;
- UPDATE public.orders o SET separated_items=p_item_keys,separation_started_at=COALESCE(o.separation_started_at,CASE WHEN jsonb_array_length(p_item_keys)>0 THEN clock_timestamp() ELSE NULL END) WHERE o.id=p_order_id AND o.status<>'Cancelada';
+ UPDATE public.orders o SET separated_items=p_item_keys,separation_started_at=COALESCE(o.separation_started_at,CASE WHEN jsonb_array_length(p_item_keys)>0 THEN clock_timestamp() ELSE NULL END) WHERE o.id=p_order_id AND lower(pg_catalog.btrim(o.status)) NOT IN ('cancelada','cancelado','pagamento cancelado','pagamento recusado');
  IF NOT FOUND THEN
   SELECT o.status INTO v_status FROM public.orders o WHERE o.id=p_order_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'Pedido não encontrado' USING ERRCODE='P0002'; END IF;
-  IF v_status='Cancelada' THEN RAISE EXCEPTION 'pedido_cancelado: não é possível marcar itens de um pedido cancelado' USING ERRCODE='P0001'; END IF;
+  IF lower(pg_catalog.btrim(v_status)) IN ('cancelada','cancelado','pagamento cancelado','pagamento recusado') THEN RAISE EXCEPTION 'pedido_cancelado: não é possível marcar itens de um pedido cancelado' USING ERRCODE='P0001'; END IF;
  END IF;
  RETURN p_item_keys;
 END;
