@@ -258,13 +258,17 @@ const $=id=>document.getElementById(id);
 const statuses=['Pedido Recebido','Pagamento Pendente','Pagamento Confirmado','Preparando','Pronto para Retirada','Entregue','Cancelada'];
 function normalizeOrderStatus(status){const s=String(status||'').trim().toLowerCase();if(s==='pagamento reembolsado')return 'Reembolsado';if(s==='pagamento contestado')return 'Contestado';if(['cancelada','cancelado','pagamento cancelado','pagamento recusado'].includes(s))return 'Cancelada';if(['entregue','concluído','concluido'].includes(s))return 'Entregue';if(['pronto para retirada','pronto'].includes(s))return 'Pronto para Retirada';if(['preparando','preparando pedido'].includes(s))return 'Preparando';if(['saiu para entrega'].includes(s))return 'Saiu para Entrega';if(['pedido recebido','recebido'].includes(s))return 'Pedido Recebido';if(['pagamento confirmado','pago'].includes(s))return 'Pagamento Confirmado';return 'Pagamento Pendente';}
 let allOrders=[],seenOrderIds=new Set(),firstLoadDone=false,hasMoreOrders=true,nextOffset=0;const PAGE_SIZE=200;let adminProducts=[];
- let separatedColumnAvailable=true;const separatedMemory=new Map(),separatedPending=new Map();
- function orderSelectColumns(){const columns='id,created_at,customer_name,customer_phone,customer_address,customer_email,delivery_type,pickup_code,payment_method,items,subtotal,delivery_fee,total,status,market_checklist,separated_items,separation_started_at,refund_pending,cancelled_by,cancelled_at';return separatedColumnAvailable?columns:columns.replace(',separated_items','').replace(',separation_started_at','');}
+ let separatedColumnAvailable=true,separationStartedColumnAvailable=true;const separatedMemory=new Map(),separatedPending=new Map();
+ function orderSelectColumns(){let columns='id,created_at,customer_name,customer_phone,customer_address,customer_email,delivery_type,pickup_code,payment_method,items,subtotal,delivery_fee,total,status,market_checklist';if(separatedColumnAvailable)columns+=',separated_items';if(separationStartedColumnAvailable)columns+=',separation_started_at';return columns+',refund_pending,cancelled_by,cancelled_at';}
  function isMissingSeparationSchema(error){const code=String(error?.code||'');const message=String(error?.message||'');return ['42703','PGRST204','PGRST202','42883'].includes(code)||/separated_items|separation_started_at|set_order_separated_items|schema cache|does not exist/i.test(message);}
  async function fetchOrdersPage(offset,limit,useRange=false){
   const query=()=>db.from('orders').select(orderSelectColumns()).order('created_at',{ascending:false});
   let result=useRange?await query().range(offset,offset+limit-1):await query().limit(limit);
-  if(result.error&&separatedColumnAvailable&&isMissingSeparationSchema(result.error)){separatedColumnAvailable=false;const retry=()=>db.from('orders').select(orderSelectColumns()).order('created_at',{ascending:false});result=useRange?await retry().range(offset,offset+limit-1):await retry().limit(limit);}
+  for(let attempt=0;attempt<2&&result.error&&isMissingSeparationSchema(result.error);attempt++){
+   const message=String(result.error?.message||'');
+   if(/separation_started_at/i.test(message))separationStartedColumnAvailable=false;else separatedColumnAvailable=false;
+   result=useRange?await query().range(offset,offset+limit-1):await query().limit(limit);
+  }
   return result;
  }
  function itemSeparationKey(item,occurrence){
@@ -286,7 +290,7 @@ let allOrders=[],seenOrderIds=new Set(),firstLoadDone=false,hasMoreOrders=true,n
     if(isMissingSeparationSchema(error)){separatedColumnAvailable=false;separatedMemory.set(id,next);separatedPending.delete(id);return;}
     throw error;
    }
-   const{data:startedOrder,error:startedError}=await db.from('orders').select('separation_started_at').eq('id',id).maybeSingle();if(startedError)throw startedError;const latestOrder=allOrders.find(o=>String(o.id)===id);if(latestOrder){latestOrder.separated_items=next;latestOrder.separation_started_at=startedOrder?.separation_started_at||latestOrder.separation_started_at||null;}separatedMemory.delete(id);separatedPending.delete(id);render();
+   const{data:startedOrder,error:startedError}=await db.from('orders').select('separation_started_at').eq('id',id).maybeSingle();if(startedError&&/separation_started_at|schema cache|does not exist/i.test(String(startedError.message||'')))separationStartedColumnAvailable=false;else if(startedError)throw startedError;const latestOrder=allOrders.find(o=>String(o.id)===id);if(latestOrder){latestOrder.separated_items=next;latestOrder.separation_started_at=startedOrder?.separation_started_at||latestOrder.separation_started_at||null;}separatedMemory.delete(id);separatedPending.delete(id);render();
   }catch(error){
    const latestOrder=allOrders.find(o=>String(o.id)===id);if(latestOrder)latestOrder.separated_items=previous;separatedPending.delete(id);separatedMemory.delete(id);render();notice('Não deu para salvar, tente de novo',true);
   }
