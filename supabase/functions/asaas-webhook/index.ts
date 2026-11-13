@@ -63,11 +63,11 @@ function constantTimeEqual(left: string, right: string) {
 }
 
 
-async function notifyAdminUnmatchedPayment(db: ReturnType<typeof createClient>, paymentId: string) {
+async function notifyAdminUnmatchedPayment(db: any, paymentId: string, deps: WebhookDependencies) {
   console.error("Pagamento Pix Asaas confirmado sem pedido correspondente.", { payment_id: paymentId });
-  const publicKey = Deno.env.get("VAPID_PUBLIC_KEY");
-  const privateKey = Deno.env.get("VAPID_PRIVATE_KEY");
-  const subject = Deno.env.get("VAPID_SUBJECT");
+  const publicKey = deps.env.get("VAPID_PUBLIC_KEY");
+  const privateKey = deps.env.get("VAPID_PRIVATE_KEY");
+  const subject = deps.env.get("VAPID_SUBJECT");
   if (!publicKey || !privateKey || !subject) {
     console.error("Aviso administrativo de Pix sem pedido não enviado: VAPID indisponível.");
     return;
@@ -77,7 +77,8 @@ async function notifyAdminUnmatchedPayment(db: ReturnType<typeof createClient>, 
     console.error("Falha ao localizar administradores para Pix sem pedido.");
     return;
   }
-  const ids = [...new Set((admins ?? []).map((row: { user_id: string }) => row.user_id).filter(Boolean))];
+  const adminRows = (admins ?? []) as Array<{ user_id: string }>;
+  const ids = [...new Set(adminRows.map((row) => row.user_id).filter(Boolean))];
   if (!ids.length) return;
   const { data: subscriptions, error: subscriptionsError } = await db.from("push_subscriptions")
     .select("endpoint,p256dh,auth_secret").eq("ativo", true).in("user_id", ids);
@@ -85,21 +86,38 @@ async function notifyAdminUnmatchedPayment(db: ReturnType<typeof createClient>, 
     console.error("Falha ao localizar inscrições push para Pix sem pedido.");
     return;
   }
-  webpush.setVapidDetails(subject, publicKey, privateKey);
+  deps.webpush.setVapidDetails(subject, publicKey, privateKey);
   const payload = JSON.stringify({
     title: "Feira On Delivery",
     body: "Pix recebido sem pedido correspondente — conferir no Asaas",
     url: "/painel.html",
     tag: `feira-asaas-sem-pedido-${paymentId}`,
   });
-  for (const row of subscriptions ?? []) {
+  const subscriptionRows = (subscriptions ?? []) as Array<{ endpoint: string; p256dh: string; auth_secret: string }>;
+  for (const row of subscriptionRows) {
     try {
-      await webpush.sendNotification({ endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth_secret } }, payload, { TTL: 3600, urgency: "high" });
+      await deps.webpush.sendNotification({ endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth_secret } }, payload, { TTL: 3600, urgency: "high" });
     } catch {
       console.error("Falha no envio de aviso administrativo de Pix sem pedido.");
     }
   }
 }
+
+type WebhookDependencies = {
+  env: { get(name: string): string | undefined };
+  createClient: typeof createClient;
+  fetch: typeof fetch;
+  webpush: typeof webpush;
+  now: () => number;
+};
+
+const runtimeDependencies: WebhookDependencies = {
+  env: Deno.env,
+  createClient,
+  fetch,
+  webpush,
+  now: Date.now,
+};
 
 const protectedAdministrativeStatuses = new Set([
   "pagamento reembolsado",
@@ -115,15 +133,15 @@ const protectedAdministrativeStatuses = new Set([
   "recebido",
 ]);
 
-Deno.serve(async (req: Request) => {
+export async function handleAsaasWebhook(req: Request, deps: WebhookDependencies = runtimeDependencies) {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  if (Deno.env.get("ASAAS_ENABLED") !== "true") {
+  if (deps.env.get("ASAAS_ENABLED") !== "true") {
     console.info("Webhook Asaas ignorado: integração desativada.");
     return json({ received: true, ignored: true });
   }
 
-  const expectedToken = Deno.env.get("ASAAS_WEBHOOK_AUTH_TOKEN");
+  const expectedToken = deps.env.get("ASAAS_WEBHOOK_AUTH_TOKEN");
   if (!expectedToken) {
     console.error("ASAAS_WEBHOOK_AUTH_TOKEN não configurado.");
     return json({ error: "Webhook Asaas não configurado." }, 503);
@@ -136,8 +154,8 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Autenticação do webhook inválida." }, 401);
   }
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const supabaseUrl = deps.env.get("SUPABASE_URL");
+  const serviceKey = deps.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !serviceKey) {
     console.error("Configuração interna do webhook Asaas incompleta.");
     return json({ error: "Configuração interna incompleta." }, 503);
@@ -173,7 +191,7 @@ Deno.serve(async (req: Request) => {
     return json({ received: true, ignored: true });
   }
 
-  const db = createClient(supabaseUrl, serviceKey, {
+  const db = deps.createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data: order, error: orderReadError } = await db.from("orders")
@@ -186,15 +204,15 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Falha ao consultar pedido." }, 500);
   }
   const normalizedStatus = String(order?.status || "").trim().toLowerCase();
-  const isCancelledOrder = Boolean(order) && isCancelledOrderStatus(order.status);
+  const isCancelledOrder = order !== null && isCancelledOrderStatus(order.status);
   const storedPaymentId = String(order?.payment_id || "");
-  const isAsaasOrder = Boolean(order) && String(order.payment_provider || "") === "asaas" && String(order.id || "") === externalReference;
+  const isAsaasOrder = order !== null && String(order.payment_provider || "") === "asaas" && String(order.id || "") === externalReference;
 
   // Non-cancelled orders retain the existing payment-linking guard. Cancelled orders
   // are resolved by the Asaas-verified externalReference, even if payment_id is absent/different.
   if (isAsaasOrder && order && !isCancelledOrder && !storedPaymentId) {
     const createdAtMs = Date.parse(String(order.created_at || ""));
-    const ageMs = Date.now() - createdAtMs;
+    const ageMs = deps.now() - createdAtMs;
     if (Number.isFinite(createdAtMs) && ageMs >= 10 * 60 * 1000) {
       console.warn(
         "Pedido Asaas sem payment_id há pelo menos 10 minutos; revisão manual necessária. Pedido:",
@@ -210,8 +228,8 @@ Deno.serve(async (req: Request) => {
     return json({ received: true, ignored: true });
   }
 
-  const rawBaseUrl = Deno.env.get("ASAAS_BASE_URL");
-  const apiKey = Deno.env.get("ASAAS_API_KEY") || "";
+  const rawBaseUrl = deps.env.get("ASAAS_BASE_URL");
+  const apiKey = deps.env.get("ASAAS_API_KEY") || "";
   if (!rawBaseUrl || !rawBaseUrl.trim() || !apiKey) {
     return json({ error: "Não foi possível validar a cobrança." }, 503);
   }
@@ -231,7 +249,7 @@ Deno.serve(async (req: Request) => {
 
   let verifiedPayment: any;
   try {
-    const verificationResponse = await fetch(
+    const verificationResponse = await deps.fetch(
       asaasBaseUrl + "/v3/payments/" + encodeURIComponent(paymentId),
       { method: "GET", headers: { access_token: apiKey, Accept: "application/json" } },
     );
@@ -303,9 +321,10 @@ Deno.serve(async (req: Request) => {
   }
 
   if (noMatchingOrder) {
-    if (isPaymentConfirmationEvent) await notifyAdminUnmatchedPayment(db, paymentId);
+    if (isPaymentConfirmationEvent) await notifyAdminUnmatchedPayment(db, paymentId, deps);
     return json({ received: true, ignored: true, reason: "pedido_nao_encontrado_ou_nao_asaas" });
   }
+  if (!order) return json({ received: true, ignored: true });
 
   if (isCancelledOrder && isPaymentConfirmationEvent) {
     const update = db.from("orders").update(buildCancelledPaymentPatch(storedPaymentId, paymentId)).eq("id", order.id).eq("payment_provider", "asaas").eq("status", order.status);
@@ -419,4 +438,6 @@ Deno.serve(async (req: Request) => {
   }
   if (!updatedOrder) return json({ received: true, ignored: true });
   return json({ received: true });
-});
+}
+
+if (import.meta.main) Deno.serve((req: Request) => handleAsaasWebhook(req));
