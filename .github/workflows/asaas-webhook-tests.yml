@@ -26,4 +26,4 @@ jobs:
       - name: Type-check webhook and routing helpers
         run: deno check supabase/functions/asaas-webhook/index.ts supabase/functions/asaas-webhook/payment-routing.ts
       - name: Test payment routing scenarios
-        run: deno test supabase/functions/asaas-webhook/payment-routing_test.ts
+        run: deno test --allow-env=ECE_KEYLOG supabase/functions/asaas-webhook/payment-routing_test.ts
