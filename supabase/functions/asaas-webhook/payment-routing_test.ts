@@ -1,61 +1,194 @@
-import {
-  buildCancelledPaymentPatch,
-  isCancelledOrderStatus,
-  isVerifiedPixPayment,
-  shouldNotifyAdminWithoutOrder,
-} from "./payment-routing.ts";
 import { assertEquals } from "jsr:@std/assert@1.0.14";
+import { handleAsaasWebhook } from "./index.ts";
 
-const valid = {
-  paymentId: "pay_123",
+type Order = {
+  id: string;
+  status: string;
+  total: number;
+  payment_id: string | null;
+  payment_provider: string;
+  created_at: string;
+  refund_pending?: boolean;
+};
+
+function makeDb(initialOrder: Order | null) {
+  let order = initialOrder ? structuredClone(initialOrder) : null;
+  const updates: Array<Record<string, unknown>> = [];
+  const db = {
+    from(table: string) {
+      let operation: "select" | "update" = "select";
+      let patch: Record<string, unknown> = {};
+      const filters: Array<[string, string, unknown]> = [];
+      const builder: any = {
+        select() { return builder; },
+        update(value: Record<string, unknown>) { operation = "update"; patch = value; return builder; },
+        eq(column: string, value: unknown) { filters.push(["eq", column, value]); return builder; },
+        is(column: string, value: unknown) { filters.push(["is", column, value]); return builder; },
+        in(column: string, value: unknown) { filters.push(["in", column, value]); return builder; },
+        async maybeSingle() { return execute(); },
+        then(resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) {
+          return execute().then(resolve, reject);
+        },
+      };
+      async function execute() {
+        if (table === "admin_users") return { data: [{ user_id: "admin-1" }], error: null };
+        if (table === "push_subscriptions") {
+          return { data: [{ endpoint: "https://push.invalid", p256dh: "p", auth_secret: "a" }], error: null };
+        }
+        if (table !== "orders") return { data: null, error: null };
+        const matches = () => Boolean(order) && filters.every(([kind, column, value]) => {
+          const actual = (order as any)[column];
+          if (kind === "eq") return actual === value;
+          if (kind === "is") return actual === value;
+          if (kind === "in") return Array.isArray(value) && value.includes(actual);
+          return false;
+        });
+        if (!matches()) return { data: null, error: null };
+        if (operation === "update") {
+          Object.assign(order!, patch);
+          updates.push(structuredClone(patch));
+          return { data: { id: order!.id }, error: null };
+        }
+        return { data: structuredClone(order), error: null };
+      }
+      return builder;
+    },
+  };
+  return {
+    db,
+    updates,
+    getOrder: () => order ? structuredClone(order) : null,
+  };
+}
+
+const validPayment = {
+  id: "pay_123",
   externalReference: "ORDER-123",
   billingType: "PIX",
   status: "CONFIRMED",
-  webhookValue: 30,
-  verifiedId: "pay_123",
-  verifiedExternalReference: "ORDER-123",
-  verifiedBillingType: "PIX",
-  verifiedValue: 30,
-  expectedTotal: 30,
+  value: 30,
 };
 
-Deno.test("Pix pago após cancelamento com payment_id igual é validado", () => {
-  assertEquals(isCancelledOrderStatus("Cancelada"), true);
-  assertEquals(isVerifiedPixPayment(valid), true);
-  assertEquals(buildCancelledPaymentPatch("pay_123", "pay_123"), { refund_pending: true });
-});
-
-Deno.test("Pix pago após cancelamento com payment_id diferente usa externalReference validada e preserva o ID antigo", () => {
-  assertEquals(isVerifiedPixPayment(valid), true);
-  assertEquals(buildCancelledPaymentPatch("pay_old", "pay_123"), { refund_pending: true });
-});
-
-Deno.test("Pix pago após cancelamento sem payment_id grava o ID recebido", () => {
-  assertEquals(buildCancelledPaymentPatch("", "pay_123"), {
-    refund_pending: true,
-    payment_id: "pay_123",
+function makeRequest() {
+  return new Request("https://webhook.test/asaas", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "asaas-access-token": "test-webhook-token",
+    },
+    body: JSON.stringify({
+      event: "PAYMENT_RECEIVED",
+      payment: { ...validPayment },
+    }),
   });
+}
+
+function makeDependencies(db: ReturnType<typeof makeDb>, payment = validPayment) {
+  const values: Record<string, string> = {
+    ASAAS_ENABLED: "true",
+    ASAAS_WEBHOOK_AUTH_TOKEN: "test-webhook-token",
+    SUPABASE_URL: "https://supabase.test",
+    SUPABASE_SERVICE_ROLE_KEY: "test-service-key",
+    ASAAS_BASE_URL: "https://api.asaas.com",
+    ASAAS_API_KEY: "test-asaas-key",
+    VAPID_PUBLIC_KEY: "test-public",
+    VAPID_PRIVATE_KEY: "test-private",
+    VAPID_SUBJECT: "mailto:test@example.test",
+  };
+  let pushCount = 0;
+  const deps = {
+    env: { get: (name: string) => values[name] },
+    createClient: (() => db.db) as any,
+    fetch: (async () => new Response(JSON.stringify(payment), { status: 200 })) as typeof fetch,
+    webpush: {
+      setVapidDetails() {},
+      async sendNotification() { pushCount++; },
+    } as any,
+    now: () => Date.parse("2026-11-13T12:00:00Z"),
+  };
+  return { deps, pushCount: () => pushCount };
+}
+
+async function invoke(db: ReturnType<typeof makeDb>, payment = validPayment) {
+  const deps = makeDependencies(db, payment);
+  const response = await handleAsaasWebhook(makeRequest(), deps.deps);
+  return { response, body: await response.json(), pushCount: deps.pushCount() };
+}
+
+function cancelled(paymentId: string | null): Order {
+  return {
+    id: "ORDER-123",
+    status: "Cancelada",
+    total: 30,
+    payment_id: paymentId,
+    payment_provider: "asaas",
+    created_at: "2026-11-13T11:00:00Z",
+  };
+}
+
+Deno.test("handler: Pix pago após cancelamento com payment_id igual mantém cancelada e marca devolução", async () => {
+  const mock = makeDb(cancelled("pay_123"));
+  const result = await invoke(mock);
+  assertEquals(result.response.status, 200);
+  assertEquals(result.body.refund_pending, true);
+  assertEquals(mock.getOrder()?.status, "Cancelada");
+  assertEquals(mock.getOrder()?.refund_pending, true);
+  assertEquals(mock.getOrder()?.payment_id, "pay_123");
 });
 
-Deno.test("Pagamento confirmado sem pedido correspondente gera aviso administrativo", () => {
-  assertEquals(isVerifiedPixPayment({ ...valid, expectedTotal: null }), true);
-  assertEquals(shouldNotifyAdminWithoutOrder(true, false), true);
-  assertEquals(shouldNotifyAdminWithoutOrder(false, false), false);
+Deno.test("handler: Pix pago após cancelamento com ID diferente preserva o payment_id antigo", async () => {
+  const mock = makeDb(cancelled("pay_old"));
+  const result = await invoke(mock);
+  assertEquals(result.response.status, 200);
+  assertEquals(result.body.refund_pending, true);
+  assertEquals(mock.getOrder()?.status, "Cancelada");
+  assertEquals(mock.getOrder()?.payment_id, "pay_old");
+  assertEquals(mock.getOrder()?.refund_pending, true);
 });
 
-Deno.test("Webhook repetido mantém refund_pending true sem trocar payment_id já existente", () => {
-  const first = buildCancelledPaymentPatch("", "pay_123");
-  const repeated = buildCancelledPaymentPatch("pay_123", "pay_123");
-  assertEquals(first.refund_pending, true);
-  assertEquals(repeated.refund_pending, true);
-  assertEquals(repeated.payment_id, undefined);
+Deno.test("handler: Pix pago após cancelamento sem payment_id grava o ID validado", async () => {
+  const mock = makeDb(cancelled(null));
+  const result = await invoke(mock);
+  assertEquals(result.response.status, 200);
+  assertEquals(mock.getOrder()?.status, "Cancelada");
+  assertEquals(mock.getOrder()?.payment_id, "pay_123");
+  assertEquals(mock.getOrder()?.refund_pending, true);
 });
 
-Deno.test("Fluxo normal continua exigindo ID, referência, Pix, status e valor corretos", () => {
-  assertEquals(isVerifiedPixPayment(valid), true);
-  assertEquals(isVerifiedPixPayment({ ...valid, verifiedId: "pay_other" }), false);
-  assertEquals(isVerifiedPixPayment({ ...valid, verifiedExternalReference: "OTHER" }), false);
-  assertEquals(isVerifiedPixPayment({ ...valid, verifiedBillingType: "BOLETO" }), false);
-  assertEquals(isVerifiedPixPayment({ ...valid, status: "PENDING" }), false);
-  assertEquals(isVerifiedPixPayment({ ...valid, verifiedValue: 29.99 }), false);
+Deno.test("handler: webhook repetido permanece idempotente e não reativa pedido", async () => {
+  const mock = makeDb(cancelled("pay_123"));
+  const first = await invoke(mock);
+  const second = await invoke(mock);
+  assertEquals(first.body.refund_pending, true);
+  assertEquals(second.body.refund_pending, true);
+  assertEquals(mock.getOrder()?.status, "Cancelada");
+  assertEquals(mock.getOrder()?.refund_pending, true);
+  assertEquals(mock.getOrder()?.payment_id, "pay_123");
+});
+
+Deno.test("handler: cobrança confirmada sem pedido não altera pedido e envia aviso administrativo simulado", async () => {
+  const mock = makeDb(null);
+  const result = await invoke(mock);
+  assertEquals(result.response.status, 200);
+  assertEquals(result.body.reason, "pedido_nao_encontrado_ou_nao_asaas");
+  assertEquals(mock.getOrder(), null);
+  assertEquals(result.pushCount, 1);
+});
+
+Deno.test("handler: fluxo normal de pedido não cancelado continua confirmando pagamento com ID correspondente", async () => {
+  const mock = makeDb({
+    id: "ORDER-123",
+    status: "Pagamento Pendente",
+    total: 30,
+    payment_id: "pay_123",
+    payment_provider: "asaas",
+    created_at: "2026-11-13T11:55:00Z",
+  });
+  const result = await invoke(mock);
+  assertEquals(result.response.status, 200);
+  assertEquals(result.body.received, true);
+  assertEquals(mock.getOrder()?.status, "Pagamento Confirmado");
+  assertEquals(mock.getOrder()?.payment_id, "pay_123");
+  assertEquals(mock.getOrder()?.refund_pending, undefined);
+  assertEquals(mock.updates, [{ status: "Pagamento Confirmado" }]);
 });
