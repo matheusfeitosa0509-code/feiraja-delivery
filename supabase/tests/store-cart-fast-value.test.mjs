@@ -138,7 +138,7 @@ const avocado={id:'avocado',name:'Abacate (kg)',price:11.99};
 context.products.push(avocado);
 context.salesRulesById.set('avocado',{sale_unit:'kg',quantity_step:0.5,min_quantity:1,max_quantity:100,value_min_kg:1,allow_value_sale:true});
 context.cart.avocado=6.89;context.cartModes.avocado='value';context.cartValueCents.avocado=2750;
-assert.match(context.valueSaleEditorMarkup(avocado),/data-value-to-kg="avocado">Pedir por kg/);
+assert.match(context.valueSaleEditorMarkup(avocado),/data-value-to-kg="avocado"[^>]*>Pedir por kg/);
 assert.ok(context.convertValueSaleToKg('avocado'));
 assert.equal(context.cart.avocado,7,'switching to kg rounds 6.89 kg up to the next 0.5 kg step');
 assert.equal(context.cartModes.avocado,undefined);
