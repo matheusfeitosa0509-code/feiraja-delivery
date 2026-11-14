@@ -73,6 +73,7 @@ assert.equal(context.cartValueCents.watermelon,500,'minus cannot go below R$5');
 // Badge counts distinct products, not summed kg + units.
 context.products.push({id:'banana',name:'Banana',price:5});
 context.cart.banana=3;
+context.cart.ghost=4; // a stale cart id must not count as a catalog product
 context.updateCartSummary();
 assert.equal(ui.tabCartCount.textContent,2);
 assert.equal(ui.cartbarCount.textContent,'2 produtos');
