@@ -123,7 +123,7 @@ assert.match(context.valueSaleEditorForm(product,2000),/data-value-remove="water
 
 // In value mode +/- uses half a kilogram rounded up to the next whole real.
 context.change('watermelon',1);
-assert.equal(context.cartValueCents.watermelon,12000,'R$19/kg uses a R$10 step');
+assert.equal(context.cartValueCents.watermelon,3000,'R$19/kg uses a R$10 step');
 context.change('watermelon',-1);
 assert.equal(context.cartValueCents.watermelon,2000);
 context.change('watermelon',-1);
@@ -193,4 +193,4 @@ assert.ok(context.setUnitValueQuantity('resale',10));
 const resaleLine=context.totals().items.find(x=>x.p.id==='resale');
 assert.equal(resaleLine.lineTotalCents,5990,'the 10-unit resale price is applied to the normal cart line');
 
-console.log('OK: compact value-sale sheet, 1 kg minimum, 0.5 kg steps, R$5 adjustments, server validation and in-place cart updates.');
+console.log('OK: compact value-sale sheet, 1 kg minimum, 0.5 kg steps, price-rounded half-kilo adjustments, server validation and in-place cart updates.');
