@@ -1156,6 +1156,7 @@ async function loadCostMarginThreshold(){
   costMarginThreshold=value;
   $('costMarginThreshold').value=String(value);
   message.textContent='Alerta atual: margem abaixo de '+value.toLocaleString('pt-BR')+'%.';
+  await loadCostReport();
  }catch(error){message.textContent='Não foi possível carregar o percentual de alerta.';}
 }
 $('btnSaveCostMarginThreshold').addEventListener('click',async()=>{
