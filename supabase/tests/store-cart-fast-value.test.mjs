@@ -48,8 +48,9 @@ const context = {
   MIN_ORDER_AMOUNT:30,category:'Todos',
   money:v=>'R$ '+Number(v).toFixed(2).replace('.',','),
   esc:v=>String(v),
-  effectiveUnitPriceCents:()=>1900,
+  effectiveUnitPriceCents(p,q){const normal=Math.round(Number(p.price)*100),resale=Math.round(Number(p.resale_price)*100),min=Number(p.resale_min_qty);return p.resale_enabled===true&&Number.isInteger(min)&&min>=1&&q>=min&&Number.isSafeInteger(resale)&&resale>0&&resale<=normal?resale:normal;},
   persistCart(){},
+  closeValueSaleSheet(){},
   alert(message){throw new Error(message);},
   syncCartbarVisibility(){},
   renderCart(){calls.fullCatalog++;},
@@ -60,12 +61,13 @@ const context = {
 };
 vm.createContext(context);
 const names=[
-  'salesRuleFor','isValidCartQuantity','quantityStepFor','formatCartQuantity',
+  'salesRuleFor','isValidCartQuantity','quantityStepFor','formatCartQuantity','effectiveUnitPriceCents',
   'valueSaleMinimumKg','valueSaleMinimumAmountCents','valueSaleCalculation',
+  'unitSaleLabel','formatUnitSaleQuantity','unitValueSaleChoices','unitValueSalePreviewMarkup','unitValueSaleEditorForm','setUnitValueQuantity','convertValueSaleToKg',
   'formatCartProductLabel','valueSaleEnabled','valueSaleEditorMarkup',
   'valueSaleEditorForm','productQtyMarkup','productCardControlsMarkup','productWeightNoteMarkup','formatValueSaleWeight',
   'updateProductCard','parseValueSaleInput','setCardValueSale','updateCartSummary',
-  'add','renderAfterCartChange','change','totals','minimumOrderMessage'
+  'add','renderAfterCartChange','change','setSaleMode','cartSaleModeControl','totals','minimumOrderMessage'
 ];
 vm.runInContext(names.map(extract).join('\n'),context);
 
@@ -108,43 +110,87 @@ assert.match(context.productQtyMarkup(product),/value-amount">R\$ 20,00/);
 assert.match(context.productQtyMarkup(product),/value-weight">~1,05 kg/);
 assert.match(context.productQtyMarkup(product),/value-qty-label/);
 assert.match(context.productQtyMarkup(product),/data-value-open="watermelon"/);
-assert.doesNotMatch(context.productCardControlsMarkup(product),/Pedir por valor R\$/,'value mode removes separate R$ button');
+assert.match(context.productCardControlsMarkup(product),/Pedir por kg/,'value mode keeps the bottom switch button visible');
 assert.equal((context.productQtyMarkup(product).match(/data-value-open=/g)||[]).length,1);
 for(let i=0;i<20;i++)context.change('watermelon',1);
-assert.equal(context.cartValueCents.watermelon,12000,'20 taps add R$100');
+assert.equal(context.cartValueCents.watermelon,22000,'20 taps add the price-rounded value equivalent to 10 kg');
 assert.ok(cards.every(c=>c.note.textContent==='Peso aproximado'&&c.noteCount===1),'no duplicated note in value mode');
 assert.ok(cards.every(c=>(c.qty.innerHTML.match(/data-value-open=/g)||[]).length===1),'exactly one value control per card');
-assert.ok(cards.every(c=>c.valueRow.innerHTML===''&&c.controlCount===1&&c.noteCount===1),'no separate R$ button and no duplicate elements in value mode');
+assert.ok(cards.every(c=>c.valueRow.innerHTML.includes('Pedir por kg')&&c.controlCount===1&&c.noteCount===1),'exactly one kg switch button and no duplicate elements in value mode');
 context.cartValueCents.watermelon=2000;
 context.updateProductCard('watermelon');
 assert.match(context.valueSaleEditorForm(product,2000),/data-value-remove="watermelon"/);
 
-// In value mode +/- changes by R$5 and cannot fall below the 1 kg minimum.
+// In value mode +/- uses half a kilogram rounded up to the next whole real.
 context.change('watermelon',1);
-assert.equal(context.cartValueCents.watermelon,2500);
+assert.equal(context.cartValueCents.watermelon,3000,'R$19/kg uses a R$10 step');
 context.change('watermelon',-1);
 assert.equal(context.cartValueCents.watermelon,2000);
 context.change('watermelon',-1);
 assert.equal(context.cartValueCents.watermelon,2000,'minus cannot go below the per-product minimum');
+const zucchini={id:'zucchini',name:'Abobrinha (kg)',price:3.99};
+context.products.push(zucchini);
+context.salesRulesById.set('zucchini',{sale_unit:'kg',quantity_step:0.5,min_quantity:1,max_quantity:100,value_min_kg:1,allow_value_sale:true});
+context.cart.zucchini=1;context.cartModes.zucchini='value';context.cartValueCents.zucchini=399;
+context.change('zucchini',1);
+assert.equal(context.cartValueCents.zucchini,599,'R$3.99/kg rounds half-kilo step up to R$2');
+const avocado={id:'avocado',name:'Abacate (kg)',price:11.99};
+context.products.push(avocado);
+context.salesRulesById.set('avocado',{sale_unit:'kg',quantity_step:0.5,min_quantity:1,max_quantity:100,value_min_kg:1,allow_value_sale:true});
+context.cart.avocado=6.89;context.cartModes.avocado='value';context.cartValueCents.avocado=2750;
+assert.match(context.valueSaleEditorMarkup(avocado),/data-value-to-kg="avocado"[^>]*>Pedir por kg/);
+assert.ok(context.convertValueSaleToKg('avocado'));
+assert.equal(context.cart.avocado,7,'switching to kg rounds 6.89 kg up to the next 0.5 kg step');
+assert.equal(context.cartModes.avocado,undefined);
 
 // Badge counts distinct products, not summed kg + units.
 context.products.push({id:'banana',name:'Banana',price:5});
 context.cart.banana=3;
 context.cart.ghost=4;
 context.updateCartSummary();
-assert.equal(ui.tabCartCount.textContent,2);
-assert.equal(ui.cartbarCount.textContent,'2 produtos');
+assert.equal(ui.tabCartCount.textContent,4);
+assert.equal(ui.cartbarCount.textContent,'4 produtos');
 
 // Value sale remains hidden unless explicitly enabled.
 context.salesRulesById.set('watermelon',{sale_unit:'kg',quantity_step:0.5,min_quantity:1,max_quantity:100,value_min_kg:1,allow_value_sale:false});
 assert.equal(context.valueSaleEditorMarkup(product),'');
-// Palma products display the commercial unit and never get a kg note or value-sale button.
+// Palma products keep integer cart quantities but receive the value helper.
 const banana={id:'banana',name:'Banana (palma)',price:6.99};
-context.salesRulesById.set('banana',{sale_unit:'maco',quantity_step:1,min_quantity:1,max_quantity:100,allow_value_sale:false});
+context.salesRulesById.set('banana',{sale_unit:'maco',quantity_step:1,min_quantity:1,max_quantity:100,allow_value_sale:true});
 context.products.push(banana);
 context.cart.banana=1;
 assert.equal(context.formatCartQuantity(2,banana),'2 palma');
-assert.doesNotMatch(context.productCardControlsMarkup(banana),/Pedir por valor|Peso aproximado/);
+assert.match(context.productCardControlsMarkup(banana),/Pedir por valor R\$/);
+assert.doesNotMatch(context.productWeightNoteMarkup(banana),/Peso aproximado/);
 assert.match(context.productQtyMarkup(banana),/>1 palma<\/strong>/);
 
-console.log('OK: compact value-sale sheet, 1 kg minimum, 0.5 kg steps, R$5 adjustments, server validation and in-place cart updates.');
+// Unit-value mode is only a calculator: choices are whole quantities and checkout remains normal unit pricing.
+const pear={id:'pear',name:'Pera (un)',price:6.99};
+context.products.push(pear);
+context.salesRulesById.set('pear',{sale_unit:'un',quantity_step:1,min_quantity:1,max_quantity:100,allow_value_sale:true});
+assert.equal(context.valueSaleEnabled(pear),true);
+const choices=context.unitValueSaleChoices(pear,2000);
+assert.equal(choices.lower.qty,2);
+assert.equal(choices.lower.totalCents,1398);
+assert.equal(choices.upper.qty,3);
+assert.equal(choices.upper.totalCents,2097);
+const unitSheet=context.unitValueSaleEditorForm(pear,2000);
+assert.match(unitSheet,/R\$ 20,00 não fecha certinho\. Escolha:/);
+assert.match(unitSheet,/2 un = R\$ 13,98/);
+assert.match(unitSheet,/3 un = R\$ 20,97/);
+assert.equal(context.unitValueSaleChoices(pear,1398).exact.qty,2,'exact unit amount resolves directly to an integer quantity');
+assert.ok(context.setUnitValueQuantity('pear',3));
+assert.equal(context.cart.pear,3);
+assert.equal(context.cartModes.pear,undefined,'unit helper does not send a value-mode line to checkout');
+const pearLine=context.totals().items.find(x=>x.p.id==='pear');
+assert.equal(pearLine.saleMode,'kg','checkout line stays on the existing normal quantity path');
+assert.equal(pearLine.lineTotalCents,2097,'server receives quantity × current unit price');
+const resale={id:'resale',name:'Produto com revenda',price:6.99,resale_enabled:true,resale_price:5.99,resale_min_qty:10};
+context.products.push(resale);
+context.salesRulesById.set('resale',{sale_unit:'un',quantity_step:1,min_quantity:1,max_quantity:100,allow_value_sale:true});
+assert.equal(context.unitValueSaleChoices(resale,5990).exact.qty,10,'10-unit resale price is used in exact selection');
+assert.ok(context.setUnitValueQuantity('resale',10));
+const resaleLine=context.totals().items.find(x=>x.p.id==='resale');
+assert.equal(resaleLine.lineTotalCents,5990,'the 10-unit resale price is applied to the normal cart line');
+
+console.log('OK: compact value-sale sheet, 1 kg minimum, 0.5 kg steps, price-rounded half-kilo adjustments, server validation and in-place cart updates.');
