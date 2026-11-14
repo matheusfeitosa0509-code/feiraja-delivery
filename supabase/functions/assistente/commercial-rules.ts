@@ -2,7 +2,7 @@ export function commercialScheduleContext(now: Date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Manaus", year: "numeric", month: "2-digit", day: "2-digit", weekday: "long", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(now);
   const values: Record<string, string> = {};
   for (const part of parts) if (part.type !== "literal") values[part.type] = part.value;
-  const dayIndex = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 }[String(values.weekday).toLowerCase()];
+  const dayIndex = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 }[String(values.weekday).toLowerCase()] ?? -1;
   const within = dayIndex >= 1 && dayIndex <= 6 && Number(values.hour) >= 6 && Number(values.hour) < 13;
   const next = new Date(Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day)));
   if (!within) do { next.setUTCDate(next.getUTCDate() + 1); } while (next.getUTCDay() === 0);
