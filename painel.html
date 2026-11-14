@@ -608,7 +608,6 @@ async function saveProductSheet(){
   const costValue=$('sheetCost').value.trim()?sheetNumber('sheetCost'):null;
   const saleUnit=$('sheetSaleUnit').value,min=Number($('sheetMin').value),step=Number($('sheetStep').value),valueEnabled=$('sheetValueEnabled').value==='true',valueMin=Number($('sheetValueMin').value);
   let image=$('sheetImage').value.trim();if(image){image=productImageValue(image);}
-  if(sheetPendingPhoto){setSheetMessage('Enviando foto…');uploadedPhoto=await uploadProductPhoto(id,sheetPendingPhoto.blob);image=uploadedPhoto.url;}
   if(!name||!category||price===null||price<=0)throw new Error('Informe nome, categoria e preço de venda válido.');
   if(resaleEnabled&&(!Number.isFinite(resalePrice)||resalePrice<=0||resalePrice>=price||!Number.isInteger(resaleMin)||resaleMin<1))throw new Error('Revenda exige preço menor que o preço normal e quantidade mínima inteira.');
   if(costValue!==null&&costValue<=0)throw new Error('O custo deve ser maior que zero.');
@@ -617,6 +616,7 @@ async function saveProductSheet(){
   if(saleUnit==='kg'&&Math.abs(min/step-Math.round(min/step))>1e-8)throw new Error('O mínimo precisa respeitar o passo da unidade.');
   if(saleUnit==='kg'&&Math.abs(valueMin-min)>1e-8)throw new Error('O mínimo do “por valor” deve ser igual ao mínimo do produto.');
   if(saleUnit!==product.sale_unit&&!window.confirm('Isso muda como o cliente compra. Confirmar?'))throw new Error('Alteração de unidade cancelada.');
+  if(sheetPendingPhoto){setSheetMessage('Enviando foto…');uploadedPhoto=await uploadProductPhoto(id,sheetPendingPhoto.blob);image=uploadedPhoto.url;}
   const productChanges={};
   if(name!==product.name)productChanges.name=name;
   if(category!==product.category)productChanges.category=category;
