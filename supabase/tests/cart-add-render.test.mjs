@@ -61,8 +61,8 @@ assert.match(showAppPage, /if\(page==='Home'\).*renderProducts\(\);safeRenderHom
   'opening Products must refresh product, search and category views');
 assert.match(showAppPage, /if\(page==='Orders'\)void loadMyOrders\(\)/,
   'opening Orders must refresh order history');
-assert.match(setCartEmptyState, /#cartPanel \\.sum/);
-assert.match(setCartEmptyState, /#pageCart \\.cart-footer/);
+assert.match(setCartEmptyState, /#cartPanel \.sum/);
+assert.match(setCartEmptyState, /#pageCart \.cart-footer/);
 assert.match(updateCartSummary, /setCartEmptyState\(count\)/,
   'removing/clearing the last item must hide totals and Continue immediately');
 assert.match(renderCart, /setCartEmptyState\(count\)/,
