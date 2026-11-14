@@ -18,7 +18,7 @@ function extract(name) {
   throw new Error('Unclosed function ' + name);
 }
 
-const ui = { tabCartCount:{}, minimumOrderNotice:{classList:{toggle(){}}}, minimumCheckoutNotice:{classList:{toggle(){}}}, submitOrder:{classList:{toggle(){}}}, subtotal:{}, total:{}, modalTotal:{}, checkout:{setAttribute(){}}, cartbarCount:{}, cartbarTotal:{}, cartbar:{classList:{toggle(){}}} };
+const ui = { tabCartCount:{classList:{toggle(){}}}, minimumOrderNotice:{classList:{toggle(){}}}, minimumCheckoutNotice:{classList:{toggle(){}}}, submitOrder:{classList:{toggle(){}}}, subtotal:{}, total:{}, modalTotal:{}, checkout:{setAttribute(){}}, cartbarCount:{}, cartbarTotal:{}, cartbar:{classList:{toggle(){}}} };
 const calls = { card:0, summary:0, fullCatalog:0 };
 const product = {id:'watermelon',name:'Melancia',price:19,category:'Frutas'};
 const context = {
