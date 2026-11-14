@@ -14,6 +14,17 @@ WITH CHECK (
   AND public.is_current_user_admin()
 );
 
+-- Admins need SELECT for Storage remove() to locate object metadata.
+-- This does not grant SELECT to anon or ordinary authenticated users.
+CREATE POLICY "product_photos_admin_select"
+ON storage.objects
+FOR SELECT
+TO authenticated
+USING (
+  bucket_id = 'product-photos'
+  AND public.is_current_user_admin()
+);
+
 -- Exclusão de foto antiga: somente administradores.
 CREATE POLICY "product_photos_admin_delete"
 ON storage.objects
