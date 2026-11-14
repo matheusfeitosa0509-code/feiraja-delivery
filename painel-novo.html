@@ -228,7 +228,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
   <button id="btnConfirmProductEdit" type="button" class="sec hide" disabled>Confirmar e salvar</button>
   <div id="editProductMsg" role="status" aria-live="polite"></div>
 </section>
-<section class="card product-section" id="productAvailabilityCard"><h2>Disponibilidade</h2><label for="availabilitySearch">Buscar produto pelo nome</label><input id="availabilitySearch" type="search" placeholder="Digite o nome do produto"><div class="shared-list-count" id="availabilityListCount"></div><div class="shared-product-list" id="availabilitySharedList" data-list-kind="availability" aria-label="Todos os produtos"></div><p class="muted">Consulte e altere a disponibilidade de produtos. A alteração grava somente a coluna available.</p><label for="availabilityProduct">Selecionar produto</label><select id="availabilityProduct"><option value="">Carregando produtos…</option></select><p id="availabilityCurrent" class="availability-current" aria-live="polite">Selecione um produto para ver o estado atual.</p><div class="availability-actions"><button id="toggleAvailability" type="button" disabled>Alternar disponibilidade</button><button id="refreshProducts" type="button" class="secondary">Atualizar produtos</button></div><p id="availabilityMessage" class="muted availability-message" role="status"></p><h3>Todos os produtos</h3><div id="adminProductList" class="product-list"><p class="muted">Carregando produtos…</p></div></section>
+<section class="card product-section" id="productAvailabilityCard"><h2>Disponibilidade</h2><label for="availabilitySearch">Buscar produto pelo nome</label><input id="availabilitySearch" type="search" placeholder="Digite o nome do produto"><div class="shared-list-count" id="availabilityListCount"></div><div class="shared-product-list" id="availabilitySharedList" data-list-kind="availability" aria-label="Todos os produtos"></div><p class="muted">Consulte e altere a disponibilidade de produtos. A alteração grava somente a coluna available.</p><label for="availabilityProduct">Selecionar produto</label><select id="availabilityProduct"><option value="">Carregando produtos…</option></select><p id="availabilityCurrent" class="availability-current" aria-live="polite">Selecione um produto para ver o estado atual.</p><div class="availability-actions"><button id="toggleAvailability" type="button" disabled>Alternar disponibilidade</button><button id="refreshProducts" type="button" class="secondary">Atualizar produtos</button></div><p id="availabilityMessage" class="muted availability-message" role="status"></p><h3>Todos os produtos</h3><p class="muted">Produtos vendidos por kg têm um controle individual: “Permitir pedido por valor”. Ele começa desligado.</p><div id="adminProductList" class="product-list"><p class="muted">Carregando produtos…</p></div></section>
 <section class="card product-section" id="productRequests">
  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
   <h2 style="margin:0">Produtos pedidos</h2>
@@ -246,6 +246,14 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
  <input id="costUnitInput" inputmode="decimal" placeholder="Ex.: 4,50">
  <button id="btnSaveCost" type="button" disabled>Salvar preço de custo</button>
  <p id="costEditMessage" class="muted" role="status" aria-live="polite"></p>
+ <div class="card" style="margin:18px 0 0;padding:14px">
+  <h3 style="margin:0 0 8px">Mínimo da compra por valor</h3>
+  <p class="muted">Valor mínimo em reais para cada produto vendido por kg no modo “por valor”. O mínimo do pedido continua sendo R$ 30,00.</p>
+  <label for="valueSaleMinimum">Mínimo por produto (R$)</label>
+  <input id="valueSaleMinimum" inputmode="decimal" type="text" value="5,00" placeholder="5,00">
+  <button id="btnSaveValueSaleMinimum" type="button">Salvar mínimo</button>
+  <p id="valueSaleMinimumMessage" class="muted" role="status" aria-live="polite">Carregando configuração…</p>
+ </div>
  <div class="card" style="margin:18px 0 0;padding:14px">
   <h3 style="margin:0 0 8px">Resumo de lucro por período</h3>
   <div class="filters">
@@ -354,8 +362,26 @@ function renderAdminProducts(){
  select.replaceChildren(new Option('Selecione um produto',''));
  adminProducts.forEach(p=>select.add(new Option(p.name+' — '+(p.available?'disponível':'indisponível'),p.id)));
  if(adminProducts.some(p=>p.id===selected))select.value=selected;
- $('adminProductList').innerHTML=adminProducts.map(p=>'<div class="product-row"><strong>'+esc(p.name)+'</strong><span class="product-state '+(p.available?'':'unavailable')+'">'+(p.available?'disponível':'indisponível')+'</span></div>').join('')||'<p class="muted">Nenhum produto encontrado.</p>';
+ $('adminProductList').innerHTML=adminProducts.map(p=>'<div class="product-row"><strong>'+esc(p.name)+'</strong><span class="product-state '+(p.available?'':'unavailable')+'">'+(p.available?'disponível':'indisponível')+'</span>'+(p.sale_unit==='kg'?'<button type="button" class="secondary" data-value-sale-toggle="'+esc(p.id)+'" aria-pressed="'+(p.allow_value_sale?'true':'false')+'">'+(p.allow_value_sale?'Por valor: ligado':'Por valor: desligado')+'</button>':'')+'</div>').join('')||'<p class="muted">Nenhum produto encontrado.</p>';
  syncAvailabilityControls();
+ document.querySelectorAll('[data-value-sale-toggle]').forEach(button=>button.addEventListener('click',()=>toggleProductValueSale(button.dataset.valueSaleToggle)));
+}
+async function toggleProductValueSale(productId){
+ const product=adminProducts.find(item=>String(item.id)===String(productId));
+ if(!product||product.sale_unit!=='kg')return;
+ const next=!product.allow_value_sale;
+ const button=document.querySelector('[data-value-sale-toggle="'+CSS.escape(String(productId))+'"]');
+ if(button){button.disabled=true;button.textContent='Salvando…';}
+ try{
+  const {error}=await db.rpc('admin_set_product_value_sale',{p_product_id:String(productId),p_enabled:next});
+  if(error)throw error;
+  product.allow_value_sale=next;
+  renderAdminProducts();
+  availabilityMessage('“Permitir pedido por valor” '+(next?'ativado':'desativado')+' para '+product.name+'.');
+ }catch(error){
+  availabilityMessage('Não foi possível alterar a compra por valor: '+(error?.message||'erro não identificado'),true);
+  if(button){button.disabled=false;button.textContent=product.allow_value_sale?'Por valor: ligado':'Por valor: desligado';}
+ }
 }
 async function loadAdminProducts(){
  $('refreshProducts').disabled=true;
@@ -367,7 +393,10 @@ async function loadAdminProducts(){
    .order('name',{ascending:true});
   if(error)throw error;
   const rows=data||[];
-  adminProducts=rows.map(p=>({...p,available:p.available===true}));
+  const {data:rules,error:rulesError}=await db.from('product_sales_rules').select('product_id,sale_unit,allow_value_sale').in('product_id',rows.map(p=>p.id));
+  if(rulesError)throw rulesError;
+  const rulesByProductId=new Map((rules||[]).map(rule=>[String(rule.product_id),rule]));
+  adminProducts=rows.map(p=>{const rule=rulesByProductId.get(String(p.id));return {...p,available:p.available===true,sale_unit:rule?.sale_unit||null,allow_value_sale:rule?.allow_value_sale===true};});
   priceProducts=rows.map(p=>({...p,price:Number(p.price),old_price:p.old_price==null?null:Number(p.old_price)}));
   resaleProducts=rows.map(p=>({...p,price:Number(p.price),resale_price:p.resale_price==null?null:Number(p.resale_price),resale_enabled:p.resale_enabled===true,resale_min_qty:Number(p.resale_min_qty??10),resale_unit:p.resale_unit==='kg'?'kg':'un'}));
   editableProducts=rows.slice();
@@ -1091,6 +1120,41 @@ $('btnSaveCost').addEventListener('click',async()=>{
  }
 });
 $('btnRefreshCostReport').addEventListener('click',loadCostReport);
+async function loadValueSaleMinimum(){
+ const message=$('valueSaleMinimumMessage');
+ try{
+  const {data,error}=await db.rpc('get_sales_settings');
+  if(error)throw error;
+  const cents=Number(data?.min_value_cents);
+  if(!Number.isSafeInteger(cents)||cents<500)throw new Error('Configuração inválida.');
+  $('valueSaleMinimum').value=(cents/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  message.textContent='Mínimo atual: '+money(cents/100)+'.';
+ }catch(error){
+  console.error('Falha ao carregar mínimo da compra por valor:',error);
+  message.textContent='Não foi possível carregar o mínimo. Verifique a migration da compra por valor.';
+ }
+}
+$('btnSaveValueSaleMinimum').addEventListener('click',async()=>{
+ const message=$('valueSaleMinimumMessage');
+ const amount=parseCostInput($('valueSaleMinimum').value);
+ const cents=amount==null?NaN:Math.round(amount*100);
+ if(!Number.isSafeInteger(cents)||cents<500||cents>100000){
+  message.textContent='Informe um valor entre R$ 5,00 e R$ 1.000,00.';
+  return;
+ }
+ const button=$('btnSaveValueSaleMinimum');button.disabled=true;button.textContent='Salvando…';
+ try{
+  const {error}=await db.rpc('admin_set_value_sale_minimum',{p_min_value_cents:cents});
+  if(error)throw error;
+  message.textContent='Mínimo atualizado para '+money(cents/100)+'.';
+ }catch(error){
+  console.error('Falha ao salvar mínimo da compra por valor:',error);
+  message.textContent='Não foi possível salvar. Confira sua sessão de administrador.';
+ }finally{
+  button.disabled=false;button.textContent='Salvar mínimo';
+ }
+});
+loadValueSaleMinimum();
 
 async function loadProductRequests(){
  const message=$('productRequestsMessage');

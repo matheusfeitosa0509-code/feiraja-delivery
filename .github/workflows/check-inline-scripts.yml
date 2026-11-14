@@ -3,7 +3,13 @@ on:
   pull_request:
     paths:
       - "loja.html"
+      - "painel-novo.html"
       - "recuperar-senha.html"
+      - "supabase/functions/_shared/sales-rules.js"
+      - "supabase/functions/super-worker/index.ts"
+      - "supabase/migrations/20261114230000_exact_value_sale.sql"
+      - "supabase/rollbacks/20261114230000_exact_value_sale_rollback.sql"
+      - "supabase/tests/sales-by-value.test.mjs"
       - ".github/workflows/check-inline-scripts.yml"
   push:
     branches: [main]
@@ -47,3 +53,5 @@ jobs:
           NODE
       - name: Test fallback das colunas de separação
         run: node supabase/tests/order-separation-column-fallback.test.mjs
+      - name: Teste da compra por valor exato
+        run: node supabase/tests/sales-by-value.test.mjs
