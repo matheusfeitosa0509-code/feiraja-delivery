@@ -47,3 +47,5 @@ jobs:
           NODE
       - name: Test fallback das colunas de separação
         run: node supabase/tests/order-separation-column-fallback.test.mjs
+      - name: Teste da compra por valor exato
+        run: node --experimental-strip-types supabase/tests/sales-by-value.test.mjs
