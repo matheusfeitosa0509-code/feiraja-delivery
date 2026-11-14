@@ -75,7 +75,7 @@ for(const [item,expected] of displayCases){
   assert.equal(storeContext.formatOrderItemDescription(item),expected,'store label: '+item.name);
 }
 assert.match(store,/const cashAtPickup=method\.includes\('dinheiro'\)\|\|method\.includes\('cart'\)/,'cash/card at pickup uses the cash timeline');
-assert.match(store,/\['Pedido Recebido','Pedido registrado'\],\['Preparando','Separando seus itens'\],\['Pronto para Retirada','Aguardando retirada'\],\['Pedido Concluído','Pago e retirado'\]/,'cash timeline ends with Pago e retirado');
+assert.match(store,/const label=cashAtPickup\?\(item\[0\]==='Pedido Recebido'\?'Pedido recebido':item\[0\]==='Pronto para Retirada'\?'Pronto para retirada':item\[0\]==='Pedido Concluído'\?'Pago e retirado'/,'cash timeline uses the exact requested stage labels');
 assert.match(store,/const refundHelp=isPixPayment\?/,'refund explanation is limited to Pix orders');
 assert.match(store,/cancelMyOrder\(b\.dataset\.cancelOrder,b,b\.dataset\.cancelPayment==='pix'\)/,'cancellation confirmation receives the payment type');
 
