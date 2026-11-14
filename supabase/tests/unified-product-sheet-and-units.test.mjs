@@ -18,8 +18,8 @@ assert.match(panel,/Object\.keys\(productChanges\)\.length/,'only changed public
 assert.match(panel,/loadCostReport\(\)/,'cost information and report are refreshed after saving');
 assert.match(panel,/@media\(max-width:412px\)/,'the product sheet has mobile layout rules');
 assert.match(panel,/legacy-product-editor\{display:none!important\}/,'legacy product editing tabs are hidden');
-assert.match(panel,/id="productRequests"[^>]*active/,'product requests remain a separate report');
-assert.match(panel,/id="costEditor"[^>]*active/,'profit by period remains a separate report');
+assert.match(panel,/class="card product-section active" id="productRequests"/,'product requests remain a separate report');
+assert.match(panel,/class="card product-section active" id="costEditor"/,'profit by period remains a separate report');
 
 for(const id of ['feiraja_camarao_10_gramas','feiraja_camarao_12_grama','feiraja_camarao_maranhao_gg','feiraja_camarao_pelado','feiraja_camarao_tutoia_1kg','feiraja_caranguejo_1kg']) {
  assert.match(migration,new RegExp(id+"','kg',0\\.5,0\\.5,100,true,0\\.5"),'confirmed shrimp/crab kg rule '+id);
