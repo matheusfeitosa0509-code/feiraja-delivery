@@ -125,6 +125,7 @@ assert.equal(context.valueSaleEditorMarkup(product),'');
 const banana={id:'banana',name:'Banana (palma)',price:6.99};
 context.salesRulesById.set('banana',{sale_unit:'maco',quantity_step:1,min_quantity:1,max_quantity:100,allow_value_sale:false});
 context.products.push(banana);
+context.cart.banana=1;
 assert.equal(context.formatCartQuantity(2,banana),'2 palma');
 assert.doesNotMatch(context.productCardControlsMarkup(banana),/Pedir por valor|Peso aproximado/);
 assert.match(context.productQtyMarkup(banana),/>1<\/strong>/);
