@@ -86,6 +86,12 @@ export function isValidValueSale(amountCents, minimumAmountCents, quantity, rule
     isValidSalesQuantity(quantity, rule, "value");
 }
 
+export function calculateValueLineTotalCents(amountCents, minimumAmountCents, quantity, rule) {
+  return isValidValueSale(amountCents, minimumAmountCents, quantity, rule)
+    ? amountCents
+    : null;
+}
+
 export function selectEffectiveUnitPriceCents(
   normalPriceCents,
   resalePriceCents,
