@@ -30,3 +30,8 @@ Deno.test("contexto inclui data e hora local de Manaus", () => {
   const result = commercialScheduleContext(new Date("2026-11-14T22:30:00.000Z"));
   assertEquals(result.data_hora_manaus, "sábado, 14 de novembro de 2026, 18:30");
 });
+
+Deno.test("revenda usa espaço comum após o símbolo da moeda", () => {
+  const label = formatResaleLabel(true, 5.99, 10, "un");
+  assertEquals(label?.includes("R$ 5,99"), true);
+});
