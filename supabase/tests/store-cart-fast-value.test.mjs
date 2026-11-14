@@ -245,7 +245,7 @@ context.cart['old-unit']=101;context.normalizeLegacyCartItem('old-unit',oldUnit)
 
 assert.doesNotMatch(html,/\b(?:confirm|alert)\s*\(/,'the store must not use native browser dialogs');
 assert.match(html,/id="storeConfirmModal"/);assert.match(html,/Limpar o carrinho\? Todos os itens serão removidos\./);
-assert.match(html,/id="cartUndoToast"/);assert.match(html,/DESFAZER/);assert.match(html,/function positionCartToast\\(toast\\)/);
+assert.match(html,/id="cartUndoToast"/);assert.match(html,/DESFAZER/);assert.match(html,/function positionCartToast\(toast\)/);
 assert.match(html,/function showCartUndo\(message,snapshot\)/);assert.match(html,/function undoCartAction\(\)/);
 
 // Layout guards: controls are in their own row and every action has a 44 px target.
