@@ -371,7 +371,7 @@ Deno.serve(async (req: Request) => {
     if (products.some((p: any) => p.available !== true)) return json({ error: "Um dos produtos está indisponível. Atualize a feira e tente novamente." }, 409);
 
     const { data: salesRules, error: salesRulesError } = await db.from("product_sales_rules")
-      .select("product_id,sale_unit,quantity_step,min_quantity,max_quantity,allow_value_sale")
+      .select("product_id,sale_unit,quantity_step,min_quantity,max_quantity,allow_value_sale,value_min_kg")
       .in("product_id", ids);
     if (salesRulesError) {
       console.error("super-worker", { code: "SALES_RULES_FALLBACK" });
@@ -379,19 +379,6 @@ Deno.serve(async (req: Request) => {
     const salesRulesById = new Map((salesRulesError ? [] : salesRules || []).map((rule: any) => [String(rule.product_id), rule]));
 
     const hasValueSale = [...requestedById.values()].some((entry) => entry.saleMode === "value");
-    let minValueSaleCents = 500;
-    if (hasValueSale) {
-      const { data: salesSettings, error: salesSettingsError } = await db.rpc("get_sales_settings");
-      if (salesSettingsError) {
-        console.error("super-worker", { code: "VALUE_SALE_SETTINGS_UNAVAILABLE" });
-        return json({ error: "A compra por valor está temporariamente indisponível. Tente novamente." }, 503);
-      }
-      minValueSaleCents = Number(salesSettings?.min_value_cents);
-      if (!Number.isSafeInteger(minValueSaleCents) || minValueSaleCents < 500) {
-        console.error("super-worker", { code: "VALUE_SALE_SETTINGS_INVALID" });
-        return json({ error: "A configuração de compra por valor está inválida. Avise a loja." }, 503);
-      }
-    }
 
     for (const [id, entry] of requestedById) {
       saleModeById.set(id, entry.saleMode);
@@ -400,8 +387,8 @@ Deno.serve(async (req: Request) => {
         if (!rule || !isValueSaleEnabled(rule) || salesRulesError) {
           return json({ error: "A compra por valor está disponível somente para produtos vendidos por kg." }, 400);
         }
-        if (!entry.amountValues.every((amount) => Number.isSafeInteger(amount) && amount >= minValueSaleCents)) {
-          return json({ error: "O valor mínimo por produto é de " + (minValueSaleCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) + "." }, 400);
+        if (!entry.amountValues.every((amount) => Number.isSafeInteger(amount) && amount > 0)) {
+          return json({ error: "Informe um valor em reais válido para o produto." }, 400);
         }
         const totalAmountCents = entry.amountValues.reduce((sum, amount) => sum + amount, 0);
         if (!Number.isSafeInteger(totalAmountCents)) return json({ error: "Valor total inválido." }, 400);
@@ -468,8 +455,12 @@ Deno.serve(async (req: Request) => {
       if (saleMode === "value" && effectivePriceCents !== normalPriceCents) {
         qty = calculateQuantityFromValueCents(amountCents!, effectivePriceCents, Number(rule?.max_quantity || 100)) || 0;
       }
+      const minimumValueSaleKg = Number(rule?.value_min_kg ?? 1);
+      const minValueSaleCents = Math.ceil(normalPriceCents * minimumValueSaleKg);
       const valueLineTotalCents = saleMode === "value"
-        ? calculateValueLineTotalCents(amountCents!, minValueSaleCents, qty, rule)
+        ? (qty + 1e-9 < minimumValueSaleKg
+          ? null
+          : calculateValueLineTotalCents(amountCents!, minValueSaleCents, qty, rule))
         : null;
       if (saleMode === "value" && valueLineTotalCents === null) {
         return json({ error: "O valor escolhido não atende ao mínimo ou ao limite de peso deste produto." }, 400);

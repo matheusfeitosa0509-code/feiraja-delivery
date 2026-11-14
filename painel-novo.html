@@ -127,6 +127,8 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 
 /* Lista unificada de produtos: responsiva e independente por aba. */
 .shared-product-list{display:grid;gap:8px;margin:12px 0;max-height:52vh;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}.shared-product-list-item{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:10px;align-items:center;width:100%;min-height:68px;padding:9px;background:#fbfdf9;border:1px solid #e2ebe0;border-radius:14px;color:var(--ink);text-align:left}.shared-product-list-item img{width:52px;height:52px;object-fit:cover;border-radius:10px;background:#edf3eb}.shared-product-list-item .product-meta{min-width:0}.shared-product-list-item .product-meta strong{display:block;overflow-wrap:anywhere}.shared-product-list-item .product-meta small{display:block;color:var(--muted);font-size:11px;font-weight:600}.shared-product-list-item .product-price{font-weight:800;white-space:nowrap;font-size:13px}.shared-product-list-empty{padding:18px;text-align:center;color:var(--muted)}.shared-list-count{margin:8px 0;color:var(--muted);font-size:12px;font-weight:700}
+
+.value-sale-min-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}.value-sale-min-row label{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--mut)}.value-sale-min-row input{width:68px;min-height:36px;padding:5px;border:1px solid var(--line);border-radius:8px}.cost-product-row{display:flex;flex-direction:column;gap:4px;padding:10px 12px;margin:7px 0;border:1px solid var(--line);border-radius:12px;background:#fff}.cost-product-row small{font-size:12px;color:var(--mut)}.cost-product-row.stale{background:#fff8d8;border-color:#e7c84c}.cost-product-row.low-margin{background:#fff0dc;border-color:#e7a044}.cost-product-row.below-cost{background:#ffe6e3;border-color:#d95b50}
 </style>
 </head>
 <body><main class="wrap">
@@ -239,6 +241,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 </section>
 <section class="card product-section" id="costEditor">
  <h2>Preço de custo e lucro</h2>
+ <p class="muted"><strong>Lucro estimado (pelo custo cadastrado).</strong> Como a compra acontece depois do pedido, atualize o custo sempre que o preço pago na feira mudar.</p>
  <p class="muted">Cadastre o custo unitário de cada produto. O custo é copiado para os novos pedidos e fica preservado no histórico, mesmo se o custo atual mudar.</p>
  <label for="costProductSelect">Produto</label>
  <select id="costProductSelect"><option value="">Carregando produtos…</option></select>
@@ -247,13 +250,16 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
  <button id="btnSaveCost" type="button" disabled>Salvar preço de custo</button>
  <p id="costEditMessage" class="muted" role="status" aria-live="polite"></p>
  <div class="card" style="margin:18px 0 0;padding:14px">
-  <h3 style="margin:0 0 8px">Mínimo da compra por valor</h3>
-  <p class="muted">Valor mínimo em reais para cada produto vendido por kg no modo “por valor”. O mínimo do pedido continua sendo R$ 30,00.</p>
-  <label for="valueSaleMinimum">Mínimo por produto (R$)</label>
-  <input id="valueSaleMinimum" inputmode="decimal" type="text" value="5,00" placeholder="5,00">
-  <button id="btnSaveValueSaleMinimum" type="button">Salvar mínimo</button>
-  <p id="valueSaleMinimumMessage" class="muted" role="status" aria-live="polite">Carregando configuração…</p>
+  <h3 style="margin:0 0 8px">Alerta de margem baixa</h3>
+  <p class="muted">Destaque produtos com margem abaixo do percentual configurado. Produtos vendidos abaixo do custo aparecem em vermelho.</p>
+  <label for="costMarginThreshold">Margem mínima de alerta (%)</label>
+  <input id="costMarginThreshold" type="number" min="0" max="100" step="0.5" value="20">
+  <button id="btnSaveCostMarginThreshold" type="button">Salvar percentual</button>
+  <p id="costMarginThresholdMessage" class="muted" role="status" aria-live="polite">Carregando configuração…</p>
  </div>
+ <h3 style="margin:18px 0 8px">Situação dos custos por produto</h3>
+ <p class="muted">Custos sem atualização há mais de 7 dias ficam amarelos; margem baixa fica laranja; venda abaixo do custo fica vermelha.</p>
+ <div id="costProductStatusList" class="product-list"><p class="muted">Carregando custos…</p></div>
  <div class="card" style="margin:18px 0 0;padding:14px">
   <h3 style="margin:0 0 8px">Resumo de lucro por período</h3>
   <div class="filters">
@@ -362,9 +368,26 @@ function renderAdminProducts(){
  select.replaceChildren(new Option('Selecione um produto',''));
  adminProducts.forEach(p=>select.add(new Option(p.name+' — '+(p.available?'disponível':'indisponível'),p.id)));
  if(adminProducts.some(p=>p.id===selected))select.value=selected;
- $('adminProductList').innerHTML=adminProducts.map(p=>'<div class="product-row"><strong>'+esc(p.name)+'</strong><span class="product-state '+(p.available?'':'unavailable')+'">'+(p.available?'disponível':'indisponível')+'</span>'+(p.sale_unit==='kg'?'<button type="button" class="secondary" data-value-sale-toggle="'+esc(p.id)+'" aria-pressed="'+(p.allow_value_sale?'true':'false')+'">'+(p.allow_value_sale?'Por valor: ligado':'Por valor: desligado')+'</button>':'')+'</div>').join('')||'<p class="muted">Nenhum produto encontrado.</p>';
+ $('adminProductList').innerHTML=adminProducts.map(p=>'<div class="product-row"><strong>'+esc(p.name)+'</strong><span class="product-state '+(p.available?'':'unavailable')+'">'+(p.available?'disponível':'indisponível')+'</span>'+(p.sale_unit==='kg'?'<div class="value-sale-min-row"><button type="button" class="secondary" data-value-sale-toggle="'+esc(p.id)+'" aria-pressed="'+(p.allow_value_sale?'true':'false')+'">'+(p.allow_value_sale?'Por valor: ligado':'Por valor: desligado')+'</button><label>Mín. por valor (kg)<input type="number" min="0.001" max="100" step="0.1" value="'+String(p.value_min_kg||1)+'" data-value-min-input="'+esc(p.id)+'" aria-label="Peso mínimo por valor para '+esc(p.name)+'"></label></div>':'')+'</div>').join('')||'<p class="muted">Nenhum produto encontrado.</p>';
  syncAvailabilityControls();
  document.querySelectorAll('[data-value-sale-toggle]').forEach(button=>button.addEventListener('click',()=>toggleProductValueSale(button.dataset.valueSaleToggle)));
+ document.querySelectorAll('[data-value-min-input]').forEach(input=>input.addEventListener('change',()=>saveProductValueMinimum(input.dataset.valueMinInput,input.value,input)));
+}
+async function saveProductValueMinimum(productId,raw,input){
+ const product=adminProducts.find(item=>String(item.id)===String(productId));
+ const value=Number(String(raw).replace(',','.'));
+ if(!product||!Number.isFinite(value)||value<=0||value>100){availabilityMessage('Informe um mínimo em kg maior que zero e até 100 kg.',true);return;}
+ input.disabled=true;
+ try{
+  const {error}=await db.rpc('admin_set_product_value_minimum',{p_product_id:String(productId),p_min_kg:value});
+  if(error)throw error;
+  product.value_min_kg=value;
+  input.value=String(value);
+  availabilityMessage('Mínimo por valor atualizado para '+product.name+': '+value.toLocaleString('pt-BR')+' kg.');
+ }catch(error){
+  input.value=String(product.value_min_kg||1);
+  availabilityMessage('Não foi possível atualizar o mínimo por valor: '+(error?.message||'erro não identificado'),true);
+ }finally{input.disabled=false;}
 }
 async function toggleProductValueSale(productId){
  const product=adminProducts.find(item=>String(item.id)===String(productId));
@@ -393,10 +416,10 @@ async function loadAdminProducts(){
    .order('name',{ascending:true});
   if(error)throw error;
   const rows=data||[];
-  const {data:rules,error:rulesError}=await db.from('product_sales_rules').select('product_id,sale_unit,allow_value_sale').in('product_id',rows.map(p=>p.id));
+  const {data:rules,error:rulesError}=await db.from('product_sales_rules').select('product_id,sale_unit,allow_value_sale,min_quantity,quantity_step,value_min_kg').in('product_id',rows.map(p=>p.id));
   if(rulesError)throw rulesError;
   const rulesByProductId=new Map((rules||[]).map(rule=>[String(rule.product_id),rule]));
-  adminProducts=rows.map(p=>{const rule=rulesByProductId.get(String(p.id));return {...p,available:p.available===true,sale_unit:rule?.sale_unit||null,allow_value_sale:rule?.allow_value_sale===true};});
+  adminProducts=rows.map(p=>{const rule=rulesByProductId.get(String(p.id));return {...p,available:p.available===true,sale_unit:rule?.sale_unit||null,allow_value_sale:rule?.allow_value_sale===true,value_min_kg:Number(rule?.value_min_kg||1),min_quantity:Number(rule?.min_quantity||1),quantity_step:Number(rule?.quantity_step||0.5)};});
   priceProducts=rows.map(p=>({...p,price:Number(p.price),old_price:p.old_price==null?null:Number(p.old_price)}));
   resaleProducts=rows.map(p=>({...p,price:Number(p.price),resale_price:p.resale_price==null?null:Number(p.resale_price),resale_enabled:p.resale_enabled===true,resale_min_qty:Number(p.resale_min_qty??10),resale_unit:p.resale_unit==='kg'?'kg':'un'}));
   editableProducts=rows.slice();
@@ -1068,6 +1091,8 @@ async function loadCostReport(){
   if(error)throw error;
   const products=Array.isArray(data?.products)?data.products:[];
   window.__feiraCostProducts=products;
+  const now=Date.now();
+  $('costProductStatusList').innerHTML=products.map(product=>{const updated=product.updated_at?new Date(product.updated_at):null;const stale=updated&&now-updated.getTime()>7*24*60*60*1000;const margin=product.unit_cost==null||Number(product.price)<=0?null:(Number(product.price)-Number(product.unit_cost))/Number(product.price)*100;const below=margin!==null&&margin<0;const low=margin!==null&&!below&&margin<costMarginThreshold;const classes=[stale?'stale':'',below?'below-cost':low?'low-margin':''].filter(Boolean).join(' ');const date=updated?new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',day:'2-digit',month:'2-digit'}).format(updated):null;const costText=date?'Custo atualizado em: '+date:'Custo ainda não cadastrado';const marginText=margin===null?'Margem: sem custo':('Margem estimada: '+margin.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%');return '<article class="cost-product-row '+classes+'"><strong>'+esc(product.name)+'</strong><small>'+costText+'</small><small>'+marginText+'</small></article>';}).join('')||'<p class="muted">Nenhum produto cadastrado.</p>';
   const selected=$('costProductSelect').value;
   $('costProductSelect').replaceChildren(new Option('Selecione um produto',''));
   products.forEach(product=>{
@@ -1082,11 +1107,11 @@ async function loadCostReport(){
    ['Pedidos considerados',String(s.orders||0)],
    ['Vendas com snapshot',money(s.sales_total)],
    ['Custo conhecido',money(s.known_cost)],
-   ['Lucro calculado',money(s.profit)],
+   ['Lucro estimado (pelo custo cadastrado)',money(s.profit)],
    ['Margem sobre itens com custo',percent],
    ['Itens sem custo',String(s.missing_cost_items||0)]
   ].map(([label,value])=>'<div class="stat"><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>').join('');
-  message.textContent='Resumo atualizado. Período: '+start.split('-').reverse().join('/')+' a '+end.split('-').reverse().join('/')+'.';
+  message.textContent='Lucro estimado (pelo custo cadastrado). Período: '+start.split('-').reverse().join('/')+' a '+end.split('-').reverse().join('/')+'.';
  }catch(error){
   console.error('Falha ao carregar resumo de custos:',error);
   message.textContent='Não foi possível carregar o resumo: '+(error?.message||'erro não identificado');
@@ -1120,42 +1145,34 @@ $('btnSaveCost').addEventListener('click',async()=>{
  }
 });
 $('btnRefreshCostReport').addEventListener('click',loadCostReport);
-async function loadValueSaleMinimum(){
- const message=$('valueSaleMinimumMessage');
+let costMarginThreshold=20;
+async function loadCostMarginThreshold(){
+ const message=$('costMarginThresholdMessage');
  try{
   const {data,error}=await db.rpc('get_sales_settings');
   if(error)throw error;
-  const cents=Number(data?.min_value_cents);
-  if(!Number.isSafeInteger(cents)||cents<500)throw new Error('Configuração inválida.');
-  $('valueSaleMinimum').value=(cents/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  message.textContent='Mínimo atual: '+money(cents/100)+'.';
- }catch(error){
-  console.error('Falha ao carregar mínimo da compra por valor:',error);
-  message.textContent='Não foi possível carregar o mínimo. Verifique a migration da compra por valor.';
- }
+  const value=Number(data?.low_margin_percent??20);
+  if(!Number.isFinite(value)||value<0||value>100)throw new Error('Percentual inválido.');
+  costMarginThreshold=value;
+  $('costMarginThreshold').value=String(value);
+  message.textContent='Alerta atual: margem abaixo de '+value.toLocaleString('pt-BR')+'%.';
+  await loadCostReport();
+ }catch(error){message.textContent='Não foi possível carregar o percentual de alerta.';}
 }
-$('btnSaveValueSaleMinimum').addEventListener('click',async()=>{
- const message=$('valueSaleMinimumMessage');
- const amount=parseCostInput($('valueSaleMinimum').value);
- const cents=amount==null?NaN:Math.round(amount*100);
- if(!Number.isSafeInteger(cents)||cents<500||cents>100000){
-  message.textContent='Informe um valor entre R$ 5,00 e R$ 1.000,00.';
-  return;
- }
- const button=$('btnSaveValueSaleMinimum');button.disabled=true;button.textContent='Salvando…';
+$('btnSaveCostMarginThreshold').addEventListener('click',async()=>{
+ const message=$('costMarginThresholdMessage'),value=Number(String($('costMarginThreshold').value).replace(',','.'));
+ if(!Number.isFinite(value)||value<0||value>100){message.textContent='Informe um percentual entre 0 e 100.';return;}
+ const button=$('btnSaveCostMarginThreshold');button.disabled=true;button.textContent='Salvando…';
  try{
-  const {error}=await db.rpc('admin_set_value_sale_minimum',{p_min_value_cents:cents});
+  const {error}=await db.rpc('admin_set_low_margin_percent',{p_percent:value});
   if(error)throw error;
-  message.textContent='Mínimo atualizado para '+money(cents/100)+'.';
- }catch(error){
-  console.error('Falha ao salvar mínimo da compra por valor:',error);
-  message.textContent='Não foi possível salvar. Confira sua sessão de administrador.';
- }finally{
-  button.disabled=false;button.textContent='Salvar mínimo';
- }
+  costMarginThreshold=value;
+  message.textContent='Alerta atualizado: margem abaixo de '+value.toLocaleString('pt-BR')+'%.';
+  await loadCostReport();
+ }catch(error){message.textContent='Não foi possível salvar o percentual. Confira a sessão de administrador.';}
+ finally{button.disabled=false;button.textContent='Salvar percentual';}
 });
-loadValueSaleMinimum();
-
+loadCostMarginThreshold();
 async function loadProductRequests(){
  const message=$('productRequestsMessage');
  const list=$('productRequestsList');

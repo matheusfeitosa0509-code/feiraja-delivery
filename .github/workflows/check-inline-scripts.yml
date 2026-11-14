@@ -9,6 +9,8 @@ on:
       - "supabase/functions/super-worker/index.ts"
       - "supabase/migrations/20261114230000_exact_value_sale.sql"
       - "supabase/rollbacks/20261114230000_exact_value_sale_rollback.sql"
+      - "supabase/migrations/20261115010000_kg_minimums_and_cost_margin.sql"
+      - "supabase/rollbacks/20261115010000_kg_minimums_and_cost_margin_rollback.sql"
       - "supabase/tests/sales-by-value.test.mjs"
       - "supabase/tests/cart-add-render.test.mjs"
       - "supabase/tests/store-cart-fast-value.test.mjs"
@@ -34,7 +36,7 @@ jobs:
           import os from 'node:os';
           import path from 'node:path';
           import { spawnSync } from 'node:child_process';
-          const files = ['loja.html', 'recuperar-senha.html'];
+          const files = ['loja.html', 'painel-novo.html', 'recuperar-senha.html'];
           let index = 0;
           for (const file of files) {
             const html = fs.readFileSync(file, 'utf8');
@@ -61,3 +63,5 @@ jobs:
         run: node supabase/tests/cart-add-render.test.mjs
       - name: Teste de carrinho rápido e compra por valor nos cards
         run: node supabase/tests/store-cart-fast-value.test.mjs
+      - name: Teste de alertas de custo e mínimos por kg
+        run: node supabase/tests/panel-cost-alerts.test.mjs
