@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { calculateLineTotalCents, calculateQuantityFromValueCents, calculateValueLineTotalCents, isValidSalesQuantity, isValueSaleEnabled, selectEffectiveUnitPriceCents, sumDecimalQuantities } from "../_shared/sales-rules.js";
 import { resolveMercadoPagoOrderStatus } from "./payment-status.ts";
+import { normalizeItemPreference } from "../_shared/item-preferences.ts";
 
 function isValidCpf(value: string) { const cpf = String(value || "").replace(/\D/g, ""); if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false; const calc = (base: string, factor: number) => { let sum = 0; for (const digit of base) sum += Number(digit) * factor--; const mod = (sum * 10) % 11; return mod === 10 ? 0 : mod; }; return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10]); }
 
@@ -334,8 +335,12 @@ Deno.serve(async (req: Request) => {
     if (paymentMethod === "pix" && !validPixDocument) return json({ error: asaasEnabled ? "Informe um CPF ou CNPJ válido para gerar o Pix." : "Informe um CPF válido para gerar o Pix." }, 400);
 
     const requestedById = new Map<string, { saleMode: string; qtyValues: number[]; amountValues: number[] }>();
+    const itemPreferencesById = new Map<string, { item_note: string; substitution_preference: 'replace' | 'remove' | 'call' }>();
     for (const item of requestedItems) {
       const id = String(item?.id ?? "").trim();
+      const preference = normalizeItemPreference(item?.item_note, item?.substitution_preference);
+      if (!preference) return json({ error: "Confira a observação e a preferência de substituição do item." }, 400);
+      if (id) itemPreferencesById.set(id, preference);
       const saleMode = String(item?.sale_mode || "kg");
       if (!id || !["kg", "value"].includes(saleMode)) {
         return json({ error: "Produto ou modo de compra inválido." }, 400);
@@ -478,6 +483,7 @@ Deno.serve(async (req: Request) => {
         price: effectivePriceCents / 100, qty, sale_mode: saleMode,
         line_total_cents: lineTotalCents,
         ...(saleMode === "value" ? { amount_cents: amountCents } : {}),
+        ...(itemPreferencesById.has(String(p.id)) ? itemPreferencesById.get(String(p.id))! : { item_note: '', substitution_preference: 'call' }),
       });
     }
 
