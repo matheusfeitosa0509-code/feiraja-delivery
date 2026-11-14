@@ -150,6 +150,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <button type="button" data-product-section="productEdit" aria-pressed="false">Editar nome e imagem</button>
 <button type="button" data-product-section="productAvailabilityCard" aria-pressed="false">Disponibilidade</button>
 <button type="button" data-product-section="productRequests" aria-pressed="false">Produtos pedidos</button>
+<button type="button" data-product-section="costEditor" aria-pressed="false">Preço de custo</button>
 </div>
 <div class="card product-section active" id="formBox">
 <h1>➕ Novo produto</h1>
@@ -235,6 +236,27 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
  </div>
  <p id="productRequestsMessage" class="muted" role="status" aria-live="polite">Carregando solicitações…</p>
  <div id="productRequestsList" class="product-list"><p class="muted">Carregando…</p></div>
+</section>
+<section class="card product-section" id="costEditor">
+ <h2>Preço de custo e lucro</h2>
+ <p class="muted">Cadastre o custo unitário de cada produto. O custo é copiado para os novos pedidos e fica preservado no histórico, mesmo se o custo atual mudar.</p>
+ <label for="costProductSelect">Produto</label>
+ <select id="costProductSelect"><option value="">Carregando produtos…</option></select>
+ <label for="costUnitInput">Custo unitário (R$)</label>
+ <input id="costUnitInput" inputmode="decimal" placeholder="Ex.: 4,50">
+ <button id="btnSaveCost" type="button" disabled>Salvar preço de custo</button>
+ <p id="costEditMessage" class="muted" role="status" aria-live="polite"></p>
+ <div class="card" style="margin:18px 0 0;padding:14px">
+  <h3 style="margin:0 0 8px">Resumo de lucro por período</h3>
+  <div class="filters">
+   <label style="flex:1;min-width:130px">De<input id="costStart" type="date"></label>
+   <label style="flex:1;min-width:130px">Até<input id="costEnd" type="date"></label>
+  </div>
+  <button id="btnRefreshCostReport" type="button" class="secondary">Atualizar resumo</button>
+  <p id="costReportMessage" class="muted" role="status" aria-live="polite">Carregando resumo…</p>
+  <div id="costReportStats" class="stats"></div>
+ </div>
+ <p class="muted" style="font-size:12px">O lucro e a margem consideram somente itens com custo cadastrado e snapshots capturados após a ativação. Pedidos anteriores não são recalculados automaticamente.</p>
 </section>
 </section>
 </section></main>
@@ -404,7 +426,7 @@ async function show(){
   $('priceEditor').classList.remove('hide');
   $('resaleEditor').classList.remove('hide');
   $('productEdit').classList.remove('hide');
-  await Promise.all([load(),loadAdminProducts(),loadProductRequests()]);
+  await Promise.all([load(),loadAdminProducts(),loadProductRequests(),loadCostReport()]);
  }catch(error){
   console.error('Falha ao abrir o painel:',error);
   $('message').textContent='Não foi possível carregar o painel: '+(error?.message||'erro não identificado')+'. Atualize a página e tente novamente.';
@@ -985,6 +1007,91 @@ $('btnConfirmProductEdit').addEventListener('click',async()=>{
   }
 });
 
+function parseCostInput(value){
+ const raw=String(value||'').trim().replace(/R\$\s?/gi,'').replace(/\s/g,'');
+ const normalized=raw.includes(',')?raw.replace(/\./g,'').replace(',','.'):raw;
+ const amount=Number(normalized);
+ return Number.isFinite(amount)&&amount>0?amount:null;
+}
+function costDateInManaus(value,addDay=false){
+ const date=new Date(value+'T00:00:00-04:00');
+ if(addDay)date.setUTCDate(date.getUTCDate()+1);
+ return date.toISOString();
+}
+async function loadCostReport(){
+ const message=$('costReportMessage');
+ if(!message)return;
+ try{
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus'}).format(new Date());
+  if(!$('costEnd').value)$('costEnd').value=today;
+  if(!$('costStart').value){
+   const startDate=new Date(today+'T00:00:00-04:00');
+   startDate.setUTCDate(startDate.getUTCDate()-29);
+   $('costStart').value=startDate.toISOString().slice(0,10);
+  }
+  const start=$('costStart').value,end=$('costEnd').value;
+  if(!start||!end||end<start)throw new Error('Informe um período válido.');
+  message.textContent='Consultando custos e pedidos…';
+  const {data,error}=await db.rpc('admin_get_cost_report',{
+   p_start:costDateInManaus(start),
+   p_end:costDateInManaus(end,true)
+  });
+  if(error)throw error;
+  const products=Array.isArray(data?.products)?data.products:[];
+  window.__feiraCostProducts=products;
+  const selected=$('costProductSelect').value;
+  $('costProductSelect').replaceChildren(new Option('Selecione um produto',''));
+  products.forEach(product=>{
+   const label=product.name+(product.available?'':' — indisponível')+(product.unit_cost==null?' — sem custo':' — custo '+money(product.unit_cost));
+   $('costProductSelect').add(new Option(label,product.id));
+  });
+  if(products.some(product=>product.id===selected))$('costProductSelect').value=selected;
+  $('costProductSelect').dispatchEvent(new Event('change'));
+  const s=data?.summary||{};
+  const percent=s.profit_percent==null?'—':Number(s.profit_percent).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';
+  $('costReportStats').innerHTML=[
+   ['Pedidos considerados',String(s.orders||0)],
+   ['Vendas com snapshot',money(s.sales_total)],
+   ['Custo conhecido',money(s.known_cost)],
+   ['Lucro calculado',money(s.profit)],
+   ['Margem sobre itens com custo',percent],
+   ['Itens sem custo',String(s.missing_cost_items||0)]
+  ].map(([label,value])=>'<div class="stat"><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>').join('');
+  message.textContent='Resumo atualizado. Período: '+start.split('-').reverse().join('/')+' a '+end.split('-').reverse().join('/')+'.';
+ }catch(error){
+  console.error('Falha ao carregar resumo de custos:',error);
+  message.textContent='Não foi possível carregar o resumo: '+(error?.message||'erro não identificado');
+  $('costReportStats').replaceChildren();
+ }
+}
+$('costProductSelect').addEventListener('change',()=>{
+ const product=Array.from($('costProductSelect').options).map(option=>option.value).includes($('costProductSelect').value)
+  ?$('costProductSelect').value:'';
+ const current=(window.__feiraCostProducts||[]).find(item=>item.id===product);
+ $('costUnitInput').value=current?.unit_cost==null?'':Number(current.unit_cost).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+ $('btnSaveCost').disabled=!product;
+});
+$('btnSaveCost').addEventListener('click',async()=>{
+ const productId=$('costProductSelect').value;
+ const unitCost=parseCostInput($('costUnitInput').value);
+ const message=$('costEditMessage');
+ if(!productId||unitCost==null){message.textContent='Selecione um produto e informe um custo maior que zero.';return;}
+ const button=$('btnSaveCost');button.disabled=true;button.textContent='Salvando…';
+ try{
+  const {error}=await db.rpc('admin_set_product_cost',{p_product_id:productId,p_unit_cost:unitCost});
+  if(error)throw error;
+  message.textContent='Preço de custo salvo. Os próximos pedidos usarão este valor; os snapshots antigos não mudam.';
+  await loadCostReport();
+ }catch(error){
+  console.error('Falha ao salvar preço de custo:',error);
+  message.textContent='Não foi possível salvar o custo. Verifique a sessão de administrador e tente novamente.';
+ }finally{
+  button.textContent='Salvar preço de custo';
+  button.disabled=!$('costProductSelect').value;
+ }
+});
+$('btnRefreshCostReport').addEventListener('click',loadCostReport);
+
 async function loadProductRequests(){
  const message=$('productRequestsMessage');
  const list=$('productRequestsList');
@@ -1034,7 +1141,7 @@ function selectMainTab(tab){
  document.getElementById('tabProducts').setAttribute('aria-selected',String(products));
 }
 function selectProductSection(id){
- const valid=['formBox','priceEditor','resaleEditor','productEdit','productAvailabilityCard','productRequests'];
+ const valid=['formBox','priceEditor','resaleEditor','productEdit','productAvailabilityCard','productRequests','costEditor'];
  const target=valid.includes(id)?id:'formBox';
  document.querySelectorAll('#productTools .product-section').forEach(el=>el.classList.toggle('active',el.id===target));
  document.getElementById('productAvailabilityCard').classList.toggle('active',target==='productAvailabilityCard');
