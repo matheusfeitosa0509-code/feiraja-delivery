@@ -124,6 +124,9 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 .separation-item.is-separated .separation-name{text-decoration:line-through;color:#829087}
 .separation-item.is-separated>strong{color:#829087}
 .separation-done{font-size:12px;color:#52735a;background:#f1f6ef;border-radius:9px;padding:7px 10px;margin:4px 0 8px}
+
+/* Lista unificada de produtos: responsiva e independente por aba. */
+.shared-product-list{display:grid;gap:8px;margin:12px 0;max-height:52vh;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}.shared-product-list-item{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:10px;align-items:center;width:100%;min-height:68px;padding:9px;background:#fbfdf9;border:1px solid #e2ebe0;border-radius:14px;color:var(--ink);text-align:left}.shared-product-list-item img{width:52px;height:52px;object-fit:cover;border-radius:10px;background:#edf3eb}.shared-product-list-item .product-meta{min-width:0}.shared-product-list-item .product-meta strong{display:block;overflow-wrap:anywhere}.shared-product-list-item .product-meta small{display:block;color:var(--muted);font-size:11px;font-weight:600}.shared-product-list-item .product-price{font-weight:800;white-space:nowrap;font-size:13px}.shared-product-list-empty{padding:18px;text-align:center;color:var(--muted)}.shared-list-count{margin:8px 0;color:var(--muted);font-size:12px;font-weight:700}
 </style>
 </head>
 <body><main class="wrap">
@@ -162,14 +165,14 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <small>Gerado automaticamente (padrão feiraja_nome_do_produto). Precisa ser único.</small>
 <button id="btnSave">Salvar produto</button>
 <button class="sec" id="btnOut">Sair</button>
-<div id="msg"></div>
+<div id="msg"></div><div class="shared-list-count" id="catalogProductCount"></div><div class="shared-product-list" id="catalogProductList" data-list-kind="catalog" aria-label="Consulta de produtos cadastrados"></div>
 </div>
 
 <!-- Área independente para alteração de preço; não modifica o cadastro existente. -->
 <section id="priceEditor" class="card hide product-section" style="border-top:1px solid var(--line);margin-top:24px;padding-top:20px">
   <h1>💲 Alterar preço</h1>
   <label for="priceSearch">Buscar produto pelo nome</label>
-  <input id="priceSearch" type="search" placeholder="Digite o nome do produto">
+  <input id="priceSearch" type="search" placeholder="Digite o nome do produto"><div class="shared-list-count" id="priceListCount"></div><div class="shared-product-list" id="priceSharedList" data-list-kind="price" aria-label="Todos os produtos"></div>
   <label for="priceProduct">Selecionar produto</label>
   <select id="priceProduct">
     <option value="">Carregando produtos…</option>
@@ -185,9 +188,9 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 
 <!-- Configuração independente de preço de revenda por produto. -->
 <section id="resaleEditor" class="card hide product-section" style="border-top:1px solid var(--line);margin-top:24px;padding-top:20px">
-<h1>📦 Preço de revenda por quantidade</h1>
+<h1>📦 Preço de revenda por quantidade</h1><label for="resaleSearch">Buscar produto pelo nome</label><input id="resaleSearch" type="search" placeholder="Digite o nome do produto"><div class="shared-list-count" id="resaleListCount"></div><div class="shared-product-list" id="resaleSharedList" data-list-kind="resale" aria-label="Todos os produtos">
 <p class="muted">Configure cada produto separadamente. A quantidade mínima usa a mesma unidade comercial já indicada no cadastro do produto.</p>
-<label for="resaleProduct">Selecionar produto</label><select id="resaleProduct"><option value="">Carregando produtos…</option></select>
+</div><label for="resaleProduct">Selecionar produto</label><select id="resaleProduct"><option value="">Carregando produtos…</option></select>
 <p id="resaleNormalPrice" class="muted" aria-live="polite">Selecione um produto para consultar o preço normal.</p>
 <label class="resale-switch" for="resaleEnabled"><input id="resaleEnabled" type="checkbox"> Ativar preço de revenda</label>
 <label for="resalePrice">Preço de revenda (R$ por unidade comercial)</label><input id="resalePrice" inputmode="decimal" placeholder="Ex.: 9,50">
@@ -201,7 +204,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 
 <!-- Editor independente de nome e imagem de produtos existentes. -->
 <section id="productEdit" class="card hide product-section" style="border-top:1px solid var(--line);margin-top:24px;padding-top:20px">
-  <h1>✏️ Editar nome e imagem</h1>
+  <h1>✏️ Editar nome e imagem</h1><label for="editProductSearch">Buscar produto pelo nome</label><input id="editProductSearch" type="search" placeholder="Digite o nome do produto"><div class="shared-list-count" id="editListCount"></div><div class="shared-product-list" id="editSharedList" data-list-kind="edit" aria-label="Todos os produtos"></div>
   <label for="editProductSelect">Selecionar produto</label>
   <select id="editProductSelect"><option value="">Carregando produtos…</option></select>
   <label for="editProductName">Nome do produto</label>
@@ -224,7 +227,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
   <button id="btnConfirmProductEdit" type="button" class="sec hide" disabled>Confirmar e salvar</button>
   <div id="editProductMsg" role="status" aria-live="polite"></div>
 </section>
-<section class="card product-section" id="productAvailabilityCard"><h2>Disponibilidade</h2><p class="muted">Consulte e altere a disponibilidade de produtos. A alteração grava somente a coluna available.</p><label for="availabilityProduct">Selecionar produto</label><select id="availabilityProduct"><option value="">Carregando produtos…</option></select><p id="availabilityCurrent" class="availability-current" aria-live="polite">Selecione um produto para ver o estado atual.</p><div class="availability-actions"><button id="toggleAvailability" type="button" disabled>Alternar disponibilidade</button><button id="refreshProducts" type="button" class="secondary">Atualizar produtos</button></div><p id="availabilityMessage" class="muted availability-message" role="status"></p><h3>Todos os produtos</h3><div id="adminProductList" class="product-list"><p class="muted">Carregando produtos…</p></div></section>
+<section class="card product-section" id="productAvailabilityCard"><h2>Disponibilidade</h2><label for="availabilitySearch">Buscar produto pelo nome</label><input id="availabilitySearch" type="search" placeholder="Digite o nome do produto"><div class="shared-list-count" id="availabilityListCount"></div><div class="shared-product-list" id="availabilitySharedList" data-list-kind="availability" aria-label="Todos os produtos"></div><p class="muted">Consulte e altere a disponibilidade de produtos. A alteração grava somente a coluna available.</p><label for="availabilityProduct">Selecionar produto</label><select id="availabilityProduct"><option value="">Carregando produtos…</option></select><p id="availabilityCurrent" class="availability-current" aria-live="polite">Selecione um produto para ver o estado atual.</p><div class="availability-actions"><button id="toggleAvailability" type="button" disabled>Alternar disponibilidade</button><button id="refreshProducts" type="button" class="secondary">Atualizar produtos</button></div><p id="availabilityMessage" class="muted availability-message" role="status"></p><h3>Todos os produtos</h3><div id="adminProductList" class="product-list"><p class="muted">Carregando produtos…</p></div></section>
 <section class="card product-section" id="productRequests">
  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
   <h2 style="margin:0">Produtos pedidos</h2>
@@ -307,6 +310,22 @@ function syncAvailabilityControls(){
  $('toggleAvailability').disabled=!product;
  $('toggleAvailability').textContent=product?(product.available?'Tornar indisponível':'Tornar disponível'):'Alternar disponibilidade';
 }
+
+// Componente único de lista, reutilizado pelas abas de produtos.
+function normalizeProductSearch(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR').trim();}
+function productListImage(value){const raw=String(value||'').trim();if(!raw)return '';try{if(/^https:\/\//i.test(raw))return raw;return new URL('/'+raw.replace(/^\//,''),location.origin).href;}catch(_){return '';}}
+function renderSharedProductList(kind){
+ const hosts={catalog:['catalogProductList','catalogProductCount',''],price:['priceSharedList','priceListCount','priceSearch'],resale:['resaleSharedList','resaleListCount','resaleSearch'],edit:['editSharedList','editListCount','editProductSearch'],availability:['availabilitySharedList','availabilityListCount','availabilitySearch']};
+ const cfg=hosts[kind];if(!cfg)return;const host=$(cfg[0]),count=$(cfg[1]),term=normalizeProductSearch(cfg[2]?$(cfg[2]).value:'');const scrollTop=host.scrollTop;
+ const rows=adminProducts.filter(p=>normalizeProductSearch(p.name).includes(term)).slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'pt-BR',{sensitivity:'base'}));
+ count.textContent=rows.length+' de '+adminProducts.length+' produtos';
+ if(!rows.length){host.innerHTML='<div class="shared-product-list-empty">Nenhum produto encontrado.</div>';host.scrollTop=scrollTop;return;}
+ host.innerHTML=rows.map(p=>{const image=productListImage(p.image);const category=p.category?'<small>'+esc(p.category)+'</small>':'';const state=kind==='availability'?'<span class="product-state '+(p.available?'':'unavailable')+'">'+(p.available?'Disponível':'Indisponível')+'</span>':'<span class="product-price">'+money(p.price)+'</span>';return '<button type="button" class="shared-product-list-item" data-product-id="'+esc(p.id)+'" data-list-kind="'+kind+'"><img src="'+esc(image)+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'"><span class="product-meta"><strong>'+esc(p.name)+'</strong>'+category+(kind==='availability'?'<small>'+money(p.price)+'</small>':'')+'</span>'+state+'</button>';}).join('');
+}
+function renderAllSharedProductLists(){['catalog','price','resale','edit','availability'].forEach(renderSharedProductList);}
+document.querySelectorAll('[data-list-kind]').forEach(host=>host.addEventListener('click',async event=>{const item=event.target.closest('.shared-product-list-item');if(!item)return;const id=item.dataset.productId,kind=item.dataset.listKind;const targets={price:['priceProduct','change'],resale:['resaleProduct','change'],edit:['editProductSelect','change'],availability:['availabilityProduct','change']};if(kind==='availability'){const select=$('availabilityProduct');select.value=id;await toggleAvailability();return;}const target=targets[kind];if(!target)return;const select=$(target[0]);select.value=id;select.dispatchEvent(new Event('change'));const editor={price:'newProductPrice',resale:'resalePrice',edit:'editProductName'}[kind];if(editor)$(editor).focus({preventScroll:true});}));
+['priceSearch','resaleSearch','editProductSearch','availabilitySearch'].forEach(id=>$(id)?.addEventListener('input',()=>renderAllSharedProductLists()));
+
 function renderAdminProducts(){
  const selected=$('availabilityProduct').value;
  const select=$('availabilityProduct');
@@ -322,7 +341,7 @@ async function loadAdminProducts(){
  availabilityMessage('Carregando todos os produtos…');
  try{
   const {data,error}=await db.from('products')
-   .select('id, name, image, price, old_price, available, resale_enabled, resale_price, resale_min_qty, resale_unit')
+   .select('id, name, image, price, old_price, category, available, resale_enabled, resale_price, resale_min_qty, resale_unit')
    .order('name',{ascending:true});
   if(error)throw error;
   const rows=data||[];
