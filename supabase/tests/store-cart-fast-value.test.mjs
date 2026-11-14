@@ -57,6 +57,7 @@ const context = {
   showStoreConfirm:async(...args)=>{confirmMessages.push(args);return confirmAnswer;},
   setTimeout(fn,ms){timeoutCalls.push(ms);return timeoutCalls.length;},clearTimeout(){},
   syncCartbarVisibility(){},
+  setCartEmptyState(){},
   renderCart(){calls.fullCatalog++;},
   safeRenderHomeProductSections(){calls.fullCatalog++;},
   renderProducts(){calls.fullCatalog++;},
