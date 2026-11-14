@@ -421,6 +421,9 @@ Deno.serve(async (req: Request) => {
     if (pricingVersion && pricingVersion !== "resale-v1") {
       return json({ error: "Versão de cálculo de preços não reconhecida. Atualize a feira e tente novamente." }, 409);
     }
+    if (hasValueSale && pricingVersion !== "resale-v1") {
+      return json({ error: "Atualize a loja para usar a compra por valor com a cotação de preços atual." }, 409);
+    }
 
     const items: any[] = [];
     let subtotalCents = 0;
