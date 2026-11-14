@@ -45,7 +45,7 @@ for (const [source, label] of [[loja, 'loja'], [painel, 'painel']]) {
   }
 }
 
-assert.match(loja, /const cashAtPickup=!String\(paymentMethod\|\|''\)\.toLowerCase\(\)\.includes\('pix'\)/,
+assert.match(loja, /const cashAtPickup=method\.includes\('dinheiro'\)\|\|method\.includes\('cart'\)/,
   'non-Pix pickup timeline must not include advance-payment steps');
 assert.match(loja, /\['Pedido Recebido','Pedido registrado'\],\['Preparando','Separando seus itens'\],\['Pronto para Retirada','Aguardando retirada'\],\['Pedido Concluído','Pago e retirado'\]/,
   'cash timeline must end with paid and picked up');
