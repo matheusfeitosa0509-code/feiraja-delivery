@@ -9,6 +9,8 @@ on:
       - "supabase/functions/super-worker/index.ts"
       - "supabase/migrations/20261114230000_exact_value_sale.sql"
       - "supabase/rollbacks/20261114230000_exact_value_sale_rollback.sql"
+      - "supabase/migrations/20261115010000_kg_minimums_and_cost_margin.sql"
+      - "supabase/rollbacks/20261115010000_kg_minimums_and_cost_margin_rollback.sql"
       - "supabase/tests/sales-by-value.test.mjs"
       - "supabase/tests/cart-add-render.test.mjs"
       - "supabase/tests/store-cart-fast-value.test.mjs"
