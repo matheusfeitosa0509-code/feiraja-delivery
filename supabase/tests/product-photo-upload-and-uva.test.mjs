@@ -31,8 +31,9 @@ assert.doesNotMatch(uva,/INSERT INTO public\.products|DELETE FROM public\.produc
 assert.match(storage,/VALUES \('product-photos', 'product-photos', true, 307200, ARRAY\['image\/jpeg'\]\)/,'dedicated public bucket is limited to JPEG and 300 KB');
 assert.match(storage,/FOR INSERT\s+TO authenticated\s+WITH CHECK \([\s\S]*public\.is_current_user_admin\(\)/,'only admins can upload');
 assert.match(storage,/FOR DELETE\s+TO authenticated\s+USING \([\s\S]*public\.is_current_user_admin\(\)/,'only admins can delete');
-assert.match(storage,/FOR SELECT\\s+TO authenticated\\s+USING \\([\\s\\S]*bucket_id = 'product-photos'[\\s\\S]*public\\.is_current_user_admin\\(\\)/,'only admins can SELECT/list object metadata');
-assert.doesNotMatch(storage,/FOR SELECT\\s+TO anon/i,'anonymous users have no SELECT/list policy');
+const selectPolicy=storage.split('CREATE POLICY "product_photos_admin_select"')[1]?.split(';')[0]||'';
+assert.ok(selectPolicy.includes('FOR SELECT')&&selectPolicy.includes('TO authenticated')&&selectPolicy.includes("bucket_id = 'product-photos'")&&selectPolicy.includes('public.is_current_user_admin()'),'only admins can SELECT/list object metadata');
+assert.ok(!selectPolicy.includes('TO anon'),'anonymous users have no SELECT/list policy');
 assert.doesNotMatch(storage,/FOR UPDATE/i,'no overwrite policy is needed for unique upload paths');
 assert.match(rollback,/contém arquivos/,'storage rollback protects existing uploaded photos');
 
