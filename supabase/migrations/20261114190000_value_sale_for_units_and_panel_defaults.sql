@@ -92,7 +92,7 @@ BEGIN
      OR p_name IS NULL OR length(btrim(p_name)) = 0
      OR p_price IS NULL OR p_price <= 0
      OR p_category IS NULL OR length(btrim(p_category)) = 0
-     OR p_sale_unit NOT IN ('kg', 'un', 'pacote', 'maco', 'duzia') THEN
+     OR p_sale_unit IS NULL OR p_sale_unit NOT IN ('kg', 'un', 'pacote', 'maco', 'duzia') THEN
     RAISE EXCEPTION 'Dados do produto ou unidade de venda inválidos.' USING ERRCODE = '22023';
   END IF;
 
