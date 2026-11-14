@@ -5,7 +5,7 @@ function decimalParts(value) {
   if (typeof value !== "number" && typeof value !== "string") return null;
   if (typeof value === "number" && !Number.isFinite(value)) return null;
   const raw = String(value).trim();
-  const match = /^([+-]?)(\\d+)(?:\\.(\\d*))?(?:[eE]([+-]?\\d+))?$/.exec(raw);
+  const match = /^([+-]?)(\d+)(?:\.(\d*))?(?:[eE]([+-]?\d+))?$/.exec(raw);
   if (!match) return null;
   const sign = match[1] === "-" ? -1n : 1n;
   const fraction = match[3] || "";
