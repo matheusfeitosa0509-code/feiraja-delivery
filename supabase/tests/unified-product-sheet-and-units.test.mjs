@@ -17,7 +17,7 @@ assert.match(panel,/admin_set_product_cost/,'private product cost uses the exist
 assert.match(panel,/Object\.keys\(productChanges\)\.length/,'only changed public product fields are written');
 assert.match(panel,/loadCostReport\(\)/,'cost information and report are refreshed after saving');
 assert.match(panel,/@media\(max-width:412px\)/,'the product sheet has mobile layout rules');
-assert.match(panel,/legacy-product-editor\{display:none!important\}/,'legacy product editing tabs are hidden');
+assert.match(panel,/#priceEditor,#resaleEditor,#productEdit,#productAvailabilityCard\{display:none!important\}/,'legacy product editing tabs are hidden');
 assert.match(panel,/class="card product-section active" id="productRequests"/,'product requests remain a separate report');
 assert.match(panel,/class="card product-section active" id="costEditor"/,'profit by period remains a separate report');
 
