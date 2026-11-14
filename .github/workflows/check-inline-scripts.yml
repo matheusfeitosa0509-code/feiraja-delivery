@@ -45,3 +45,5 @@ jobs:
             console.log('node --check OK: ' + file + ' (' + scripts.length + ' script(s))');
           }
           NODE
+      - name: Test fallback das colunas de separação
+        run: node supabase/tests/order-separation-column-fallback.test.mjs

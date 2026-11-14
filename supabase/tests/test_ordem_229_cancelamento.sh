@@ -15,6 +15,7 @@ psql -v ON_ERROR_STOP=1 -f "$ORIGINAL" >"$TMP/original.log" 2>&1
 
 # Stubs exclusivos do banco efêmero; não usam Supabase nem segredos reais.
 psql -v ON_ERROR_STOP=1 <<'SQL'
+CREATE TABLE public.admin_users (user_id uuid PRIMARY KEY);
 CREATE TABLE public.push_log (
   id bigserial PRIMARY KEY,
   payload jsonb NOT NULL,
@@ -52,8 +53,66 @@ echo "PASS: baseline da função e do gatilho originais capturado no PostgreSQL 
 
 psql -v ON_ERROR_STOP=1 -f "$MIG" >"$TMP/migration.log" 2>&1
 echo "PASS: migration aplicada no PostgreSQL 17 temporário"
+psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261113140000_admin_order_item_separation.sql >"$TMP/separation-base.log" 2>&1
+psql -v ON_ERROR_STOP=1 <<'SQL'
+INSERT INTO public.orders(id,customer_name,customer_phone,customer_address,delivery_type,payment_method,items,subtotal,delivery_fee,total,status,market_checklist,user_id,separated_items)
+VALUES ('legacy-separated','T','1','A','pickup_store','pix','[{"qty":1}]',30,0,30,'Pagamento Confirmado','{}','11111111-1111-1111-1111-111111111111','["legacy-line"]');
+SQL
+psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261113160000_order_separation_cancel_lock.sql >"$TMP/separation-lock.log" 2>&1
+echo "PASS: migration de trava da separação aplicada no PostgreSQL 17 temporário"
+psql -v ON_ERROR_STOP=1 <<'SQL'
+DO $legacy$ BEGIN
+ IF (SELECT separation_started_at FROM public.orders WHERE id='legacy-separated') IS NOT NULL THEN RAISE EXCEPTION 'FAIL: migration inventou horário para pedido antigo'; END IF;
+ IF (SELECT separation_started_legacy FROM public.orders WHERE id='legacy-separated') IS DISTINCT FROM true THEN RAISE EXCEPTION 'FAIL: pedido antigo não foi marcado como separação legada'; END IF;
+ RAISE NOTICE 'PASS: pedido antigo reconhecido sem inventar horário';
+END $legacy$;
+SQL
 
 psql -v ON_ERROR_STOP=1 <<'SQL'
+INSERT INTO public.admin_users(user_id) VALUES ('33333333-3333-3333-3333-333333333333');
+INSERT INTO public.orders(id,customer_name,customer_phone,customer_address,delivery_type,payment_method,items,subtotal,delivery_fee,total,status,market_checklist,user_id)
+VALUES
+ ('cancel-before-separation','T','1','A','pickup_store','pix','[{"qty":1}]',30,0,30,'Pagamento Confirmado','{}','11111111-1111-1111-1111-111111111111'),
+ ('cancel-after-separation','T','1','A','pickup_store','pix','[{"qty":1}]',30,0,30,'Pagamento Confirmado','{}','11111111-1111-1111-1111-111111111111'),
+ ('unmark-keeps-lock','T','1','A','pickup_store','pix','[{"qty":1}]',30,0,30,'Pagamento Confirmado','{}','11111111-1111-1111-1111-111111111111'),
+ ('cannot-mark-cancelled','T','1','A','pickup_store','pix','[{"qty":1}]',30,0,30,'Cancelada','{}','11111111-1111-1111-1111-111111111111'),
+ ('cannot-mark-cancelado-alias','T','1','A','pickup_store','pix','[{"qty":1}]',30,0,30,'Cancelado','{}','11111111-1111-1111-1111-111111111111'),
+ ('can-mark-payment-cancelled','T','1','A','pickup_store','pix','[{"qty":1}]',30,0,30,'Pagamento cancelado','{}','11111111-1111-1111-1111-111111111111'),
+ ('can-mark-payment-refused','T','1','A','pickup_store','pix','[{"qty":1}]',30,0,30,'Pagamento recusado','{}','11111111-1111-1111-1111-111111111111');
+SELECT pg_catalog.set_config('test.uid','33333333-3333-3333-3333-333333333333',false);
+SELECT public.set_order_separated_items('legacy-separated','[]'::jsonb);
+DO $legacy$ BEGIN
+ IF (SELECT separation_started_legacy FROM public.orders WHERE id='legacy-separated') IS DISTINCT FROM true THEN RAISE EXCEPTION 'FAIL: desmarcar apagou trava legada'; END IF;
+ IF (SELECT separation_started_at FROM public.orders WHERE id='legacy-separated') IS NOT NULL THEN RAISE EXCEPTION 'FAIL: desmarcar inventou horário legado'; END IF;
+END $legacy$;
+SELECT public.set_order_separated_items('can-mark-payment-cancelled','["line-a"]'::jsonb);
+SELECT public.set_order_separated_items('can-mark-payment-refused','["line-a"]'::jsonb);
+SELECT public.set_order_separated_items('cancel-after-separation','["line-a"]'::jsonb);
+SELECT public.set_order_separated_items('unmark-keeps-lock','["line-a"]'::jsonb);
+DO $test$ DECLARE v_started timestamptz; BEGIN
+ SELECT separation_started_at INTO v_started FROM public.orders WHERE id='unmark-keeps-lock';
+ IF v_started IS NULL THEN RAISE EXCEPTION 'FAIL: primeiro item não gravou separation_started_at'; END IF;
+ PERFORM public.set_order_separated_items('unmark-keeps-lock','[]'::jsonb);
+ IF (SELECT separation_started_at FROM public.orders WHERE id='unmark-keeps-lock') IS DISTINCT FROM v_started THEN RAISE EXCEPTION 'FAIL: desmarcar apagou separation_started_at'; END IF;
+ RAISE NOTICE 'PASS: marcar e desmarcar preserva separation_started_at';
+END $test$;
+DO $test$ BEGIN
+ BEGIN PERFORM public.set_order_separated_items('cannot-mark-cancelled','["line-a"]'::jsonb); RAISE EXCEPTION 'FAIL: marcou pedido cancelado';
+ EXCEPTION WHEN SQLSTATE 'P0001' THEN IF SQLERRM NOT LIKE 'pedido_cancelado:%' THEN RAISE; END IF; RAISE NOTICE 'PASS: pedido cancelado não aceita marcação'; END;
+ BEGIN PERFORM public.set_order_separated_items('cannot-mark-cancelado-alias','["line-a"]'::jsonb); RAISE EXCEPTION 'FAIL: marcou pedido com status legado Cancelado';
+ EXCEPTION WHEN SQLSTATE 'P0001' THEN IF SQLERRM NOT LIKE 'pedido_cancelado:%' THEN RAISE; END IF; RAISE NOTICE 'PASS: status legado Cancelado também bloqueia marcação'; END;
+END $test$;
+SELECT pg_catalog.set_config('test.uid','11111111-1111-1111-1111-111111111111',false);
+SELECT public.cancel_my_order('cancel-before-separation');
+DO $test$ BEGIN
+ IF (SELECT status FROM public.orders WHERE id='cancel-before-separation') IS DISTINCT FROM 'Cancelada' THEN RAISE EXCEPTION 'FAIL: cancelamento antes da separação não funcionou'; END IF;
+ BEGIN PERFORM public.cancel_my_order('legacy-separated'); RAISE EXCEPTION 'FAIL: cancelou pedido antigo já separado';
+ EXCEPTION WHEN SQLSTATE 'P0001' THEN IF SQLERRM<>'ja_em_separacao' THEN RAISE; END IF; RAISE NOTICE 'PASS: pedido antigo permanece bloqueado sem hora inventada'; END;
+ BEGIN PERFORM public.cancel_my_order('cancel-after-separation'); RAISE EXCEPTION 'FAIL: cancelou depois da separação';
+ EXCEPTION WHEN SQLSTATE 'P0001' THEN IF SQLERRM<>'ja_em_separacao' THEN RAISE; END IF; RAISE NOTICE 'PASS: cancelamento após separação recusado'; END;
+ BEGIN PERFORM public.cancel_my_order('unmark-keeps-lock'); RAISE EXCEPTION 'FAIL: cancelou após desmarcar todos os itens';
+ EXCEPTION WHEN SQLSTATE 'P0001' THEN IF SQLERRM<>'ja_em_separacao' THEN RAISE; END IF; RAISE NOTICE 'PASS: trava continua após desmarcar todos os itens'; END;
+END $test$;
 INSERT INTO public.orders(id,customer_name,customer_phone,customer_address,delivery_type,payment_method,items,subtotal,delivery_fee,total,status,market_checklist,user_id)
 VALUES
  ('ok-received','T','1','A','delivery','pix','[{"qty":1}]',30,0,30,'Pedido Recebido','{}','11111111-1111-1111-1111-111111111111'),
