@@ -456,7 +456,7 @@ Deno.serve(async (req: Request) => {
         qty = calculateQuantityFromValueCents(amountCents!, effectivePriceCents, Number(rule?.max_quantity || 100)) || 0;
       }
       const minimumValueSaleKg = Number(rule?.value_min_kg ?? 1);
-      const minValueSaleCents = Math.ceil(effectivePriceCents * minimumValueSaleKg);
+      const minValueSaleCents = Math.ceil(normalPriceCents * minimumValueSaleKg);
       const valueLineTotalCents = saleMode === "value"
         ? (qty + 1e-9 < minimumValueSaleKg
           ? null
