@@ -128,6 +128,6 @@ context.products.push(banana);
 context.cart.banana=1;
 assert.equal(context.formatCartQuantity(2,banana),'2 palma');
 assert.doesNotMatch(context.productCardControlsMarkup(banana),/Pedir por valor|Peso aproximado/);
-assert.match(context.productQtyMarkup(banana),/>1<\/strong>/);
+assert.match(context.productQtyMarkup(banana),/>1 palma<\/strong>/);
 
 console.log('OK: compact value-sale sheet, 1 kg minimum, 0.5 kg steps, R$5 adjustments, server validation and in-place cart updates.');
