@@ -27,7 +27,7 @@ type CatalogEntry = {
   maximo: number;
 };
 type CompactCatalogEntry = { id: string; nome: string };
-type AssistantItem = { product_id?: unknown; quantidade?: unknown; unidade?: unknown } | null;
+type AssistantItem = { product_id?: unknown; quantidade?: unknown; unidade?: unknown; item_note?: unknown; substitution_preference?: unknown } | null;
 type PhotoLine = { numero?: unknown; status?: unknown; texto?: unknown; product_id?: unknown; quantidade?: unknown; unidade?: unknown; pergunta?: unknown };
 type AssistantOutput = { resposta?: unknown; itens?: AssistantItem[]; perguntas?: unknown[]; total_linhas?: unknown; linhas?: PhotoLine[] };
 type AnthropicContentBlock = { type?: string; text?: string };
@@ -148,6 +148,8 @@ const outputSchema = {
           product_id: { type: "string" },
           quantidade: { type: "number" },
           unidade: { type: "string" },
+          item_note: { type: "string" },
+          substitution_preference: { type: "string", enum: ["replace", "remove", "call"] },
         },
         required: ["product_id", "quantidade", "unidade"],
         additionalProperties: false,
@@ -400,6 +402,7 @@ Deno.serve(async (req) => {
       const currentById = new Map(((currentRows || []) as Array<{ id: string; name: string | null; available: boolean | null }>).map((row) => [String(row.id), row]));
       const catalogById = new Map(catalog.map((product) => [product.id, product]));
       const proposedById = new Map<string, number>();
+      const preferencesById = new Map<string, { item_note: string; substitution_preference: 'replace' | 'remove' | 'call' }>();
       const unavailableMessages: string[] = [];
       for (const oldItem of previousItems) {
         const id = String(oldItem?.id || oldItem?.product_id || "");
@@ -423,8 +426,13 @@ Deno.serve(async (req) => {
           continue;
         }
         proposedById.set(id, combined);
+        const preference = oldItem?.substitution_preference;
+        preferencesById.set(id, {
+          item_note: String(oldItem?.item_note ?? '').replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/<[^>]*>/g, '').replace(/[<>]/g, '').trim().slice(0, 100),
+          substitution_preference: preference === 'replace' || preference === 'remove' || preference === 'call' ? preference : 'call',
+        });
       }
-      const proposedItems = [...proposedById.entries()].map(([product_id, quantidade]) => ({ product_id, quantidade }));
+      const proposedItems = [...proposedById.entries()].map(([product_id, quantidade]) => ({ product_id, quantidade, ...(preferencesById.get(product_id) || { item_note: '', substitution_preference: 'call' as const }) }));
       const response = proposedItems.length
         ? "Encontrei seu último pedido. Confira os itens e quantidades antes de adicionar. A loja aplicará os preços atuais do catálogo; nenhum preço antigo será reutilizado."
         : "Não há itens do seu último pedido que possam ser propostos agora. Confira os avisos abaixo.";
@@ -670,7 +678,7 @@ Deno.serve(async (req) => {
     const byId = new Map(catalog.map((product) => [product.id, product]));
     const promptProductIds = new Set(promptCatalog.map((product) => product.id));
     const candidates = Array.isArray(parsed.itens) ? parsed.itens.slice(0, 15) : [];
-    const validCandidates: Array<{ product_id: string; quantidade: number }> = [];
+    const validCandidates: Array<{ product_id: string; quantidade: number; item_note: string; substitution_preference: 'replace' | 'remove' | 'call' }> = [];
     let fractionalRejected = false;
     const seen = new Set();
     for (const item of candidates) {
@@ -692,7 +700,13 @@ Deno.serve(async (req) => {
           !Number.isInteger(quantity / quantityStep) || quantity < product.minimo ||
           quantity > Math.min(100, product.maximo) || (!compactCatalogMode && item.unidade !== product.unidade)) continue;
       seen.add(item.product_id);
-      validCandidates.push({ product_id: product.id, quantidade: quantity });
+      const rawPreference = item.substitution_preference;
+      validCandidates.push({
+        product_id: product.id,
+        quantidade: quantity,
+        item_note: typeof item.item_note === 'string' ? item.item_note.replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/<[^>]*>/g, '').replace(/[<>]/g, '').trim().slice(0, 100) : '',
+        substitution_preference: rawPreference === 'replace' || rawPreference === 'remove' || rawPreference === 'call' ? rawPreference : 'call',
+      });
     }
 
     if (validCandidates.length) {

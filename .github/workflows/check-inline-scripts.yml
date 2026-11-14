@@ -23,6 +23,7 @@ on:
       - "supabase/migrations/20261114185150_product_photos_storage.sql"
       - "supabase/rollbacks/20261114185150_product_photos_storage_rollback.sql"
       - "supabase/tests/product-photo-upload-and-uva.test.mjs"
+      - "supabase/tests/cart-item-preferences.test.mjs"
       - ".github/workflows/check-inline-scripts.yml"
   push:
     branches: [main, feat/product-photo-upload-uva-kg]
@@ -82,3 +83,5 @@ jobs:
         run: node supabase/tests/unified-product-sheet-and-units.test.mjs
       - name: Teste de envio de fotos e regra da Uva por kg
         run: node supabase/tests/product-photo-upload-and-uva.test.mjs
+      - name: Teste de preferências por item no carrinho e repetição do Assistente
+        run: node supabase/tests/cart-item-preferences.test.mjs
