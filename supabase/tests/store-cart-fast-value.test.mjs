@@ -243,9 +243,9 @@ assert.match(html,/class="cart-item-actions"/);
 assert.match(html,/data-cart-remove=/);
 assert.match(html,/data-cart-clear/);
 assert.match(html,/class="cart-value-summary" data-value-open=/);
-assert.match(html,/\.cart-item-actions button\\{width:44px;height:44px;min-width:44px;min-height:44px/);
-assert.match(html,/\.cart-item\\{display:flex;flex-direction:column/);
-assert.match(html,/function cartSaleModeControl\\(item\\)\\{return valueSaleEditorMarkup\\(item\\.p\\);\\}/);
+assert.match(html,/\.cart-item-actions button\{width:44px;height:44px;min-width:44px;min-height:44px/);
+assert.match(html,/\.cart-item\{display:flex;flex-direction:column/);
+assert.match(html,/function cartSaleModeControl\(item\)\{return valueSaleEditorMarkup\(item\.p\);\}/);
 assert.doesNotMatch(html,/data-sale-mode=/,'cart no longer uses the cramped purchase-mode select');
 
 console.log('OK: mobile cart layout, 44 px controls, confirmed remove/clear, current-minimum normalization, value and kg adjustments.');
