@@ -25,3 +25,8 @@ Deno.test("formata revenda por unidade e por kg", () => {
   assertEquals(formatResaleLabel(true, 19.5, 2.5, "kg"), "a partir de 2,5 kg: R$ 19,50");
   assertEquals(formatResaleLabel(false, 5.99, 10, "un"), null);
 });
+
+Deno.test("contexto inclui data e hora local de Manaus", () => {
+  const result = commercialScheduleContext(new Date("2026-11-14T22:30:00.000Z"));
+  assertEquals(result.data_hora_manaus, "sábado, 14 de novembro de 2026, 18:30");
+});
