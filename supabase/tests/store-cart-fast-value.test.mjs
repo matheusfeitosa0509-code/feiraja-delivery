@@ -93,6 +93,7 @@ assert.equal(context.cartModes.watermelon,'value');
 assert.equal(context.cart.watermelon,1.053);
 assert.match(context.productQtyMarkup(product),/R\$ 20,00 \(~1,053 kg\)/);
 assert.match(context.productQtyMarkup(product),/data-value-open="watermelon"/);
+assert.doesNotMatch(context.productQtyMarkup(product),/class="value-sale-open"/,'value-mode card should not repeat the R$ button');
 assert.match(context.valueSaleEditorForm(product,2000),/data-value-remove="watermelon"/);
 
 // In value mode +/- changes by R$5 and cannot fall below the 1 kg minimum.
