@@ -428,7 +428,7 @@ Deno.serve(async (req) => {
         proposedById.set(id, combined);
         const preference = oldItem?.substitution_preference;
         preferencesById.set(id, {
-          item_note: String(oldItem?.item_note ?? '').replace(/[\\u0000-\\u001F\\u007F]/g, ' ').replace(/<[^>]*>/g, '').replace(/[<>]/g, '').trim().slice(0, 100),
+          item_note: String(oldItem?.item_note ?? '').replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/<[^>]*>/g, '').replace(/[<>]/g, '').trim().slice(0, 100),
           substitution_preference: preference === 'replace' || preference === 'remove' || preference === 'call' ? preference : 'call',
         });
       }
@@ -704,7 +704,7 @@ Deno.serve(async (req) => {
       validCandidates.push({
         product_id: product.id,
         quantidade: quantity,
-        item_note: typeof item.item_note === 'string' ? item.item_note.replace(/[\\u0000-\\u001F\\u007F]/g, ' ').replace(/<[^>]*>/g, '').replace(/[<>]/g, '').trim().slice(0, 100) : '',
+        item_note: typeof item.item_note === 'string' ? item.item_note.replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/<[^>]*>/g, '').replace(/[<>]/g, '').trim().slice(0, 100) : '',
         substitution_preference: rawPreference === 'replace' || rawPreference === 'remove' || rawPreference === 'call' ? rawPreference : 'call',
       });
     }
