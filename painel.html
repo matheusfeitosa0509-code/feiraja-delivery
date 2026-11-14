@@ -129,6 +129,11 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 .shared-product-list{display:grid;gap:8px;margin:12px 0;max-height:52vh;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}.shared-product-list-item{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:10px;align-items:center;width:100%;min-height:68px;padding:9px;background:#fbfdf9;border:1px solid #e2ebe0;border-radius:14px;color:var(--ink);text-align:left}.shared-product-list-item img{width:52px;height:52px;object-fit:cover;border-radius:10px;background:#edf3eb}.shared-product-list-item .product-meta{min-width:0}.shared-product-list-item .product-meta strong{display:block;overflow-wrap:anywhere}.shared-product-list-item .product-meta small{display:block;color:var(--muted);font-size:11px;font-weight:600}.shared-product-list-item .product-price{font-weight:800;white-space:nowrap;font-size:13px}.shared-product-list-empty{padding:18px;text-align:center;color:var(--muted)}.shared-list-count{margin:8px 0;color:var(--muted);font-size:12px;font-weight:700}
 
 .value-sale-min-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}.value-sale-min-row label{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--mut)}.value-sale-min-row input{width:68px;min-height:36px;padding:5px;border:1px solid var(--line);border-radius:8px}.cost-product-row{display:flex;flex-direction:column;gap:4px;padding:10px 12px;margin:7px 0;border:1px solid var(--line);border-radius:12px;background:#fff}.cost-product-row small{font-size:12px;color:var(--mut)}.cost-product-row.stale{background:#fff8d8;border-color:#e7c84c}.cost-product-row.low-margin{background:#fff0dc;border-color:#e7a044}.cost-product-row.below-cost{background:#ffe6e3;border-color:#d95b50}
+
+/* Ficha única de produto: layout compacto para celulares de 360–412 px. */
+.unified-products{padding:16px}.unified-products-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.unified-products-head h1{margin:0}.unified-products-head p{margin:4px 0 0}.unified-product-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(125px,.72fr);gap:8px;margin:14px 0}.unified-product-list{display:grid;gap:8px}.unified-product-row{display:grid;grid-template-columns:54px minmax(0,1fr) auto;align-items:center;gap:10px;width:100%;padding:10px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--ink);text-align:left;min-height:76px}.unified-product-row img{width:54px;height:54px;object-fit:cover;border-radius:10px;background:#f4f7f2}.unified-product-meta{min-width:0;display:grid;gap:3px}.unified-product-meta strong{overflow-wrap:anywhere;line-height:1.25}.unified-product-price{font-weight:800;white-space:nowrap}.unified-product-unit{font-size:12px;color:var(--muted)}.unified-product-badges{display:flex;gap:4px;flex-wrap:wrap}.unified-product-badges span{font-size:10px;font-weight:800;padding:3px 6px;border-radius:999px;background:#edf1ed;color:#526052}.unified-product-badges .unavailable{background:#fff0ed;color:#a02d20}.unified-product-badges .low-margin{background:#fff0dc;color:#9b570c}.unified-product-badges .no-cost{background:#fff8d8;color:#806300}.unified-availability{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);white-space:nowrap}.unified-availability input{width:22px;height:22px;min-height:22px;accent-color:#176b3a}.product-sheet-backdrop{position:fixed;inset:0;z-index:1000;background:rgba(12,30,18,.55);display:flex;align-items:flex-end;justify-content:center;padding:12px}.product-sheet-backdrop[hidden]{display:none}.product-sheet{width:min(760px,100%);max-height:94dvh;overflow:auto;background:#f8fbf7;border-radius:22px;padding:16px;box-shadow:0 18px 60px #0003}.product-sheet-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;position:sticky;top:-16px;background:#f8fbf7;padding:4px 0 12px;z-index:2}.product-sheet-head h2{margin:0}.product-sheet-head p{margin:3px 0}.product-sheet-head button{min-width:42px;padding:8px}.product-sheet-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.product-sheet-grid label{margin:0;min-width:0}.product-sheet-grid input,.product-sheet-grid select{margin-top:5px}.product-sheet-wide{grid-column:1/-1}.sheet-image-preview img{width:100%;height:120px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:12px}.sheet-profit{grid-column:1/-1;padding:10px 12px;border-radius:12px;background:#edf5eb;line-height:1.5}.sheet-cost-note{font-size:11px}.product-sheet-actions{position:sticky;bottom:-16px;display:flex;justify-content:flex-end;gap:8px;background:#f8fbf7;padding:12px 0 2px}.product-sheet-actions button{min-width:110px}.legacy-product-editor{display:none!important}.product-create-open{display:block!important;position:fixed!important;inset:12px!important;z-index:1001;overflow:auto;background:#fff;border-radius:20px;padding:18px!important;box-shadow:0 18px 60px #0005}.product-create-open .shared-product-list,.product-create-open .shared-list-count{display:none!important}
+@media(max-width:412px){.unified-product-filters{grid-template-columns:1fr}.unified-product-row{grid-template-columns:48px minmax(0,1fr) auto;gap:8px;padding:8px}.unified-product-row img{width:48px;height:48px}.unified-product-price{font-size:12px}.unified-availability{font-size:10px}.product-sheet-backdrop{padding:0}.product-sheet{max-height:96dvh;border-radius:20px 20px 0 0;padding:14px}.product-sheet-grid{gap:9px}.product-sheet-grid input,.product-sheet-grid select{min-height:43px;padding:9px}.product-sheet-actions{bottom:-14px}}
+@media(max-width:359px){.unified-product-row{grid-template-columns:42px minmax(0,1fr)}.unified-product-row img{width:42px;height:42px}.unified-availability{grid-column:2}}
 </style>
 </head>
 <body><main class="wrap">
@@ -145,14 +150,38 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <div class="stats"><div class="stat"><small>Pedidos encontrados</small><strong id="count">0</strong></div><div class="stat"><small>Aguardando pagamento</small><strong id="pending">0</strong></div><div class="stat"><small>Em andamento</small><strong id="active">0</strong></div><div class="stat"><small>Vendas pagas (sem cancelados)</small><strong id="sum">R$ 0,00</strong></div></div><section class="card"><div class="filters"><input id="search" placeholder="Buscar por pedido, cliente ou telefone" aria-label="Buscar pedidos"><select id="filter" aria-label="Filtrar por status"><option value="">Todos os status</option><option>Pedido Recebido</option><option>Pagamento Pendente</option><option>Pagamento Confirmado</option><option>Preparando</option><option>Pronto para Retirada</option><option>Entregue</option><option>Cancelada</option><option value="Saiu para Entrega">Saiu para Entrega (pedido antigo)</option><option>Reembolsado</option><option>Contestado</option></select></div></section><div id="orders" class="orders"></div><div class="actions" style="justify-content:center;margin:16px 0"><button id="loadMore" class="secondary">Carregar mais pedidos</button></div>
 </section>
 <section id="productTools" class="hidden" role="tabpanel">
-<div class="product-tabs" aria-label="Ferramentas de produtos">
-<button type="button" data-product-section="formBox" aria-pressed="true">Cadastrar</button>
-<button type="button" data-product-section="priceEditor" aria-pressed="false">Alterar preço</button>
-<button type="button" data-product-section="resaleEditor" aria-pressed="false">Preço de revenda</button>
-<button type="button" data-product-section="productEdit" aria-pressed="false">Editar nome e imagem</button>
-<button type="button" data-product-section="productAvailabilityCard" aria-pressed="false">Disponibilidade</button>
-<button type="button" data-product-section="productRequests" aria-pressed="false">Produtos pedidos</button>
-<button type="button" data-product-section="costEditor" aria-pressed="false">Preço de custo</button>
+<section class="card unified-products" aria-label="Produtos">
+ <div class="unified-products-head"><div><h1>Produtos</h1><p class="muted">Toque em um produto para abrir a ficha completa.</p></div><button type="button" id="openNewProduct">+ Novo produto</button></div>
+ <div class="unified-product-filters"><input id="unifiedProductSearch" type="search" placeholder="Buscar produto" aria-label="Buscar produto por nome"><select id="unifiedCategoryFilter" aria-label="Filtrar por categoria"><option value="">Todas as categorias</option></select></div>
+ <p id="unifiedProductCount" class="muted" aria-live="polite"></p>
+ <div id="unifiedProductList" class="unified-product-list"><p class="muted">Carregando produtos…</p></div>
+</section>
+<div id="productSheetBackdrop" class="product-sheet-backdrop" hidden>
+ <section id="productSheet" class="product-sheet" role="dialog" aria-modal="true" aria-labelledby="productSheetTitle">
+  <div class="product-sheet-head"><div><h2 id="productSheetTitle">Ficha do produto</h2><p id="productSheetSubtitle" class="muted"></p></div><button type="button" class="secondary" id="closeProductSheet" aria-label="Fechar ficha">✕</button></div>
+  <div id="productSheetMessage" class="muted" role="status" aria-live="polite"></div>
+  <div class="product-sheet-grid">
+   <label>Nome<input id="sheetName" maxlength="160"></label>
+   <label>Categoria<select id="sheetCategory"></select></label>
+   <label class="product-sheet-wide">Foto — caminho em imagens/produtos/ ou URL<input id="sheetImage" placeholder="imagens/produtos/produto.jpg ou https://..."></label>
+   <div class="product-sheet-wide sheet-image-preview"><img id="sheetImagePreview" alt="Prévia da foto do produto"></div>
+   <label>Preço de venda (R$)<input id="sheetPrice" inputmode="decimal"></label>
+   <label>Disponibilidade<select id="sheetAvailable"><option value="true">Disponível</option><option value="false">Indisponível</option></select></label>
+   <label>Ativar preço de revenda<select id="sheetResaleEnabled"><option value="false">Desligado</option><option value="true">Ligado</option></select></label>
+   <label>Preço de revenda (R$)<input id="sheetResalePrice" inputmode="decimal"></label>
+   <label>A partir de<input id="sheetResaleMin" type="number" min="1" step="1"></label>
+   <label>Unidade da revenda<select id="sheetResaleUnit"><option value="un">un / pacote</option><option value="kg">kg</option></select></label>
+   <label>Preço de custo (R$)<input id="sheetCost" inputmode="decimal" placeholder="Sem custo cadastrado"></label>
+   <div id="sheetProfit" class="sheet-profit"></div>
+   <label>Unidade de venda<select id="sheetSaleUnit"><option value="kg">kg</option><option value="un">Unidade</option><option value="maco">Maço</option><option value="pacote">Pacote</option><option value="duzia">Dúzia</option></select></label>
+   <label>Mínimo<input id="sheetMin" type="number" min="0.001" step="0.5"></label>
+   <label>Passo<input id="sheetStep" type="number" min="0.001" step="0.5"></label>
+   <label>Permitir “Pedir por valor”<select id="sheetValueEnabled"><option value="true">Ligado</option><option value="false">Desligado</option></select></label>
+   <label>Mínimo do “por valor” (kg)<input id="sheetValueMin" type="number" min="0.001" step="0.25"></label>
+  </div>
+  <p class="muted sheet-cost-note">Custo e atualização são consultados pela rotina administrativa privada. Nenhum dado de custo é gravado em products nem exposto na loja.</p>
+  <div class="product-sheet-actions"><button type="button" class="secondary" id="cancelProductSheet">Cancelar</button><button type="button" id="saveProductSheet">Salvar</button></div>
+ </section>
 </div>
 <div class="card product-section active" id="formBox">
 <h1>➕ Novo produto</h1>
@@ -169,12 +198,12 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <label>ID do produto</label><input id="pid">
 <small>Gerado automaticamente (padrão feiraja_nome_do_produto). Precisa ser único.</small>
 <button id="btnSave">Salvar produto</button>
-<button class="sec" id="btnOut">Sair</button>
+<button class="sec" id="btnOut" type="button">Fechar</button>
 <div id="msg"></div><div class="shared-list-count" id="catalogProductCount"></div><div class="shared-product-list" id="catalogProductList" data-list-kind="catalog" aria-label="Consulta de produtos cadastrados"></div>
 </div>
 
 <!-- Área independente para alteração de preço; não modifica o cadastro existente. -->
-<section id="priceEditor" class="card hide product-section" style="border-top:1px solid var(--line);margin-top:24px;padding-top:20px">
+<section id="priceEditor" class="card hide product-section" style="border-top:1px solid var(--line);margin-top:24px;padding-top:20px" class="legacy-product-editor">
   <h1>💲 Alterar preço</h1>
   <label for="priceSearch">Buscar produto pelo nome</label>
   <input id="priceSearch" type="search" placeholder="Digite o nome do produto"><div class="shared-list-count" id="priceListCount"></div><div class="shared-product-list" id="priceSharedList" data-list-kind="price" aria-label="Todos os produtos"></div>
@@ -192,7 +221,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 </section>
 
 <!-- Configuração independente de preço de revenda por produto. -->
-<section id="resaleEditor" class="card hide product-section" style="border-top:1px solid var(--line);margin-top:24px;padding-top:20px">
+<section id="resaleEditor" class="card hide product-section" style="border-top:1px solid var(--line);margin-top:24px;padding-top:20px" class="legacy-product-editor">
 <h1>📦 Preço de revenda por quantidade</h1><label for="resaleSearch">Buscar produto pelo nome</label><input id="resaleSearch" type="search" placeholder="Digite o nome do produto"><div class="shared-list-count" id="resaleListCount"></div><div class="shared-product-list" id="resaleSharedList" data-list-kind="resale" aria-label="Todos os produtos">
 <p class="muted">Configure cada produto separadamente. A quantidade mínima usa a mesma unidade comercial já indicada no cadastro do produto.</p>
 </div><label for="resaleProduct">Selecionar produto</label><select id="resaleProduct"><option value="">Carregando produtos…</option></select>
@@ -208,7 +237,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 </section>
 
 <!-- Editor independente de nome e imagem de produtos existentes. -->
-<section id="productEdit" class="card hide product-section" style="border-top:1px solid var(--line);margin-top:24px;padding-top:20px">
+<section id="productEdit" class="card hide product-section" style="border-top:1px solid var(--line);margin-top:24px;padding-top:20px" class="legacy-product-editor">
   <h1>✏️ Editar nome e imagem</h1><label for="editProductSearch">Buscar produto pelo nome</label><input id="editProductSearch" type="search" placeholder="Digite o nome do produto"><div class="shared-list-count" id="editListCount"></div><div class="shared-product-list" id="editSharedList" data-list-kind="edit" aria-label="Todos os produtos"></div>
   <label for="editProductSelect">Selecionar produto</label>
   <select id="editProductSelect"><option value="">Carregando produtos…</option></select>
@@ -232,8 +261,8 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
   <button id="btnConfirmProductEdit" type="button" class="sec hide" disabled>Confirmar e salvar</button>
   <div id="editProductMsg" role="status" aria-live="polite"></div>
 </section>
-<section class="card product-section" id="productAvailabilityCard"><h2>Disponibilidade</h2><label for="availabilitySearch">Buscar produto pelo nome</label><input id="availabilitySearch" type="search" placeholder="Digite o nome do produto"><div class="shared-list-count" id="availabilityListCount"></div><div class="shared-product-list" id="availabilitySharedList" data-list-kind="availability" aria-label="Todos os produtos"></div><p class="muted">Consulte e altere a disponibilidade de produtos. A alteração grava somente a coluna available.</p><label for="availabilityProduct">Selecionar produto</label><select id="availabilityProduct"><option value="">Carregando produtos…</option></select><p id="availabilityCurrent" class="availability-current" aria-live="polite">Selecione um produto para ver o estado atual.</p><div class="availability-actions"><button id="toggleAvailability" type="button" disabled>Alternar disponibilidade</button><button id="refreshProducts" type="button" class="secondary">Atualizar produtos</button></div><p id="availabilityMessage" class="muted availability-message" role="status"></p><h3>Todos os produtos</h3><p class="muted">Produtos vendidos por kg têm um controle individual: “Permitir pedido por valor”. Ele começa desligado.</p><div id="adminProductList" class="product-list"><p class="muted">Carregando produtos…</p></div></section>
-<section class="card product-section" id="productRequests">
+<section class="card product-section" id="productAvailabilityCard" class="legacy-product-editor"><h2>Disponibilidade</h2><label for="availabilitySearch">Buscar produto pelo nome</label><input id="availabilitySearch" type="search" placeholder="Digite o nome do produto"><div class="shared-list-count" id="availabilityListCount"></div><div class="shared-product-list" id="availabilitySharedList" data-list-kind="availability" aria-label="Todos os produtos"></div><p class="muted">Consulte e altere a disponibilidade de produtos. A alteração grava somente a coluna available.</p><label for="availabilityProduct">Selecionar produto</label><select id="availabilityProduct"><option value="">Carregando produtos…</option></select><p id="availabilityCurrent" class="availability-current" aria-live="polite">Selecione um produto para ver o estado atual.</p><div class="availability-actions"><button id="toggleAvailability" type="button" disabled>Alternar disponibilidade</button><button id="refreshProducts" type="button" class="secondary">Atualizar produtos</button></div><p id="availabilityMessage" class="muted availability-message" role="status"></p><h3>Todos os produtos</h3><p class="muted">Produtos vendidos por kg têm um controle individual: “Permitir pedido por valor”. Ele começa desligado.</p><div id="adminProductList" class="product-list"><p class="muted">Carregando produtos…</p></div></section>
+<section class="card product-section active" id="productRequests">
  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
   <h2 style="margin:0">Produtos pedidos</h2>
   <button id="refreshProductRequests" type="button" class="secondary">Atualizar lista</button>
@@ -241,7 +270,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
  <p id="productRequestsMessage" class="muted" role="status" aria-live="polite">Carregando solicitações…</p>
  <div id="productRequestsList" class="product-list"><p class="muted">Carregando…</p></div>
 </section>
-<section class="card product-section" id="costEditor">
+<section class="card product-section active" id="costEditor">
  <h2>Preço de custo e lucro</h2>
  <p class="muted"><strong>Lucro estimado (pelo custo cadastrado).</strong> Como a compra acontece depois do pedido, atualize o custo sempre que o preço pago na feira mudar.</p>
  <p class="muted">Cadastre o custo unitário de cada produto. O custo é copiado para os novos pedidos e fica preservado no histórico, mesmo se o custo atual mudar.</p>
@@ -408,6 +437,126 @@ async function toggleProductValueSale(productId){
   if(button){button.disabled=false;button.textContent=product.allow_value_sale?'Por valor: ligado':'Por valor: desligado';}
  }
 }
+
+// Ficha única de produto. Mantém custo em RPC privado e grava somente campos alterados.
+const productCategories=['Frutas','Verduras e legumes','Farinhas e derivados','Temperos e ervas','Grãos e secos','Bebidas','Pescados e frutos do mar','Ovos e laticínios'];
+let unifiedCurrentProductId=null;
+function unitLabel(unit){return ({kg:'kg',un:'un',maco:'maço',pacote:'pacote',duzia:'dúzia'})[unit]||'un';}
+function moneyInput(value){return Number(value||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function sheetNumber(id){const raw=$(id).value.trim();if(!raw)return null;const normalized=raw.includes(',')?raw.replace(/\./g,'').replace(',','.'):raw;const n=Number(normalized);return Number.isFinite(n)?n:null;}
+function getProductCost(productId){return (window.__feiraCostProducts||[]).find(row=>row.id===productId)||null;}
+function productMargin(product,cost){if(!cost||cost.unit_cost==null||Number(product.price)<=0)return null;return (Number(product.price)-Number(cost.unit_cost))/Number(product.price)*100;}
+function renderUnifiedProductList(){
+ const host=$('unifiedProductList');if(!host)return;
+ const term=normalizeProductSearch($('unifiedProductSearch').value),category=$('unifiedCategoryFilter').value;
+ const costRows=window.__feiraCostProducts||[];
+ const costs=new Map(costRows.map(row=>[row.id,row]));
+ const rows=adminProducts.filter(p=>(!category||p.category===category)&&normalizeProductSearch(p.name).includes(term)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'pt-BR',{sensitivity:'base'}));
+ $('unifiedProductCount').textContent=rows.length+' de '+adminProducts.length+' produtos';
+ if(!rows.length){host.innerHTML='<p class="muted">Nenhum produto encontrado.</p>';return;}
+ host.innerHTML=rows.map(p=>{
+  const cost=costs.get(p.id),margin=productMargin(p,cost);
+  const badges=(p.available?[]:['<span class="unavailable">Indisponível</span>']).concat(!cost||cost.unit_cost==null?['<span class="no-cost">Sem custo</span>']:[],margin!==null&&margin<costMarginThreshold?['<span class="low-margin">Margem baixa</span>']:[]);
+  const image=productListImage(p.image);
+  return '<div class="unified-product-row" data-open-product="'+esc(p.id)+'"><img src="'+esc(image)+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'"><span class="unified-product-meta"><strong>'+esc(p.name)+'</strong><span class="unified-product-price">'+money(p.price)+' <span class="unified-product-unit">· '+unitLabel(p.sale_unit)+'</span></span><span class="unified-product-badges">'+badges.join('')+'</span></span><label class="unified-availability" title="Disponibilidade"><input type="checkbox" data-quick-availability="'+esc(p.id)+'" '+(p.available?'checked':'')+' aria-label="Disponível: '+esc(p.name)+'"><span>Ativo</span></label></div>';
+ }).join('');
+}
+function populateUnifiedCategory(){
+ const select=$('unifiedCategoryFilter'),previous=select.value;
+ const cats=[...new Set(adminProducts.map(p=>p.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+ select.replaceChildren(new Option('Todas as categorias',''));
+ cats.forEach(category=>select.add(new Option(category,category)));
+ if(cats.includes(previous))select.value=previous;
+}
+function setSheetMessage(message,isError=false){$('productSheetMessage').textContent=message;$('productSheetMessage').style.color=isError?'#b3261e':'';}
+function fillProductSheet(product){
+ unifiedCurrentProductId=product.id;
+ const cost=getProductCost(product.id);
+ $('productSheetTitle').textContent=product.name;
+ $('productSheetSubtitle').textContent='ID: '+product.id;
+ $('sheetName').value=product.name||'';
+ $('sheetCategory').replaceChildren(...productCategories.map(v=>new Option(v,v)));
+ if(product.category&&!productCategories.includes(product.category))$('sheetCategory').add(new Option(product.category,product.category));
+ $('sheetCategory').value=product.category||productCategories[0];
+ $('sheetImage').value=product.image||'';
+ $('sheetImagePreview').src=productListImage(product.image)||'';
+ $('sheetPrice').value=moneyInput(product.price);
+ $('sheetAvailable').value=String(product.available===true);
+ $('sheetResaleEnabled').value=String(product.resale_enabled===true);
+ $('sheetResalePrice').value=product.resale_price==null?'':moneyInput(product.resale_price);
+ $('sheetResaleMin').value=String(product.resale_min_qty||10);
+ $('sheetResaleUnit').value=product.resale_unit==='kg'?'kg':'un';
+ $('sheetCost').value=cost?.unit_cost==null?'':moneyInput(cost.unit_cost);
+ $('sheetSaleUnit').value=product.sale_unit||'un';
+ $('sheetMin').value=String(product.min_quantity||1);
+ $('sheetStep').value=String(product.quantity_step||1);
+ $('sheetValueEnabled').value=String(product.allow_value_sale===true);
+ $('sheetValueMin').value=String(product.value_min_kg||product.min_quantity||1);
+ const margin=productMargin(product,cost);
+ const profit=cost?.unit_cost==null?null:Number(product.price)-Number(cost.unit_cost);
+ const updated=cost?.updated_at?new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',dateStyle:'short',timeStyle:'short'}).format(new Date(cost.updated_at)):'Ainda não atualizado';
+ $('sheetProfit').innerHTML=cost?.unit_cost==null?'Sem custo cadastrado.':('Lucro estimado: <strong>'+money(profit)+'</strong> por unidade comercial · Margem: <strong>'+margin.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%</strong><br><small>Última atualização do custo: '+esc(updated)+'</small>');
+ setSheetMessage('Altere os campos necessários e salve.');
+ $('productSheetBackdrop').hidden=false;
+ document.body.style.overflow='hidden';
+}
+function closeProductSheet(){ $('productSheetBackdrop').hidden=true;document.body.style.overflow='';unifiedCurrentProductId=null; }
+async function saveProductSheet(){
+ const id=unifiedCurrentProductId,product=adminProducts.find(p=>p.id===id);if(!product)return;
+ const button=$('saveProductSheet');button.disabled=true;button.textContent='Salvando…';
+ try{
+  const name=$('sheetName').value.trim(),category=$('sheetCategory').value;
+  const price=sheetNumber('sheetPrice'),resaleEnabled=$('sheetResaleEnabled').value==='true',resalePrice=sheetNumber('sheetResalePrice'),resaleMin=Number($('sheetResaleMin').value),resaleUnit=$('sheetResaleUnit').value;
+  const costValue=$('sheetCost').value.trim()?sheetNumber('sheetCost'):null;
+  const saleUnit=$('sheetSaleUnit').value,min=Number($('sheetMin').value),step=Number($('sheetStep').value),valueEnabled=$('sheetValueEnabled').value==='true',valueMin=Number($('sheetValueMin').value);
+  let image=$('sheetImage').value.trim();if(image){image=productImageValue(image);}
+  if(!name||!category||price===null||price<=0)throw new Error('Informe nome, categoria e preço de venda válido.');
+  if(resaleEnabled&&(!Number.isFinite(resalePrice)||resalePrice<=0||resalePrice>=price||!Number.isInteger(resaleMin)||resaleMin<1))throw new Error('Revenda exige preço menor que o preço normal e quantidade mínima inteira.');
+  if(costValue!==null&&costValue<=0)throw new Error('O custo deve ser maior que zero.');
+  if(!Number.isFinite(min)||min<=0||!Number.isFinite(step)||step<=0||!Number.isFinite(valueMin)||valueMin<=0)throw new Error('Mínimo, passo e mínimo por valor devem ser maiores que zero.');
+  if(saleUnit!=='kg'&&(!Number.isInteger(min)||!Number.isInteger(step)))throw new Error('Unidades, maços e pacotes usam mínimo e passo inteiros.');
+  if(saleUnit==='kg'&&Math.abs(min/step-Math.round(min/step))>1e-8)throw new Error('O mínimo precisa respeitar o passo da unidade.');
+  if(saleUnit!=='kg'&&valueEnabled)throw new Error('O modo por valor só é permitido para produtos vendidos por kg nesta versão.');
+  if(saleUnit==='kg'&&Math.abs(valueMin-min)>1e-8)throw new Error('O mínimo do “por valor” deve ser igual ao mínimo do produto.');
+  if(saleUnit!==product.sale_unit&&!window.confirm('Isso muda como o cliente compra. Confirmar?'))throw new Error('Alteração de unidade cancelada.');
+  const productChanges={};
+  if(name!==product.name)productChanges.name=name;
+  if(category!==product.category)productChanges.category=category;
+  if(image!==(product.image||''))productChanges.image=image||null;
+  if(Math.round(price*100)!==Math.round(Number(product.price)*100)){const priceChange=calculatePriceChange(Number(product.price),product.old_price==null?null:Number(product.old_price),price);productChanges.price=price;if(priceChange.oldPrice!==product.old_price)productChanges.old_price=priceChange.oldPrice;}
+  if(($('sheetAvailable').value==='true')!==product.available)productChanges.available=$('sheetAvailable').value==='true';
+  if(resaleEnabled!==product.resale_enabled)productChanges.resale_enabled=resaleEnabled;
+  if(resaleEnabled&&Math.round(resalePrice*100)!==Math.round(Number(product.resale_price||0)*100))productChanges.resale_price=resalePrice;
+  if(resaleMin!==Number(product.resale_min_qty||10))productChanges.resale_min_qty=resaleMin;
+  if(resaleUnit!==product.resale_unit)productChanges.resale_unit=resaleUnit;
+  if(Object.keys(productChanges).length){const {data,error}=await db.from('products').update(productChanges).eq('id',id).select('id').maybeSingle();if(error)throw error;if(!data)throw new Error('O produto não foi atualizado. Confira a sessão administrativa.');}
+  const salesChanged=saleUnit!==product.sale_unit||min!==product.min_quantity||step!==product.quantity_step||valueEnabled!==product.allow_value_sale||valueMin!==product.value_min_kg;
+  if(salesChanged){const {error}=await db.rpc('admin_update_product_sales_rule',{p_product_id:id,p_sale_unit:saleUnit,p_min_quantity:min,p_quantity_step:step,p_allow_value_sale:valueEnabled,p_value_min_kg:saleUnit==='kg'?valueMin:1});if(error)throw error;}
+  const oldCost=getProductCost(id)?.unit_cost;
+  if(costValue!==null&&(oldCost==null||Math.round(costValue*100)!==Math.round(Number(oldCost)*100))){const {error}=await db.rpc('admin_set_product_cost',{p_product_id:id,p_unit_cost:costValue});if(error)throw error;}
+  await Promise.all([loadAdminProducts(),loadCostReport()]);
+  closeProductSheet();
+  renderUnifiedProductList();
+  $('unifiedProductList').scrollTop=0;
+  notice('Ficha de '+name+' salva. Apenas os campos alterados foram atualizados.');
+ }catch(error){setSheetMessage(error?.message||'Não foi possível salvar a ficha.',true);}
+ finally{button.disabled=false;button.textContent='Salvar';}
+}
+$('unifiedProductSearch').addEventListener('input',renderUnifiedProductList);
+$('unifiedCategoryFilter').addEventListener('change',renderUnifiedProductList);
+$('openNewProduct').addEventListener('click',()=>{$('formBox').classList.remove('hide');$('formBox').classList.add('product-create-open');$('name').focus();});
+$('btnOut').onclick=()=>{$('formBox').classList.remove('product-create-open');$('formBox').classList.add('hide');};
+$('closeProductSheet').addEventListener('click',closeProductSheet);
+$('cancelProductSheet').addEventListener('click',closeProductSheet);
+$('productSheetBackdrop').addEventListener('click',event=>{if(event.target===$('productSheetBackdrop'))closeProductSheet();});
+$('saveProductSheet').addEventListener('click',saveProductSheet);
+$('sheetImage').addEventListener('input',()=>{try{$('sheetImagePreview').src=productListImage(productImageValue($('sheetImage').value));}catch(_){$('sheetImagePreview').removeAttribute('src');}});
+$('sheetSaleUnit').addEventListener('change',()=>{const kg=$('sheetSaleUnit').value==='kg';$('sheetMin').step=kg?'0.25':'1';$('sheetStep').step=kg?'0.25':'1';$('sheetValueMin').disabled=!kg; if(kg&&Number($('sheetMin').value)<0.001)$('sheetMin').value='0.5';});
+document.addEventListener('click',async event=>{
+ const row=event.target.closest('[data-open-product]');if(row&&!event.target.closest('[data-quick-availability]')){const product=adminProducts.find(p=>p.id===row.dataset.openProduct);if(product)fillProductSheet(product);}
+ const toggle=event.target.closest('[data-quick-availability]');if(toggle){event.stopPropagation();const product=adminProducts.find(p=>p.id===toggle.dataset.quickAvailability);if(!product)return;toggle.disabled=true;try{const {data,error}=await db.from('products').update({available:toggle.checked}).eq('id',product.id).select('id,available').maybeSingle();if(error)throw error;if(!data)throw new Error('Sem permissão para atualizar disponibilidade.');product.available=data.available;renderUnifiedProductList();}catch(error){toggle.checked=product.available;setSheetMessage(error?.message||'Falha ao atualizar disponibilidade.',true);}finally{toggle.disabled=false;}}
+});
+
 async function loadAdminProducts(){
  $('refreshProducts').disabled=true;
  $('refreshProducts').textContent='Carregando…';
@@ -426,6 +575,7 @@ async function loadAdminProducts(){
   resaleProducts=rows.map(p=>({...p,price:Number(p.price),resale_price:p.resale_price==null?null:Number(p.resale_price),resale_enabled:p.resale_enabled===true,resale_min_qty:Number(p.resale_min_qty??10),resale_unit:p.resale_unit==='kg'?'kg':'un'}));
   editableProducts=rows.slice();
   renderAdminProducts();
+  populateUnifiedCategory();renderUnifiedProductList();
   renderPriceProducts();
   renderResaleProducts();
   renderEditableProducts();
@@ -1095,6 +1245,7 @@ async function loadCostReport(){
   if(error)throw error;
   const products=Array.isArray(data?.products)?data.products:[];
   window.__feiraCostProducts=products;
+  if(typeof renderUnifiedProductList==='function')renderUnifiedProductList();
   const now=Date.now();
   $('costProductStatusList').innerHTML=products.map(product=>{const updated=product.updated_at?new Date(product.updated_at):null;const stale=updated&&now-updated.getTime()>7*24*60*60*1000;const margin=product.unit_cost==null||Number(product.price)<=0?null:(Number(product.price)-Number(product.unit_cost))/Number(product.price)*100;const below=margin!==null&&margin<0;const low=margin!==null&&!below&&margin<costMarginThreshold;const classes=[stale?'stale':'',below?'below-cost':low?'low-margin':''].filter(Boolean).join(' ');const date=updated?new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',day:'2-digit',month:'2-digit'}).format(updated):null;const costText=date?'Custo atualizado em: '+date:'Custo ainda não cadastrado';const marginText=margin===null?'Margem: sem custo':('Margem estimada: '+margin.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%');return '<article class="cost-product-row '+classes+'"><strong>'+esc(product.name)+'</strong><small>'+costText+'</small><small>'+marginText+'</small></article>';}).join('')||'<p class="muted">Nenhum produto cadastrado.</p>';
   const selected=$('costProductSelect').value;
@@ -1226,15 +1377,12 @@ function selectMainTab(tab){
  document.getElementById('tabProducts').setAttribute('aria-selected',String(products));
 }
 function selectProductSection(id){
- const valid=['formBox','priceEditor','resaleEditor','productEdit','productAvailabilityCard','productRequests','costEditor'];
- const target=valid.includes(id)?id:'formBox';
- document.querySelectorAll('#productTools .product-section').forEach(el=>el.classList.toggle('active',el.id===target));
- document.getElementById('productAvailabilityCard').classList.toggle('active',target==='productAvailabilityCard');
- document.querySelectorAll('[data-product-section]').forEach(btn=>btn.setAttribute('aria-pressed',String(btn.dataset.productSection===target)));
+ document.getElementById('productRequests').classList.add('active');
+ document.getElementById('costEditor').classList.add('active');
 }
 document.getElementById('tabOrders').addEventListener('click',()=>selectMainTab('orders'));
 document.getElementById('tabProducts').addEventListener('click',()=>selectMainTab('products'));
-document.querySelectorAll('[data-product-section]').forEach(btn=>btn.addEventListener('click',()=>selectProductSection(btn.dataset.productSection)));
+
 selectMainTab(requestedTab);
 selectProductSection(requestedTab==='products'?requestedSection:'formBox');
 </script></body></html>
