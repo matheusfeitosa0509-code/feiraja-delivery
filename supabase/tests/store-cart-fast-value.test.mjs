@@ -37,6 +37,8 @@ const ui = {
   cartbar:{classList:{toggle(){}}}
 };
 const calls = {card:0,fullCatalog:0};
+const makeCard=()=>{const qty={innerHTML:''},valueRow={innerHTML:''},note={textContent:'Peso aproximado'},controls={nodeType:1};return{dataset:{productId:'watermelon'},qty,valueRow,note,controls,querySelector(sel){if(sel==='.product-qty')return qty;if(sel==='.value-sale-row')return valueRow;if(sel==='.weight-note')return note;if(sel==='.product-controls')return controls;return null;}};};
+const cards=['initial','search','category','home'].map(makeCard);
 const product = {id:'watermelon',name:'Melancia',price:19,category:'Frutas'};
 const context = {
   products:[product],cart:{},cartModes:{},cartValueCents:{},
@@ -53,7 +55,7 @@ const context = {
   renderCart(){calls.fullCatalog++;},
   safeRenderHomeProductSections(){calls.fullCatalog++;},
   renderProducts(){calls.fullCatalog++;},
-  document:{querySelectorAll(){return [{dataset:{productId:'watermelon'},querySelector(){return {set outerHTML(value){calls.card++;}}}}];}},
+  document:{querySelectorAll(selector){return selector==='[data-product-id]'?cards:[];}},
   $(id){return ui[id.replace('#','')];}
 };
 vm.createContext(context);
@@ -61,7 +63,7 @@ const names=[
   'salesRuleFor','isValidCartQuantity','quantityStepFor','formatCartQuantity',
   'valueSaleMinimumKg','valueSaleMinimumAmountCents','valueSaleCalculation',
   'formatCartProductLabel','valueSaleEnabled','valueSaleEditorMarkup',
-  'valueSaleEditorForm','productQtyMarkup','productCardControlsMarkup','formatValueSaleWeight',
+  'valueSaleEditorForm','productQtyMarkup','productCardControlsMarkup','productWeightNoteMarkup','formatValueSaleWeight',
   'updateProductCard','parseValueSaleInput','setCardValueSale','updateCartSummary',
   'add','renderAfterCartChange','change','totals','minimumOrderMessage'
 ];
@@ -71,7 +73,10 @@ vm.runInContext(names.map(extract).join('\n'),context);
 for(let i=0;i<20;i++) context.add('watermelon');
 assert.equal(context.cart.watermelon,10.5,'first tap adds 1 kg, then 0.5 kg per tap');
 assert.equal(calls.fullCatalog,0,'no whole-catalog render during rapid taps');
-assert.ok(calls.card>=20,'only the affected product card is updated');
+assert.ok(cards.every(c=>c.qty.innerHTML.includes('data-card-change')),'all screen variants retain quantity controls');
+assert.ok(cards.every(c=>c.note.textContent==='Peso aproximado'),'one static note per kg card');
+assert.ok(cards.every(c=>(c.valueRow.innerHTML.match(/Pedir por valor R\$/g)||[]).length===1),'one R$ button per kg card');
+assert.ok(cards.every(c=>c.controls.nodeType===1),'controls container is not replaced');
 assert.equal(context.isValidCartQuantity(product,0.5,'kg'),false,'0.5 kg is below the new minimum');
 assert.equal(context.isValidCartQuantity(product,1,'kg'),true,'1 kg is valid');
 assert.equal(context.quantityStepFor(product),0.5);
@@ -81,7 +86,9 @@ assert.match(context.valueSaleEditorMarkup(product),/>Pedir por valor R\$<\/butt
 assert.doesNotMatch(context.productQtyMarkup(product),/value-sale-open/,'value button must not squeeze the quantity row');
 assert.match(context.productCardControlsMarkup(product),/Pedir por valor R\$/,'value button sits on its own row');
 assert.doesNotMatch(context.productCardControlsMarkup(product),/data-value-input|data-value-preset|data-value-add/);
-assert.match(context.productCardControlsMarkup(product),/Peso aproximado/);
+assert.match(context.productCardControlsMarkup(product),/class="value-sale-row"/);
+assert.match(context.productWeightNoteMarkup(product),/Peso aproximado/);
+assert.equal((context.productCardControlsMarkup(product).match(/Pedir por valor R\$/g)||[]).length,1);
 assert.equal(context.formatValueSaleWeight(1.253), '1,25 kg');
 const sheet=context.valueSaleEditorForm(product,500);
 assert.match(sheet,/Mínimo: R\$ 19,00 \(= 1 kg\)/);
@@ -99,7 +106,13 @@ assert.match(context.productQtyMarkup(product),/value-amount">R\$ 20,00/);
 assert.match(context.productQtyMarkup(product),/value-weight">~1,05 kg/);
 assert.match(context.productQtyMarkup(product),/value-qty-label/);
 assert.match(context.productQtyMarkup(product),/data-value-open="watermelon"/);
-assert.doesNotMatch(context.productQtyMarkup(product),/class="value-sale-open"/,'value-mode card should not repeat the R$ button');
+assert.doesNotMatch(context.productCardControlsMarkup(product),/Pedir por valor R\$/,'value mode removes separate R$ button');
+assert.equal((context.productQtyMarkup(product).match(/data-value-open=/g)||[]).length,1);
+for(let i=0;i<20;i++)context.change('watermelon',1);
+assert.equal(context.cartValueCents.watermelon,12000,'20 taps add R$100');
+assert.ok(cards.every(c=>c.note.textContent==='Peso aproximado'),'no duplicated note in value mode');
+assert.ok(cards.every(c=>(c.qty.innerHTML.match(/data-value-open=/g)||[]).length===1),'exactly one value control per card');
+assert.ok(cards.every(c=>c.valueRow.innerHTML===''),'no separate R$ button in value mode');
 assert.match(context.valueSaleEditorForm(product,2000),/data-value-remove="watermelon"/);
 
 // In value mode +/- changes by R$5 and cannot fall below the 1 kg minimum.
