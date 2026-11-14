@@ -81,6 +81,9 @@ ALTER FUNCTION feira_cost_private.capture_order_item_costs() OWNER TO postgres;
 REVOKE ALL ON FUNCTION feira_cost_private.capture_order_item_costs()
   FROM PUBLIC, anon, authenticated, service_role;
 
+DROP FUNCTION IF EXISTS public.admin_set_product_value_sale(text, boolean);
+ALTER TABLE public.product_sales_rules DROP COLUMN IF EXISTS allow_value_sale;
+
 DROP FUNCTION IF EXISTS public.admin_set_value_sale_minimum(integer);
 DROP FUNCTION IF EXISTS public.get_sales_settings();
 DROP TABLE IF EXISTS feira_cost_private.sales_settings;
