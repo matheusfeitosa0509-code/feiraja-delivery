@@ -513,10 +513,10 @@ Deno.serve(async (req: Request) => {
             String(quoted.sale_mode || "kg") === item.sale_mode &&
             Number.isInteger(quoted.unit_price_cents) &&
             quoted.unit_price_cents === Math.round(item.price * 100) &&
-            Number.isInteger(quoted.line_total_cents) &&
-            quoted.line_total_cents === item.line_total_cents &&
             (item.sale_mode !== "value" ||
-              (Number.isSafeInteger(quoted.amount_cents) && quoted.amount_cents === item.amount_cents));
+              (Number.isSafeInteger(quoted.line_total_cents) &&
+                quoted.line_total_cents === item.line_total_cents &&
+                Number.isSafeInteger(quoted.amount_cents) && quoted.amount_cents === item.amount_cents));
         }) &&
         Number.isInteger(quote?.subtotal_cents) &&
         quote.subtotal_cents === subtotalCents;
