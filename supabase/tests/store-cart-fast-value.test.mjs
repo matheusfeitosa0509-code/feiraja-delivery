@@ -35,7 +35,7 @@ const ui = {
   subtotal:{},total:{},modalTotal:{},
   checkout:{setAttribute(){}},
   cartbarCount:{},cartbarTotal:{},
-  cartbar:{classList:{toggle(){},contains(){return true;}}},
+  cartbar:{classList:{toggle(){},contains(){return false;}}},
   cartUndoToast:{hidden:true,style:{}},cartUndoMessage:{textContent:''},cartUndoAction:{hidden:true}
 };
 const calls = {card:0,fullCatalog:0};
