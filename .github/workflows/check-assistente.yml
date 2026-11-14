@@ -23,3 +23,6 @@ jobs:
 
       - name: Check assistente
         run: deno check supabase/functions/assistente/index.ts
+
+      - name: Test commercial rules
+        run: deno test supabase/functions/assistente/commercial-rules_test.ts
