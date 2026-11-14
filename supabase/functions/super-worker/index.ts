@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
-import { calculateLineTotalCents, calculateQuantityFromValueCents, calculateValueLineTotalCents, isValidSalesQuantity, selectEffectiveUnitPriceCents, sumDecimalQuantities } from "../_shared/sales-rules.js";
+import { calculateLineTotalCents, calculateQuantityFromValueCents, calculateValueLineTotalCents, isValidSalesQuantity, isValueSaleEnabled, selectEffectiveUnitPriceCents, sumDecimalQuantities } from "../_shared/sales-rules.js";
 import { resolveMercadoPagoOrderStatus } from "./payment-status.ts";
 
 function isValidCpf(value: string) { const cpf = String(value || "").replace(/\D/g, ""); if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false; const calc = (base: string, factor: number) => { let sum = 0; for (const digit of base) sum += Number(digit) * factor--; const mod = (sum * 10) % 11; return mod === 10 ? 0 : mod; }; return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10]); }
@@ -371,7 +371,7 @@ Deno.serve(async (req: Request) => {
     if (products.some((p: any) => p.available !== true)) return json({ error: "Um dos produtos está indisponível. Atualize a feira e tente novamente." }, 409);
 
     const { data: salesRules, error: salesRulesError } = await db.from("product_sales_rules")
-      .select("product_id,sale_unit,quantity_step,min_quantity,max_quantity")
+      .select("product_id,sale_unit,quantity_step,min_quantity,max_quantity,allow_value_sale")
       .in("product_id", ids);
     if (salesRulesError) {
       console.error("super-worker", { code: "SALES_RULES_FALLBACK" });
@@ -397,7 +397,7 @@ Deno.serve(async (req: Request) => {
       saleModeById.set(id, entry.saleMode);
       const rule = salesRulesById.get(id) || null;
       if (entry.saleMode === "value") {
-        if (!rule || rule.sale_unit !== "kg" || salesRulesError) {
+        if (!rule || !isValueSaleEnabled(rule) || salesRulesError) {
           return json({ error: "A compra por valor está disponível somente para produtos vendidos por kg." }, 400);
         }
         if (!entry.amountValues.every((amount) => Number.isSafeInteger(amount) && amount >= minValueSaleCents)) {
