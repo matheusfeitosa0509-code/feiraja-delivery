@@ -107,6 +107,7 @@ function quantityRule(name: string | null, salesRule: ProductSalesRule | null = 
     const amount = Number(packageMatch[1].replace(",", "."));
     const sourceUnit = packageMatch[2].toLowerCase();
     const label = sourceUnit === "kg" ? amount + " kg" : amount + " g";
+    if (salesRule?.sale_unit === "un") return { unit: "unidade", step: 1, package_size_kg: sourceUnit === "kg" ? amount : amount / 1000 };
     return { unit: "pacote de " + label, step: 1, package_size_kg: sourceUnit === "kg" ? amount : amount / 1000 };
   }
   const looseGrams = value.match(/\b(\d+)\s*gramas?\b/i);
@@ -183,7 +184,7 @@ Cada produto traz unidade, passo, mínimo e máximo. Respeite exatamente esses l
 Para produto vendido por kg com passo 0,5, entenda “meio quilo” e “meio kg” como 0,5; “1 quilo e meio” como 1,5; “dois quilos e meio” como 2,5. Também reconheça formas numéricas equivalentes.
 Só proponha frações quando o catálogo indicar passo 0,5 e mínimo 0,5. Se o produto não tiver essa regra, proponha apenas quantidades inteiras e avise claramente quando o cliente pedir fração; não arredonde nem transforme meio quilo em um quilo.
 Nenhum item é adicionado automaticamente. Nunca diga “já incluí”, “adicionei” ou equivalente. Quando houver itens, diga exatamente: “Separei isto para você. Toque em Adicionar ao carrinho para confirmar.”
-Se o cliente pedir kg e o produto for pacote, ou pedir pacote quando o produto for vendido por kg, pergunte antes; não converta nem suponha.
+Se o cliente pedir kg e o produto for pacote, ou pedir pacote quando o produto for vendido por kg, pergunte antes; não converta nem suponha. Se o cliente pedir kg de um produto cujo catálogo indica unidade/unidade avulsa, explique que ele é vendido por unidade e pergunte quantas unidades deseja; nunca interprete 1 unidade como 1 kg nem converta kg em unidades sem confirmação.
 Se houver mais de uma variante parecida (tamanho, peso, tipo), pergunte qual deseja, sem escolher por conta própria.
 Se a unidade do produto vier como null, pergunte qual unidade/embalagem o cliente deseja; não proponha item.
 Se a quantidade solicitada não for múltipla do passo, pergunte; nunca arredonde.
@@ -396,16 +397,16 @@ Deno.serve(async (req) => {
     const asksPromotions = isPromotionQuestion && !hasProductAction && !hasQuantityOrUnit &&
       !mentionsCatalogProduct && !hasPaymentContext;
 
-    const asksPaymentMethods = /\\b(pagamento|pagar|pix|cartao|credito|debito|dinheiro)\\b/.test(normalizedText) && /\\b(posso|aceita|aceitam|aceitar|pago|pagar|pagamento|cartao|pix|dinheiro)\\b/.test(normalizedText);
+    const asksPaymentMethods = /\b(pagamento|pagar|pix|cartao|credito|debito|dinheiro)\b/.test(normalizedText) && /\b(posso|aceita|aceitam|aceitar|pago|pagar|pagamento|cartao|pix|dinheiro)\b/.test(normalizedText);
     if (asksPaymentMethods) {
-      const asksUberPayment = /\\buber\\b/.test(normalizedText);
+      const asksUberPayment = /\buber\b/.test(normalizedText);
       return json({ resposta: asksUberPayment
         ? "Com retirada via Uber, o pagamento é somente por Pix. Dinheiro e cartão são aceitos apenas na retirada na loja."
         : "Aceitamos Pix em qualquer modalidade. Na retirada na loja, também aceitamos dinheiro ou cartão; com Uber, somente Pix.", itens: [], perguntas: [] });
     }
 
-    const budgetMatch = normalizedText.match(/r\\$\\s*(\\d+(?:[.,]\\d{1,2})?)/);
-    if (budgetMatch && /\\b(pedido|compra)\\b/.test(normalizedText)) {
+    const budgetMatch = normalizedText.match(/r\$\s*(\d+(?:[.,]\d{1,2})?)/);
+    if (budgetMatch && /\b(pedido|compra)\b/.test(normalizedText)) {
       const requestedBudget = Number(budgetMatch[1].replace(",", "."));
       if (Number.isFinite(requestedBudget) && requestedBudget < 30) {
         return json({ resposta: "O pedido mínimo é de R$ 30,00 em produtos, em qualquer modalidade. Posso ajudar a montar uma lista a partir de R$ 30,00.", itens: [], perguntas: [] });
