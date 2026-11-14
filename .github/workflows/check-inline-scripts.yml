@@ -1,4 +1,4 @@
-name: Check inline JavaScript syntax
+name: Check inline JavaScript syntax # unified product sheet regression
 on:
   pull_request:
     paths:
@@ -73,3 +73,5 @@ jobs:
         run: node supabase/tests/unit-value-sale-migration.test.mjs
       - name: Teste de alertas de custo e mínimos por kg
         run: node supabase/tests/panel-cost-alerts.test.mjs
+      - name: Teste da ficha única e regras de venda confirmadas
+        run: node supabase/tests/unified-product-sheet-and-units.test.mjs
