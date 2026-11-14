@@ -41,7 +41,7 @@ for(let i=0;i<20;i++) context.add('watermelon');
 assert.equal(context.cart.watermelon,10,'20 taps at 0.5 kg must total 10 kg');
 assert.equal(calls.fullCatalog,0,'no whole-catalog render during rapid taps');
 assert.ok(calls.card>=20,'the affected card is updated');
-assert.equal(context.Object.keys(context.cart).length,1);
+assert.equal(Object.keys(context.cart).length,1);
 
 // The inline card must expose the value-buy UI only when explicitly enabled.
 const cardMarkup=context.valueSaleEditorMarkup(product);
