@@ -6,7 +6,7 @@ export function normalizeItemPreference(note: unknown, substitution: unknown): N
   const choice = substitution ?? "call";
   if (choice !== "replace" && choice !== "remove" && choice !== "call") return null;
   const clean = String(note ?? "")
-    .replace(/[\\u0000-\\u001F\\u007F]/g, " ")
+    .replace(/[\u0000-\u001F\u007F]/g, " ")
     .replace(/<[^>]*>/g, "")
     .replace(/[<>]/g, "")
     .trim()
