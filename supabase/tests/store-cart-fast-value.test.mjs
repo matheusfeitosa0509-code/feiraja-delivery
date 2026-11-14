@@ -71,10 +71,10 @@ const names=[
 ];
 vm.runInContext(names.map(extract).join('\n'),context);
 
-assert.match(context.cartPriceMarkup({price:10,old_price:12}),/cart-price-old">R\$ 12\.00/);
-assert.match(context.cartPriceMarkup({price:10,old_price:12}),/cart-price-current promo">R\$ 10\.00/);
+assert.match(context.cartPriceMarkup({price:10,old_price:12}),/cart-price-old">R\$ 12,00/);
+assert.match(context.cartPriceMarkup({price:10,old_price:12}),/cart-price-current promo">R\$ 10,00/);
 assert.match(context.cartPriceMarkup({price:10,old_price:12}),/cart-discount-badge">-17%/);
-assert.match(context.cartPriceMarkup({price:10}),/cart-price-current">R\$ 10\.00/);
+assert.match(context.cartPriceMarkup({price:10}),/cart-price-current">R\$ 10,00/);
 
 // First kg tap is 1 kg; later taps add 0.5 kg. Rapid taps never rebuild rows.
 for(let i=0;i<20;i++) context.add('watermelon');
