@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { calculateLineTotalCents, calculateQuantityFromValueCents, calculateValueLineTotalCents, isValidSalesQuantity, isValueSaleEnabled, selectEffectiveUnitPriceCents, sumDecimalQuantities } from "../_shared/sales-rules.js";
 import { resolveMercadoPagoOrderStatus } from "./payment-status.ts";
+import { normalizeItemPreference } from "../_shared/item-preferences.ts";
 
 function isValidCpf(value: string) { const cpf = String(value || "").replace(/\D/g, ""); if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false; const calc = (base: string, factor: number) => { let sum = 0; for (const digit of base) sum += Number(digit) * factor--; const mod = (sum * 10) % 11; return mod === 10 ? 0 : mod; }; return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10]); }
 
@@ -337,12 +338,9 @@ Deno.serve(async (req: Request) => {
     const itemPreferencesById = new Map<string, { item_note: string; substitution_preference: 'replace' | 'remove' | 'call' }>();
     for (const item of requestedItems) {
       const id = String(item?.id ?? "").trim();
-      const rawItemNote = item?.item_note;
-      if (rawItemNote !== undefined && (typeof rawItemNote !== 'string' || rawItemNote.length > 100)) return json({ error: "A observação de um item deve ter até 100 caracteres." }, 400);
-      const cleanItemNote = String(rawItemNote || '').replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/<[^>]*>/g, '').replace(/[<>]/g, '').trim().slice(0, 100);
-      const rawSubstitution = item?.substitution_preference ?? 'call';
-      if (!['replace', 'remove', 'call'].includes(String(rawSubstitution))) return json({ error: "Preferência de substituição inválida." }, 400);
-      if (id) itemPreferencesById.set(id, { item_note: cleanItemNote, substitution_preference: rawSubstitution as 'replace' | 'remove' | 'call' });
+      const preference = normalizeItemPreference(item?.item_note, item?.substitution_preference);
+      if (!preference) return json({ error: "Confira a observação e a preferência de substituição do item." }, 400);
+      if (id) itemPreferencesById.set(id, preference);
       const saleMode = String(item?.sale_mode || "kg");
       if (!id || !["kg", "value"].includes(saleMode)) {
         return json({ error: "Produto ou modo de compra inválido." }, 400);
