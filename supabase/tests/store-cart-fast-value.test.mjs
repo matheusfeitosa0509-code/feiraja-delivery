@@ -50,6 +50,7 @@ const context = {
   esc:v=>String(v),
   effectiveUnitPriceCents(p,q){const normal=Math.round(Number(p.price)*100),resale=Math.round(Number(p.resale_price)*100),min=Number(p.resale_min_qty);return p.resale_enabled===true&&Number.isInteger(min)&&min>=1&&q>=min&&Number.isSafeInteger(resale)&&resale>0&&resale<=normal?resale:normal;},
   persistCart(){},
+  closeValueSaleSheet(){},
   alert(message){throw new Error(message);},
   syncCartbarVisibility(){},
   renderCart(){calls.fullCatalog++;},
