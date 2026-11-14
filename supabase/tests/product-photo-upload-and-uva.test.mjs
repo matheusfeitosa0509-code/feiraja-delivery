@@ -33,6 +33,6 @@ assert.match(storage,/FOR INSERT\s+TO authenticated\s+WITH CHECK \([\s\S]*public
 assert.match(storage,/FOR DELETE\s+TO authenticated\s+USING \([\s\S]*public\.is_current_user_admin\(\)/,'only admins can delete');
 assert.doesNotMatch(storage,/FOR SELECT/i,'public read is provided by public bucket without broad list policy');
 assert.doesNotMatch(storage,/FOR UPDATE/i,'no overwrite policy is needed for unique upload paths');
-assert.match(rollback,/contains arquivos/,'storage rollback protects existing uploaded photos');
+assert.match(rollback,/contém arquivos/,'storage rollback protects existing uploaded photos');
 
 console.log('OK: mobile photo upload, compression, admin-only Storage policies, safe old-photo cleanup, and Uva kg rule.');
