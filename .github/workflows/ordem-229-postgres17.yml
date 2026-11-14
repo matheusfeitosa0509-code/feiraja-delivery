@@ -41,7 +41,7 @@ jobs:
       PGUSER: postgres
       PGDATABASE: ordem_229_test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Verificar JavaScript inline de loja.html e painel.html
         run: |
           node <<'NODE'
