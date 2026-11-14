@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const html = fs.readFileSync(new URL('../../loja.html', import.meta.url), 'utf8');
+assert.match(html,/b\.closest\('\.product'\)\?\.querySelector\('\.value-sale-editor'\)/,'value editor action must stay inside the tapped card');
+assert.match(html,/input\.closest\('\.product'\)\?\.querySelector\('\.value-sale-preview'\)/,'weight preview must stay inside the edited card');
 function extract(name) {
   const start = html.indexOf('function ' + name + '(');
   assert.notEqual(start, -1, 'missing function ' + name);
