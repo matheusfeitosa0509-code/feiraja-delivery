@@ -52,7 +52,7 @@ const context = {
   renderCart(){calls.fullCatalog++;},
   safeRenderHomeProductSections(){calls.fullCatalog++;},
   renderProducts(){calls.fullCatalog++;},
-  document:{querySelectorAll(){return [{dataset:{productId:'watermelon'},querySelector(){return {set innerHTML(){calls.card++;}}}}];}},
+  document:{querySelectorAll(){return [{dataset:{productId:'watermelon'},querySelector(){return {set innerHTML(value){calls.card++;}}}}];}},
   $(id){return ui[id.replace('#','')];}
 };
 vm.createContext(context);
