@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const panel=fs.readFileSync(new URL('../../painel-novo.html',import.meta.url),'utf8');
+const panel=fs.readFileSync(new URL('../../painel.html',import.meta.url),'utf8');
 const store=fs.readFileSync(new URL('../../loja.html',import.meta.url),'utf8');
 const migration=fs.readFileSync(new URL('../migrations/20261115010000_kg_minimums_and_cost_margin.sql',import.meta.url),'utf8');
 const rollback=fs.readFileSync(new URL('../rollbacks/20261115010000_kg_minimums_and_cost_margin_rollback.sql',import.meta.url),'utf8');
