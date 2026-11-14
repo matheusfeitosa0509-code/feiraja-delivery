@@ -334,8 +334,15 @@ Deno.serve(async (req: Request) => {
     if (paymentMethod === "pix" && !validPixDocument) return json({ error: asaasEnabled ? "Informe um CPF ou CNPJ válido para gerar o Pix." : "Informe um CPF válido para gerar o Pix." }, 400);
 
     const requestedById = new Map<string, { saleMode: string; qtyValues: number[]; amountValues: number[] }>();
+    const itemPreferencesById = new Map<string, { item_note: string; substitution_preference: 'replace' | 'remove' | 'call' }>();
     for (const item of requestedItems) {
       const id = String(item?.id ?? "").trim();
+      const rawItemNote = item?.item_note;
+      if (rawItemNote !== undefined && (typeof rawItemNote !== 'string' || rawItemNote.length > 100)) return json({ error: "A observação de um item deve ter até 100 caracteres." }, 400);
+      const cleanItemNote = String(rawItemNote || '').replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/<[^>]*>/g, '').replace(/[<>]/g, '').trim().slice(0, 100);
+      const rawSubstitution = item?.substitution_preference ?? 'call';
+      if (!['replace', 'remove', 'call'].includes(String(rawSubstitution))) return json({ error: "Preferência de substituição inválida." }, 400);
+      if (id) itemPreferencesById.set(id, { item_note: cleanItemNote, substitution_preference: rawSubstitution as 'replace' | 'remove' | 'call' });
       const saleMode = String(item?.sale_mode || "kg");
       if (!id || !["kg", "value"].includes(saleMode)) {
         return json({ error: "Produto ou modo de compra inválido." }, 400);
@@ -478,6 +485,7 @@ Deno.serve(async (req: Request) => {
         price: effectivePriceCents / 100, qty, sale_mode: saleMode,
         line_total_cents: lineTotalCents,
         ...(saleMode === "value" ? { amount_cents: amountCents } : {}),
+        ...(itemPreferencesById.has(String(p.id)) ? itemPreferencesById.get(String(p.id))! : { item_note: '', substitution_preference: 'call' }),
       });
     }
 
