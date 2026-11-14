@@ -2,6 +2,7 @@ BEGIN;
 
 DROP POLICY IF EXISTS "product_photos_admin_insert" ON storage.objects;
 DROP POLICY IF EXISTS "product_photos_admin_delete" ON storage.objects;
+DROP POLICY IF EXISTS "product_photos_admin_select" ON storage.objects;
 
 -- O bucket só deve ser removido depois de conferir que está vazio.
 -- Esta reversão falha de propósito se ainda houver arquivos, evitando perda de fotos.
