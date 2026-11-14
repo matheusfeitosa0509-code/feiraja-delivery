@@ -33,7 +33,7 @@ function mockSupabase(existing){
 }
 async function runCase(label,existing,expectedSelection,expectedAttempts){
  const {supabase,calls}=mockSupabase(existing);
- const fetchOrders=runInNewContext('('+helper+'); fetchMyOrdersWithSeparationFallback',{supabase});
+ const fetchOrders=runInNewContext(helper+'; fetchMyOrdersWithSeparationFallback',{supabase});
  const result=await fetchOrders('user-test');
  assert.equal(result.error,null,label+': consulta deve concluir sem erro');
  assert.equal(result.data[0].id,'order-test',label+': deve retornar o pedido');
