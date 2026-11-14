@@ -552,7 +552,7 @@ $('saveProductSheet').addEventListener('click',saveProductSheet);
 $('sheetImage').addEventListener('input',()=>{try{$('sheetImagePreview').src=productListImage(productImageValue($('sheetImage').value));}catch(_){$('sheetImagePreview').removeAttribute('src');}});
 $('sheetSaleUnit').addEventListener('change',()=>{const kg=$('sheetSaleUnit').value==='kg';$('sheetMin').step=kg?'0.25':'1';$('sheetStep').step=kg?'0.25':'1';$('sheetValueMin').disabled=!kg; if(kg&&Number($('sheetMin').value)<0.001)$('sheetMin').value='0.5';});
 document.addEventListener('click',async event=>{
- const row=event.target.closest('[data-open-product]');if(row&&!event.target.closest('[data-quick-availability]')){const product=adminProducts.find(p=>p.id===row.dataset.openProduct);if(product)fillProductSheet(product);}
+ const row=event.target.closest('[data-open-product]');if(row&&!event.target.closest('.unified-availability')){const product=adminProducts.find(p=>p.id===row.dataset.openProduct);if(product)fillProductSheet(product);}
  const toggle=event.target.closest('[data-quick-availability]');if(toggle){event.stopPropagation();const product=adminProducts.find(p=>p.id===toggle.dataset.quickAvailability);if(!product)return;toggle.disabled=true;try{const {data,error}=await db.from('products').update({available:toggle.checked}).eq('id',product.id).select('id,available').maybeSingle();if(error)throw error;if(!data)throw new Error('Sem permissão para atualizar disponibilidade.');product.available=data.available;renderUnifiedProductList();}catch(error){toggle.checked=product.available;setSheetMessage(error?.message||'Falha ao atualizar disponibilidade.',true);}finally{toggle.disabled=false;}}
 });
 
