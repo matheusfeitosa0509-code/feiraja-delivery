@@ -16,7 +16,7 @@ test('carrinho persiste e apresenta observação e preferência por item', () =>
 });
 
 test('checkout envia preferências nos fluxos Pix e retirada na loja', () => {
-  assert.equal((loja.match(/item_note:String\(cartPreferences\[x\.p\.id\]/g) || []).length, 2);
+  assert.equal((loja.match(/item_note:String\(cartPreferences\[x\.p\.id\]/g) || []).length, 3);
   assert.match(loja, /item_preferences:t\.items\.map/);
 });
 
