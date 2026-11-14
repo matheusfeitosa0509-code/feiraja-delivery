@@ -64,7 +64,9 @@ assert.equal(context.cart.watermelon,0.789);
 context.change('watermelon',-1);
 assert.equal(context.cartValueCents.watermelon,1000);
 context.change('watermelon',-1);
-assert.equal(context.cartValueCents.watermelon,1000,'R$5 is the minimum; minus cannot go below it');
+assert.equal(context.cartValueCents.watermelon,500,'minus reduces R$5 to the minimum');
+context.change('watermelon',-1);
+assert.equal(context.cartValueCents.watermelon,500,'minus cannot go below R$5');
 
 // Badge counts distinct products, not summed kg + units.
 context.products.push({id:'banana',name:'Banana',price:5});
