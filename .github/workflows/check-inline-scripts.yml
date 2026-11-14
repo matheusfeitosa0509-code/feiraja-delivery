@@ -1,4 +1,4 @@
-name: Check inline JavaScript syntax
+name: Check inline JavaScript syntax # unified product sheet regression
 on:
   pull_request:
     paths:
