@@ -168,6 +168,7 @@ assert.equal(context.cart.avocado,undefined,'kg decrement at the minimum removes
 confirmAnswer=false;
 
 // Badge counts distinct products, not summed kg + units.
+context.cart.watermelon=1;context.cart.avocado=1;
 context.products.push({id:'banana',name:'Banana',price:5});
 context.cart.banana=3;
 context.cart.ghost=4;
