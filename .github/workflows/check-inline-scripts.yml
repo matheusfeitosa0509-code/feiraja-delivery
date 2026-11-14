@@ -11,6 +11,7 @@ on:
       - "supabase/rollbacks/20261114230000_exact_value_sale_rollback.sql"
       - "supabase/tests/sales-by-value.test.mjs"
       - "supabase/tests/cart-add-render.test.mjs"
+      - "supabase/tests/store-cart-fast-value.test.mjs"
       - ".github/workflows/check-inline-scripts.yml"
   push:
     branches: [main]
@@ -58,3 +59,5 @@ jobs:
         run: node supabase/tests/sales-by-value.test.mjs
       - name: Teste de adicionar ao carrinho sem re-render redundante
         run: node supabase/tests/cart-add-render.test.mjs
+      - name: Teste de carrinho rápido e compra por valor nos cards
+        run: node supabase/tests/store-cart-fast-value.test.mjs
