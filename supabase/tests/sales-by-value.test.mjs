@@ -59,6 +59,13 @@ test("preço de revenda é usado para calcular o peso quando o limite é atingid
   assert.equal(calculateQuantityFromValueCents(10000, 800, 100), 12.5);
 });
 
+test("unidade comercial palma aceita quantidades inteiras e rejeita frações", () => {
+  const palmaRule = { sale_unit: "maco", quantity_step: 1, min_quantity: 1, max_quantity: 100 };
+  assert.equal(isValidSalesQuantity(1, palmaRule, "kg"), true);
+  assert.equal(isValidSalesQuantity(2, palmaRule, "kg"), true);
+  assert.equal(isValidSalesQuantity(1.5, palmaRule, "kg"), false);
+});
+
 test("modo por valor é recusado para produtos que não são vendidos por kg", () => {
   const unitRule = { sale_unit: "un", quantity_step: 1, min_quantity: 1, max_quantity: 100 };
   assert.equal(isValidSalesQuantity(1, unitRule, "value"), false);

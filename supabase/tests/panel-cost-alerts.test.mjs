@@ -20,7 +20,7 @@ assert.match(panel,/Lucro estimado \(pelo custo cadastrado\)/,'profit summary is
 assert.match(store,/aspect-ratio:1\/1/,'product image box is square');
 assert.match(store,/@media\(max-width:412px\)/,'compact cards include phone-width rules');
 assert.match(store,/id="valueSaleSheet"/,'value purchase is a bottom sheet');
-assert.match(store,/Peso aproximado: pode variar um pouco na separação\./,'weight estimate disclaimer is shown');
+assert.match(store,/Peso aproximado/,'short weight estimate label is shown');
 
 assert.match(migration,/SET min_quantity = 1/,'all kg sales rules receive a 1 kg minimum');
 assert.match(migration,/SET quantity_step = 0\.5/,'kg sales keep half-kilogram increments');

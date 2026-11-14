@@ -53,7 +53,7 @@ const context = {
   renderCart(){calls.fullCatalog++;},
   safeRenderHomeProductSections(){calls.fullCatalog++;},
   renderProducts(){calls.fullCatalog++;},
-  document:{querySelectorAll(){return [{dataset:{productId:'watermelon'},querySelector(){return {set innerHTML(value){calls.card++;}}}}];}},
+  document:{querySelectorAll(){return [{dataset:{productId:'watermelon'},querySelector(){return {set outerHTML(value){calls.card++;}}}}];}},
   $(id){return ui[id.replace('#','')];}
 };
 vm.createContext(context);
@@ -61,7 +61,7 @@ const names=[
   'salesRuleFor','isValidCartQuantity','quantityStepFor','formatCartQuantity',
   'valueSaleMinimumKg','valueSaleMinimumAmountCents','valueSaleCalculation',
   'formatCartProductLabel','valueSaleEnabled','valueSaleEditorMarkup',
-  'valueSaleEditorForm','productQtyMarkup','productCardControlsMarkup',
+  'valueSaleEditorForm','productQtyMarkup','productCardControlsMarkup','formatValueSaleWeight',
   'updateProductCard','parseValueSaleInput','setCardValueSale','updateCartSummary',
   'add','renderAfterCartChange','change','totals','minimumOrderMessage'
 ];
@@ -77,8 +77,12 @@ assert.equal(context.isValidCartQuantity(product,1,'kg'),true,'1 kg is valid');
 assert.equal(context.quantityStepFor(product),0.5);
 
 // The product card contains only the small R$ button; the editor lives in the sheet.
-assert.match(context.valueSaleEditorMarkup(product),/>R\$<\/button>/);
+assert.match(context.valueSaleEditorMarkup(product),/>Pedir por valor R\$<\/button>/);
+assert.doesNotMatch(context.productQtyMarkup(product),/value-sale-open/,'value button must not squeeze the quantity row');
+assert.match(context.productCardControlsMarkup(product),/Pedir por valor R\$/,'value button sits on its own row');
 assert.doesNotMatch(context.productCardControlsMarkup(product),/data-value-input|data-value-preset|data-value-add/);
+assert.match(context.productCardControlsMarkup(product),/Peso aproximado/);
+assert.equal(context.formatValueSaleWeight(1.253), '1,25 kg');
 const sheet=context.valueSaleEditorForm(product,500);
 assert.match(sheet,/Mínimo: R\$ 19,00 \(= 1 kg\)/);
 assert.match(sheet,/data-value-preset="watermelon" data-cents="500" disabled/);
@@ -91,7 +95,9 @@ assert.equal(minCalc.qty,1,'R$19 at R$19/kg is exactly 1 kg');
 assert.ok(context.setCardValueSale('watermelon',2000));
 assert.equal(context.cartModes.watermelon,'value');
 assert.equal(context.cart.watermelon,1.053);
-assert.match(context.productQtyMarkup(product),/R\$ 20,00 \(~1,053 kg\)/);
+assert.match(context.productQtyMarkup(product),/value-amount">R\$ 20,00/);
+assert.match(context.productQtyMarkup(product),/value-weight">~1,05 kg/);
+assert.match(context.productQtyMarkup(product),/value-qty-label/);
 assert.match(context.productQtyMarkup(product),/data-value-open="watermelon"/);
 assert.doesNotMatch(context.productQtyMarkup(product),/class="value-sale-open"/,'value-mode card should not repeat the R$ button');
 assert.match(context.valueSaleEditorForm(product,2000),/data-value-remove="watermelon"/);
@@ -115,5 +121,13 @@ assert.equal(ui.cartbarCount.textContent,'2 produtos');
 // Value sale remains hidden unless explicitly enabled.
 context.salesRulesById.set('watermelon',{sale_unit:'kg',quantity_step:0.5,min_quantity:1,max_quantity:100,value_min_kg:1,allow_value_sale:false});
 assert.equal(context.valueSaleEditorMarkup(product),'');
+// Palma products display the commercial unit and never get a kg note or value-sale button.
+const banana={id:'banana',name:'Banana (palma)',price:6.99};
+context.salesRulesById.set('banana',{sale_unit:'maco',quantity_step:1,min_quantity:1,max_quantity:100,allow_value_sale:false});
+context.products.push(banana);
+context.cart.banana=1;
+assert.equal(context.formatCartQuantity(2,banana),'2 palma');
+assert.doesNotMatch(context.productCardControlsMarkup(banana),/Pedir por valor|Peso aproximado/);
+assert.match(context.productQtyMarkup(banana),/>1 palma<\/strong>/);
 
 console.log('OK: compact value-sale sheet, 1 kg minimum, 0.5 kg steps, R$5 adjustments, server validation and in-place cart updates.');
