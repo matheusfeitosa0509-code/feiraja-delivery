@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { commercialScheduleContext, formatResaleLabel } from "./commercial-rules.ts";
+import { OFFICIAL_HOLIDAYS, commercialScheduleContext, formatResaleLabel } from "./commercial-rules.ts";
 
 Deno.test("sábado após o fechamento aponta segunda-feira", () => {
   const result = commercialScheduleContext(new Date("2026-11-14T22:30:00.000Z"));
@@ -47,6 +47,11 @@ Deno.test("formata revenda por unidade e por kg", () => {
   assertEquals(formatResaleLabel(true, 5.99, 10, "un"), "a partir de 10 un: R$ 5,99");
   assertEquals(formatResaleLabel(true, 19.5, 2.5, "kg"), "a partir de 2,5 kg: R$ 19,50");
   assertEquals(formatResaleLabel(false, 5.99, 10, "un"), null);
+});
+
+Deno.test("calendário compartilhado contém os 15 feriados de 2026", () => {
+  assertEquals(Object.keys(OFFICIAL_HOLIDAYS).length, 15);
+  assertEquals(OFFICIAL_HOLIDAYS["2026-11-20"], "Dia Nacional de Zumbi e da Consciência Negra");
 });
 
 Deno.test("contexto inclui data e hora local de Manaus", () => {
