@@ -64,7 +64,7 @@ assert.match(cadastro,/url=https:\/\/www\.feiraondelivery\.com\.br\/painel\.html
 
 const storeContext={money:context.money};
 vm.createContext(storeContext);
-vm.runInContext(['formatOrderQuantity','formatOrderItemDescription'].map(name=>extractFrom(store,name)).join('\\n'),storeContext);
+vm.runInContext(['formatOrderQuantity','formatOrderItemDescription'].map(name=>extractFrom(store,name)).join('\n'),storeContext);
 const displayCases=[
   [{name:'Abóbora (kg)',price:3.99,qty:4,sale_mode:'kg'},'Abóbora — 4 kg'],
   [{name:'Abacate (kg)',price:11.99,qty:1.251,sale_mode:'value',amount_cents:1500,line_total_cents:1500},'Abacate — R$ 15,00 (~1,25 kg)'],
@@ -74,9 +74,9 @@ for(const [item,expected] of displayCases){
   assert.equal(context.formatOrderItemDescription(item),expected,'panel label: '+item.name);
   assert.equal(storeContext.formatOrderItemDescription(item),expected,'store label: '+item.name);
 }
-assert.match(store,/const cashAtPickup=method\\.includes\\('dinheiro'\\)\\|\\|method\\.includes\\('cart'\\)/,'cash/card at pickup uses the cash timeline');
-assert.match(store,/\\['Pedido Recebido','Pedido registrado'\\],\\['Preparando','Separando seus itens'\\],\\['Pronto para Retirada','Aguardando retirada'\\],\\['Pedido Concluído','Pago e retirado'\\]/,'cash timeline ends with Pago e retirado');
-assert.match(store,/const refundHelp=isPixPayment\\?/,'refund explanation is limited to Pix orders');
-assert.match(store,/cancelMyOrder\\(b\\.dataset\\.cancelOrder,b,b\\.dataset\\.cancelPayment==='pix'\\)/,'cancellation confirmation receives the payment type');
+assert.match(store,/const cashAtPickup=method\.includes\('dinheiro'\)\|\|method\.includes\('cart'\)/,'cash/card at pickup uses the cash timeline');
+assert.match(store,/\['Pedido Recebido','Pedido registrado'\],\['Preparando','Separando seus itens'\],\['Pronto para Retirada','Aguardando retirada'\],\['Pedido Concluído','Pago e retirado'\]/,'cash timeline ends with Pago e retirado');
+assert.match(store,/const refundHelp=isPixPayment\?/,'refund explanation is limited to Pix orders');
+assert.match(store,/cancelMyOrder\(b\.dataset\.cancelOrder,b,b\.dataset\.cancelPayment==='pix'\)/,'cancellation confirmation receives the payment type');
 
 console.log('OK: value-mode order line, kg/unit labels, cash/Pix timeline and unified panel display verified.');
