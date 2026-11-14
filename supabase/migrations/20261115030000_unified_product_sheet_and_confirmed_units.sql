@@ -21,7 +21,7 @@ BEGIN
     RAISE EXCEPTION 'Acesso permitido somente a administradores.' USING ERRCODE = '42501';
   END IF;
   IF p_product_id IS NULL OR btrim(p_product_id) = ''
-     OR p_sale_unit NOT IN ('kg', 'un', 'maco', 'pacote', 'duzia')
+     OR p_sale_unit IS NULL OR p_sale_unit NOT IN ('kg', 'un', 'maco', 'pacote', 'duzia')
      OR p_min_quantity IS NULL OR p_min_quantity <= 0
      OR p_quantity_step IS NULL OR p_quantity_step <= 0
      OR p_allow_value_sale IS NULL THEN
