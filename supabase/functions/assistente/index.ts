@@ -30,7 +30,7 @@ type CatalogEntry = {
   preco: number | null;
   revenda: string | null;
 };
-type CompactCatalogEntry = { id: string; nome: string; preco: number | null; revenda: string | null };
+type CompactCatalogEntry = { id: string; nome: string; unidade: string | null; passo: number | null; minimo: number; maximo: number; preco: number | null; revenda: string | null };
 type AssistantItem = { product_id?: unknown; quantidade?: unknown; unidade?: unknown; item_note?: unknown; substitution_preference?: unknown } | null;
 type PhotoLine = { numero?: unknown; status?: unknown; texto?: unknown; product_id?: unknown; quantidade?: unknown; unidade?: unknown; pergunta?: unknown };
 type AssistantOutput = { resposta?: unknown; itens?: AssistantItem[]; perguntas?: unknown[]; total_linhas?: unknown; linhas?: PhotoLine[] };
@@ -107,6 +107,7 @@ function quantityRule(name: string | null, salesRule: ProductSalesRule | null = 
     const amount = Number(packageMatch[1].replace(",", "."));
     const sourceUnit = packageMatch[2].toLowerCase();
     const label = sourceUnit === "kg" ? amount + " kg" : amount + " g";
+    if (salesRule?.sale_unit === "un") return { unit: "unidade", step: 1, package_size_kg: sourceUnit === "kg" ? amount : amount / 1000 };
     return { unit: "pacote de " + label, step: 1, package_size_kg: sourceUnit === "kg" ? amount : amount / 1000 };
   }
   const looseGrams = value.match(/\b(\d+)\s*gramas?\b/i);
@@ -122,6 +123,13 @@ function quantityRule(name: string | null, salesRule: ProductSalesRule | null = 
   if (/\(\s*(?:un|unidade)\s*\)$/i.test(value)) return { unit: "unidade", step: 1, package_size_kg: null };
   if (/\(\s*maço\s*\)$/i.test(value)) return { unit: "maço", step: 1, package_size_kg: null };
   if (/\(\s*dúzia\s*\)$/i.test(value)) return { unit: "dúzia", step: 1, package_size_kg: null };
+  if (salesRule?.sale_unit === "un") return { unit: "unidade", step: 1, package_size_kg: null };
+  if (salesRule?.sale_unit === "kg") {
+    const step = Number(salesRule.quantity_step) > 0 ? Number(salesRule.quantity_step) : 1;
+    const minimum = Number(salesRule.min_quantity) > 0 ? Number(salesRule.min_quantity) : 1;
+    const maximum = Number(salesRule.max_quantity) > 0 ? Number(salesRule.max_quantity) : 100;
+    return { unit: "kg", step, min_quantity: minimum, max_quantity: maximum, package_size_kg: null };
+  }
   return { unit: null, step: null, package_size_kg: null };
 }
 
@@ -176,7 +184,7 @@ Cada produto traz unidade, passo, mínimo e máximo. Respeite exatamente esses l
 Para produto vendido por kg com passo 0,5, entenda “meio quilo” e “meio kg” como 0,5; “1 quilo e meio” como 1,5; “dois quilos e meio” como 2,5. Também reconheça formas numéricas equivalentes.
 Só proponha frações quando o catálogo indicar passo 0,5 e mínimo 0,5. Se o produto não tiver essa regra, proponha apenas quantidades inteiras e avise claramente quando o cliente pedir fração; não arredonde nem transforme meio quilo em um quilo.
 Nenhum item é adicionado automaticamente. Nunca diga “já incluí”, “adicionei” ou equivalente. Quando houver itens, diga exatamente: “Separei isto para você. Toque em Adicionar ao carrinho para confirmar.”
-Se o cliente pedir kg e o produto for pacote, ou pedir pacote quando o produto for vendido por kg, pergunte antes; não converta nem suponha.
+Se o cliente pedir kg e o produto for pacote, ou pedir pacote quando o produto for vendido por kg, pergunte antes; não converta nem suponha. Se o cliente pedir kg de um produto cujo catálogo indica unidade/unidade avulsa, explique que ele é vendido por unidade e pergunte quantas unidades deseja; nunca interprete 1 unidade como 1 kg nem converta kg em unidades sem confirmação.
 Se houver mais de uma variante parecida (tamanho, peso, tipo), pergunte qual deseja, sem escolher por conta própria.
 Se a unidade do produto vier como null, pergunte qual unidade/embalagem o cliente deseja; não proponha item.
 Se a quantidade solicitada não for múltipla do passo, pergunte; nunca arredonde.
@@ -188,17 +196,18 @@ Interprete a intenção com tolerância a erros comuns de reconhecimento de voz,
 Aceite vários produtos na mesma frase e separe cada um em item próprio. Se houver ambiguidade entre produtos, variantes ou unidades, faça uma única pergunta curta reunindo as dúvidas necessárias; não repita a mesma pergunta em mensagens seguintes se o histórico já esclareceu.
 Produtos de farinha, goma, camarão, caranguejo e cabeça de alho cujo nome contenha “(1 kg)” ou “(1kg)” são embalagens fechadas de 1 kg, não venda avulsa por kg. Assim, “10 kg de farinha branca” deve selecionar a embalagem exata “Farinha Branca (1 kg)” e propor quantidade 10, unidade “pacote de 1 kg”, se existir no catálogo. Não converter para produto vendido por kg. Outros tamanhos entre parênteses também representam embalagem fechada.
 Para produtos vendidos por kg, interprete “meio quilo”, “meio kg” e “500 gramas” como 0,5 somente quando passo e mínimo do catálogo permitirem. Não confunda embalagem “(1 kg)” com produto “(kg)”.
-Quando o cliente perguntar sobre promoção, preço promocional, situação/status de pedido, horário de funcionamento ou retirada, responda apenas se a informação estiver explicitamente disponível no contexto recebido. Não invente promoções, status ou preços. O campo preco do catálogo é o preço normal por unidade/kg e pode ser usado somente para calcular uma compra por valor quando o cliente pedir; o campo revenda informa o preço de revenda a partir da quantidade mínima indicada. Para status de pedidos, não afirme informação que não esteja explicitamente disponível; oriente a consultar a loja/painel apropriado. Os pedidos são somente para retirada na loja ou retirada com Uber solicitada e paga pelo cliente, sem integração da loja com a Uber. Endereço: Av. Lourenço da Silva Braga, 700 (bem em frente à feira). Horário: 6h às 13h. Ao chegar, o cliente deve avisar pelo WhatsApp; a loja fica dentro da feira e leva o pedido até o cliente ou até o motorista do Uber, em frente ao endereço.
+Quando o cliente perguntar sobre promoção, preço promocional, situação/status de pedido, horário de funcionamento ou retirada, responda apenas se a informação estiver explicitamente disponível no contexto recebido. Não invente promoções, status ou preços. O campo preco do catálogo é o preço normal por unidade/kg e pode ser usado somente para calcular uma compra por valor quando o cliente pedir; o campo revenda informa o preço de revenda a partir da quantidade mínima indicada. Para status de pedidos, não afirme informação que não esteja explicitamente disponível; oriente a consultar a loja/painel apropriado. Os pedidos são somente para retirada na loja ou retirada com Uber solicitada e paga pelo cliente, sem integração da loja com a Uber. Endereço: Av. Lourenço da Silva Braga, 700 (bem em frente à feira). Informe o horário aplicável conforme contexto_comercial: dias normais, 6h às 13h; feriados oficiais, 6h às 11h; domingo fechado. Ao chegar, o cliente deve avisar pelo WhatsApp; a loja fica dentro da feira e leva o pedido até o cliente ou até o motorista do Uber, em frente ao endereço.
 Se não encontrar produto, explique de forma simples e inclua o marcador nao_encontrado: NOME em perguntas. Se a quantidade não for permitida, explique o limite ou passo exato e pergunte qual quantidade válida deseja. Não dê respostas genéricas quando puder apontar o produto/unidade/quantidade que precisa ser esclarecido.
 Quando o cliente pedir uma receita ou montar a feira para um prato (por exemplo, “moqueca para 4”), transforme a receita em uma lista de compras: indique ingredientes e quantidades razoáveis para o número de pessoas informado. Proponha somente produtos que existam no catálogo disponível, usando seus IDs exatos e respeitando unidade, passo, mínimo e máximo. Ingrediente ausente do catálogo deve ser mencionado como não encontrado e incluído em perguntas com o marcador "nao_encontrado: NOME_DO_INGREDIENTE"; nunca invente produto, ID ou disponibilidade. Não inclua ingredientes ausentes em itens. Se a quantidade depender de preferência ou tamanho não informado, faça uma pergunta curta em vez de supor. Nunca invente preços nem calcule custos da receita.
 Nunca invente preços, descontos, disponibilidade fora do catálogo recebido, pedidos existentes ou ações já realizadas. Não afirme promoções: pedidos sobre promoções são respondidos exclusivamente pelo servidor com dados atuais do banco.
 Seja conciso: o campo resposta deve ter no máximo 2 frases curtas; proponha no máximo 12 itens; use perguntas apenas quando indispensável e com no máximo 3 perguntas, curtas.
 
 REGRAS COMERCIAIS
-FUNCIONAMENTO: a loja funciona de segunda a sábado, das 6h às 13h; domingo fechado. Use exclusivamente o contexto_comercial recebido, que contém a data e hora atuais de Manaus (America/Manaus) e o próximo dia de funcionamento calculado pela mesma regra da loja. Se perguntarem quando o pedido fica pronto, responda com o valor de pronto_a_partir_de; nunca prometa prazo em minutos nem diga “em minutos”. Durante o horário de funcionamento, pedidos ficam prontos ainda hoje, até 13h; fora do horário, ficam prontos no próximo dia de funcionamento, a partir das 6h.
+FUNCIONAMENTO: em dias normais, a loja funciona de segunda a sábado, das 6h às 13h; domingo fechado. Em feriados oficiais nacionais, estaduais do Amazonas e municipais de Manaus, a loja abre das 6h às 11h; se o feriado cair no domingo, permanece fechada. Use exclusivamente o contexto_comercial recebido, que contém a data e hora atuais de Manaus (America/Manaus), identificação de feriado e próximo dia de funcionamento. Se perguntarem sobre o horário em feriado, informe 6h às 11h. Se perguntarem quando o pedido fica pronto, responda com o valor de pronto_a_partir_de; nunca prometa prazo em minutos nem diga “em minutos”. Durante o horário de funcionamento, pedidos ficam prontos no mesmo dia, até o fechamento aplicável (11h em feriado, 13h em dia normal); fora do horário, ficam prontos no próximo dia de funcionamento, a partir das 6h.
 COMPRA POR VALOR: a compra por valor pode ser usada em produtos vendidos por kg (o peso é aproximado) e por unidade. Para produtos por unidade, ofereça as quantidades inteiras mais próximas e seus valores aproximados, sem inventar preço: por exemplo, coco a R$ 9,99/un para R$ 20 pode resultar em 2 un por R$ 19,98 ou 3 un por R$ 29,97. Só faça esses cálculos quando os preços necessários estiverem explicitamente disponíveis no catálogo/contexto.
-PEDIDO MÍNIMO: R$ 30,00 em produtos, em qualquer modalidade de retirada.
+PEDIDO MÍNIMO: R$ 30,00 em produtos, em qualquer modalidade de retirada. Se o cliente disser que quer fazer um pedido abaixo de R$ 30,00, avise imediatamente que o mínimo é R$ 30,00 e não proponha nem confirme uma compra abaixo desse valor.
 OBSERVAÇÕES E SUBSTITUIÇÃO: o cliente pode informar como quer cada item no carrinho, na opção “Como você quer?”. Pode registrar observação e escolher substituição por produto equivalente, remover o item se não houver substituto ou chamar o cliente para confirmar. Respeite item_note e substitution_preference quando existirem; não invente preferências.
+PAGAMENTO: aceitamos Pix em qualquer modalidade. Na retirada na loja, também aceitamos dinheiro e cartão. Na retirada com Uber, o pagamento é somente por Pix. Informe essas regras diretamente, sem mandar o cliente consultar WhatsApp.
 MODALIDADES: somente retirada na loja ou retirada com Uber solicitada e paga diretamente pelo cliente; não existe entrega própria nem frete da loja.`;
 
 const photoSystemPrompt = systemPrompt + "\n\n" + [
@@ -388,6 +397,22 @@ Deno.serve(async (req) => {
     const asksPromotions = isPromotionQuestion && !hasProductAction && !hasQuantityOrUnit &&
       !mentionsCatalogProduct && !hasPaymentContext;
 
+    const asksPaymentMethods = /\b(pagamento|pagar|pix|cartao|credito|debito|dinheiro)\b/.test(normalizedText) && /\b(posso|aceita|aceitam|aceitar|pago|pagar|pagamento|cartao|pix|dinheiro)\b/.test(normalizedText);
+    if (asksPaymentMethods) {
+      const asksUberPayment = /\buber\b/.test(normalizedText);
+      return json({ resposta: asksUberPayment
+        ? "Com retirada via Uber, o pagamento é somente por Pix. Dinheiro e cartão são aceitos apenas na retirada na loja."
+        : "Aceitamos Pix em qualquer modalidade. Na retirada na loja, também aceitamos dinheiro ou cartão; com Uber, somente Pix.", itens: [], perguntas: [] });
+    }
+
+    const budgetMatch = normalizedText.match(/r\$\s*(\d+(?:[.,]\d{1,2})?)/);
+    if (budgetMatch && /\b(pedido|compra)\b/.test(normalizedText)) {
+      const requestedBudget = Number(budgetMatch[1].replace(",", "."));
+      if (Number.isFinite(requestedBudget) && requestedBudget < 30) {
+        return json({ resposta: "O pedido mínimo é de R$ 30,00 em produtos, em qualquer modalidade. Posso ajudar a montar uma lista a partir de R$ 30,00.", itens: [], perguntas: [] });
+      }
+    }
+
     if (asksRepeatOrder) {
       const { data: lastOrder, error: orderError } = await admin
         .from("orders")
@@ -481,6 +506,10 @@ Deno.serve(async (req) => {
       const compactCatalog: CompactCatalogEntry[] = catalog.map((product) => ({
         id: product.id,
         nome: product.nome,
+        unidade: product.unidade,
+        passo: product.passo,
+        minimo: product.minimo,
+        maximo: product.maximo,
         preco: product.preco,
         revenda: product.revenda,
       }));
