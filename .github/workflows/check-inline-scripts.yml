@@ -22,8 +22,8 @@ on:
       - "supabase/rollbacks/20261114184851_uva_kg_sale_rule_rollback.sql"
       - "supabase/migrations/20261114185150_product_photos_storage.sql"
       - "supabase/rollbacks/20261114185150_product_photos_storage_rollback.sql"
-      - "supabase/tests/product-photo-upload-and-uva.test.mjs",
-      "supabase/tests/cart-item-preferences.test.mjs"
+      - "supabase/tests/product-photo-upload-and-uva.test.mjs"
+      - "supabase/tests/cart-item-preferences.test.mjs"
       - ".github/workflows/check-inline-scripts.yml"
   push:
     branches: [main, feat/product-photo-upload-uva-kg]
