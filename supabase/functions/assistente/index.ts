@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { reconcilePhotoLines, validatePhoto } from "./photo.js";
 import { commercialScheduleContext, formatResaleLabel } from "./commercial-rules.ts";
+// Regras comerciais e dados de revenda são enviados no contexto da chamada.
 
 type SupabaseAdmin = ReturnType<typeof createClient>;
 type ProductRow = { id: string; name: string | null; available?: boolean; price?: number | string | null; resale_enabled?: boolean | null; resale_price?: number | string | null; resale_min_qty?: number | string | null; resale_unit?: string | null };
