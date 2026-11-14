@@ -36,7 +36,7 @@ jobs:
       PGUSER: postgres
       PGDATABASE: pickup_test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Apply minimal test schema
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/minimal_schema.sql
       - name: Apply only Ordem 191 migration
