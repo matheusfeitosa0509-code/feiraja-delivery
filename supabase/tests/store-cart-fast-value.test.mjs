@@ -35,8 +35,8 @@ const ui = {
   subtotal:{},total:{},modalTotal:{},
   checkout:{setAttribute(){}},
   cartbarCount:{},cartbarTotal:{},
-  cartbar:{classList:{toggle(){}}},
-  cartUndoToast:{hidden:true},cartUndoMessage:{textContent:''},cartUndoAction:{hidden:true}
+  cartbar:{classList:{toggle(){},contains(){return true;}}},
+  cartUndoToast:{hidden:true,style:{}},cartUndoMessage:{textContent:''},cartUndoAction:{hidden:true}
 };
 const calls = {card:0,fullCatalog:0};
 let confirmAnswer=false;const confirmMessages=[];const timeoutCalls=[];
@@ -68,7 +68,7 @@ const names=[
   'salesRuleFor','isValidCartQuantity','quantityStepFor','formatCartQuantity','effectiveUnitPriceCents','hasVisiblePromotion','priceBlock',
   'valueSaleMinimumKg','valueSaleMinimumAmountCents','valueSaleCalculation',
   'unitSaleLabel','formatUnitSaleQuantity','unitValueSaleChoices','unitValueSalePreviewMarkup','unitValueSaleEditorForm','setUnitValueQuantity','convertValueSaleToKg',
-  'formatCartProductLabel','valueSaleEnabled','valueSaleEditorMarkup','cartPriceMarkup','normalizeLegacyCartItem','showStoreNotice','showCartUndo','undoCartAction','removeCartItem','confirmRemoveCartItem','clearCart',
+  'formatCartProductLabel','valueSaleEnabled','valueSaleEditorMarkup','cartPriceMarkup','normalizeLegacyCartItem','positionCartToast','showStoreNotice','showCartUndo','undoCartAction','removeCartItem','confirmRemoveCartItem','clearCart',
   'valueSaleEditorForm','productQtyMarkup','productCardControlsMarkup','productWeightNoteMarkup','formatValueSaleWeight',
   'updateProductCard','parseValueSaleInput','setCardValueSale','updateCartSummary',
   'add','renderAfterCartChange','change','setSaleMode','cartSaleModeControl','totals','minimumOrderMessage'
@@ -149,7 +149,7 @@ assert.equal(context.cartValueCents.watermelon,2000);
 context.change('watermelon',-1);
 assert.equal(context.cart.watermelon,undefined,'value-mode decrement below minimum removes immediately');
 assert.equal(ui.cartUndoMessage.textContent,'Melancia removido');assert.equal(ui.cartUndoAction.hidden,false);
-assert.ok(timeoutCalls.includes(5000),'undo notice lasts five seconds');
+assert.ok(timeoutCalls.includes(5000),'undo notice lasts five seconds');assert.match(ui.cartUndoToast.style.bottom,/72px/,'toast sits above visible cart bar');
 context.undoCartAction();assert.equal(context.cartValueCents.watermelon,2000,'undo restores the exact value amount');assert.equal(context.cartModes.watermelon,'value');assert.equal(context.cart.watermelon,1.053);
 const zucchini={id:'zucchini',name:'Abobrinha (kg)',price:3.99};
 context.products.push(zucchini);
@@ -245,7 +245,7 @@ context.cart['old-unit']=101;context.normalizeLegacyCartItem('old-unit',oldUnit)
 
 assert.doesNotMatch(html,/\b(?:confirm|alert)\s*\(/,'the store must not use native browser dialogs');
 assert.match(html,/id="storeConfirmModal"/);assert.match(html,/Limpar o carrinho\? Todos os itens serão removidos\./);
-assert.match(html,/id="cartUndoToast"/);assert.match(html,/DESFAZER/);
+assert.match(html,/id="cartUndoToast"/);assert.match(html,/DESFAZER/);assert.match(html,/function positionCartToast\\(toast\\)/);
 assert.match(html,/function showCartUndo\(message,snapshot\)/);assert.match(html,/function undoCartAction\(\)/);
 
 // Layout guards: controls are in their own row and every action has a 44 px target.
