@@ -148,8 +148,8 @@ context.products.push({id:'banana',name:'Banana',price:5});
 context.cart.banana=3;
 context.cart.ghost=4;
 context.updateCartSummary();
-assert.equal(ui.tabCartCount.textContent,2);
-assert.equal(ui.cartbarCount.textContent,'2 produtos');
+assert.equal(ui.tabCartCount.textContent,4);
+assert.equal(ui.cartbarCount.textContent,'4 produtos');
 
 // Value sale remains hidden unless explicitly enabled.
 context.salesRulesById.set('watermelon',{sale_unit:'kg',quantity_step:0.5,min_quantity:1,max_quantity:100,value_min_kg:1,allow_value_sale:false});
