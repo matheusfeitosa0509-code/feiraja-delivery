@@ -207,12 +207,12 @@ assert.equal(context.unitValueSaleChoices(pear,1398).exact.qty,2,'exact unit amo
 assert.ok(context.setUnitValueQuantity('pear',3));
 assert.equal(context.cart.pear,3);
 assert.equal(context.cartModes.pear,undefined,'unit helper does not send a value-mode line to checkout');
-context.salesRulesById.set('pear',{sale_unit:'un',quantity_step:1,min_quantity:2,max_quantity:100,allow_value_sale:true});
-context.cart.pear=2;confirmAnswer=true;context.change('pear',-1);
-assert.equal(context.cart.pear,undefined,'unit decrement below minimum removes after confirmation');confirmAnswer=false;
 const pearLine=context.totals().items.find(x=>x.p.id==='pear');
 assert.equal(pearLine.saleMode,'kg','checkout line stays on the existing normal quantity path');
 assert.equal(pearLine.lineTotalCents,2097,'server receives quantity × current unit price');
+context.salesRulesById.set('pear',{sale_unit:'un',quantity_step:1,min_quantity:2,max_quantity:100,allow_value_sale:true});
+context.cart.pear=2;confirmAnswer=true;context.change('pear',-1);
+assert.equal(context.cart.pear,undefined,'unit decrement below minimum removes after confirmation');confirmAnswer=false;
 const resale={id:'resale',name:'Produto com revenda',price:6.99,resale_enabled:true,resale_price:5.99,resale_min_qty:10};
 context.products.push(resale);
 context.salesRulesById.set('resale',{sale_unit:'un',quantity_step:1,min_quantity:1,max_quantity:100,allow_value_sale:true});
