@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
-import { calculateLineTotalCents, calculateQuantityFromValueCents, isValidSalesQuantity, isValidValueSale, selectEffectiveUnitPriceCents, sumDecimalQuantities } from "../_shared/sales-rules.js";
+import { calculateLineTotalCents, calculateQuantityFromValueCents, calculateValueLineTotalCents, isValidSalesQuantity, selectEffectiveUnitPriceCents, sumDecimalQuantities } from "../_shared/sales-rules.js";
 import { resolveMercadoPagoOrderStatus } from "./payment-status.ts";
 
 function isValidCpf(value: string) { const cpf = String(value || "").replace(/\D/g, ""); if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false; const calc = (base: string, factor: number) => { let sum = 0; for (const digit of base) sum += Number(digit) * factor--; const mod = (sum * 10) % 11; return mod === 10 ? 0 : mod; }; return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10]); }
@@ -465,12 +465,15 @@ Deno.serve(async (req: Request) => {
       if (saleMode === "value" && effectivePriceCents !== normalPriceCents) {
         qty = calculateQuantityFromValueCents(amountCents!, effectivePriceCents, Number(rule?.max_quantity || 100)) || 0;
       }
-      if (saleMode === "value" && (!isValidValueSale(amountCents!, minValueSaleCents, qty, rule))) {
+      const valueLineTotalCents = saleMode === "value"
+        ? calculateValueLineTotalCents(amountCents!, minValueSaleCents, qty, rule)
+        : null;
+      if (saleMode === "value" && valueLineTotalCents === null) {
         return json({ error: "O valor escolhido não atende ao mínimo ou ao limite de peso deste produto." }, 400);
       }
 
       const calculatedLineTotalCents = calculateLineTotalCents(effectivePriceCents, qty);
-      const lineTotalCents = saleMode === "value" ? amountCents! : calculatedLineTotalCents;
+      const lineTotalCents = saleMode === "value" ? valueLineTotalCents : calculatedLineTotalCents;
       if (lineTotalCents === null || !Number.isSafeInteger(lineTotalCents) || lineTotalCents <= 0) {
         return json({ error: "Valor total inválido." }, 400);
       }
