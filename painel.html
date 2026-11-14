@@ -644,7 +644,7 @@ async function saveProductSheet(){
 $('unifiedProductSearch').addEventListener('input',renderUnifiedProductList);
 $('unifiedCategoryFilter').addEventListener('change',renderUnifiedProductList);
 $('openNewProduct').addEventListener('click',()=>{$('formBox').classList.remove('hide');$('formBox').classList.add('product-create-open');$('name').focus();});
-$('btnOut').onclick=()=>{$('formBox').classList.remove('product-create-open');$('formBox').classList.add('hide');};
+$('btnOut').onclick=()=>{clearPendingProductPhoto('create');$('formBox').classList.remove('product-create-open');$('formBox').classList.add('hide');};
 $('closeProductSheet').addEventListener('click',closeProductSheet);
 $('cancelProductSheet').addEventListener('click',closeProductSheet);
 $('productSheetBackdrop').addEventListener('click',event=>{if(event.target===$('productSheetBackdrop'))closeProductSheet();});
@@ -852,7 +852,7 @@ function makeId(name){const s=slug(name).replace(/-/g,'_');return s?'feiraja_'+s
 function say(t,c){$('msg').textContent=t;$('msg').className=c||''}
 
 
-$('btnOut').onclick=()=>{$('formBox').classList.remove('product-create-open');$('formBox').classList.add('hide');};
+$('btnOut').onclick=()=>{clearPendingProductPhoto('create');$('formBox').classList.remove('product-create-open');$('formBox').classList.add('hide');};
 $('name').addEventListener('input',()=>{
   $('pid').value=makeId($('name').value);
   if(!$('imgfile').dataset.touched){const s=slug($('name').value);$('imgfile').value=s?s+'.jpg':''}
