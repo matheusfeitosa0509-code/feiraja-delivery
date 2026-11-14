@@ -23,6 +23,7 @@ jobs:
         run: |
           mkdir -p _site
           cp -a ./index.html ./admin.html ./cadastro-produto.html ./painel.html ./clientes-vendas.html ./loja.html ./politica-privacidade.html ./recuperar-senha.html ./termos.html ./turnstile.js ./icons ./imagens ./manifest.json ./manifest-painel.json ./sw.js _site/
+          cp -a ./supabase/functions/_shared/commercial-schedule.js _site/commercial-schedule.js
           rm -f _site/imagens/produtos/leia.txt
       - name: Configure Pages
         uses: actions/configure-pages@v5
