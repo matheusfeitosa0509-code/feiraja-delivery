@@ -47,6 +47,9 @@ jobs:
       - name: Test Mercado Pago cancelled-order handling
         run: deno test supabase/functions/super-worker/payment-status_test.ts
 
+      - name: Test item preference validation
+        run: deno test supabase/functions/_shared/item-preferences_test.ts
+
       - name: Check expire-pix
         run: deno check supabase/functions/expire-pix/index.ts
 
