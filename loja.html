@@ -1205,10 +1205,10 @@ function manaDateParts(date=new Date()){
  return {year:Number(out.year),month:Number(out.month),day:Number(out.day),weekday:out.weekday,hour:Number(out.hour),minute:Number(out.minute)};
 }
 function pickupEstimate(date=new Date()){
- const p=manaDateParts(date);const dayIndex={sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6}[p.weekday];
+ const p=manaDateParts(date);const dayIndex={sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6}[String(p.weekday).toLowerCase()];
  if(dayIndex>=1&&dayIndex<=6&&p.hour>=6&&p.hour<13)return {within:true,label:'hoje'};
  const d=new Date(Date.UTC(p.year,p.month-1,p.day));do{d.setUTCDate(d.getUTCDate()+1);}while(d.getUTCDay()===0);
- const weekday=new Intl.DateTimeFormat('pt-BR',{timeZone:'UTC',weekday:'long'}).format(d);
+ const weekday=new Intl.DateTimeFormat('pt-BR',{timeZone:'UTC',weekday:'long'}).format(d).replace('-feira','');
  return {within:false,label:weekday+', '+String(d.getUTCDate()).padStart(2,'0')+'/'+String(d.getUTCMonth()+1).padStart(2,'0')};
 }
 function checkoutScheduleMessage(now=new Date()){const estimate=pickupEstimate(now);return estimate.within?'Pedidos ficam prontos ainda hoje, até 13h.':'Estamos fechados agora. Seu pedido fica pronto para retirada na '+estimate.label+' a partir das 6h.';}
