@@ -3,6 +3,43 @@
 
 BEGIN;
 
+ALTER TABLE public.product_sales_rules
+  ADD COLUMN allow_value_sale boolean NOT NULL DEFAULT false;
+
+CREATE OR REPLACE FUNCTION public.admin_set_product_value_sale(
+  p_product_id text,
+  p_enabled boolean
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  v_sale_unit text;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_current_user_admin() THEN
+    RAISE EXCEPTION 'Acesso permitido somente a administradores.' USING ERRCODE = '42501';
+  END IF;
+  IF p_product_id IS NULL OR length(trim(p_product_id)) = 0 OR p_enabled IS NULL THEN
+    RAISE EXCEPTION 'Produto ou estado inválido.' USING ERRCODE = '22023';
+  END IF;
+  SELECT r.sale_unit INTO v_sale_unit
+  FROM public.product_sales_rules AS r
+  WHERE r.product_id = p_product_id;
+  IF v_sale_unit IS DISTINCT FROM 'kg' THEN
+    RAISE EXCEPTION 'A compra por valor só pode ser liberada para produtos vendidos por kg.' USING ERRCODE = '22023';
+  END IF;
+  UPDATE public.product_sales_rules
+  SET allow_value_sale = p_enabled
+  WHERE product_id = p_product_id;
+  RETURN jsonb_build_object('success', true, 'product_id', p_product_id, 'allow_value_sale', p_enabled);
+END;
+$function$;
+ALTER FUNCTION public.admin_set_product_value_sale(text, boolean) OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.admin_set_product_value_sale(text, boolean) FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.admin_set_product_value_sale(text, boolean) TO authenticated;
+
 CREATE TABLE feira_cost_private.sales_settings (
   setting_key text PRIMARY KEY CHECK (setting_key = 'global'),
   min_value_cents integer NOT NULL DEFAULT 500 CHECK (min_value_cents >= 500 AND min_value_cents <= 100000),
