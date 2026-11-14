@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
-import { calculateLineTotalCents, isValidSalesQuantity, selectEffectiveUnitPriceCents, sumDecimalQuantities } from "../_shared/sales-rules.js";
+import { calculateLineTotalCents, calculateQuantityFromValueCents, isValidSalesQuantity, isValidValueSale, selectEffectiveUnitPriceCents, sumDecimalQuantities } from "../_shared/sales-rules.js";
 import { resolveMercadoPagoOrderStatus } from "./payment-status.ts";
 
 function isValidCpf(value: string) { const cpf = String(value || "").replace(/\D/g, ""); if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false; const calc = (base: string, factor: number) => { let sum = 0; for (const digit of base) sum += Number(digit) * factor--; const mod = (sum * 10) % 11; return mod === 10 ? 0 : mod; }; return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10]); }
@@ -333,22 +333,37 @@ Deno.serve(async (req: Request) => {
 
     if (paymentMethod === "pix" && !validPixDocument) return json({ error: asaasEnabled ? "Informe um CPF ou CNPJ válido para gerar o Pix." : "Informe um CPF válido para gerar o Pix." }, 400);
 
-    const qtyValuesById = new Map<string, number[]>();
+    const requestedById = new Map<string, { saleMode: string; qtyValues: number[]; amountValues: number[] }>();
     for (const item of requestedItems) {
       const id = String(item?.id ?? "").trim();
-      const qty = Number(item?.qty);
-      if (!id || !Number.isFinite(qty) || qty <= 0) return json({ error: "Quantidade ou produto inválido." }, 400);
-      const values = qtyValuesById.get(id) ?? [];
-      values.push(qty);
-      qtyValuesById.set(id, values);
+      const saleMode = String(item?.sale_mode || "kg");
+      if (!id || !["kg", "value"].includes(saleMode)) {
+        return json({ error: "Produto ou modo de compra inválido." }, 400);
+      }
+      const current = requestedById.get(id) || { saleMode, qtyValues: [], amountValues: [] };
+      if (current.saleMode !== saleMode) {
+        return json({ error: "O mesmo produto não pode misturar compra por kg e por valor no mesmo pedido." }, 400);
+      }
+      if (saleMode === "value") {
+        const amountCents = Number(item?.amount_cents);
+        if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
+          return json({ error: "Informe um valor em reais válido para o produto." }, 400);
+        }
+        current.amountValues.push(amountCents);
+      } else {
+        const qty = Number(item?.qty);
+        if (!Number.isFinite(qty) || qty <= 0) {
+          return json({ error: "Quantidade ou produto inválido." }, 400);
+        }
+        current.qtyValues.push(qty);
+      }
+      requestedById.set(id, current);
     }
-    const ids = [...qtyValuesById.keys()];
+
+    const ids = [...requestedById.keys()];
     const qtyById = new Map<string, number>();
-    for (const [id, values] of qtyValuesById) {
-      const accumulatedQty = sumDecimalQuantities(values);
-      if (accumulatedQty === null) return json({ error: "Quantidade ou produto inválido." }, 400);
-      qtyById.set(id, accumulatedQty);
-    }
+    const amountCentsById = new Map<string, number>();
+    const saleModeById = new Map<string, string>();
     const { data: products, error: productsError } = await db.from("products")
       .select("id,name,price,category,image,available,resale_enabled,resale_price,resale_min_qty").in("id", ids);
     if (productsError) throw productsError;
@@ -362,12 +377,43 @@ Deno.serve(async (req: Request) => {
       console.error("super-worker", { code: "SALES_RULES_FALLBACK" });
     }
     const salesRulesById = new Map((salesRulesError ? [] : salesRules || []).map((rule: any) => [String(rule.product_id), rule]));
-    for (const [id, qty] of qtyById) {
+
+    const hasValueSale = [...requestedById.values()].some((entry) => entry.saleMode === "value");
+    let minValueSaleCents = 500;
+    if (hasValueSale) {
+      const { data: salesSettings, error: salesSettingsError } = await db.rpc("get_sales_settings");
+      if (salesSettingsError) {
+        console.error("super-worker", { code: "VALUE_SALE_SETTINGS_UNAVAILABLE" });
+        return json({ error: "A compra por valor está temporariamente indisponível. Tente novamente." }, 503);
+      }
+      minValueSaleCents = Number(salesSettings?.min_value_cents);
+      if (!Number.isSafeInteger(minValueSaleCents) || minValueSaleCents < 500) {
+        console.error("super-worker", { code: "VALUE_SALE_SETTINGS_INVALID" });
+        return json({ error: "A configuração de compra por valor está inválida. Avise a loja." }, 503);
+      }
+    }
+
+    for (const [id, entry] of requestedById) {
+      saleModeById.set(id, entry.saleMode);
       const rule = salesRulesById.get(id) || null;
-      const requestedQuantities = qtyValuesById.get(id) || [];
-      if (!requestedQuantities.every((requestedQty) => isValidSalesQuantity(requestedQty, rule)) ||
-          !isValidSalesQuantity(qty, rule)) {
-        return json({ error: "Quantidade inválida para a unidade de venda deste produto." }, 400);
+      if (entry.saleMode === "value") {
+        if (!rule || rule.sale_unit !== "kg" || salesRulesError) {
+          return json({ error: "A compra por valor está disponível somente para produtos vendidos por kg." }, 400);
+        }
+        if (!entry.amountValues.every((amount) => Number.isSafeInteger(amount) && amount >= minValueSaleCents)) {
+          return json({ error: "O valor mínimo por produto é de " + (minValueSaleCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) + "." }, 400);
+        }
+        const totalAmountCents = entry.amountValues.reduce((sum, amount) => sum + amount, 0);
+        if (!Number.isSafeInteger(totalAmountCents)) return json({ error: "Valor total inválido." }, 400);
+        amountCentsById.set(id, totalAmountCents);
+      } else {
+        const accumulatedQty = sumDecimalQuantities(entry.qtyValues);
+        if (accumulatedQty === null ||
+            !entry.qtyValues.every((requestedQty) => isValidSalesQuantity(requestedQty, rule, "kg")) ||
+            !isValidSalesQuantity(accumulatedQty, rule, "kg")) {
+          return json({ error: "Quantidade inválida para a unidade de venda deste produto." }, 400);
+        }
+        qtyById.set(id, accumulatedQty);
       }
     }
 
@@ -379,11 +425,22 @@ Deno.serve(async (req: Request) => {
     const items: any[] = [];
     let subtotalCents = 0;
     for (const p of products as any[]) {
-      const qty = qtyById.get(p.id)!;
+      const saleMode = saleModeById.get(p.id) || "kg";
+      let qty = qtyById.get(p.id) || 0;
+      const amountCents = amountCentsById.get(p.id) || null;
       const normalPriceCents = Math.round(Number(p.price) * 100);
-      if (!Number.isFinite(Number(p.price)) || !Number.isSafeInteger(normalPriceCents) || normalPriceCents < 0) {
+      if (!Number.isFinite(Number(p.price)) || !Number.isSafeInteger(normalPriceCents) || normalPriceCents <= 0) {
         console.error("super-worker", { code: "PRODUCT_PRICE_INVALID", stage: "validate_product_price" });
         return json({ error: "Um produto está com preço inválido. Avise a loja antes de tentar novamente." }, 409);
+      }
+
+      const rule = salesRulesById.get(p.id) || null;
+      if (saleMode === "value") {
+        const normalQuantity = calculateQuantityFromValueCents(amountCents!, normalPriceCents, Number(rule?.max_quantity || 100));
+        if (normalQuantity === null || !isValidSalesQuantity(normalQuantity, rule, "value")) {
+          return json({ error: "O valor escolhido ultrapassa o limite de 100 kg ou gera uma quantidade inválida." }, 400);
+        }
+        qty = normalQuantity;
       }
 
       let effectivePriceCents = normalPriceCents;
@@ -405,13 +462,25 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const lineTotalCents = calculateLineTotalCents(effectivePriceCents, qty);
-      if (lineTotalCents === null) return json({ error: "Valor total inválido." }, 400);
+      if (saleMode === "value" && effectivePriceCents !== normalPriceCents) {
+        qty = calculateQuantityFromValueCents(amountCents!, effectivePriceCents, Number(rule?.max_quantity || 100)) || 0;
+      }
+      if (saleMode === "value" && (!isValidValueSale(amountCents!, minValueSaleCents, qty, rule))) {
+        return json({ error: "O valor escolhido não atende ao mínimo ou ao limite de peso deste produto." }, 400);
+      }
+
+      const calculatedLineTotalCents = calculateLineTotalCents(effectivePriceCents, qty);
+      const lineTotalCents = saleMode === "value" ? amountCents! : calculatedLineTotalCents;
+      if (lineTotalCents === null || !Number.isSafeInteger(lineTotalCents) || lineTotalCents <= 0) {
+        return json({ error: "Valor total inválido." }, 400);
+      }
       subtotalCents += lineTotalCents;
       if (!Number.isSafeInteger(subtotalCents)) return json({ error: "Valor total inválido." }, 400);
       items.push({
         id: p.id, name: p.name, category: p.category, image: p.image,
-        price: effectivePriceCents / 100, qty,
+        price: effectivePriceCents / 100, qty, sale_mode: saleMode,
+        line_total_cents: lineTotalCents,
+        ...(saleMode === "value" ? { amount_cents: amountCents } : {}),
       });
     }
 
@@ -441,8 +510,13 @@ Deno.serve(async (req: Request) => {
         items.every((item: any) => {
           const quoted = quoteById.get(String(item.id));
           return quoted && Number(quoted.qty) === item.qty &&
+            String(quoted.sale_mode || "kg") === item.sale_mode &&
             Number.isInteger(quoted.unit_price_cents) &&
-            quoted.unit_price_cents === Math.round(item.price * 100);
+            quoted.unit_price_cents === Math.round(item.price * 100) &&
+            Number.isInteger(quoted.line_total_cents) &&
+            quoted.line_total_cents === item.line_total_cents &&
+            (item.sale_mode !== "value" ||
+              (Number.isSafeInteger(quoted.amount_cents) && quoted.amount_cents === item.amount_cents));
         }) &&
         Number.isInteger(quote?.subtotal_cents) &&
         quote.subtotal_cents === subtotalCents;
