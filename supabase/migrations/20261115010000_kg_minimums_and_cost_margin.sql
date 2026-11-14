@@ -93,7 +93,7 @@ BEGIN
     RAISE EXCEPTION 'Acesso permitido somente a administradores.' USING ERRCODE = '42501';
   END IF;
   IF p_percent IS NULL OR p_percent < 0 OR p_percent > 100 THEN
-    RAISE EXCEPTION 'A margem de alerta deve ficar entre 0% e 100%.' USING ERRCODE = '22023';
+    RAISE EXCEPTION 'A margem de alerta deve ficar entre 0%% e 100%%.' USING ERRCODE = '22023';
   END IF;
   UPDATE feira_cost_private.sales_settings
   SET low_margin_percent = p_percent, updated_at = now(), updated_by = auth.uid()
