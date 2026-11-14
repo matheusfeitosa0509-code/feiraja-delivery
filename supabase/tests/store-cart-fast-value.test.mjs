@@ -12,8 +12,9 @@ assert.match(worker, /value_min_kg/, 'server must read each product minimum weig
 assert.match(worker, /qty \+ 1e-9 < minimumValueSaleKg/, 'server must reject value purchases below the configured weight');
 
 function extract(name) {
-  const start = html.indexOf('function ' + name + '(');
-  assert.notEqual(start, -1, 'missing function ' + name);
+  const syncStart=html.indexOf('function '+name+'('),asyncStart=html.indexOf('async function '+name+'(');
+  const start=asyncStart>=0&&(syncStart<0||asyncStart<syncStart)?asyncStart:syncStart;
+  assert.notEqual(start,-1,'missing function '+name);
   const open = html.indexOf('{', start);
   let depth = 0;
   for (let i = open; i < html.length; i++) {
@@ -34,10 +35,11 @@ const ui = {
   subtotal:{},total:{},modalTotal:{},
   checkout:{setAttribute(){}},
   cartbarCount:{},cartbarTotal:{},
-  cartbar:{classList:{toggle(){}}}
+  cartbar:{classList:{toggle(){},contains(){return false;}}},
+  cartUndoToast:{hidden:true,style:{}},cartUndoMessage:{textContent:''},cartUndoAction:{hidden:true}
 };
 const calls = {card:0,fullCatalog:0};
-let confirmAnswer=false;const confirmMessages=[];
+let confirmAnswer=false;const confirmMessages=[];const timeoutCalls=[];
 const makeCard=()=>{const qty={innerHTML:''},valueRow={innerHTML:''},note={textContent:'Peso aproximado'},controls={nodeType:1};return{dataset:{productId:'watermelon'},qty,valueRow,note,controls,noteCount:1,controlCount:1,querySelector(sel){if(sel==='.product-qty')return qty;if(sel==='.value-sale-row')return valueRow;if(sel==='.weight-note')return note;if(sel==='.product-controls')return controls;return null;}};};
 const cards=['initial','search','category','home'].map(makeCard);
 const product = {id:'watermelon',name:'Melancia',price:19,category:'Frutas'};
@@ -52,8 +54,8 @@ const context = {
   effectiveUnitPriceCents(p,q){const normal=Math.round(Number(p.price)*100),resale=Math.round(Number(p.resale_price)*100),min=Number(p.resale_min_qty);return p.resale_enabled===true&&Number.isInteger(min)&&min>=1&&q>=min&&Number.isSafeInteger(resale)&&resale>0&&resale<=normal?resale:normal;},
   persistCart(){},
   closeValueSaleSheet(){},
-  alert(message){throw new Error(message);},
-  confirm(message){confirmMessages.push(message);return confirmAnswer;},
+  showStoreConfirm:async(...args)=>{confirmMessages.push(args);return confirmAnswer;},
+  setTimeout(fn,ms){timeoutCalls.push(ms);return timeoutCalls.length;},clearTimeout(){},
   syncCartbarVisibility(){},
   renderCart(){calls.fullCatalog++;},
   safeRenderHomeProductSections(){calls.fullCatalog++;},
@@ -63,10 +65,10 @@ const context = {
 };
 vm.createContext(context);
 const names=[
-  'salesRuleFor','isValidCartQuantity','quantityStepFor','formatCartQuantity','effectiveUnitPriceCents',
+  'salesRuleFor','isValidCartQuantity','quantityStepFor','formatCartQuantity','effectiveUnitPriceCents','hasVisiblePromotion','priceBlock',
   'valueSaleMinimumKg','valueSaleMinimumAmountCents','valueSaleCalculation',
   'unitSaleLabel','formatUnitSaleQuantity','unitValueSaleChoices','unitValueSalePreviewMarkup','unitValueSaleEditorForm','setUnitValueQuantity','convertValueSaleToKg',
-  'formatCartProductLabel','valueSaleEnabled','valueSaleEditorMarkup','cartPriceMarkup','normalizeLegacyCartItem','removeCartItem','confirmRemoveCartItem','clearCart',
+  'formatCartProductLabel','valueSaleEnabled','valueSaleEditorMarkup','cartPriceMarkup','normalizeLegacyCartItem','positionCartToast','showStoreNotice','showCartUndo','undoCartAction','removeCartItem','confirmRemoveCartItem','clearCart',
   'valueSaleEditorForm','productQtyMarkup','productCardControlsMarkup','productWeightNoteMarkup','formatValueSaleWeight',
   'updateProductCard','parseValueSaleInput','setCardValueSale','updateCartSummary',
   'add','renderAfterCartChange','change','setSaleMode','cartSaleModeControl','totals','minimumOrderMessage'
@@ -77,6 +79,9 @@ assert.match(context.cartPriceMarkup({price:10,old_price:12}),/cart-price-old">R
 assert.match(context.cartPriceMarkup({price:10,old_price:12}),/cart-price-current promo">R\$ 10,00/);
 assert.match(context.cartPriceMarkup({price:10,old_price:12}),/cart-discount-badge">-17%/);
 assert.match(context.cartPriceMarkup({price:10}),/cart-price-current">R\$ 10,00/);
+for(const p of [{price:9.99,old_price:10,name:'Farinha Branca'},{price:9.99,old_price:10,name:'Coco'},{price:44.99,old_price:45,name:'Couve-flor'}]){assert.equal(context.hasVisiblePromotion(p),false,p.name+' must not show a sub-5% promotion');assert.doesNotMatch(context.priceBlock(p),/pct-badge|price-old|price-promo/);assert.doesNotMatch(context.cartPriceMarkup(p),/cart-price-old|cart-discount-badge|promo/);}
+assert.equal(context.hasVisiblePromotion({price:9.5,old_price:10}),true,'exactly 5% remains a promotion');
+assert.match(context.priceBlock({price:9.5,old_price:10}),/pct-badge">-5%/);
 
 // First kg tap is 1 kg; later taps add 0.5 kg. Rapid taps never rebuild rows.
 for(let i=0;i<20;i++) context.add('watermelon');
@@ -142,11 +147,10 @@ assert.equal(context.cartValueCents.watermelon,3000,'R$19/kg uses a R$10 step');
 context.change('watermelon',-1);
 assert.equal(context.cartValueCents.watermelon,2000);
 context.change('watermelon',-1);
-assert.equal(context.cartValueCents.watermelon,2000,'cancelled removal keeps the minimum value');
-assert.match(confirmMessages.at(-1),/Remover Melancia do carrinho\\?/);
-confirmAnswer=true;context.change('watermelon',-1);
-assert.equal(context.cart.watermelon,undefined,'confirming value-mode decrement below minimum removes the product');
-confirmAnswer=false;
+assert.equal(context.cart.watermelon,undefined,'value-mode decrement below minimum removes immediately');
+assert.equal(ui.cartUndoMessage.textContent,'Melancia removido');assert.equal(ui.cartUndoAction.hidden,false);
+assert.ok(timeoutCalls.includes(5000),'undo notice lasts five seconds');assert.match(ui.cartUndoToast.style.bottom,/72px/,'toast sits above visible cart bar');
+context.undoCartAction();assert.equal(context.cartValueCents.watermelon,2000,'undo restores the exact value amount');assert.equal(context.cartModes.watermelon,'value');assert.equal(context.cart.watermelon,1.053);
 const zucchini={id:'zucchini',name:'Abobrinha (kg)',price:3.99};
 context.products.push(zucchini);
 context.salesRulesById.set('zucchini',{sale_unit:'kg',quantity_step:0.5,min_quantity:1,max_quantity:100,value_min_kg:1,allow_value_sale:true});
@@ -162,10 +166,8 @@ assert.ok(context.convertValueSaleToKg('avocado'));
 assert.equal(context.cart.avocado,7,'switching to kg rounds 6.89 kg up to the next 0.5 kg step');
 assert.equal(context.cartModes.avocado,undefined);
 context.cart.avocado=1;context.cartModes.avocado=undefined;context.change('avocado',-1);
-assert.equal(context.cart.avocado,1,'cancelled kg removal preserves the minimum quantity');
-confirmAnswer=true;context.change('avocado',-1);
-assert.equal(context.cart.avocado,undefined,'kg decrement at the minimum removes after confirmation');
-confirmAnswer=false;
+assert.equal(context.cart.avocado,undefined,'kg decrement at minimum removes immediately');
+context.undoCartAction();assert.equal(context.cart.avocado,1,'undo restores kg quantity');
 
 // Badge counts distinct products, not summed kg + units.
 context.cart.watermelon=1;context.cart.avocado=1;
@@ -211,8 +213,9 @@ const pearLine=context.totals().items.find(x=>x.p.id==='pear');
 assert.equal(pearLine.saleMode,'kg','checkout line stays on the existing normal quantity path');
 assert.equal(pearLine.lineTotalCents,2097,'server receives quantity × current unit price');
 context.salesRulesById.set('pear',{sale_unit:'un',quantity_step:1,min_quantity:2,max_quantity:100,allow_value_sale:true});
-context.cart.pear=2;confirmAnswer=true;context.change('pear',-1);
-assert.equal(context.cart.pear,undefined,'unit decrement below minimum removes after confirmation');confirmAnswer=false;
+context.cart.pear=2;context.change('pear',-1);
+assert.equal(context.cart.pear,undefined,'unit decrement below minimum removes immediately');
+context.undoCartAction();assert.equal(context.cart.pear,2,'undo restores unit quantity');
 const resale={id:'resale',name:'Produto com revenda',price:6.99,resale_enabled:true,resale_price:5.99,resale_min_qty:10};
 context.products.push(resale);
 context.salesRulesById.set('resale',{sale_unit:'un',quantity_step:1,min_quantity:1,max_quantity:100,allow_value_sale:true});
@@ -221,13 +224,14 @@ assert.ok(context.setUnitValueQuantity('resale',10));
 const resaleLine=context.totals().items.find(x=>x.p.id==='resale');
 assert.equal(resaleLine.lineTotalCents,5990,'the 10-unit resale price is applied to the normal cart line');
 
-// Direct trash removal and clear-cart confirmation cover every cart line type.
+// Trash removes immediately and undo restores value mode; clear-cart uses the in-app confirmation and is undoable.
 context.cart.avocado=1;context.cartModes.avocado='value';context.cartValueCents.avocado=1200;
-context.confirmRemoveCartItem('avocado');assert.equal(context.cart.avocado,1,'cancelled trash action leaves the item');
-confirmAnswer=true;context.confirmRemoveCartItem('avocado');assert.equal(context.cart.avocado,undefined,'trash action removes after confirmation');
-context.cart.watermelon=1;context.cart.zucchini=1;confirmAnswer=false;context.clearCart();
-assert.equal(context.cart.watermelon,1,'cancelled clear-cart keeps all items');
-confirmAnswer=true;context.clearCart();assert.equal(Object.keys(context.cart).length,0,'clear-cart empties the cart after confirmation');confirmAnswer=false;
+context.confirmRemoveCartItem('avocado');assert.equal(context.cart.avocado,undefined,'trash removes immediately');context.undoCartAction();assert.equal(context.cartModes.avocado,'value');assert.equal(context.cartValueCents.avocado,1200);
+context.cart.watermelon=1;context.cartModes.watermelon='value';context.cartValueCents.watermelon=2000;context.cart.zucchini=1;
+confirmAnswer=false;await context.clearCart();assert.equal(context.cart.watermelon,1,'cancelled in-app clear confirmation preserves items');
+confirmAnswer=true;await context.clearCart();assert.equal(Object.keys(context.cart).length,0,'clear-cart empties the cart after in-app confirmation');
+assert.equal(confirmMessages.at(-1)[0],'Limpar o carrinho? Todos os itens serão removidos.');assert.equal(confirmMessages.at(-1)[2],'Limpar');
+assert.equal(ui.cartUndoMessage.textContent,'Carrinho limpo');context.undoCartAction();assert.equal(context.cart.watermelon,1);assert.equal(context.cartModes.watermelon,'value');assert.equal(context.cartValueCents.watermelon,2000);assert.equal(context.cart.zucchini,1);
 
 // Saved carts below changed minimums are raised to the current valid minimum with a warning.
 const oldKg={id:'old-kg',name:'Produto antigo kg',price:4};
@@ -239,6 +243,11 @@ context.products.push(oldUnit);context.salesRulesById.set('old-unit',{sale_unit:
 context.cart['old-unit']=1;context.normalizeLegacyCartItem('old-unit',oldUnit);assert.equal(context.cart['old-unit'],2);
 context.cart['old-unit']=101;context.normalizeLegacyCartItem('old-unit',oldUnit);assert.equal(context.cart['old-unit'],undefined,'unrepairable saved quantities are removed, not trapped');
 
+assert.doesNotMatch(html,/\b(?:confirm|alert)\s*\(/,'the store must not use native browser dialogs');
+assert.match(html,/id="storeConfirmModal"/);assert.match(html,/Limpar o carrinho\? Todos os itens serão removidos\./);
+assert.match(html,/id="cartUndoToast"/);assert.match(html,/DESFAZER/);assert.match(html,/function positionCartToast\(toast\)/);
+assert.match(html,/function showCartUndo\(message,snapshot\)/);assert.match(html,/function undoCartAction\(\)/);
+
 // Layout guards: controls are in their own row and every action has a 44 px target.
 assert.match(html,/class="cart-item-actions"/);
 assert.match(html,/data-cart-remove=/);
@@ -249,4 +258,4 @@ assert.match(html,/\.cart-item\{display:flex;flex-direction:column/);
 assert.match(html,/function cartSaleModeControl\(item\)\{return valueSaleEditorMarkup\(item\.p\);\}/);
 assert.doesNotMatch(html,/data-sale-mode=/,'cart no longer uses the cramped purchase-mode select');
 
-console.log('OK: mobile cart layout, 44 px controls, confirmed remove/clear, current-minimum normalization, value and kg adjustments.');
+console.log('OK: mobile cart layout, undo for value/kg/unit and clear-cart, in-app confirmation, no native dialogs, and 5% promotion threshold.');
