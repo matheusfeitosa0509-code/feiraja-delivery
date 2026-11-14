@@ -243,10 +243,10 @@ context.products.push(oldUnit);context.salesRulesById.set('old-unit',{sale_unit:
 context.cart['old-unit']=1;context.normalizeLegacyCartItem('old-unit',oldUnit);assert.equal(context.cart['old-unit'],2);
 context.cart['old-unit']=101;context.normalizeLegacyCartItem('old-unit',oldUnit);assert.equal(context.cart['old-unit'],undefined,'unrepairable saved quantities are removed, not trapped');
 
-assert.doesNotMatch(html,/\\b(?:confirm|alert)\\s*\\(/,'the store must not use native browser dialogs');
-assert.match(html,/id="storeConfirmModal"/);assert.match(html,/Limpar o carrinho\\? Todos os itens serão removidos\\./);
+assert.doesNotMatch(html,/\b(?:confirm|alert)\s*\(/,'the store must not use native browser dialogs');
+assert.match(html,/id="storeConfirmModal"/);assert.match(html,/Limpar o carrinho\? Todos os itens serão removidos\./);
 assert.match(html,/id="cartUndoToast"/);assert.match(html,/DESFAZER/);
-assert.match(html,/function showCartUndo\\(message,snapshot\\)/);assert.match(html,/function undoCartAction\\(\\)/);
+assert.match(html,/function showCartUndo\(message,snapshot\)/);assert.match(html,/function undoCartAction\(\)/);
 
 // Layout guards: controls are in their own row and every action has a 44 px target.
 assert.match(html,/class="cart-item-actions"/);
