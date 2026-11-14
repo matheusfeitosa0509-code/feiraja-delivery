@@ -6,6 +6,7 @@ import {
   calculateValueLineTotalCents,
   isValidSalesQuantity,
   isValidValueSale,
+  isValueSaleEnabled,
 } from "../functions/_shared/sales-rules.js";
 
 const kgRule = {
@@ -62,4 +63,13 @@ test("modo por valor é recusado para produtos que não são vendidos por kg", (
   const unitRule = { sale_unit: "un", quantity_step: 1, min_quantity: 1, max_quantity: 100 };
   assert.equal(isValidSalesQuantity(1, unitRule, "value"), false);
   assert.equal(calculateValueLineTotalCents(500, 500, 1, unitRule), null);
+});
+
+
+test("compra por valor exige autorização individual explícita e produto por kg", () => {
+  assert.equal(isValueSaleEnabled({ sale_unit: "kg" }), false);
+  assert.equal(isValueSaleEnabled({ sale_unit: "kg", allow_value_sale: false }), false);
+  assert.equal(isValueSaleEnabled({ sale_unit: "kg", allow_value_sale: true }), true);
+  assert.equal(isValueSaleEnabled({ sale_unit: "un", allow_value_sale: true }), false);
+  assert.equal(isValueSaleEnabled(null), false);
 });
