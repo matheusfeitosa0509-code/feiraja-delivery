@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const panel=fs.readFileSync(new URL('../../painel.html',import.meta.url),'utf8');
-const uva=fs.readFileSync(new URL('../migrations/20261114230000_uva_kg_sale_rule.sql',import.meta.url),'utf8');
+const uva=fs.readFileSync(new URL('../migrations/20261114184851_uva_kg_sale_rule.sql',import.meta.url),'utf8');
 const storage=fs.readFileSync(new URL('../migrations/20261114230100_product_photos_storage.sql',import.meta.url),'utf8');
 const rollback=fs.readFileSync(new URL('../rollbacks/20261114230100_product_photos_storage_rollback.sql',import.meta.url),'utf8');
 
