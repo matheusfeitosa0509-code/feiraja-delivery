@@ -18,6 +18,11 @@ on:
       - "supabase/migrations/20261114190000_value_sale_for_units_and_panel_defaults.sql"
       - "supabase/rollbacks/20261114190000_value_sale_for_units_and_panel_defaults_rollback.sql"
       - "supabase/tests/unit-value-sale-migration.test.mjs"
+      - "supabase/migrations/20261114230000_uva_kg_sale_rule.sql"
+      - "supabase/rollbacks/20261114230000_uva_kg_sale_rule_rollback.sql"
+      - "supabase/migrations/20261114230100_product_photos_storage.sql"
+      - "supabase/rollbacks/20261114230100_product_photos_storage_rollback.sql"
+      - "supabase/tests/product-photo-upload-and-uva.test.mjs"
       - ".github/workflows/check-inline-scripts.yml"
   push:
     branches: [main]
@@ -75,3 +80,5 @@ jobs:
         run: node supabase/tests/panel-cost-alerts.test.mjs
       - name: Teste da ficha única e regras de venda confirmadas
         run: node supabase/tests/unified-product-sheet-and-units.test.mjs
+      - name: Teste de envio de fotos e regra da Uva por kg
+        run: node supabase/tests/product-photo-upload-and-uva.test.mjs
