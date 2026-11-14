@@ -7,6 +7,7 @@ const worker = fs.readFileSync(new URL('../functions/super-worker/index.ts', imp
 assert.match(html, /id="valueSaleSheet"/, 'value purchase must use a bottom sheet');
 assert.match(html, /Mínimo: '\+money\(minimum\/100\)/, 'sheet must display the minimum in reais and kilograms');
 assert.match(html, /cartMinimumAdjustedWarning/, 'legacy cart quantities must be adjusted with a warning');
+assert.match(html, /select\('product_id,sale_unit,quantity_step,min_quantity,max_quantity,allow_value_sale,value_min_kg'\)/, 'store must load the per-product minimum weight');
 assert.match(worker, /value_min_kg/, 'server must read each product minimum weight');
 assert.match(worker, /qty \+ 1e-9 < minimumValueSaleKg/, 'server must reject value purchases below the configured weight');
 
