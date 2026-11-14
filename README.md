@@ -1,6 +1,6 @@
-# FeiraJá Delivery
+# Feira On Delivery
 
-Loja estática em português com catálogo Supabase, checkout (Pix Mercado Pago, dinheiro/cartão na entrega), histórico de pedidos e painel administrativo.
+Loja em português com catálogo Supabase, checkout por Pix via Asaas, retirada na feira ou retirada com Uber solicitado e pago diretamente pelo cliente, histórico de pedidos e painel administrativo.
 
 ## Publicação
 O workflow `.github/workflows/pages.yml` publica a raiz do repositório no GitHub Pages a cada push na branch `main`.
