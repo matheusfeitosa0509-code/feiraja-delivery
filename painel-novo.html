@@ -1037,7 +1037,8 @@ async function loadCostReport(){
    p_end:costDateInManaus(end,true)
   });
   if(error)throw error;
-  const products=Array.isArray(data?.products)?data.products:[];\n  window.__feiraCostProducts=products;
+  const products=Array.isArray(data?.products)?data.products:[];
+  window.__feiraCostProducts=products;
   const selected=$('costProductSelect').value;
   $('costProductSelect').replaceChildren(new Option('Selecione um produto',''));
   products.forEach(product=>{
