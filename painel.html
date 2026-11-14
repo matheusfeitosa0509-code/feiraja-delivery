@@ -87,6 +87,12 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 .ok{color:#1b6b2a}.err{color:#b3261e}
 #productTools small{display:block;color:var(--muted);margin-top:6px;line-height:1.5}
 #editImageCurrent,#editImageNext{border-radius:14px!important}
+.photo-upload-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.photo-upload-controls button{width:auto;min-width:132px}
+.photo-upload-controls small{flex:1;min-width:170px}
+.sheet-image-preview{min-height:0}
+.sheet-image-preview img{display:block;max-width:100%;max-height:220px;object-fit:contain;border-radius:14px;background:#f3f7f1}
+#newProductPhotoPreview:not([src]),#sheetImagePreview:not([src]){display:none}
 #btnSave,#btnUpdatePrice,#btnConfirmPrice,#btnPreviewProductEdit,#btnConfirmProductEdit,#toggleAvailability{width:100%;margin-top:10px}
 #btnOut{margin-top:9px}
 @media(max-width:700px){
@@ -164,6 +170,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
    <label>Nome<input id="sheetName" maxlength="160"></label>
    <label>Categoria<select id="sheetCategory"></select></label>
    <label class="product-sheet-wide">Foto — caminho em imagens/produtos/ ou URL<input id="sheetImage" placeholder="imagens/produtos/produto.jpg ou https://..."></label>
+   <div class="product-sheet-wide photo-upload-controls"><button type="button" class="secondary" id="btnPickSheetPhoto">Enviar foto</button><input id="sheetPhotoInput" type="file" accept="image/*" hidden><small>Escolha câmera ou galeria. A foto será reduzida para até 800 px e 300 KB e enviada ao salvar a ficha.</small></div>
    <div class="product-sheet-wide sheet-image-preview"><img id="sheetImagePreview" alt="Prévia da foto do produto"></div>
    <label>Preço de venda (R$)<input id="sheetPrice" inputmode="decimal"></label>
    <label>Disponibilidade<select id="sheetAvailable"><option value="true">Disponível</option><option value="false">Indisponível</option></select></label>
@@ -193,8 +200,10 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <select id="category">
 <option>Frutas</option><option>Verduras e legumes</option><option>Farinhas e derivados</option><option>Temperos e ervas</option><option>Grãos e secos</option><option>Bebidas</option><option>Pescados e frutos do mar</option><option>Ovos e laticínios</option>
 </select>
-<label>Nome do arquivo da foto</label><input id="imgfile" placeholder="farinha-ova-caroco-1kg.jpg">
-<small>A foto precisa estar (ou ser enviada) em imagens/produtos/ no GitHub, com este mesmo nome. Se deixar em branco, será sugerido pelo nome + .jpg.</small>
+<label>Caminho/URL alternativo da foto ou nome do arquivo</label><input id="imgfile" placeholder="imagens/produtos/produto.jpg, URL HTTPS ou produto.jpg">
+<small>Você também pode usar “Enviar foto” para escolher uma imagem do celular.</small>
+<div class="photo-upload-controls"><button type="button" class="secondary" id="btnPickNewProductPhoto">Enviar foto</button><input id="newProductPhotoInput" type="file" accept="image/*" hidden><small>A foto escolhida será reduzida para até 800 px e 300 KB e enviada junto com o cadastro.</small></div>
+<div class="sheet-image-preview"><img id="newProductPhotoPreview" alt="Prévia da foto do novo produto"></div>
 <label>ID do produto</label><input id="pid">
 <small>Gerado automaticamente (padrão feiraja_nome_do_produto). Precisa ser único.</small>
 <button id="btnSave">Salvar produto</button>
@@ -440,7 +449,94 @@ async function toggleProductValueSale(productId){
 
 // Ficha única de produto. Mantém custo em RPC privado e grava somente campos alterados.
 const productCategories=['Frutas','Verduras e legumes','Farinhas e derivados','Temperos e ervas','Grãos e secos','Bebidas','Pescados e frutos do mar','Ovos e laticínios'];
+const PRODUCT_PHOTO_BUCKET='product-photos';
+const PRODUCT_PHOTO_MAX_BYTES=300*1024;
 let unifiedCurrentProductId=null;
+let sheetPendingPhoto=null;
+let createPendingPhoto=null;
+function clearPendingProductPhoto(kind){
+ const key=kind==='sheet'?'sheetPendingPhoto':'createPendingPhoto';
+ const pending=kind==='sheet'?sheetPendingPhoto:createPendingPhoto;
+ if(pending?.previewUrl)URL.revokeObjectURL(pending.previewUrl);
+ if(kind==='sheet')sheetPendingPhoto=null;else createPendingPhoto=null;
+ const preview=$(kind==='sheet'?'sheetImagePreview':'newProductPhotoPreview');
+ if(preview)preview.removeAttribute('src');
+}
+async function compressProductPhoto(file){
+ if(!file||!String(file.type||'').startsWith('image/'))throw new Error('Escolha um arquivo de imagem.');
+ let bitmap=null,source=null;
+ try{if(typeof createImageBitmap==='function')bitmap=await createImageBitmap(file);}catch(_){}
+ let width,height,draw;
+ if(bitmap){width=bitmap.width;height=bitmap.height;draw=ctx=>ctx.drawImage(bitmap,0,0,width,height);}
+ else{
+  const sourceUrl=URL.createObjectURL(file);
+  try{source=await new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(new Error('Não foi possível abrir esta imagem. Escolha JPG, PNG ou WebP.'));img.src=sourceUrl;});}
+  finally{URL.revokeObjectURL(sourceUrl);}
+  width=source.naturalWidth;height=source.naturalHeight;draw=ctx=>ctx.drawImage(source,0,0,width,height);
+ }
+ if(!width||!height)throw new Error('A imagem selecionada está vazia ou inválida.');
+ const scale=Math.min(1,800/Math.max(width,height));
+ const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(width*scale));canvas.height=Math.max(1,Math.round(height*scale));
+ draw(canvas.getContext('2d'));
+ if(bitmap)bitmap.close();
+ const toBlob=quality=>new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',quality));
+ let blob=null;
+ for(const quality of [0.86,0.78,0.70,0.62,0.54,0.46]){blob=await toBlob(quality);if(blob&&blob.size<=PRODUCT_PHOTO_MAX_BYTES)break;}
+ if(!blob||blob.size>PRODUCT_PHOTO_MAX_BYTES)throw new Error('A foto ainda ficou acima de 300 KB. Escolha uma imagem mais simples.');
+ return {blob,previewUrl:URL.createObjectURL(blob)};
+}
+async function uploadProductPhoto(productId,blob){
+ const token=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2));
+ const path=String(productId).replace(/[^a-zA-Z0-9_-]/g,'_')+'/'+token+'.jpg';
+ const {error}=await db.storage.from(PRODUCT_PHOTO_BUCKET).upload(path,blob,{contentType:'image/jpeg',cacheControl:'31536000',upsert:false});
+ if(error)throw error;
+ const {data}=db.storage.from(PRODUCT_PHOTO_BUCKET).getPublicUrl(path);
+ if(!data?.publicUrl)throw new Error('O Storage não retornou a URL pública da foto.');
+ return {path,url:data.publicUrl};
+}
+async function removeUploadedProductPhoto(path){
+ if(!path)return;
+ const {error}=await db.storage.from(PRODUCT_PHOTO_BUCKET).remove([path]);
+ if(error)console.warn('Não foi possível remover a foto recém-enviada:',error);
+}
+function productPhotoStoragePath(value){
+ try{
+  const url=new URL(String(value||''));
+  const marker='/storage/v1/object/public/'+PRODUCT_PHOTO_BUCKET+'/';
+  const index=url.pathname.indexOf(marker);
+  return index>=0?decodeURIComponent(url.pathname.slice(index+marker.length)):null;
+ }catch(_){return null;}
+}
+async function deleteOldProductPhotoIfUnused(oldImage,productId){
+ const path=productPhotoStoragePath(oldImage);
+ if(!path)return;
+ const {data,error}=await db.from('products').select('id').eq('image',oldImage).neq('id',productId).limit(1);
+ if(error){console.warn('Foto antiga preservada porque não foi possível verificar outros produtos:',error);return;}
+ if((data||[]).length)return;
+ await removeUploadedProductPhoto(path);
+}
+async function preparePhotoInput(inputId,buttonId,kind){
+ const input=$(inputId),button=$(buttonId);
+ button.addEventListener('click',()=>input.click());
+ input.addEventListener('change',async()=>{
+  const file=input.files?.[0];input.value='';if(!file)return;
+  button.disabled=true;button.textContent='Preparando…';
+  try{
+   const prepared=await compressProductPhoto(file);
+   clearPendingProductPhoto(kind);
+   if(kind==='sheet'){
+    sheetPendingPhoto=prepared;$('sheetImage').value='';$('sheetImagePreview').src=prepared.previewUrl;
+    setSheetMessage('Foto preparada ('+Math.ceil(prepared.blob.size/1024)+' KB). Ela será enviada ao tocar em Salvar.');
+   }else{
+    createPendingPhoto=prepared;$('imgfile').value='';$('imgfile').dataset.touched='1';$('newProductPhotoPreview').src=prepared.previewUrl;
+    say('Foto preparada ('+Math.ceil(prepared.blob.size/1024)+' KB). Ela será enviada junto com o cadastro.','ok');
+   }
+  }catch(error){
+   if(kind==='sheet')setSheetMessage(error?.message||'Não foi possível preparar a foto.',true);
+   else say(error?.message||'Não foi possível preparar a foto.','err');
+  }finally{button.disabled=false;button.textContent='Enviar foto';}
+ });
+}
 function unitLabel(unit){return ({kg:'kg',un:'un',maco:'maço',pacote:'pacote',duzia:'dúzia'})[unit]||'un';}
 function moneyInput(value){return Number(value||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function sheetNumber(id){const raw=$(id).value.trim();if(!raw)return null;const normalized=raw.includes(',')?raw.replace(/\./g,'').replace(',','.'):raw;const n=Number(normalized);return Number.isFinite(n)?n:null;}
@@ -470,6 +566,7 @@ function populateUnifiedCategory(){
 }
 function setSheetMessage(message,isError=false){$('productSheetMessage').textContent=message;$('productSheetMessage').style.color=isError?'#b3261e':'';}
 function fillProductSheet(product){
+ clearPendingProductPhoto('sheet');
  unifiedCurrentProductId=product.id;
  const cost=getProductCost(product.id);
  $('productSheetTitle').textContent=product.name;
@@ -500,16 +597,18 @@ function fillProductSheet(product){
  $('productSheetBackdrop').hidden=false;
  document.body.style.overflow='hidden';
 }
-function closeProductSheet(){ $('productSheetBackdrop').hidden=true;document.body.style.overflow='';unifiedCurrentProductId=null; }
+function closeProductSheet(){ clearPendingProductPhoto('sheet');$('productSheetBackdrop').hidden=true;document.body.style.overflow='';unifiedCurrentProductId=null; }
 async function saveProductSheet(){
  const id=unifiedCurrentProductId,product=adminProducts.find(p=>p.id===id);if(!product)return;
  const button=$('saveProductSheet');button.disabled=true;button.textContent='Salvando…';
+ let uploadedPhoto=null,imageSaved=false;
  try{
   const name=$('sheetName').value.trim(),category=$('sheetCategory').value;
   const price=sheetNumber('sheetPrice'),resaleEnabled=$('sheetResaleEnabled').value==='true',resalePrice=sheetNumber('sheetResalePrice'),resaleMin=Number($('sheetResaleMin').value),resaleUnit=$('sheetResaleUnit').value;
   const costValue=$('sheetCost').value.trim()?sheetNumber('sheetCost'):null;
   const saleUnit=$('sheetSaleUnit').value,min=Number($('sheetMin').value),step=Number($('sheetStep').value),valueEnabled=$('sheetValueEnabled').value==='true',valueMin=Number($('sheetValueMin').value);
   let image=$('sheetImage').value.trim();if(image){image=productImageValue(image);}
+  if(sheetPendingPhoto){setSheetMessage('Enviando foto…');uploadedPhoto=await uploadProductPhoto(id,sheetPendingPhoto.blob);image=uploadedPhoto.url;}
   if(!name||!category||price===null||price<=0)throw new Error('Informe nome, categoria e preço de venda válido.');
   if(resaleEnabled&&(!Number.isFinite(resalePrice)||resalePrice<=0||resalePrice>=price||!Number.isInteger(resaleMin)||resaleMin<1))throw new Error('Revenda exige preço menor que o preço normal e quantidade mínima inteira.');
   if(costValue!==null&&costValue<=0)throw new Error('O custo deve ser maior que zero.');
@@ -528,17 +627,18 @@ async function saveProductSheet(){
   if(resaleEnabled&&Math.round(resalePrice*100)!==Math.round(Number(product.resale_price||0)*100))productChanges.resale_price=resalePrice;
   if(resaleMin!==Number(product.resale_min_qty||10))productChanges.resale_min_qty=resaleMin;
   if(resaleUnit!==product.resale_unit)productChanges.resale_unit=resaleUnit;
-  if(Object.keys(productChanges).length){const {data,error}=await db.from('products').update(productChanges).eq('id',id).select('id').maybeSingle();if(error)throw error;if(!data)throw new Error('O produto não foi atualizado. Confira a sessão administrativa.');}
+  if(Object.keys(productChanges).length){const {data,error}=await db.from('products').update(productChanges).eq('id',id).select('id').maybeSingle();if(error)throw error;if(!data)throw new Error('O produto não foi atualizado. Confira a sessão administrativa.');if(uploadedPhoto&&productChanges.image===uploadedPhoto.url)imageSaved=true;}
   const salesChanged=saleUnit!==product.sale_unit||min!==product.min_quantity||step!==product.quantity_step||valueEnabled!==product.allow_value_sale||(saleUnit==='kg'&&valueMin!==product.value_min_kg);
   if(salesChanged){const {error}=await db.rpc('admin_update_product_sales_rule',{p_product_id:id,p_sale_unit:saleUnit,p_min_quantity:min,p_quantity_step:step,p_allow_value_sale:valueEnabled,p_value_min_kg:saleUnit==='kg'?valueMin:1});if(error)throw error;}
   const oldCost=getProductCost(id)?.unit_cost;
   if(costValue!==null&&(oldCost==null||Math.round(costValue*100)!==Math.round(Number(oldCost)*100))){const {error}=await db.rpc('admin_set_product_cost',{p_product_id:id,p_unit_cost:costValue});if(error)throw error;}
+  if(product.image&&image!==product.image)await deleteOldProductPhotoIfUnused(product.image,id);
   await Promise.all([loadAdminProducts(),loadCostReport()]);
   closeProductSheet();
   renderUnifiedProductList();
   $('unifiedProductList').scrollTop=0;
   notice('Ficha de '+name+' salva. Apenas os campos alterados foram atualizados.');
- }catch(error){setSheetMessage(error?.message||'Não foi possível salvar a ficha.',true);}
+ }catch(error){if(uploadedPhoto&&!imageSaved)await removeUploadedProductPhoto(uploadedPhoto.path);setSheetMessage(error?.message||'Não foi possível salvar a ficha.',true);}
  finally{button.disabled=false;button.textContent='Salvar';}
 }
 $('unifiedProductSearch').addEventListener('input',renderUnifiedProductList);
@@ -549,7 +649,10 @@ $('closeProductSheet').addEventListener('click',closeProductSheet);
 $('cancelProductSheet').addEventListener('click',closeProductSheet);
 $('productSheetBackdrop').addEventListener('click',event=>{if(event.target===$('productSheetBackdrop'))closeProductSheet();});
 $('saveProductSheet').addEventListener('click',saveProductSheet);
-$('sheetImage').addEventListener('input',()=>{try{$('sheetImagePreview').src=productListImage(productImageValue($('sheetImage').value));}catch(_){$('sheetImagePreview').removeAttribute('src');}});
+$('sheetImage').addEventListener('input',()=>{if(sheetPendingPhoto)clearPendingProductPhoto('sheet');try{$('sheetImagePreview').src=productListImage(productImageValue($('sheetImage').value));}catch(_){$('sheetImagePreview').removeAttribute('src');}});
+preparePhotoInput('sheetPhotoInput','btnPickSheetPhoto','sheet');
+preparePhotoInput('newProductPhotoInput','btnPickNewProductPhoto','create');
+$('imgfile').addEventListener('input',()=>{if(createPendingPhoto)clearPendingProductPhoto('create');});
 $('sheetSaleUnit').addEventListener('change',()=>{const kg=$('sheetSaleUnit').value==='kg';$('sheetMin').step=kg?'0.25':'1';$('sheetStep').step=kg?'0.25':'1';$('sheetValueMin').disabled=!kg;$('sheetValueMin').closest('label').hidden=!kg; if(kg&&Number($('sheetMin').value)<0.001)$('sheetMin').value='0.5';});
 document.addEventListener('click',async event=>{
  const row=event.target.closest('[data-open-product]');if(row&&!event.target.closest('.unified-availability')){const product=adminProducts.find(p=>p.id===row.dataset.openProduct);if(product)fillProductSheet(product);}
@@ -762,20 +865,25 @@ $('btnSave').onclick=async()=>{
   const category=$('category').value;
   const saleUnit=$('saleUnit').value;
   const id=$('pid').value.trim();
-  let f=$('imgfile').value.trim();
+  let f=$('imgfile').value.trim(),image=null,uploadedPhoto=null;
   if(!name||!id||!(price>0)){say('Preencha nome e preço válidos.','err');return}
-  if(f&&!/^[a-z0-9-]+\.(jpg|jpeg|png|webp)$/.test(f)){say('Nome da foto inválido: use minúsculas, sem acentos/espaços, com .jpg/.png/.webp.','err');return}
-  const image=f?'imagens/produtos/'+f:null;
+  if(f){
+    if(/^[a-z0-9-]+\.(jpg|jpeg|png|webp)$/.test(f))image='imagens/produtos/'+f;
+    else image=productImageValue(f);
+  }
   const button=$('btnSave');button.disabled=true;say('Salvando…');
   try{
+    if(createPendingPhoto){uploadedPhoto=await uploadProductPhoto(id,createPendingPhoto.blob);image=uploadedPhoto.url;}
     const{error}=await db.rpc('admin_create_product_with_sales_rule',{p_id:id,p_name:name,p_price:price,p_category:category,p_image:image,p_sale_unit:saleUnit});
     if(error)throw error;
     const{data,error:readError}=await db.from('products').select('id,name,price,category,image,available').eq('id',id).maybeSingle();
     await loadAdminProducts();
     if(readError)say('Produto salvo, mas não foi possível confirmar a leitura: '+(readError.message||'erro não identificado')+'. Atualize a lista antes de tentar novamente.','err');
     else say('✅ Produto salvo!\n'+(data?JSON.stringify(data,null,1):'(salvo, mas não consegui reler)')+'\n\nLembrete: a foto deve existir em '+(image||'(sem foto)'),'ok');
+    uploadedPhoto=null;clearPendingProductPhoto('create');
     ['name','price','pid','imgfile'].forEach(i=>{$(i).value=''});$('saleUnit').value='un';delete $('imgfile').dataset.touched;
   }catch(error){
+    if(uploadedPhoto)await removeUploadedProductPhoto(uploadedPhoto.path);
     console.error('Falha ao cadastrar produto:',error);
     say(error?.code==='23505'?'Já existe um produto com este ID. Altere o campo ID.':'Não foi possível cadastrar o produto: '+(error?.message||'erro não identificado')+'. Confira antes de tentar novamente.','err');
   }finally{
