@@ -18,7 +18,7 @@ export function formatResaleLabel(enabled: unknown, price: unknown, minQty: unkn
   const minimum = Number(minQty);
   const saleUnit = unit === "kg" ? "kg" : unit === "un" ? "un" : "";
   if (enabled !== true || !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(minimum) || minimum <= 0 || !saleUnit) return null;
-  const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(amount);
+  const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(amount).replace(/\u00A0/g, " ");
   const quantity = Number.isInteger(minimum) ? String(minimum) : String(minimum).replace(".", ",");
   return "a partir de " + quantity + " " + saleUnit + ": " + money;
 }
