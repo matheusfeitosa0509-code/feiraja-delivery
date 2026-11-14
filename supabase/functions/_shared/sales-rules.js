@@ -78,6 +78,10 @@ export function calculateQuantityFromValueCents(amountCents, unitPriceCents, max
   return quantityMilli / 1000;
 }
 
+export function isValueSaleEnabled(rule) {
+  return !!rule && rule.sale_unit === "kg" && rule.allow_value_sale === true;
+}
+
 export function isValidValueSale(amountCents, minimumAmountCents, quantity, rule) {
   return Number.isSafeInteger(amountCents) &&
     Number.isSafeInteger(minimumAmountCents) &&
