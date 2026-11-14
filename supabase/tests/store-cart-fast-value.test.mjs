@@ -64,12 +64,17 @@ const names=[
   'salesRuleFor','isValidCartQuantity','quantityStepFor','formatCartQuantity','effectiveUnitPriceCents',
   'valueSaleMinimumKg','valueSaleMinimumAmountCents','valueSaleCalculation',
   'unitSaleLabel','formatUnitSaleQuantity','unitValueSaleChoices','unitValueSalePreviewMarkup','unitValueSaleEditorForm','setUnitValueQuantity','convertValueSaleToKg',
-  'formatCartProductLabel','valueSaleEnabled','valueSaleEditorMarkup',
+  'formatCartProductLabel','valueSaleEnabled','valueSaleEditorMarkup','cartPriceMarkup',
   'valueSaleEditorForm','productQtyMarkup','productCardControlsMarkup','productWeightNoteMarkup','formatValueSaleWeight',
   'updateProductCard','parseValueSaleInput','setCardValueSale','updateCartSummary',
   'add','renderAfterCartChange','change','setSaleMode','cartSaleModeControl','totals','minimumOrderMessage'
 ];
 vm.runInContext(names.map(extract).join('\n'),context);
+
+assert.match(context.cartPriceMarkup({price:10,old_price:12}),/cart-price-old">R\$ 12,00/);
+assert.match(context.cartPriceMarkup({price:10,old_price:12}),/cart-price-current promo">R\$ 10,00/);
+assert.match(context.cartPriceMarkup({price:10,old_price:12}),/cart-discount-badge">-17%/);
+assert.match(context.cartPriceMarkup({price:10}),/cart-price-current">R\$ 10,00/);
 
 // First kg tap is 1 kg; later taps add 0.5 kg. Rapid taps never rebuild rows.
 for(let i=0;i<20;i++) context.add('watermelon');
@@ -84,6 +89,14 @@ assert.equal((html.match(/root\.addEventListener\('click'/g)||[]).length,1,'one 
 assert.equal(context.isValidCartQuantity(product,0.5,'kg'),false,'0.5 kg is below the new minimum');
 assert.equal(context.isValidCartQuantity(product,1,'kg'),true,'1 kg is valid');
 assert.equal(context.quantityStepFor(product),0.5);
+
+// Promotion prices use the requested colors in cards and in the cart.
+assert.match(html,/function priceBlock\(p\)/,'initial, search and category cards share the price renderer');
+assert.match(html,/\.product \.price:not\(\.price-promo\).*color:#202820!important/,'normal selling price is dark');
+assert.match(html,/\.product \.price\.price-promo\{color:#28743b!important\}/,'promotion price is green');
+assert.match(html,/\.pct-badge\{[^}]*background:#ed7d16;color:#fff/,'discount badge is orange with white text');
+assert.match(html,/function cartPriceMarkup\(p\)/,'cart has a dedicated price renderer');
+assert.match(html,/class="cart-price-line"[^>]*>\'\+cartPriceMarkup\(x\.p\)/,'cart renders the promotion price line');
 
 // The product card contains only the small R$ button; the editor lives in the sheet.
 assert.match(context.valueSaleEditorMarkup(product),/>Pedir por valor R\$<\/button>/);
