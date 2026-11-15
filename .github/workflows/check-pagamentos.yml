@@ -21,6 +21,9 @@ on:
       - "supabase/functions/_shared/**"
       - "supabase/functions/expire-pix/**"
       - "supabase/functions/asaas-saque-validacao/**"
+      - "loja.html"
+      - "loja-delivery-ui.js"
+      - "loja-delivery-ui_test.ts"
       - ".github/workflows/check-pagamentos.yml"
   workflow_dispatch:
 
@@ -60,7 +63,7 @@ jobs:
           import re
           from pathlib import Path
           html = Path("loja.html").read_text(encoding="utf-8")
-          scripts = re.findall(r'<script type="module">([\\s\\S]*?)</script>', html)
+          scripts = re.findall(r'<script type="module">([\s\S]*?)</script>', html)
           assert scripts, "No inline module script found in loja.html"
           Path("/tmp/loja-inline.mjs").write_text(scripts[-1], encoding="utf-8")
           PY
