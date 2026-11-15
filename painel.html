@@ -908,7 +908,7 @@ function renderLalamoveDelivery(order,currentStatus){
  const vehicle=order.delivery_vehicle==='MOTO'?'Moto':order.delivery_vehicle==='CAR'?'Carro':'Não informado';
  const weight=Number(order.delivery_weight_kg);
  const weightText=Number.isFinite(weight)&&weight>0?weight.toLocaleString('pt-BR',{maximumFractionDigits:3})+' kg':'Não informado';
- const tracking=order.lalamove_tracking_url?'<a href="'+esc(order.lalamove_tracking_url)+'" target="_blank" rel="noopener noreferrer">Abrir rastreio da Lalamove</a>':'';
+ const tracking=order.lalamove_tracking_url?'<a class="lalamove-tracking-link" href="'+esc(order.lalamove_tracking_url)+'" target="_blank" rel="noopener noreferrer">Abrir rastreio da Lalamove</a>':'';
  const driverParts=[driver.name,driver.phone,driver.plateNumber?'Placa '+driver.plateNumber:''].filter(Boolean);
  const driverHtml=driverParts.length?'<p class="lalamove-driver"><small>MOTORISTA</small><strong>'+driverParts.map(esc).join(' · ')+'</strong></p>':'';
  const callButton=canQuote?'<button type="button" data-lalamove-quote="'+esc(order.id)+'">Chamar entregador</button>':'';
