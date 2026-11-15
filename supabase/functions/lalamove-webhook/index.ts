@@ -57,6 +57,7 @@ Deno.serve(async (req: Request) => {
       console.error("lalamove-webhook", { stage: "apply", code: String(error.code || "DB_ERROR") });
       return json({ error: "Could not apply webhook event." }, 500);
     }
+    if (result?.unknown_order === true) return json({ error: "Order is not registered yet; retry this event." }, 503);
     return json({ received: true, ...result });
   } catch {
     return json({ error: "Webhook processing failed." }, 500);
