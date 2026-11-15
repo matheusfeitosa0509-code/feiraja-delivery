@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { formatDropoff, requestSandboxQuotation } from "../_shared/delivery-quote.ts";
 import { geocodeManausAddress } from "../_shared/geocoding.ts";
 import {
-  buildLalamoveOrderBody, canCancelLalamove, cancelLalamoveOrder, createLalamoveOrder,
+  buildLalamoveOrderBody, canCancelLalamove, cancelLalamoveOrder, createLalamoveOrder, normalizeBrazilPhone,
   mapLalamoveStatus, priceDifference, quoteFee,
 } from "../_shared/lalamove-dispatch.ts";
 
@@ -107,10 +107,11 @@ async function quoteBoth(db: any, order: any, userId: string) {
 async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "MOTO" | "CAR") {
   const { key, secret } = sandboxCredentials();
   const senderName = Deno.env.get("LALAMOVE_SENDER_NAME") || "Feira On Delivery";
-  const senderPhone = requiredEnv("LALAMOVE_SENDER_PHONE");
+  const senderPhone = normalizeBrazilPhone(requiredEnv("LALAMOVE_SENDER_PHONE"));
   if (!String(order.customer_name || "").trim() || !String(order.customer_phone || "").trim()) {
     throw new Error("CUSTOMER_CONTACT_MISSING");
   }
+  const recipientPhone = normalizeBrazilPhone(order.customer_phone);
   const { data: start, error: startError } = await db.rpc("service_begin_lalamove_dispatch", {
     p_order_id: order.id, p_session_id: sessionId, p_vehicle: vehicle,
   });
@@ -126,7 +127,7 @@ async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "M
   const remarks = [address.complement, address.reference].map((v) => String(v || "").trim()).filter(Boolean).join(" · ");
   const body = buildLalamoveOrderBody({
     quote: start.quote, orderId: order.id, senderName, senderPhone,
-    recipientName: order.customer_name, recipientPhone: order.customer_phone, remarks,
+    recipientName: order.customer_name, recipientPhone, remarks,
   });
   let result: { response: Response; payload: any };
   try {
