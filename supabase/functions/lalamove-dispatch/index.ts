@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { createClient } from "npm:@supabase/supabase-js@2.117.1";
 import { formatDropoff, requestSandboxQuotation } from "../_shared/delivery-quote.ts";
 import { geocodeManausAddress } from "../_shared/geocoding.ts";
 import {
@@ -30,7 +30,19 @@ function sandboxCredentials() {
 async function adminContext(req: Request): Promise<{ db: any; user: any; error?: undefined } | { error: Response; db?: undefined; user?: undefined }> {
   const url = requiredEnv("SUPABASE_URL");
   const anon = requiredEnv("SUPABASE_ANON_KEY");
-  const service = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
+  // Supabase's current secret API key replaces the legacy service_role JWT.
+  // supabase-js 2.117+ sends sb_secret_* on apikey only.
+  const secretKeysRaw = Deno.env.get("SUPABASE_SECRET_KEYS") || "";
+  let service = "";
+  if (secretKeysRaw) {
+    try {
+      const secretKeys = JSON.parse(secretKeysRaw);
+      service = typeof secretKeys?.default === "string" ? secretKeys.default : "";
+    } catch {
+      throw new Error("INVALID_SUPABASE_SECRET_KEYS");
+    }
+  }
+  if (!service) service = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
   const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token || token === (req.headers.get("Authorization") || "")) return { error: json({ error: "Sessão necessária." }, 401) };
   const auth = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -43,7 +55,7 @@ async function adminContext(req: Request): Promise<{ db: any; user: any; error?:
   if (!member) return { error: json({ error: "Ação permitida somente a administradores." }, 403) };
   return { db, user: data.user };
 }
-async function getOrder(db: any, orderId: string) {
+async function getOrder(db: any, orderId: string, requireReady = false) {
   const { data, error } = await db.from("orders").select(
     "id,status,payment_method,is_test_order,delivery_type,delivery_address,delivery_vehicle,delivery_weight_kg,delivery_fee,customer_name,customer_phone",
   ).eq("id", orderId).maybeSingle();
@@ -51,9 +63,14 @@ async function getOrder(db: any, orderId: string) {
   if (!data) throw new Error("ORDER_NOT_FOUND");
   if (data.delivery_type !== "delivery" || !data.delivery_address) throw new Error("NOT_HOME_DELIVERY");
   const status = String(data.status || "").trim().toLowerCase();
-  if (!["pronto", "pronto para retirada"].includes(status)) throw new Error("ORDER_NOT_READY");
-  if (data.is_test_order !== true && !String(data.payment_method || "").toLowerCase().includes("pix")) {
-    throw new Error("ORDER_NOT_PAID");
+  const ready = ["pronto", "pronto para retirada"].includes(status);
+  const terminal = ["cancelada", "cancelado", "pagamento cancelado", "pagamento recusado", "reembolsado", "contestado"].includes(status);
+  if (requireReady && !ready) throw new Error("ORDER_NOT_READY");
+  if (!requireReady && terminal) throw new Error("ORDER_NOT_QUOTABLE");
+  if (data.is_test_order !== true) {
+    const paidByPix = String(data.payment_method || "").toLowerCase().includes("pix");
+    const quoteableStatus = ["pagamento confirmado", "preparando", "pronto", "pronto para retirada"].includes(status);
+    if (!paidByPix || (!requireReady && !quoteableStatus)) throw new Error("ORDER_NOT_PAID");
   }
   return data;
 }
@@ -194,14 +211,17 @@ Deno.serve(async (req: Request) => {
     const action = String(body.action || "");
     if (!["quote", "create", "cancel"].includes(action)) return json({ error: "Ação inválida." }, 400);
     if (action === "cancel") return json(await cancelOrder(context.db, orderId));
-    const order = await getOrder(context.db, orderId);
-    if (action === "quote") return json(await quoteBoth(context.db, order, context.user.id));
+    if (action === "quote") {
+      const quoteOrder = await getOrder(context.db, orderId, false);
+      return json(await quoteBoth(context.db, quoteOrder, context.user.id));
+    }
+    const readyOrder = await getOrder(context.db, orderId, true);
     const sessionId = String(body.quote_session_id || "");
     const vehicle = String(body.vehicle || "") as "MOTO" | "CAR";
     if (!/^[0-9a-f-]{36}$/i.test(sessionId) || !["MOTO", "CAR"].includes(vehicle)) {
       return json({ error: "Confirme uma cotação válida e escolha moto ou carro." }, 400);
     }
-    const result = await dispatchOrder(context.db, order, sessionId, vehicle);
+    const result = await dispatchOrder(context.db, readyOrder, sessionId, vehicle);
     if (result.duplicate) return json({ error: "Este pedido já está sendo enviado ou já possui uma corrida.", ...result }, 409);
     if (result.pending_confirmation) return json({
       pending_confirmation: true,
@@ -213,16 +233,20 @@ Deno.serve(async (req: Request) => {
     const messages: Record<string, { message: string; status: number }> = {
       ORDER_NOT_FOUND: { message: "Pedido não encontrado.", status: 404 },
       NOT_HOME_DELIVERY: { message: "Este pedido não é uma entrega em casa.", status: 400 },
-      ORDER_NOT_READY: { message: "O pedido precisa estar Pronto antes de chamar o entregador.", status: 409 },
+      ORDER_NOT_READY: { message: "Para confirmar e criar a corrida, o pedido precisa estar com status Pronto para Retirada.", status: 409 },
+      ORDER_NOT_QUOTABLE: { message: "Não é possível cotar uma entrega cancelada, recusada ou reembolsada.", status: 409 },
       ORDER_NOT_PAID: { message: "Somente pedido pago ou Pix de teste pode ser despachado.", status: 409 },
       OUT_OF_SERVICE_AREA: { message: "Endereço fora da área atendida pela Lalamove.", status: 422 },
-      ADDRESS_NOT_FOUND: { message: "Não foi possível localizar o endereço novamente.", status: 422 },
+      ADDRESS_NOT_FOUND: { message: "Não foi possível localizar o endereço. Confira rua, número e bairro e tente novamente.", status: 422 },
+      INVALID_ADDRESS: { message: "Endereço incompleto: informe rua, número e bairro para cotar.", status: 400 },
       ADDRESS_OUTSIDE_MANAUS: { message: "O endereço não está em Manaus.", status: 422 },
       GEOCODER_NOT_CONFIGURED: { message: "Geocodificação não configurada no servidor.", status: 503 },
       GEOCODER_UNAVAILABLE: { message: "Serviço de localização temporariamente indisponível.", status: 503 },
-      SANDBOX_CREDENTIALS_REQUIRED: { message: "Credenciais de Sandbox ausentes ou inválidas.", status: 503 },
+      SANDBOX_CREDENTIALS_REQUIRED: { message: "Credenciais de Sandbox ausentes ou inválidas no servidor.", status: 503 },
+      INVALID_SUPABASE_SECRET_KEYS: { message: "A chave administrativa do Supabase está mal configurada no servidor.", status: 503 },
       INVALID_QUOTE_RESPONSE: { message: "A Lalamove retornou uma cotação inválida.", status: 502 },
-      QUOTE_STORE_FAILED: { message: "Não foi possível guardar a cotação com segurança.", status: 503 },
+      QUOTE_STORE_FAILED: { message: "As cotações foram recebidas, mas não foi possível salvá-las. Tente novamente.", status: 503 },
+      LALAMOVE_QUOTE_FAILED: { message: "A Lalamove não conseguiu calcular o preço agora. Confira o endereço e tente novamente.", status: 502 },
       QUOTE_RATE_LIMIT_UNAVAILABLE: { message: "Limite de cotações temporariamente indisponível.", status: 503 },
       TOO_MANY_QUOTES: { message: "Muitas cotações. Aguarde um minuto.", status: 429 },
       QUOTE_EXPIRED: { message: "A cotação expirou. Faça uma nova cotação antes de confirmar.", status: 409 },
