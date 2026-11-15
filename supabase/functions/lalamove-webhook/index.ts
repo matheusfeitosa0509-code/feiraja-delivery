@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
-import { mapLalamoveStatus, verifyWebhookSignature } from "../_shared/lalamove-dispatch.ts";
+import { getLalamoveDriverDetails, mapLalamoveStatus, verifyWebhookSignature } from "../_shared/lalamove-dispatch.ts";
 
 const PATH = "/functions/v1/lalamove-webhook";
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
@@ -46,7 +46,16 @@ Deno.serve(async (req: Request) => {
     const eventAt = eventDateRaw && Number.isFinite(Date.parse(String(eventDateRaw)))
       ? new Date(String(eventDateRaw)).toISOString()
       : new Date(Number(payload.timestamp) * 1000).toISOString();
-    const driver = safeDriver(data.driver || order.driver);
+    let driver = safeDriver(data.driver || order.driver);
+    const driverId = String(data.driverId || order.driverId || data.driver?.driverId || order.driver?.driverId || "");
+    if (!driver && driverId) {
+      try {
+        const lookup = await getLalamoveDriverDetails(apiKey, apiSecret, orderId, driverId);
+        if (lookup.response.ok) driver = safeDriver(lookup.payload);
+      } catch {
+        // Driver detail lookup is best-effort; webhook status must still be applied.
+      }
+    }
     const trackingUrl = String(order.shareLink || data.shareLink || "");
     const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: result, error } = await db.rpc("service_apply_lalamove_webhook", {
