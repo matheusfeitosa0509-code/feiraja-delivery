@@ -6,8 +6,8 @@ export function canShowDeliveryOption(deliveryActive, isAdmin) {
   return deliveryActive === true || isAdmin === true;
 }
 
-export function isDeliveryOptionDisabled(deliveryActive, isAdmin) {
-  return deliveryActive !== true && isAdmin !== true;
+export function isDeliveryOptionDisabled(deliveryActive, isAdmin, adminCheckComplete = true) {
+  return deliveryActive !== true && (adminCheckComplete !== true || isAdmin !== true);
 }
 
 export function deliveryUnavailableMessage() {
