@@ -859,6 +859,100 @@ try {
 .delivery-map-panel[hidden],.delivery-map-fallback[hidden]{display:none!important}
 #deliveryMap{height:300px;min-height:260px;width:100%;border-radius:12px;overflow:hidden;background:#e9eee4;z-index:1}
 
+/* Checkout repaginado — apresentação e organização, sem alterar regras do pedido. */
+.checkout-screen .dialog{background:#f5f7f1;overscroll-behavior:contain}
+.checkout-page{padding:62px 14px calc(250px + env(safe-area-inset-bottom));max-width:520px;margin:0 auto}
+.checkout-page>h1{font-size:25px;letter-spacing:-.6px;color:#173b2c}
+.checkout-page>.sm{margin:0 0 14px}
+#checkoutScheduleNotice{padding:0 2px}
+.checkout-fields{overflow:visible!important}
+.checkout-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.checkout-card{min-width:0;width:100%;box-sizing:border-box;padding:15px;border:1px solid #e2e8dc;border-radius:20px;background:#fff;box-shadow:0 3px 12px rgba(28,57,35,.045)}
+.checkout-card-title{display:flex;align-items:center;gap:9px;margin:0 0 12px;color:#193e2e;font-size:16px;font-weight:850;letter-spacing:-.25px}
+.checkout-title-icon{display:grid;place-items:center;flex:none;width:34px;height:34px;border-radius:12px;background:#edf5e9;font-size:18px}
+.checkout-choice-list{display:grid;gap:8px}
+.checkout-choice-card.opt{display:flex;align-items:center;gap:10px;min-width:0;min-height:68px;margin:0;padding:10px 11px;border:1.5px solid #e2e8dc;border-radius:15px;background:#fff;box-sizing:border-box}
+.checkout-choice-card.opt.sel{border-color:#28734c;background:#f1f8f1;box-shadow:0 0 0 1px rgba(40,115,76,.06)}
+.checkout-choice-icon{display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:12px;background:#f1f5ee;font-size:20px}
+.checkout-choice-copy{display:block;flex:1;min-width:0}
+.checkout-choice-copy b{display:block;margin:0 0 3px;color:#183b2d;font-size:14px;line-height:1.25}
+.checkout-choice-copy .s{display:block;color:#596b5e;font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+.checkout-choice-end{flex:none;max-width:100px;color:#286344;font-size:11px;font-weight:800;text-align:right}
+.checkout-choice-card .r{position:static;display:block;flex:none;width:20px;height:20px;border:2px solid #b8c5b7;border-radius:50%;background:#fff}
+.checkout-choice-card.sel .r{border:6px solid #17643f}
+.checkout-choice-card[hidden]{display:none!important}
+.checkout-pickup-note{margin-top:10px;padding:11px 12px;border-radius:14px;background:#f6f8f3;color:#45584b;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.checkout-pickup-note>b,.checkout-pickup-note>span,.checkout-pickup-note>small{display:block}
+.checkout-pickup-note>b{margin-bottom:3px;color:#214832;font-size:12px}
+.checkout-pickup-note>small{margin-top:3px;color:#617267}
+.checkout-pickup-note p{margin:7px 0 0}
+#deliveryAddressFields{margin:0;padding:15px;border:1px solid #e2e8dc;border-radius:20px;background:#fff;box-shadow:0 3px 12px rgba(28,57,35,.045)}
+#deliveryAddressFields.hidden{display:none!important}
+#deliveryAddressFields .field{margin:8px 0}
+#deliveryStreetSearch label,#deliveryNumberField label{display:block;margin:0 0 6px;color:#526458;font-size:12px;font-weight:750}
+.checkout-address-input{display:flex;align-items:center;gap:8px;min-width:0;padding:0 12px;border:1.5px solid #cbd8c9;border-radius:14px;background:#fff}
+.checkout-address-input>span{flex:none;color:#28734c;font-size:23px}
+.checkout-address-input input{min-width:0;flex:1;border:0!important;box-shadow:none!important;padding:12px 0!important;min-height:48px!important;background:transparent!important}
+.checkout-address-summary{display:flex;align-items:center;gap:10px;min-width:0;margin:8px 0 12px;padding:12px;border:1px solid #dce8d9;border-radius:14px;background:#f3f8f1}
+.checkout-address-summary[hidden]{display:none!important}
+.checkout-address-pin{flex:none;font-size:20px}
+.checkout-address-summary-copy{display:grid;gap:3px;flex:1;min-width:0}
+.checkout-address-summary-copy strong{font-size:13px;line-height:1.35;overflow-wrap:anywhere}
+.checkout-address-summary-copy span{color:#5c6e61;font-size:12px;overflow-wrap:anywhere}
+.checkout-text-action,.checkout-map-link{min-height:44px;padding:8px 10px;border:0;border-radius:10px;background:transparent;color:#17643f;font-size:12px;font-weight:850}
+.checkout-map-link{display:inline-flex;align-items:center;gap:5px;margin:2px 0 0;padding-left:0;text-decoration:underline;text-underline-offset:3px}
+.checkout-optional{margin:8px 0;border-top:1px solid #edf0e9;padding-top:10px}
+.checkout-optional summary{min-height:44px;display:flex;align-items:center;color:#17643f;font-size:13px;font-weight:800;cursor:pointer;list-style:none}
+.checkout-optional summary::-webkit-details-marker{display:none}
+.checkout-optional .field{margin:8px 0!important}
+.checkout-optional input{min-height:46px!important}
+#deliveryNumberField[hidden],#deliveryNeighborhoodField[hidden]{display:none!important}
+#deliveryMapFallback{display:block;width:100%;min-height:46px;border:1px solid #cbdcc9;border-radius:12px;background:#f6faf4;color:#245d3c;font-weight:800}
+#deliveryMapFallback[hidden]{display:none!important}
+.delivery-map-panel{border-color:#dce8d9;border-radius:15px}
+#deliveryMap{height:260px;min-height:240px}
+#deliveryQuoteStatus.checkout-alert{margin:9px 0 0;padding:11px 12px;border:1px solid #d7e8d2;border-radius:13px;background:#eef7eb;color:#285c36;font-size:12px;line-height:1.45;font-weight:750;overflow-wrap:anywhere}
+#deliveryQuoteStatus.checkout-alert.delivery-error{border-color:#f0d4cf;background:#fff1ef;color:#9c352a}
+.delivery-suggestions{margin-top:6px;border-color:#dce5da;border-radius:14px;box-shadow:0 12px 28px rgba(18,48,29,.14)}
+.delivery-suggestion{display:flex;align-items:center;gap:10px;min-height:58px;padding:9px 12px;text-align:left}
+.delivery-suggestion-pin{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:#eff6eb;color:#236342;font-size:17px}
+.delivery-suggestion-copy{display:grid;gap:3px;min-width:0}
+.delivery-suggestion-copy strong{font-size:13px;line-height:1.25;overflow-wrap:anywhere}
+.delivery-suggestion-copy small{color:#617267;font-size:11px;line-height:1.3;overflow-wrap:anywhere}
+.checkout-summary-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:7px 0;color:#536459;font-size:13px}
+.checkout-summary-row strong{flex:none;color:#203e2e;font-size:13px}
+.checkout-delivery-row{padding-bottom:2px}
+.checkout-summary-meta{margin:0;padding:0 0 10px;color:#6b7a6e;font-size:11px;line-height:1.4}
+.checkout-summary-total{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:11px;border-top:1px dashed #d5dfd2;color:#183d2b;font-size:14px;font-weight:850}
+.checkout-summary-total strong{font-size:20px;letter-spacing:-.4px}
+.checkout-test-payment.opt{border-color:#e3b85e;background:#fffaf0}
+.checkout-test-badge{flex:none;padding:5px 8px;border-radius:7px;background:#b56b09;color:#fff;font-size:10px;font-weight:950;letter-spacing:.6px}
+.checkout-customer .field{margin:9px 0}
+.checkout-customer .field input{min-height:48px}
+.checkout-customer .notes-row{margin-top:12px;padding-top:10px;border-top:1px solid #edf0e9}
+.checkout-customer .notes-row input{min-height:46px}
+.checkout-footer{position:fixed!important;left:0;right:0;bottom:0;z-index:52;width:100%;max-width:520px;box-sizing:border-box;margin:0 auto;padding:10px 14px calc(10px + env(safe-area-inset-bottom))!important;border-top:1px solid #dfe7dc!important;border-radius:17px 17px 0 0;background:rgba(255,255,255,.98)!important;box-shadow:0 -8px 24px rgba(24,55,32,.09)}
+.checkout-total{margin:0 0 8px;font-size:13px;color:#536459}
+.checkout-total strong{font-size:23px;color:#173e2c;letter-spacing:-.6px}
+.checkout-footer #submitOrder{width:100%;min-height:52px;border-radius:14px;font-size:15px;font-weight:850}
+.checkout-footer .legal-agreement,.checkout-footer>.sm{margin:6px 0 0;font-size:10px;line-height:1.35;text-align:center}
+.checkout-footer #minimumCheckoutNotice{font-size:11px;text-align:left}
+#payPixTestOption[hidden],#deliveryHomeOption[hidden]{display:none!important}
+@media(max-width:380px){
+ .checkout-page{padding-left:10px;padding-right:10px}
+ .checkout-card{padding:12px;border-radius:17px}
+ .checkout-choice-card.opt{gap:8px;padding:9px;min-height:64px}
+ .checkout-choice-icon{width:34px;height:34px}
+ .checkout-choice-copy b{font-size:13px}
+ .checkout-choice-copy .s{font-size:11px}
+ .checkout-choice-end{max-width:78px;font-size:10px}
+ .checkout-footer{padding-left:10px!important;padding-right:10px!important}
+}
+@media(min-width:700px){
+ .checkout-page{padding-left:20px;padding-right:20px}
+ .checkout-footer{left:50%;right:auto;transform:translateX(-50%)}
+}
+
 </style></head><body>
 <header class="app-header" aria-label="Feira On Delivery"><a class="brand" href="#" aria-label="Feira On Delivery">Feira On Delivery<small>Tudo da feira, pronto para retirada</small></a><div class="search home-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="homeSearch" placeholder="Buscar produtos da feira…" aria-label="Buscar produtos da feira"></div></header>
 <main class="wrap">
