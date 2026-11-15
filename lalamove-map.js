@@ -85,10 +85,38 @@
     if(data.driver&&(data.driver.name||data.driver.plateNumber))updateDriverInfo(data.driver,data.vehicle);
    }
   }
+  function syncOrderUI(data){
+   const value=String(data?.status||'');
+   const card=container.closest('.order-card');
+   const statusLabel=container.closest('.lalamove-admin')?.querySelector('[data-lalamove-status-label]');
+   const labels={searching:'Procurando motorista',assigned:'A caminho',enroute_pickup:'A caminho',picked_up:'Coletado',delivered:'Entregue',cancelled:'Entrega cancelada',rejected:'Entrega recusada',expired:'Nenhum motorista aceitou — chame de novo'};
+   if(statusLabel&&labels[value])statusLabel.textContent=labels[value];
+   if(!card)return;
+   const heading=card.querySelector('.order-status-top b');
+   const subtitle=card.querySelector('.order-subtitle');
+   const timeline=card.querySelector('.order-timeline');
+   if(!timeline)return;
+   const detail=timeline.querySelector('.order-timeline-detail');
+   const terminal=['cancelled','rejected','expired'].includes(value);
+   const index=value==='delivered'?3:value==='picked_up'||value==='assigned'||value==='enroute_pickup'?2:value==='searching'?1:-1;
+   timeline.classList.toggle('is-terminal',terminal);
+   [...timeline.querySelectorAll('li')].forEach((step,i)=>{
+    step.classList.toggle('done',!terminal&&index>=0&&i<index);
+    step.classList.toggle('now',!terminal&&index>=0&&i===index);
+   });
+   if(value==='searching'){if(heading)heading.textContent='Preparando seu pedido';if(subtitle)subtitle.textContent='Procurando entregador…';if(detail)detail.textContent='Procurando entregador…';}
+   else if(value==='assigned'||value==='enroute_pickup'){if(heading)heading.textContent='A caminho';if(subtitle)subtitle.textContent='O motorista está a caminho da loja.';if(detail)detail.textContent='Motorista a caminho da loja.';}
+   else if(value==='picked_up'){const name=String(data.driver?.name||'O entregador');if(heading)heading.textContent='A caminho';if(subtitle)subtitle.textContent=name+' está levando seu pedido.';if(detail)detail.textContent=name+' está levando seu pedido.';}
+   else if(value==='delivered'){if(heading)heading.textContent='Entregue';if(subtitle)subtitle.textContent='Seu pedido chegou.';if(detail)detail.textContent='Entrega concluída.';}
+   else if(value==='expired'){if(heading)heading.textContent='Estamos chamando outro entregador';if(subtitle)subtitle.textContent='A solicitação anterior expirou.';if(detail)detail.textContent='A solicitação expirou. Estamos chamando outro entregador.';}
+   else if(value==='cancelled'||value==='rejected'){if(heading)heading.textContent='Entrega cancelada';if(subtitle)subtitle.textContent='A entrega foi cancelada.';if(detail)detail.textContent='A entrega foi cancelada. Fale com a loja se precisar de ajuda.';}
+   if(terminal||value==='delivered'){const section=container.closest('.customer-lalamove-tracking');if(section)section.hidden=true;container.hidden=true;}
+  }
   async function refresh(){
    if(state.stopped||!container.isConnected)return;
    try{
     const data=await fetchTracking(orderId);
+    syncOrderUI(data);
     const existingFallback=container.parentElement?.querySelector('.customer-tracking-fallback,.lalamove-tracking-link');
     if(data?.tracking_url){if(existingFallback){existingFallback.href=String(data.tracking_url);existingFallback.hidden=false;}else{fallback.href=String(data.tracking_url);fallback.hidden=false;}}
     if(!data||data.active===false){
