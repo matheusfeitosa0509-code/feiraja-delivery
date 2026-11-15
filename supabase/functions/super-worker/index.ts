@@ -571,6 +571,11 @@ Deno.serve(async (req: Request) => {
     }
     let deliveryQuote: Awaited<ReturnType<typeof calculateServerDelivery>> | null = null;
     if (deliveryType === "delivery") {
+      const { data: quoteAllowed, error: quoteRateError } = await db.rpc("consume_delivery_quote_rate_limit", {
+        p_user_id: orderUserId, p_max_requests: 5, p_window_seconds: 60,
+      });
+      if (quoteRateError) return json({ error: "Limite de cotações temporariamente indisponível." }, 503);
+      if (quoteAllowed !== true) return json({ error: "Muitas cotações. Aguarde um minuto." }, 429);
       try {
         deliveryQuote = await calculateServerDelivery({
           items: items.map((item: any) => ({ product_id: String(item.id), quantity: Number(item.qty) })),
