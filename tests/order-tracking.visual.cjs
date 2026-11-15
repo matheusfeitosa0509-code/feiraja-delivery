@@ -26,12 +26,17 @@ async function runViewport(browser, width, height) {
     recordVideo: { dir: videos, size: { width, height } },
   });
   const page = await context.newPage();
+  await page.route('https://mock-driver-photo.test/avatar.svg', route => route.fulfill({
+    status: 200,
+    contentType: 'image/svg+xml',
+    body: '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><circle cx="32" cy="32" r="32" fill="#2f8a4c"/><text x="32" y="42" text-anchor="middle" font-size="30" fill="white">M</text></svg>',
+  }));
   await page.setContent(`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>
     <main class="frame">
       <h3>Pedido de teste · Entrega Feira On</h3>
       <div class="order-timeline"><ol>
         <li class="done"><span class="timeline-dot">💳</span><span class="timeline-label">Pago</span></li>
-        <li class="done"><span class="timeline-dot">📦</span><span class="timeline-label">Preparo</span></li>
+        <li class="done"><span class="timeline-dot">📦</span><span class="timeline-label">Preparando</span></li>
         <li class="now"><span class="timeline-dot">🛵</span><span class="timeline-label">Caminho</span></li>
         <li><span class="timeline-dot">✓</span><span class="timeline-label">Entregue</span></li>
       </ol><p class="order-timeline-detail">Motorista simulado está levando seu pedido.</p></div>
@@ -67,6 +72,7 @@ async function runViewport(browser, width, height) {
         driver: {
           name: 'Motorista simulado',
           plateNumber: '**ABC*',
+          photo: 'https://mock-driver-photo.test/avatar.svg',
           coordinates: route[Math.min(index++, route.length - 1)],
         },
       }),
@@ -87,19 +93,24 @@ async function runViewport(browser, width, height) {
     return {
       count: dots.length,
       tops,
+      centers: dots.map(dot => Math.round(dot.getBoundingClientRect().left + dot.getBoundingClientRect().width / 2)),
       labelsNoWrap: labels.every(label => getComputedStyle(label).whiteSpace === 'nowrap'),
       noHorizontalScroll: document.documentElement.scrollWidth <= window.innerWidth,
       driver: window.__tracking.driverMarker?.getLatLng()
         ? { lat: window.__tracking.driverMarker.getLatLng().lat, lng: window.__tracking.driverMarker.getLatLng().lng }
         : null,
       mapVisible: !document.querySelector('.feira-lalamove-map-canvas').hidden,
+      driverPhoto: !!document.querySelector('.feira-lalamove-driver-info img'),
     };
   });
   assert.equal(layout.count, 4, `expected four timeline stages at ${width}px`);
   assert.equal(new Set(layout.tops).size, 1, `timeline circles wrapped vertically at ${width}px: ${layout.tops}`);
+  const gaps = layout.centers.slice(1).map((x, i) => x - layout.centers[i]);
+  assert.ok(Math.max(...gaps) - Math.min(...gaps) <= 2, `timeline columns are not equal at ${width}px: ${gaps}`);
   assert.equal(layout.labelsNoWrap, true);
   assert.equal(layout.noHorizontalScroll, true);
   assert.equal(layout.mapVisible, true);
+  assert.equal(layout.driverPhoto, true, 'driver photo should appear when supplied by the API');
   assert.ok(layout.driver && Math.abs(layout.driver.lat - (-3.1050)) < 0.001, 'mock motorcycle should finish near the customer pin');
 
   await page.screenshot({ path: path.join(artifacts, `order-tracking-${width}.png`), fullPage: true });
