@@ -94,15 +94,19 @@ Deno.test("rótulo da cotação e endereço fora da área", () => {
 
 Deno.test("loja.html conecta a opção, cotação, endereço salvo e acompanhamento", async () => {
   const html = await Deno.readTextFile("loja.html");
+  const deliveryUi = await Deno.readTextFile("loja-delivery-ui.js");
   for (const required of [
     'id="deliveryHomeOption"', 'aria-disabled="true"', 'disabled', 'Entrega Feira On', 'Receba em casa sem precisar pedir Uber.', 'Em breve', 'Receber com seu Uber', 'id="deliveryAddressFields"',
     'id="deliveryStreet"', 'id="deliveryNumber"', 'id="deliveryNeighborhood"', 'id="deliveryStreetSuggestions"', 'id="deliveryMapFallback"', 'id="deliveryMapPanel"', 'id="deliveryMap"', 'id="deliveryMapUse"', 'id="deliveryMapAdjust"', 'id="deliveryAddressSummary"', 'id="deliveryAddressEdit"', 'id="deliveryStartingPrice"', 'id="checkoutProductsTotal"', 'id="checkoutDeliveryTotal"', 'id="checkoutSummaryTotal"', 'id="checkoutDeliveryMeta"',
     'id="deliveryComplement"', 'id="deliveryReference"',
-    "get_delivery_enabled", "supabase.rpc('is_current_user_admin')", "functions.invoke('delivery-quote'",
+    "loadDeliveryAccessState(user", "hasConfirmedDeliveryAdmin()", "functions.invoke('delivery-quote'",
     "address_street", "address_reference", "delivery_vehicle", "delivery_fee",
     "Pix de teste (admin)", "Sai quando o pedido estiver pronto",
     "await loadDeliveryAccess(currentUser)", "async function openCheckoutModal()", "delivery-address", "session_token", "deliveryMapCoordinates", "deliveryPlacesSessionToken=null;$('#deliveryMapFallback').hidden=false",
   ]) assertEquals(html.includes(required), true, "missing UI wiring: " + required);
+  for (const required of ['rpc("is_current_user_admin")', 'rpc("get_delivery_enabled")', 'adminCheckComplete !== true || isAdmin !== true']) {
+    assertEquals(deliveryUi.includes(required), true, "missing delivery access rule: " + required);
+  }
 });
 
 Deno.test("erros da cotação diferenciam endereço, Manaus e cobertura Lalamove", () => {
@@ -138,7 +142,7 @@ Deno.test("checkout novo mantém a ordem visual dos cards e os campos funcionais
     'id="payPixTestOption"', 'checkout-test-badge">TESTE',
     'id="submitOrder"', 'id="modalTotal"', 'id="cpf"', 'id="phone"', 'id="email"', 'id="deliveryUberOption"', 'canShowUberPickupOption(deliveryActive)', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga o Uber pelo app. Nós levamos o pedido até o carro.', "const uberAction=o.delivery_type==='pickup_uber'", 'id="deliveryUberOption"', 'canShowUberPickupOption(deliveryActive)', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga o Uber pelo app. Nós levamos o pedido até o carro.',
     'position:fixed!important', 'min-height:64px', '#delivery,#payment{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}',
-    "function updateCheckoutSummary()", "A partir de '+money(deliveryQuote.fee)",
+    "function updateCheckoutSummary()", "value.textContent=money(deliveryQuote.fee)",
   ]) assertEquals(html.includes(required), true, "missing checkout presentation: " + required);
 });
 
