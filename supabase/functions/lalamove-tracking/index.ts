@@ -84,8 +84,9 @@ Deno.serve(async (req: Request) => {
       ...(storedDriver.plateNumber ? { plateNumber: storedDriver.plateNumber } : {}),
       ...(storedDriver.photo ? { photo: storedDriver.photo } : {}),
     };
-    if (status !== storedStatus ||
-        JSON.stringify(driverSummary) !== JSON.stringify(Object.keys(storedDriverSummary).length ? storedDriverSummary : null) ||
+    const driverChanged = !!driverSummary &&
+      JSON.stringify(driverSummary) !== JSON.stringify(Object.keys(storedDriverSummary).length ? storedDriverSummary : null);
+    if (status !== storedStatus || driverChanged ||
         (tracking.tracking_url && tracking.tracking_url !== dispatch.tracking_url)) {
       const { error: syncError } = await db.rpc("service_update_lalamove_tracking_status", {
         p_order_id: orderId,
