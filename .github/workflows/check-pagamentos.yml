@@ -52,7 +52,19 @@ jobs:
         run: deno check loja-delivery-ui.js
 
       - name: Test delivery checkout UI
-        run: deno test loja-delivery-ui_test.ts
+        run: deno test --allow-read=loja.html loja-delivery-ui_test.ts
+
+      - name: Check inline store module syntax
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          html = Path("loja.html").read_text(encoding="utf-8")
+          scripts = re.findall(r'<script type="module">([\\s\\S]*?)</script>', html)
+          assert scripts, "No inline module script found in loja.html"
+          Path("/tmp/loja-inline.mjs").write_text(scripts[-1], encoding="utf-8")
+          PY
+          node --check /tmp/loja-inline.mjs
 
       - name: Check Asaas webhook
         run: deno check supabase/functions/asaas-webhook/index.ts
