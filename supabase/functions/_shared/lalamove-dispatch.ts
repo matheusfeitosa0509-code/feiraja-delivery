@@ -25,6 +25,14 @@ export function canStartDispatch(state: string | null | undefined): boolean {
   return !["creating", "created"].includes(String(state || ""));
 }
 
+export function canCancelLalamove(status: string | null | undefined, updatedAt: string | null | undefined, now = Date.now()): boolean {
+  const current = String(status || "");
+  if (current === "searching") return true;
+  if (!["assigned", "enroute_pickup"].includes(current)) return false;
+  const matchedAt = Date.parse(String(updatedAt || ""));
+  return Number.isFinite(matchedAt) && now >= matchedAt && now - matchedAt < 5 * 60 * 1000;
+}
+
 export function mapLalamoveStatus(eventType: string, rawStatus: string): LalamoveStatus | null {
   const status = String(rawStatus || "").toUpperCase();
   if (eventType === "DRIVER_ASSIGNED") return "assigned";
