@@ -179,8 +179,8 @@ Deno.test("cliente PostgREST envia chave secreta somente em apikey, sem Authoriz
     assertEquals(headers.has("Authorization"), false);
     return new Response("ok");
   });
-  const response = await fetcher("https://example.supabase.co/rest/v1/rpc/test", {
+  const response = await fetcher(new Request("https://example.supabase.co/rest/v1/rpc/test", {
     headers: { Authorization: "Bearer sb_secret_test_example" },
-  });
+  }));
   assertEquals(response.status, 200);
 });
