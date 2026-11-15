@@ -42,7 +42,7 @@ async function runCase(label,existing,expectedSelection,expectedAttempts){
  console.log('PASS:',label);
 }
 
-const base='id,created_at,items,total,status,payment_method,delivery_type,pickup_code';
+const base='id,created_at,items,total,status,payment_method,delivery_type,pickup_code,delivery_address,delivery_vehicle,delivery_weight_kg,delivery_fee';
 const both=base+',separation_started_at,separation_started_legacy';
 const timestamp=base+',separation_started_at';
 const legacy=base+',separation_started_legacy';
