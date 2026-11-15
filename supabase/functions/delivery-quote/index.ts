@@ -13,9 +13,6 @@ const SANDBOX_URL = "https://rest.sandbox.lalamove.com";
 const PATH = "/v3/quotations";
 const ORIGIN = "Av. Lourenço da Silva Braga, 700 - Centro, Manaus - AM, Brasil";
 
-const PATH = "/v3/quotations";
-const ORIGIN = "Av. Lourenço da Silva Braga, 700 - Centro, Manaus - AM, Brasil";
-
 async function signRequest(key: string, secret: string, body: string) {
   const timestamp = String(Date.now());
   const raw = timestamp + "\r\nPOST\r\n" + PATH + "\r\n\r\n" + body;
@@ -61,7 +58,7 @@ Deno.serve(async (req: Request) => {
     if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Requisição inválida." }, 400);
     const dropoff = formatDropoff(body.address);
     if (!Array.isArray(body.items) || body.items.length < 1 || body.items.length > 100) return json({ error: "Carrinho inválido." }, 400);
-    const ids = [...new Set(body.items.map((i: any) => String(i?.product_id || "")))];
+    const ids: string[] = [...new Set<string>(body.items.map((i: any) => String(i?.product_id || "")))];
     if (ids.some((id) => !id || id.length > 100)) return json({ error: "Carrinho inválido." }, 400);
     const [{ data: products, error: productsError }, { data: rules, error: rulesError }] = await Promise.all([
       db.from("products").select("id,delivery_unit_weight_kg,delivery_bulky").in("id", ids),
