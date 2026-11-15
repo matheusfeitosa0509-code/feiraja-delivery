@@ -1,7 +1,10 @@
+import { geocodeManausAddress } from "../_shared/geocoding.ts";
 import {
   chooseVehicle, estimateLoad, formatDropoff, parseQuotation, requestSandboxQuotation,
   type DeliveryAddress, type QuoteItem, type ProductWeight,
 } from "../_shared/delivery-quote.ts";
+
+const ORIGIN_ADDRESS = "Av. Lourenço da Silva Braga, 700 - Centro, Manaus - AM, Brasil";
 
 export type CheckoutDeliveryType = "pickup_store" | "pickup_uber" | "delivery";
 export type CheckoutPaymentMethod = "pix" | "pix_test" | "cash" | "card_on_delivery";
@@ -39,20 +42,27 @@ export async function calculateServerDelivery(input: {
   motoLimitKg: number;
   apiKey: string;
   apiSecret: string;
+  geocodingApiKey: string;
+  geocodeFetcher?: typeof fetch;
   fetcher?: typeof fetch;
 }) {
   const dropoff = formatDropoff(input.address);
   const load = estimateLoad(input.items, input.products);
   const vehicle = chooseVehicle(load.weightKg, load.bulky, input.motoLimitKg);
   const serviceType = vehicle === "MOTO" ? "LALAGO" : "CAR";
+  const [originCoordinates, dropoffCoordinates] = await Promise.all([
+    geocodeManausAddress(ORIGIN_ADDRESS, input.geocodingApiKey, input.geocodeFetcher || fetch),
+    geocodeManausAddress(dropoff, input.geocodingApiKey, input.geocodeFetcher || fetch),
+  ]);
   const response = await requestSandboxQuotation(
-    input.apiKey, input.apiSecret, serviceType, dropoff, input.fetcher || fetch,
+    input.apiKey, input.apiSecret, serviceType, dropoff,
+    { origin: originCoordinates, dropoff: dropoffCoordinates }, input.fetcher || fetch,
   );
   const payload = await response.json().catch(() => ({}));
-  if (response.status === 422 && String(payload?.message || "").includes("ERR_OUT_OF_SERVICE_AREA")) {
-    throw new Error("OUT_OF_SERVICE_AREA");
-  }
-  if (!response.ok) throw new Error("LALAMOVE_QUOTE_FAILED");
+  const upstreamCode = String(payload?.message || "");
+  if (upstreamCode === "ERR_OUT_OF_SERVICE_AREA") throw new Error("OUT_OF_SERVICE_AREA");
+  if (upstreamCode === "ERR_REVERSE_GEOCODE_FAILURE") throw new Error("LALAMOVE_REVERSE_GEOCODE_FAILURE");
+  if (!response.ok) throw new Error(response.status === 429 ? "LALAMOVE_RATE_LIMIT" : "LALAMOVE_QUOTE_FAILED");
   const quote = parseQuotation(payload?.data, vehicle, load.weightKg);
   return {
     vehicle: quote.vehicle,
