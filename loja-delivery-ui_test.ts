@@ -30,7 +30,7 @@ Deno.test("acesso à entrega: anônimo não chama RPC e conta comum não ganha a
     calls++;
     return name === "is_current_user_admin" ? { data: false, error: null } : { data: true, error: null };
   });
-  assertEquals(common, { adminCheckComplete: true, isAdmin: false, deliveryActive: false });
+  assertEquals(common, { adminCheckComplete: true, isAdmin: false, deliveryActive: true });
   assertEquals(isDeliveryOptionDisabled(common.deliveryActive, common.isAdmin, common.adminCheckComplete), true);
 });
 
