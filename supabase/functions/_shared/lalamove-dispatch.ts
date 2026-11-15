@@ -13,7 +13,7 @@ export function quoteFee(data: any): { fee: number; expiresAt: string } {
       !data.stops[0]?.stopId || !data.stops[1]?.stopId) {
     throw new Error("INVALID_QUOTE_RESPONSE");
   }
-  return { fee: Math.ceil(amount), expiresAt: new Date(expiresMs).toISOString() };
+  return { fee: Math.round(amount * 100) / 100, expiresAt: new Date(expiresMs).toISOString() };
 }
 
 export function priceDifference(currentFee: number, chargedFee: number): number {
