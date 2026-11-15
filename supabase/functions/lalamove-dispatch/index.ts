@@ -3,7 +3,7 @@ import { formatDropoff, requestSandboxQuotation } from "../_shared/delivery-quot
 import { geocodeManausAddress } from "../_shared/geocoding.ts";
 import {
   buildLalamoveOrderBody, canCancelLalamove, canQuoteLalamove, canStartDispatch, isLalamoveDispatchReady, cancelLalamoveOrder, createLalamoveOrder, normalizeBrazilPhone,
-  getLalamoveOrderDetails, mapLalamoveStatus, priceDifference, quoteFee, requireSupabaseSecretKey, secretKeyFetch,
+  getLalamoveDriverDetails, getLalamoveOrderDetails, mapLalamoveStatus, priceDifference, quoteFee, requireSupabaseSecretKey, secretKeyFetch,
 } from "../_shared/lalamove-dispatch.ts";
 
 const cors = {
