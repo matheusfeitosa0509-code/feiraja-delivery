@@ -1,3 +1,4 @@
+export type DeliveryCoordinates = { lat: string; lng: string };
 export type DeliveryAddress = {
   street: string; number: string; neighborhood: string;
   complement?: string; reference?: string;
