@@ -13,18 +13,6 @@ const SANDBOX_URL = "https://rest.sandbox.lalamove.com";
 const PATH = "/v3/quotations";
 const ORIGIN = "Av. Lourenço da Silva Braga, 700 - Centro, Manaus - AM, Brasil";
 
-mport { createClient } from "npm:@supabase/supabase-js@2.57.4";
-import { chooseVehicle, estimateLoad, formatDropoff, isQuoteAllowed, parseQuotation, requestSandboxQuotation } from "../_shared/delivery-quote.ts";
-
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
-  status, headers: { ...cors, "Content-Type": "application/json" },
-});
-const SANDBOX_URL = "https://rest.sandbox.lalamove.com";
 const PATH = "/v3/quotations";
 const ORIGIN = "Av. Lourenço da Silva Braga, 700 - Centro, Manaus - AM, Brasil";
 
