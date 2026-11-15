@@ -7,6 +7,9 @@ on:
       - "supabase/functions/_shared/geocoding_test.ts"
       - "supabase/functions/delivery-address/**"
       - "supabase/functions/delivery-quote/**"
+      - "loja.html"
+      - "loja-delivery-ui.js"
+      - "loja-delivery-ui_test.ts"
       - ".github/workflows/delivery-quote-tests.yml"
   push:
     branches:
@@ -26,3 +29,4 @@ jobs:
       - run: deno check --config supabase/functions/delivery-address/deno.json supabase/functions/delivery-address/index.ts
       - run: deno check --config supabase/functions/delivery-quote/deno.json supabase/functions/delivery-quote/index.ts
       - run: deno test --allow-net --allow-read supabase/functions/delivery-quote/index_test.ts supabase/functions/_shared/geocoding_test.ts supabase/functions/delivery-address/index_test.ts
+      - run: deno test --allow-read loja-delivery-ui_test.ts
