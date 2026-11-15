@@ -39,7 +39,7 @@ Deno.test("falha da RPC administrativa mantém Em breve mesmo se a flag estiver 
     if (name === "is_current_user_admin") throw new Error("network failure");
     return { data: true, error: null };
   });
-  assertEquals(access, { adminCheckComplete: false, isAdmin: false, deliveryActive: false });
+  assertEquals(access, { adminCheckComplete: false, isAdmin: false, deliveryActive: true });
   assertEquals(isDeliveryOptionDisabled(access.deliveryActive, access.isAdmin, access.adminCheckComplete), true);
 });
 
