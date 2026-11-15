@@ -1,6 +1,6 @@
 import { assertEquals, assertThrows } from "jsr:@std/assert@1.0.14";
 import {
-  buildDeliveryQuoteItems, canShowDeliveryOption, checkoutGrandTotal,
+  buildDeliveryQuoteItems, canShowDeliveryOption, canShowUberPickupOption, checkoutGrandTotal,
   deliveryPaymentOptions, deliveryQuoteErrorMessage, deliveryQuoteLabel, isAdminRpcTrue, isDeliveryOutOfArea,
   normalizeDeliveryAddress,
 } from "./loja-delivery-ui.js";
@@ -9,6 +9,12 @@ Deno.test("entrega oculta para cliente quando desativada e visível para admin",
   assertEquals(canShowDeliveryOption(false, false), false);
   assertEquals(canShowDeliveryOption(false, true), true);
   assertEquals(canShowDeliveryOption(true, false), true);
+});
+
+Deno.test("retirada com Uber fica oculta quando entrega está ativa", () => {
+  assertEquals(canShowUberPickupOption(false), true);
+  assertEquals(canShowUberPickupOption(true), false);
+  assertEquals(canShowUberPickupOption(null), true);
 });
 
 Deno.test("pagamentos da entrega: Pix para todos e Pix de teste só para admin", () => {
@@ -79,7 +85,7 @@ Deno.test("checkout novo mantém a ordem visual dos cards e os campos funcionais
   const summary = html.indexOf('id="checkoutSummaryTitle"');
   const payment = html.indexOf('id="checkoutPaymentTitle"');
   const customer = html.indexOf('id="checkoutCustomerTitle"');
-  assertEquals(receive > 0 && receive < address && address < summary && summary < payment && payment < customer, true);
+  assertEquals(receive > 0 && receive < address && address < summary && summary < customer && customer < payment, true);
   for (const required of [
     'placeholder="Digite sua rua e número"', 'id="deliveryStreetSuggestions"',
     'id="deliveryAddressSummaryStreet"', 'id="deliveryAddressEdit"',
@@ -87,7 +93,7 @@ Deno.test("checkout novo mantém a ordem visual dos cards e os campos funcionais
     'id="checkoutProductsTotal"', 'id="checkoutDeliveryTotal"',
     'id="checkoutSummaryTotal"', 'id="deliveryStartingPrice"',
     'id="payPixTestOption"', 'checkout-test-badge">TESTE',
-    'id="submitOrder"', 'id="modalTotal"', 'id="cpf"', 'id="phone"', 'id="email"',
+    'id="submitOrder"', 'id="modalTotal"', 'id="cpf"', 'id="phone"', 'id="email"', 'id="deliveryUberOption"', 'canShowUberPickupOption(deliveryActive)', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga a corrida no app da Uber',
     'position:fixed!important', 'min-height:64px', '#delivery,#payment{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}',
     "function updateCheckoutSummary()", "A partir de '+money(deliveryQuote.fee)",
   ]) assertEquals(html.includes(required), true, "missing checkout presentation: " + required);
