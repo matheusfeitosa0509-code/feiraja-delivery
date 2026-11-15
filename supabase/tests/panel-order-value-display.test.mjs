@@ -9,6 +9,7 @@ const manifest=fs.readFileSync(new URL('../../manifest-painel.json',import.meta.
 const serviceWorker=fs.readFileSync(new URL('../../sw.js',import.meta.url),'utf8');
 const pages=fs.readFileSync(new URL('../../.github/workflows/pages.yml',import.meta.url),'utf8');
 const cadastro=fs.readFileSync(new URL('../../cadastro-produto.html',import.meta.url),'utf8');
+const trackingMigration=fs.readFileSync(new URL('../migrations/20261115230000_lalamove_tracking_rate_limit.sql',import.meta.url),'utf8');
 
 function extractFrom(source,name){
   const start=source.indexOf('function '+name+'(');
@@ -68,14 +69,23 @@ vm.runInContext(['formatOrderQuantity','formatOrderItemDescription'].map(name=>e
 const displayCases=[
   [{name:'Abóbora (kg)',price:3.99,qty:4,sale_mode:'kg'},'Abóbora — 4 kg'],
   [{name:'Abacate (kg)',price:11.99,qty:1.251,sale_mode:'value',amount_cents:1500,line_total_cents:1500},'Abacate — R$ 15,00 (~1,25 kg)'],
-  [{name:'Coco (un)',price:8,qty:2},'Coco — 2 un']
+  [{name:'Coco (un)',price:8,qty:2},'Coco — 2 un'],
+  [{name:'Coco (un)',price:8,qty:4,unit:'kg'},'Coco — 4 un'],
+  [{name:'Cheiro-verde (maço)',price:3,qty:2},'Cheiro-verde — 2 maço'],
+  [{name:'Farinha (pacote)',price:7,qty:3},'Farinha — 3 pacote'],
+  [{name:'Laranja',price:2,qty:4,sale_mode:'unit',unit:'kg'},'Laranja — 4 un']
 ];
 for(const [item,expected] of displayCases){
   assert.equal(context.formatOrderItemDescription(item),expected,'panel label: '+item.name);
   assert.equal(storeContext.formatOrderItemDescription(item),expected,'store label: '+item.name);
 }
 assert.match(store,/const cashAtPickup=method\.includes\('dinheiro'\)\|\|method\.includes\('cart'\)/,'cash/card at pickup uses the cash timeline');
-assert.match(store,/steps=delivery\?\[\['Pago','💳'\],\['Preparando','📦'\],\['Caminho','🛵'\],\['Entregue','✓'\]\]:\[\['Pago','💳'\],\['Preparando','📦'\],\['Pronto','✓'\],\['Retirado','✓'\]\]/,'pickup and delivery use the exact four requested timeline stages');
+assert.match(store,/const icon=\(kind\)=>/,'timeline uses checkout-style line SVG icons');
+assert.match(store,/data-tracking-url=/,'customer tracking button keeps the Lalamove fallback URL');
+assert.doesNotMatch(store,/customer-tracking-fallback/,'customer card has no duplicate external tracking link');
+assert.match(store,/deliveryAdminCheckComplete=false/,'delivery option starts locked while admin authorization is pending');
+assert.equal((trackingMigration.match(/as \$\$/g)||[]).length,2,'both tracking RPCs open with dollar-quoted bodies');
+assert.equal((trackingMigration.match(/\$\$;/g)||[]).length,2,'both tracking RPCs close with matching dollar quotes');
 assert.match(store,/const paid=cashAtPickup\?\['Pedido Concluído','Entregue'\]\.includes\(status\):/,'cash pickup only marks Pago complete after pickup');
 assert.match(store,/const refundHelp=isPixPayment\?/,'refund explanation is limited to Pix orders');
 assert.match(store,/cancelMyOrder\(b\.dataset\.cancelOrder,b,b\.dataset\.cancelPayment==='pix'\)/,'cancellation confirmation receives the payment type');

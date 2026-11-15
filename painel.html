@@ -885,7 +885,7 @@ async function loadMore(){
  }
 }
 function formatOrderQuantity(quantity){return Number(quantity).toLocaleString('pt-BR',{maximumFractionDigits:2});}
-function formatOrderItemDescription(item){const quantity=item.quantity??item.qty??1;const rawName=String(item.name||item.product_name||item.id||'Produto');const name=rawName.replace(/\s*\((?:kg|un|unidade)\)\s*$/i,'').trim();const unit=String(item.unit??item.unit_name??'').toLowerCase();if(item.sale_mode==='value'){const cents=Number(item.line_total_cents??item.amount_cents);const amount=Number.isSafeInteger(cents)&&cents>0?money(cents/100):orderItemTotal(item.price,quantity,item);return name+' — '+amount+' (~'+formatOrderQuantity(quantity)+' kg)';}if(item.sale_mode==='unit'||item.sale_mode==='un'||['un','unidade'].includes(unit)||/\((?:un|unidade)\)\s*$/i.test(rawName))return name+' — '+formatOrderQuantity(quantity)+' un';if(item.sale_mode==='kg'||unit==='kg'||/\(kg\)\s*$/i.test(rawName))return name+' — '+formatOrderQuantity(quantity)+' kg';return rawName+' × '+formatOrderQuantity(quantity)+(item.unit?' '+String(item.unit):'');}
+function formatOrderItemDescription(item){const quantity=item.quantity??item.qty??1;const rawName=String(item.name||item.product_name||item.id||'Produto');const suffix=rawName.match(/\s*\((kg|un|unidade|maço|maco|pacote)\)\s*$/i);const name=rawName.replace(/\s*\((?:kg|un|unidade|maço|maco|pacote)\)\s*$/i,'').trim();const normalizeUnit=value=>String(value||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');const declared=normalizeUnit(item.sale_unit??item.saleUnit);const stored=normalizeUnit(item.unit??item.unit_name);const unit=normalizeUnit(suffix?.[1])||declared||(item.sale_mode==='unit'||item.sale_mode==='un'?'un':stored);if(item.sale_mode==='value'){const cents=Number(item.line_total_cents??item.amount_cents);const amount=Number.isSafeInteger(cents)&&cents>0?money(cents/100):money(Number(item.price||0)*Number(quantity||1));return name+' — '+amount+' (~'+formatOrderQuantity(quantity)+' kg)';}if(item.sale_mode==='kg'||unit==='kg')return name+' — '+formatOrderQuantity(quantity)+' kg';if(['un','unidade','maco','pacote'].includes(unit))return name+' — '+formatOrderQuantity(quantity)+' '+(unit==='unidade'?'un':unit==='maco'?'maço':unit);return name+' × '+formatOrderQuantity(quantity)+(item.unit?' '+String(item.unit):'');}
 function orderItemTotal(price,quantity,item=null){if(item?.sale_mode==='value'){const cents=Number(item.line_total_cents??item.amount_cents);if(Number.isSafeInteger(cents)&&cents>0)return money(cents/100);}const unitPriceCents=Math.round(Number(price||0)*100);return money(Math.round(unitPriceCents*Number(quantity||1))/100);}
 function lalamoveStatusLabel(status){
  const labels={pending:'Confirmando criação',searching:'Procurando motorista',assigned:'A caminho',enroute_pickup:'A caminho',picked_up:'Coletado',delivered:'Entregue',cancelled:'Entrega cancelada',rejected:'Entrega recusada',expired:'Nenhum motorista aceitou — chame de novo'};
@@ -908,7 +908,7 @@ function renderLalamoveDelivery(order,currentStatus){
  const vehicle=order.delivery_vehicle==='MOTO'?'Moto':order.delivery_vehicle==='CAR'?'Carro':'Não informado';
  const weight=Number(order.delivery_weight_kg);
  const weightText=Number.isFinite(weight)&&weight>0?weight.toLocaleString('pt-BR',{maximumFractionDigits:3})+' kg':'Não informado';
- const tracking=order.lalamove_tracking_url?'<a class="lalamove-tracking-link" href="'+esc(order.lalamove_tracking_url)+'" target="_blank" rel="noopener noreferrer">Abrir rastreio da Lalamove</a>':'';
+ const tracking='';
  const driverParts=[driver.name,driver.phone,driver.plateNumber?'Placa '+driver.plateNumber:''].filter(Boolean);
  const driverHtml=driverParts.length?'<p class="lalamove-driver"><small>MOTORISTA</small><strong>'+driverParts.map(esc).join(' · ')+'</strong></p>':'';
  const callButton=canQuote?'<button type="button" data-lalamove-quote="'+esc(order.id)+'">Chamar entregador</button>':'';
@@ -988,7 +988,7 @@ function render(){
  document.querySelectorAll('[data-lalamove-quote]').forEach(b=>b.addEventListener('click',()=>startLalamoveQuote(b.dataset.lalamoveQuote,b)));
  document.querySelectorAll('[data-lalamove-cancel]').forEach(b=>b.addEventListener('click',()=>cancelLalamoveDelivery(b.dataset.lalamoveCancel,b)));
  document.querySelectorAll('[data-lalamove-refresh]').forEach(b=>b.addEventListener('click',()=>refreshLalamoveStatus(b.dataset.lalamoveRefresh,b)));
- if(window.FeiraLalamoveMap)window.FeiraLalamoveMap.mountAll('[data-lalamove-map]',async orderId=>{const {data,error}=await db.functions.invoke('lalamove-tracking',{body:{order_id:orderId}});if(error)throw error;return data;});
+ if(window.FeiraLalamoveMap)window.FeiraLalamoveMap.mountAll('[data-lalamove-map]',async orderId=>{const {data,error}=await db.functions.invoke('lalamove-tracking',{body:{order_id:orderId}});if(error)throw error;return data;},{admin:true});
 }
 async function lalamoveErrorMessage(error,fallback){
  const response=error?.context;

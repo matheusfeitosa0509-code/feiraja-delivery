@@ -8,6 +8,10 @@ import {
 
 Deno.test("modalidade de entrega só fica habilitada para admin enquanto inativa", () => {
   assertEquals(canShowDeliveryOption(false, false), false);
+  assertEquals(isDeliveryOptionDisabled(false, false, false), true);
+  assertEquals(isDeliveryOptionDisabled(false, true, false), true);
+  assertEquals(isDeliveryOptionDisabled(false, true, true), false);
+  assertEquals(isDeliveryOptionDisabled(false, false, true), true, "a confirmed ordinary account stays locked");
   assertEquals(canShowDeliveryOption(false, true), true);
   assertEquals(canShowDeliveryOption(true, false), true);
 });
@@ -123,8 +127,9 @@ Deno.test("cartões do checkout usam uma única grade fixa sem sobreposição de
 Deno.test("acompanhamento usa quatro etapas horizontais e mensagens por modalidade", async () => {
   const html = await Deno.readTextFile("loja.html");
   for (const required of [
-    "['Pago','💳'],['Preparando','📦'],['Caminho','🛵'],['Entregue','✓']",
-    "['Pago','💳'],['Preparando','📦'],['Pronto','✓'],['Retirado','✓']",
+    "const icon=(kind)=>",
+    "['Pago',icon('card')],['Preparando',icon('bag')],['Caminho',icon('bike')],['Entregue',icon('check')]",
+    "['Pago',icon('card')],['Preparando',icon('bag')],['Pronto',icon('check')],['Retirado',icon('check')]",
     "grid-template-columns:repeat(4,minmax(0,1fr))",
     "white-space:nowrap",
     "Aguardando pagamento do Pix",
@@ -133,7 +138,7 @@ Deno.test("acompanhamento usa quatro etapas horizontais e mensagens por modalida
     "A solicitação expirou. Estamos chamando outro entregador.",
     "Taxa '+money(Number(o.delivery_fee||0))",
     "Acompanhar entrega",
-    "Abrir rastreio da Lalamove",
+    "data-tracking-url",
     "data-lalamove-map",
   ]) assertEquals(html.includes(required), true, "missing order tracking requirement: " + required);
   const renderStart = html.indexOf("const html=data.map(o=>");

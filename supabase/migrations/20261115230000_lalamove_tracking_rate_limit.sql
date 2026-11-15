@@ -48,7 +48,7 @@ create or replace function public.service_update_lalamove_tracking_status(
   p_driver jsonb default null
 ) returns jsonb
 language plpgsql security definer set search_path=''
-as $
+as $$
 declare v_order_id text; v_existing_status text; v_existing_rank integer; v_new_rank integer;
 begin
   if current_setting('request.jwt.claim.role', true) is distinct from 'service_role' then
@@ -115,7 +115,7 @@ begin
 
   return jsonb_build_object('updated', true, 'status', p_status);
 end;
-$;
+$$;
 
 revoke all on function public.service_update_lalamove_tracking_status(text,text,text,text,jsonb) from public, anon, authenticated;
 grant execute on function public.service_update_lalamove_tracking_status(text,text,text,text,jsonb) to service_role;

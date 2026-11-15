@@ -39,7 +39,7 @@
   const status=document.createElement('p');status.className='feira-lalamove-map-status';status.setAttribute('role','status');status.textContent='Carregando localização do entregador…';
   const canvas=document.createElement('div');canvas.className='feira-lalamove-map-canvas';canvas.setAttribute('aria-label','Mapa da entrega');canvas.hidden=true;
   const driverInfo=document.createElement('div');driverInfo.className='feira-lalamove-driver-info';driverInfo.hidden=true;
-  const fallback=document.createElement('a');fallback.className='feira-lalamove-tracking-fallback';fallback.textContent='Abrir rastreio da Lalamove';fallback.target='_blank';fallback.rel='noopener noreferrer';fallback.hidden=true;
+  const fallback=document.createElement('a');fallback.className='feira-lalamove-tracking-fallback';fallback.textContent='Abrir rastreio da Lalamove';fallback.target='_blank';fallback.rel='noopener noreferrer';fallback.hidden=true;fallback.style.cssText='display:inline-block;margin-top:6px;font-size:12px;font-weight:700;'
   root.append(status,canvas,driverInfo,fallback);container.replaceChildren(root);
   const state={container,root,status,canvas,driverInfo,orderId,fetchTracking,map:null,storeMarker:null,homeMarker:null,driverMarker:null,route:null,timer:null,observer:null,animation:0,stopped:false,refresh:null};
   function stop(){if(state.timer){clearInterval(state.timer);state.timer=null;}if(state.animation)cancelAnimationFrame(state.animation);state.animation=0;}
@@ -128,7 +128,7 @@
     if(!data.driver_assigned){status.textContent='Procurando entregador… O mapa aparecerá quando um motorista aceitar.';return;}
     await ensureMap(data);
    }catch(error){
-    status.textContent='Não foi possível atualizar o mapa agora. Use “Abrir rastreio da Lalamove” como alternativa.';
+    if(options.admin){status.textContent='Rastreio indisponível no momento. Atualize o status ou tente novamente.';canvas.hidden=true;driverInfo.hidden=true;}else{stop();if(state.map){state.map.remove();state.map=null;}container.hidden=true;}
    }finally{
     state.inFlight=false;
    }
