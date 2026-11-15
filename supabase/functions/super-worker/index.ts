@@ -295,7 +295,7 @@ Deno.serve(async (req: Request) => {
     let priorOrder: any = null;
     if (priorAttempt) {
       const { data: existingOrder, error: existingOrderError } = await db.from("orders")
-        .select("id,status,total,payment_id,pix_qr_code,pix_qr_code_base64,pickup_code,payment_provider,payment_method")
+        .select("id,status,total,payment_id,pix_qr_code,pix_qr_code_base64,pickup_code,payment_provider,payment_method,delivery_address,delivery_vehicle,delivery_weight_kg,delivery_fee")
         .eq("id", String(priorAttempt.order_id)).eq("user_id", orderUserId).maybeSingle();
       if (existingOrderError || !existingOrder) return json({ error: "Não foi possível recuperar o pedido desta tentativa." }, 503);
       priorOrder = existingOrder;
@@ -571,32 +571,48 @@ Deno.serve(async (req: Request) => {
     }
     let deliveryQuote: Awaited<ReturnType<typeof calculateServerDelivery>> | null = null;
     if (deliveryType === "delivery") {
-      const { data: quoteAllowed, error: quoteRateError } = await db.rpc("consume_delivery_quote_rate_limit", {
-        p_user_id: orderUserId, p_max_requests: 5, p_window_seconds: 60,
-      });
-      if (quoteRateError) return json({ error: "Limite de cotações temporariamente indisponível." }, 503);
-      if (quoteAllowed !== true) return json({ error: "Muitas cotações. Aguarde um minuto." }, 429);
-      try {
-        deliveryQuote = await calculateServerDelivery({
-          items: items.map((item: any) => ({ product_id: String(item.id), quantity: Number(item.qty) })),
-          products: (products as any[]).map((product: any) => ({
-            id: String(product.id),
-            delivery_unit_weight_kg: product.delivery_unit_weight_kg == null ? null : Number(product.delivery_unit_weight_kg),
-            delivery_bulky: product.delivery_bulky === true,
-            sale_unit: String(salesRulesById.get(String(product.id))?.sale_unit || ""),
-          })),
+      if (priorOrder) {
+        const storedAddress = priorOrder.delivery_address;
+        if (!storedAddress || JSON.stringify(storedAddress) !== JSON.stringify(normalizedDeliveryAddress) ||
+            !priorOrder.delivery_vehicle || priorOrder.delivery_weight_kg == null || priorOrder.delivery_fee == null) {
+          return json({ error: "Os dados desta tentativa de entrega não conferem. Inicie um novo checkout." }, 409);
+        }
+        deliveryQuote = {
+          vehicle: priorOrder.delivery_vehicle,
+          weightKg: Number(priorOrder.delivery_weight_kg),
+          fee: Number(priorOrder.delivery_fee),
+          validUntil: "",
           address: normalizedDeliveryAddress!,
-          motoLimitKg: deliveryMotoLimitKg,
-          apiKey: Deno.env.get("LALAMOVE_SANDBOX_API_KEY") || "",
-          apiSecret: Deno.env.get("LALAMOVE_SANDBOX_API_SECRET") || "",
+          formattedAddress: address,
+        };
+      } else {
+        const { data: quoteAllowed, error: quoteRateError } = await db.rpc("consume_delivery_quote_rate_limit", {
+          p_user_id: orderUserId, p_max_requests: 5, p_window_seconds: 60,
         });
-      } catch (error) {
-        const code = error instanceof Error ? error.message : "UNKNOWN";
-        if (code === "OUT_OF_SERVICE_AREA") return json({ error: "Este endereço está fora da área de atendimento da entrega." }, 422);
-        if (code === "INVALID_ADDRESS") return json({ error: "Informe rua, número e bairro para a entrega." }, 400);
-        if (code === "SANDBOX_CREDENTIALS_REQUIRED") return json({ error: "Cotação de entrega temporariamente indisponível." }, 503);
-        console.error("super-worker", { code: "DELIVERY_QUOTE_FAILED", stage: "checkout_quote", reason: code });
-        return json({ error: "Não foi possível calcular a taxa de entrega. Tente novamente." }, 502);
+        if (quoteRateError) return json({ error: "Limite de cotações temporariamente indisponível." }, 503);
+        if (quoteAllowed !== true) return json({ error: "Muitas cotações. Aguarde um minuto." }, 429);
+        try {
+          deliveryQuote = await calculateServerDelivery({
+            items: items.map((item: any) => ({ product_id: String(item.id), quantity: Number(item.qty) })),
+            products: (products as any[]).map((product: any) => ({
+              id: String(product.id),
+              delivery_unit_weight_kg: product.delivery_unit_weight_kg == null ? null : Number(product.delivery_unit_weight_kg),
+              delivery_bulky: product.delivery_bulky === true,
+              sale_unit: String(salesRulesById.get(String(product.id))?.sale_unit || ""),
+            })),
+            address: normalizedDeliveryAddress!,
+            motoLimitKg: deliveryMotoLimitKg,
+            apiKey: Deno.env.get("LALAMOVE_SANDBOX_API_KEY") || "",
+            apiSecret: Deno.env.get("LALAMOVE_SANDBOX_API_SECRET") || "",
+          });
+        } catch (error) {
+          const code = error instanceof Error ? error.message : "UNKNOWN";
+          if (code === "OUT_OF_SERVICE_AREA") return json({ error: "Este endereço está fora da área de atendimento da entrega." }, 422);
+          if (code === "INVALID_ADDRESS") return json({ error: "Informe rua, número e bairro para a entrega." }, 400);
+          if (code === "SANDBOX_CREDENTIALS_REQUIRED") return json({ error: "Cotação de entrega temporariamente indisponível." }, 503);
+          console.error("super-worker", { code: "DELIVERY_QUOTE_FAILED", stage: "checkout_quote", reason: code });
+          return json({ error: "Não foi possível calcular a taxa de entrega. Tente novamente." }, 502);
+        }
       }
     }
     const totals = orderTotals(subtotalCents, deliveryQuote?.fee || 0, deliveryType);
