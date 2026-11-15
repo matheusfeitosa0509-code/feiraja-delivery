@@ -51,7 +51,7 @@ Deno.test("loja.html conecta a opção, cotação, endereço salvo e acompanhame
     'id="deliveryComplement"', 'id="deliveryReference"',
     "get_delivery_enabled", "supabase.rpc('is_current_user_admin')", "functions.invoke('delivery-quote'",
     "address_street", "address_reference", "delivery_vehicle", "delivery_fee",
-    "Pix de teste (admin)", "Sai para entrega quando o pedido estiver pronto",
+    "Pix de teste (admin)", "Sai quando o pedido estiver pronto",
     "await loadDeliveryAccess(currentUser)", "async function openCheckoutModal()", "delivery-address", "session_token", "deliveryMapCoordinates", "deliveryPlacesSessionToken=null;$('#deliveryMapFallback').hidden=false",
   ]) assertEquals(html.includes(required), true, "missing UI wiring: " + required);
 });
@@ -89,6 +89,6 @@ Deno.test("checkout novo mantém a ordem visual dos cards e os campos funcionais
     'id="payPixTestOption"', 'checkout-test-badge">TESTE',
     'id="submitOrder"', 'id="modalTotal"', 'id="cpf"', 'id="phone"', 'id="email"',
     'position:fixed!important', 'min-height:64px',
-    "function updateCheckoutSummary()", "A partir '+money(deliveryQuote.fee)",
+    "function updateCheckoutSummary()", "A partir de '+money(deliveryQuote.fee)",
   ]) assertEquals(html.includes(required), true, "missing checkout presentation: " + required);
 });
