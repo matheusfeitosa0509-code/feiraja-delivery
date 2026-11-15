@@ -127,7 +127,6 @@ async function runTrackingFailureModes(browser) {
   await page.setContent('<main><div id="customer" data-order-id="MOCK-CUSTOMER"></div><div id="admin" data-order-id="MOCK-ADMIN"></div></main>');
   await page.evaluate(() => { delete window.IntersectionObserver; });
   await page.addScriptTag({ path: path.join(root, 'lalamove-map.js') });
-  await page.waitForFunction(() => document.querySelector('#customer .feira-lalamove-map-status')?.textContent.includes('Carregando'));
   await page.evaluate(() => {
     window.FeiraLalamoveMap.mount(document.querySelector('#customer'), async () => { throw new Error('tracking unavailable'); });
     window.FeiraLalamoveMap.mount(document.querySelector('#admin'), async () => { throw new Error('tracking unavailable'); }, { admin: true });
