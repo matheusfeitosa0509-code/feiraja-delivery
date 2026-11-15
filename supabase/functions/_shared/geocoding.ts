@@ -15,9 +15,8 @@ function component(result: GoogleGeocodeResult, type: string) {
 export function formatManausGeocodeQuery(address: string): string {
   const value = String(address || "").trim();
   if (!value) throw new Error("ADDRESS_NOT_FOUND");
-  return /Manaus\s*[-,]/i.test(value) && /Amazonas|\bAM\b/i.test(value)
-    ? value
-    : value + ", Manaus - AM, Brasil";
+  if (/Manaus\s*-\s*AM/i.test(value)) return /Brasil$/i.test(value) ? value : value + ", Brasil";
+  return value + ", Manaus - AM, Brasil";
 }
 
 export function validateManausGeocodeResult(result: GoogleGeocodeResult): DeliveryCoordinates {
@@ -38,7 +37,7 @@ export function validateManausGeocodeResult(result: GoogleGeocodeResult): Delive
   }
   const types = result.types || [];
   if (result.partial_match === true ||
-      !types.some((type) => ["street_address", "premise", "subpremise", "route"].includes(type))) {
+      !types.some((type) => ["street_address", "premise", "subpremise"].includes(type))) {
     throw new Error("ADDRESS_NOT_FOUND");
   }
   return { lat: String(lat), lng: String(lng) };
@@ -53,7 +52,7 @@ export async function geocodeManausAddress(
   const query = formatManausGeocodeQuery(address);
   const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
   url.searchParams.set("address", query);
-  url.searchParams.set("components", "country:BR|administrative_area:AM");
+  url.searchParams.set("components", "country:BR");
   url.searchParams.set("region", "br");
   url.searchParams.set("language", "pt-BR");
   url.searchParams.set("key", apiKey);
