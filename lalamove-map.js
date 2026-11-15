@@ -39,7 +39,8 @@
   const status=document.createElement('p');status.className='feira-lalamove-map-status';status.setAttribute('role','status');status.textContent='Carregando localização do entregador…';
   const canvas=document.createElement('div');canvas.className='feira-lalamove-map-canvas';canvas.setAttribute('aria-label','Mapa da entrega');canvas.hidden=true;
   const driverInfo=document.createElement('div');driverInfo.className='feira-lalamove-driver-info';driverInfo.hidden=true;
-  root.append(status,canvas,driverInfo);container.replaceChildren(root);
+  const fallback=document.createElement('a');fallback.className='feira-lalamove-tracking-fallback';fallback.textContent='Abrir rastreio da Lalamove';fallback.target='_blank';fallback.rel='noopener noreferrer';fallback.hidden=true;
+  root.append(status,canvas,driverInfo,fallback);container.replaceChildren(root);
   const state={container,root,status,canvas,driverInfo,orderId,fetchTracking,map:null,storeMarker:null,homeMarker:null,driverMarker:null,route:null,timer:null,observer:null,animation:0,stopped:false,refresh:null};
   function stop(){if(state.timer){clearInterval(state.timer);state.timer=null;}if(state.animation)cancelAnimationFrame(state.animation);state.animation=0;}
   function destroy(){stop();state.stopped=true;if(state.observer)state.observer.disconnect();if(state.map){state.map.remove();state.map=null;}instances.delete(container);}
@@ -88,6 +89,8 @@
    if(state.stopped||!container.isConnected)return;
    try{
     const data=await fetchTracking(orderId);
+    const existingFallback=container.parentElement?.querySelector('.customer-tracking-fallback,.lalamove-tracking-link');
+    if(data?.tracking_url){if(existingFallback){existingFallback.href=String(data.tracking_url);existingFallback.hidden=false;}else{fallback.href=String(data.tracking_url);fallback.hidden=false;}}
     if(!data||data.active===false){
      stop();status.textContent=data?.status==='delivered'?'Entrega concluída.':data?.status==='expired'?'A solicitação expirou.':data?.status==='cancelled'?'Entrega cancelada.':'O rastreio não está ativo neste momento.';
      canvas.hidden=true;driverInfo.hidden=true;return;
