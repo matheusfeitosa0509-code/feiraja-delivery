@@ -191,10 +191,16 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 .lalamove-quote-box label{font-size:11px}
 .lalamove-quote-box select{min-height:37px;font-size:12px}
 .lalamove-ready-warning{margin:0;padding:7px 8px;border-radius:8px;background:#fff4dc;color:#76530c;font-size:11px;line-height:1.35}
-.separation-item{grid-template-columns:27px minmax(0,1fr) auto;gap:6px;padding:4px 0}
-.separation-check{width:23px;min-height:23px;height:23px;padding:0;border-radius:7px;font-size:12px}
-.separation-name{font-size:12px;line-height:1.3}
-.separation-preference{font-size:10px;line-height:1.25}
+.lalamove-feedback{margin:0;padding:7px 8px;border-radius:8px;background:#eaf5e8;color:#245b32;font-size:11px;line-height:1.35}
+.lalamove-feedback.is-error{background:#fff0ed;color:#9d2d21}
+.lalamove-feedback[hidden]{display:none!important}
+.separation-item{grid-template-columns:44px minmax(0,1fr) auto;gap:7px;padding:4px 0;align-items:center}
+.separation-check{width:44px;min-width:44px;height:44px;min-height:44px;padding:0;border:0;border-radius:50%;background:transparent;display:grid;place-items:center;font-size:0;touch-action:manipulation}
+.separation-check-mark{width:26px;height:26px;border:2px solid #a9b9aa;border-radius:50%;background:#fff;color:transparent;display:grid;place-items:center;font-size:0;line-height:1}
+.separation-check[aria-pressed="true"] .separation-check-mark{background:#198344;border-color:#198344;color:#fff;font-size:16px;font-weight:900}
+.separation-detail{display:grid;gap:2px;min-width:0;align-content:center}
+.separation-name{font-size:12px;line-height:1.3;min-width:0;overflow-wrap:anywhere}
+.separation-preference{grid-column:auto;font-size:10px;line-height:1.25}
 .separation-item>strong{font-size:11px}
 .items{padding-top:7px;margin-top:7px}
 .items .item{padding:4px 0;font-size:11px}
@@ -886,6 +892,7 @@ function renderLalamoveDelivery(order,currentStatus){
   +'<div class="lalamove-facts"><span>Veículo: <b>'+esc(vehicle)+'</b></span><span>Peso: <b>'+esc(weightText)+'</b></span><span>Taxa: <b>'+money(order.delivery_fee)+'</b></span></div>'
   +(order.lalamove_status?'<p class="lalamove-state"><small>STATUS DA ENTREGA</small><strong>'+esc(lalamoveStatusLabel(order.lalamove_status))+'</strong></p>':'')
   +driverHtml+(tracking?'<p>'+tracking+'</p>':'')+'<div class="actions">'+callButton+cancelButton+'</div>'
+  +'<p class="lalamove-feedback" data-lalamove-feedback="'+esc(order.id)+'" role="status" aria-live="polite" hidden></p>'
   +(canQuote?'<div class="lalamove-quote-box" data-lalamove-quote-box="'+esc(order.id)+'" hidden></div>':'')+'</section>';
 }
 function render(){
@@ -911,7 +918,7 @@ function render(){
    const occurrence=itemOccurrences.get(fingerprint)||0;itemOccurrences.set(fingerprint,occurrence+1);
    const key=itemSeparationKey(i,occurrence),marked=separatedKeys.includes(key);
    const preference=({replace:'substituir por similar',remove:'não substituir, retirar do pedido',call:'me chamar'})[i.substitution_preference]||'me chamar';
-   return '<div class="separation-item '+(marked?'is-separated':'')+'"><button type="button" class="separation-check" data-separate-order="'+esc(o.id)+'" data-separate-key="'+esc(key)+'" aria-label="'+(marked?'Desmarcar item separado':'Marcar item como separado')+'" aria-pressed="'+String(marked)+'" '+(currentStatus==='Cancelada'?'disabled':'')+'>'+(marked?'✓':'')+'</button><span class="separation-name">'+esc(formatOrderItemDescription(i))+'</span>'+(i.item_note?'<small class="separation-preference">'+esc(i.item_note)+'</small>':'')+'<small class="separation-preference">Se faltar: '+esc(preference)+'</small><strong>'+orderItemTotal(i.price,i.quantity??i.qty??1,i)+'</strong></div>';
+   return '<div class="separation-item '+(marked?'is-separated':'')+'"><button type="button" class="separation-check" data-separate-order="'+esc(o.id)+'" data-separate-key="'+esc(key)+'" aria-label="'+(marked?'Desmarcar item separado':'Marcar item como separado')+'" aria-pressed="'+String(marked)+'" '+(currentStatus==='Cancelada'?'disabled':'')+'><span class="separation-check-mark">'+(marked?'✓':'')+'</span></button><div class="separation-detail"><span class="separation-name">'+esc(formatOrderItemDescription(i))+'</span>'+(i.item_note?'<small class="separation-preference">'+esc(i.item_note)+'</small>':'')+'<small class="separation-preference">Se faltar: '+esc(preference)+'</small></div><strong>'+orderItemTotal(i.price,i.quantity??i.qty??1,i)+'</strong></div>';
   }).join('');
   const separatedCount=items.filter((i,index)=>{
    const fingerprint=JSON.stringify([String(i?.product_id??i?.productId??i?.id??''),String(i?.name??''),String(i?.unit??i?.unit_name??''),Number(i?.price??0),Number(i?.quantity??i?.qty??1)]);
@@ -960,6 +967,13 @@ async function lalamoveErrorMessage(error,fallback){
  }
  return String(error?.message||fallback);
 }
+function setLalamoveFeedback(orderId,message,isError=false){
+ const feedback=document.querySelector('[data-lalamove-feedback="'+CSS.escape(orderId)+'"]');
+ if(!feedback)return;
+ feedback.textContent=String(message||'');
+ feedback.classList.toggle('is-error',Boolean(isError));
+ feedback.hidden=!message;
+}
 async function startLalamoveQuote(orderId,button){
  button.disabled=true;button.textContent='Cotando moto e carro…';
  const box=document.querySelector('[data-lalamove-quote-box="'+CSS.escape(orderId)+'"]');
@@ -969,6 +983,7 @@ async function startLalamoveQuote(orderId,button){
   if(!box)throw new Error('Área de cotação não encontrada.');
   const differenceText=value=>{const n=Number(value||0);return (n>0?'+':'')+money(n);};
   const explanation=value=>Number(value)>0?'Diferença por conta da loja.':Number(value)<0?'Custo atual abaixo da taxa já cobrada.':'Sem diferença para a taxa cobrada.';
+  setLalamoveFeedback(orderId,'Cotações salvas no pedido. Escolha o veículo para continuar.',false);
   box.hidden=false;
   box.innerHTML='<strong>Nova cotação Lalamove — Sandbox</strong><p>Moto: <b>'+money(data.moto.fee)+'</b> · Diferença para taxa cobrada: <b>'+differenceText(data.moto.difference)+'</b><br><small>'+explanation(data.moto.difference)+'</small></p><p>Carro: <b>'+money(data.car.fee)+'</b> · Diferença para taxa cobrada: <b>'+differenceText(data.car.difference)+'</b><br><small>'+explanation(data.car.difference)+'</small></p><label>Veículo para esta corrida<select data-lalamove-vehicle><option value="MOTO" '+(data.selected_vehicle==='MOTO'?'selected':'')+'>Moto</option><option value="CAR" '+(data.selected_vehicle==='CAR'?'selected':'')+'>Carro</option></select></label><div class="actions"><button type="button" data-lalamove-confirm>Confirmar e criar corrida</button><button type="button" class="secondary" data-lalamove-close>Fechar</button></div><p class="muted">A corrida só será criada depois de tocar em “Confirmar e criar corrida”. A diferença fica por conta da loja.</p>';
   const order=allOrders.find(o=>String(o.id)===String(orderId));
@@ -982,23 +997,23 @@ async function startLalamoveQuote(orderId,button){
   }
   box.querySelector('[data-lalamove-confirm]').addEventListener('click',event=>confirmLalamoveDispatch(orderId,data.quote_session_id,box.querySelector('[data-lalamove-vehicle]').value,event.currentTarget));
   box.querySelector('[data-lalamove-close]').addEventListener('click',()=>{box.hidden=true;});
- }catch(error){notice(await lalamoveErrorMessage(error,'Não foi possível cotar moto e carro. Confira o endereço e tente novamente.'),true);}
+ }catch(error){setLalamoveFeedback(orderId,await lalamoveErrorMessage(error,'Não foi possível cotar moto e carro. Confira o endereço e tente novamente.'),true);}
  finally{button.disabled=false;button.textContent='Chamar entregador';}
 }
 async function confirmLalamoveDispatch(orderId,sessionId,vehicle,button){
  const order=allOrders.find(o=>String(o.id)===String(orderId));
  if(!['Pronto para Retirada','Pronto'].includes(normalizeOrderStatus(order?.status))){
-  notice('A cotação está pronta, mas só é possível criar a corrida quando o pedido estiver com status “Pronto para Retirada”.',true);
+  setLalamoveFeedback(orderId,'A cotação está pronta, mas só é possível criar a corrida quando o pedido estiver com status “Pronto para Retirada”.',true);
   return;
  }
  button.disabled=true;button.textContent='Criando corrida no Sandbox…';
  try{
   const {data,error}=await db.functions.invoke('lalamove-dispatch',{body:{action:'create',order_id:orderId,quote_session_id:sessionId,vehicle}});
   if(error)throw error;
-  if(data?.pending_confirmation){notice(data.message||'A Lalamove ainda está confirmando a criação. Não toque novamente.',true);await load();return;}
-  if(data?.created){notice('Corrida criada no Sandbox. O acompanhamento será atualizado pelos webhooks.');await load();return;}
-  notice('A Lalamove não confirmou a criação. Atualize o painel antes de tentar novamente.',true);await load();
- }catch(error){notice(await lalamoveErrorMessage(error,'Não foi possível criar a corrida. Confira os dados e tente novamente.'),true);await load();}
+  if(data?.pending_confirmation){setLalamoveFeedback(orderId,data.message||'A Lalamove ainda está confirmando a criação. Não toque novamente.',true);return;}
+  if(data?.created){setLalamoveFeedback(orderId,'Corrida criada no Sandbox. O acompanhamento será atualizado pelos webhooks.',false);return;}
+  setLalamoveFeedback(orderId,'A Lalamove não confirmou a criação. Atualize o painel antes de tentar novamente.',true);
+ }catch(error){setLalamoveFeedback(orderId,await lalamoveErrorMessage(error,'Não foi possível criar a corrida. Confira os dados e tente novamente.'),true);}
  finally{button.disabled=false;button.textContent='Confirmar e criar corrida';}
 }
 async function cancelLalamoveDelivery(orderId,button){
@@ -1007,8 +1022,8 @@ async function cancelLalamoveDelivery(orderId,button){
  try{
   const {data,error}=await db.functions.invoke('lalamove-dispatch',{body:{action:'cancel',order_id:orderId}});
   if(error)throw error;
-  if(data?.cancelled){notice('Entrega cancelada na Lalamove Sandbox.');await load();}
- }catch(error){notice(await lalamoveErrorMessage(error,'A Lalamove não permitiu cancelar a entrega.'),true);await load();}
+  if(data?.cancelled){setLalamoveFeedback(orderId,'Entrega cancelada na Lalamove Sandbox.',false);}
+ }catch(error){setLalamoveFeedback(orderId,await lalamoveErrorMessage(error,'A Lalamove não permitiu cancelar a entrega.'),true);}
  finally{button.disabled=false;button.textContent='Cancelar entrega';}
 }
 async function saveStatus(id,button){

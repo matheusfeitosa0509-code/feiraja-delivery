@@ -1,7 +1,7 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   buildLalamoveOrderBody, canCancelLalamove, canQuoteLalamove, canStartDispatch, isLalamoveDispatchReady, cancelLalamoveOrder, createLalamoveOrder, getLalamoveDriverDetails,
-  isWebhookVerificationProbe, makeWebhookSignature, mapLalamoveStatus, normalizeBrazilPhone, priceDifference, quoteFee, verifyWebhookSignature,
+  isWebhookVerificationProbe, makeWebhookSignature, mapLalamoveStatus, normalizeBrazilPhone, priceDifference, quoteFee, verifyWebhookSignature, requireServiceRoleJwt,
 } from "../_shared/lalamove-dispatch.ts";
 
 const quote = {
@@ -156,4 +156,17 @@ Deno.test("cotação pode ocorrer antes de Pronto, mas corrida só após Pronto 
   assertEquals(isLalamoveDispatchReady("Pagamento Confirmado"), false);
   assertEquals(isLalamoveDispatchReady("Pronto para Retirada"), true);
   assertEquals(isLalamoveDispatchReady("Pronto"), true);
+});
+
+Deno.test("RPC interno exige JWT service_role e rejeita sb_secret sem claim JWT", () => {
+  const jwt = "header.payload.signature";
+  assertEquals(requireServiceRoleJwt(jwt), jwt);
+  let rejected = false;
+  try { requireServiceRoleJwt("sb_secret_example_not_a_jwt"); } catch (error) {
+    rejected = error instanceof Error && error.message === "MISSING_SUPABASE_SERVICE_ROLE_KEY";
+  }
+  assertEquals(rejected, true);
+  rejected = false;
+  try { requireServiceRoleJwt(""); } catch { rejected = true; }
+  assertEquals(rejected, true);
 });
