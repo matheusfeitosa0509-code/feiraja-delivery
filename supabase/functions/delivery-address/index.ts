@@ -10,6 +10,17 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   status, headers: { ...cors, "Content-Type": "application/json" },
 });
 const BOUNDS = { south: -3.55, north: -2.45, west: -60.75, east: -59.15 };
+const rateWindows = new Map<string, { startedAt: number; count: number }>();
+function allowAddressRequest(userId: string) {
+  const now = Date.now();
+  const current = rateWindows.get(userId);
+  if (!current || now - current.startedAt >= 60_000) {
+    rateWindows.set(userId, { startedAt: now, count: 1 });
+    return true;
+  }
+  current.count += 1;
+  return current.count <= 30;
+}
 const safeSessionToken = (value: unknown) =>
   typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
@@ -51,8 +62,7 @@ Deno.serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!supabaseUrl || !anonKey || !serviceKey) return json({ error: "Configuração interna incompleta." }, 500);
+    if (!supabaseUrl || !anonKey) return json({ error: "Configuração interna incompleta." }, 500);
     const authHeader = req.headers.get("Authorization") || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
     if (!token) return json({ error: "Sessão necessária." }, 401);
@@ -60,12 +70,7 @@ Deno.serve(async (req: Request) => {
     const { data: authData, error: authError } = await auth.auth.getUser(token);
     if (authError || !authData?.user || authData.user.is_anonymous) return json({ error: "Sessão válida necessária." }, 401);
 
-    const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data: allowed, error: rateError } = await db.rpc("consume_delivery_quote_rate_limit", {
-      p_user_id: authData.user.id, p_max_requests: 40, p_window_seconds: 60,
-    });
-    if (rateError) return json({ error: "Limite de consultas temporariamente indisponível." }, 503);
-    if (allowed !== true) return json({ error: "Muitas consultas de endereço. Aguarde um minuto." }, 429);
+    if (!allowAddressRequest(authData.user.id)) return json({ error: "Muitas consultas de endereço. Aguarde um minuto." }, 429);
 
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Requisição inválida." }, 400);
