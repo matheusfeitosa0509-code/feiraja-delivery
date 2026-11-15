@@ -1,26 +1,57 @@
 import { assertEquals, assertThrows } from "jsr:@std/assert@1.0.14";
 import {
   buildDeliveryQuoteItems, canShowDeliveryOption, canShowUberPickupOption, checkoutGrandTotal,
-  deliveryUnavailableMessage, isDeliveryOptionDisabled,
+  deliveryUnavailableMessage, isDeliveryOptionDisabled, loadDeliveryAccessState,
   deliveryPaymentOptions, deliveryQuoteErrorMessage, deliveryQuoteLabel, isAdminRpcTrue, isDeliveryOutOfArea,
   normalizeDeliveryAddress,
 } from "./loja-delivery-ui.js";
 
-Deno.test("modalidade de entrega só fica habilitada para admin enquanto inativa", () => {
+Deno.test("Entrega Feira On exige admin confirmado mesmo quando a entrega está ativa", () => {
   assertEquals(canShowDeliveryOption(false, false), false);
-  assertEquals(isDeliveryOptionDisabled(false, false, false), true);
-  assertEquals(isDeliveryOptionDisabled(false, true, false), true);
-  assertEquals(isDeliveryOptionDisabled(false, true, true), false);
-  assertEquals(isDeliveryOptionDisabled(false, false, true), true, "a confirmed ordinary account stays locked");
+  assertEquals(canShowDeliveryOption(true, false), false);
   assertEquals(canShowDeliveryOption(false, true), true);
-  assertEquals(canShowDeliveryOption(true, false), true);
+  assertEquals(isDeliveryOptionDisabled(false, false, false), true);
+  assertEquals(isDeliveryOptionDisabled(false, true, false), true, "admin pendente fica bloqueado");
+  assertEquals(isDeliveryOptionDisabled(true, true, false), true, "entrega ativa não libera antes da checagem");
+  assertEquals(isDeliveryOptionDisabled(false, true, true), false);
+  assertEquals(isDeliveryOptionDisabled(true, true, true), false);
+  assertEquals(isDeliveryOptionDisabled(true, false, true), true, "conta comum permanece bloqueada");
+  assertEquals(isDeliveryOptionDisabled(true, false), true, "omitir confirmação falha fechado");
+  assertEquals(deliveryUnavailableMessage(), "A Entrega Feira On chega em breve. Por enquanto, retire na loja ou receba com seu Uber.");
 });
 
-Deno.test("Entrega Feira On fica visível mas desabilitada para cliente enquanto inativa", () => {
-  assertEquals(isDeliveryOptionDisabled(false, false), true);
-  assertEquals(isDeliveryOptionDisabled(false, true), false);
-  assertEquals(isDeliveryOptionDisabled(true, false), false);
-  assertEquals(deliveryUnavailableMessage(), "A Entrega Feira On chega em breve. Por enquanto, retire na loja ou receba com seu Uber.");
+Deno.test("acesso à entrega: anônimo não chama RPC e conta comum não ganha acesso", async () => {
+  let calls = 0;
+  const rpc = async () => { calls++; return { data: true, error: null }; };
+  const anonymous = await loadDeliveryAccessState({ id: "anon", is_anonymous: true }, rpc);
+  assertEquals(anonymous, { adminCheckComplete: false, isAdmin: false, deliveryActive: false });
+  assertEquals(calls, 0);
+  const common = await loadDeliveryAccessState({ id: "common" }, async (name) => {
+    calls++;
+    return name === "is_current_user_admin" ? { data: false, error: null } : { data: true, error: null };
+  });
+  assertEquals(common, { adminCheckComplete: true, isAdmin: false, deliveryActive: false });
+  assertEquals(isDeliveryOptionDisabled(common.deliveryActive, common.isAdmin, common.adminCheckComplete), true);
+});
+
+Deno.test("falha da RPC administrativa mantém Em breve mesmo se a flag estiver ativa", async () => {
+  const access = await loadDeliveryAccessState({ id: "admin" }, async (name) => {
+    if (name === "is_current_user_admin") throw new Error("network failure");
+    return { data: true, error: null };
+  });
+  assertEquals(access, { adminCheckComplete: false, isAdmin: false, deliveryActive: false });
+  assertEquals(isDeliveryOptionDisabled(access.deliveryActive, access.isAdmin, access.adminCheckComplete), true);
+});
+
+Deno.test("admin confirmado pode testar; Consulte o valor depende da flag ativa", async () => {
+  const inactive = await loadDeliveryAccessState({ id: "admin" }, async (name) => ({
+    data: name === "is_current_user_admin" ? true : false, error: null,
+  }));
+  assertEquals(inactive, { adminCheckComplete: true, isAdmin: true, deliveryActive: false });
+  const active = await loadDeliveryAccessState({ id: "admin" }, async (name) => ({
+    data: true, error: null,
+  }));
+  assertEquals(active, { adminCheckComplete: true, isAdmin: true, deliveryActive: true });
 });
 
 Deno.test("retirada com Uber fica oculta quando entrega está ativa", () => {
