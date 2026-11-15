@@ -98,3 +98,16 @@ Deno.test("checkout novo mantém a ordem visual dos cards e os campos funcionais
     "function updateCheckoutSummary()", "A partir de '+money(deliveryQuote.fee)",
   ]) assertEquals(html.includes(required), true, "missing checkout presentation: " + required);
 });
+
+
+Deno.test("cartões do checkout usam uma única grade fixa sem sobreposição de ícone ou selo", async () => {
+  const html = await Deno.readTextFile("loja.html");
+  const gridRules = html.match(/\.checkout-screen #checkoutForm \.checkout-choice-card\.opt\{/g) || [];
+  assertEquals(gridRules.length, 1, "deve existir uma única regra de grade para os cartões");
+  assertEquals(html.includes("grid-template-columns:22px 32px minmax(0,1fr) auto!important"), true);
+  assertEquals(html.includes(".checkout-choice-card.opt{display:flex"), false);
+  assertEquals(html.includes(".checkout-screen #checkoutForm .checkout-choice-icon{\n grid-column:2!important;grid-row:1!important;\n position:static!important"), true);
+  assertEquals(html.includes(".checkout-screen #checkoutForm .checkout-choice-end{\n grid-column:4!important;grid-row:1!important;\n position:static!important"), true);
+  assertEquals(html.includes("white-space:nowrap!important;overflow-wrap:normal!important"), true);
+  assertEquals(html.includes('class="s checkout-pickup-address">Av. Lourenço da Silva Braga, 700</span><span class="s checkout-pickup-hours">Segunda a sábado, 6h às 13h</span>'), true);
+});
