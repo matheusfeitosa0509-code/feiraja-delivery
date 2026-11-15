@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { formatDropoff, requestSandboxQuotation } from "../_shared/delivery-quote.ts";
 import { geocodeManausAddress } from "../_shared/geocoding.ts";
 import {
-  buildLalamoveOrderBody, cancelLalamoveOrder, createLalamoveOrder,
+  buildLalamoveOrderBody, canCancelLalamove, cancelLalamoveOrder, createLalamoveOrder,
   mapLalamoveStatus, priceDifference, quoteFee,
 } from "../_shared/lalamove-dispatch.ts";
 
@@ -169,7 +169,7 @@ async function cancelOrder(db: any, orderId: string) {
   const { key, secret } = sandboxCredentials();
   const { data: current, error } = await db.rpc("service_get_lalamove_dispatch", { p_order_id: orderId });
   if (error || !current?.lalamove_order_id) throw new Error("DISPATCH_NOT_FOUND");
-  if (!["searching", "assigned", "enroute_pickup"].includes(String(current.lalamove_status || ""))) {
+  if (!canCancelLalamove(current.lalamove_status, current.event_updated_at)) {
     throw new Error("CANCELLATION_WINDOW_CLOSED");
   }
   const response = await cancelLalamoveOrder(key, secret, String(current.lalamove_order_id));
