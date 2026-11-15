@@ -26,7 +26,7 @@ Deno.test("produto sem peso assume 1 kg por unidade; produto kg usa quantidade",
   assertEquals(estimateLoad([{ product_id: "unknown", quantity: 3 }], products).weightKg, 3);
   assertEquals(estimateLoad([{ product_id: "kg", quantity: 2 }], products).weightKg, 2);
 });
-Deno.test("fora da área é classificado sem expor resposta bruta", () => {
+Deno.test("fora da área é classificado sem expor resposta bruta", async () => {
   const mockedFetch = async () => new Response(JSON.stringify({ message: "ERR_OUT_OF_SERVICE_AREA" }), { status: 422 });
   const response = await mockedFetch();
   assertEquals(response.status, 422);
