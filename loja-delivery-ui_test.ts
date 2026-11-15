@@ -49,7 +49,7 @@ Deno.test("loja.html conecta a opção, cotação, endereço salvo e acompanhame
     'id="deliveryHomeOption"', 'id="deliveryAddressFields"',
     'id="deliveryStreet"', 'id="deliveryNumber"', 'id="deliveryNeighborhood"',
     'id="deliveryComplement"', 'id="deliveryReference"',
-    "get_delivery_enabled", "functions.invoke('delivery-quote'",
+    "get_delivery_enabled", "supabase.rpc('is_current_user_admin')", "functions.invoke('delivery-quote'",
     "address_street", "address_reference", "delivery_vehicle", "delivery_fee",
     "Pix de teste (admin)", "Sai para entrega quando o pedido estiver pronto",
   ]) assertEquals(html.includes(required), true, "missing UI wiring: " + required);
