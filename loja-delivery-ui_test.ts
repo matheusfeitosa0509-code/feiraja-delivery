@@ -6,7 +6,7 @@ import {
   normalizeDeliveryAddress,
 } from "./loja-delivery-ui.js";
 
-Deno.test("entrega oculta para cliente quando desativada e visível para admin", () => {
+Deno.test("modalidade de entrega só fica habilitada para admin enquanto inativa", () => {
   assertEquals(canShowDeliveryOption(false, false), false);
   assertEquals(canShowDeliveryOption(false, true), true);
   assertEquals(canShowDeliveryOption(true, false), true);
@@ -101,7 +101,7 @@ Deno.test("checkout novo mantém a ordem visual dos cards e os campos funcionais
     'id="checkoutProductsTotal"', 'id="checkoutDeliveryTotal"',
     'id="checkoutSummaryTotal"', 'id="deliveryStartingPrice"',
     'id="payPixTestOption"', 'checkout-test-badge">TESTE',
-    'id="submitOrder"', 'id="modalTotal"', 'id="cpf"', 'id="phone"', 'id="email"', 'id="deliveryUberOption"', 'canShowUberPickupOption(deliveryActive)', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga a corrida no app da Uber', "const uberAction=o.delivery_type==='pickup_uber'", 'id="deliveryUberOption"', 'canShowUberPickupOption(deliveryActive)', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga a corrida no app da Uber',
+    'id="submitOrder"', 'id="modalTotal"', 'id="cpf"', 'id="phone"', 'id="email"', 'id="deliveryUberOption"', 'canShowUberPickupOption(deliveryActive)', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga o Uber pelo app. Nós levamos o pedido até o carro.', "const uberAction=o.delivery_type==='pickup_uber'", 'id="deliveryUberOption"', 'canShowUberPickupOption(deliveryActive)', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga o Uber pelo app. Nós levamos o pedido até o carro.',
     'position:fixed!important', 'min-height:64px', '#delivery,#payment{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}',
     "function updateCheckoutSummary()", "A partir de '+money(deliveryQuote.fee)",
   ]) assertEquals(html.includes(required), true, "missing checkout presentation: " + required);
@@ -118,4 +118,41 @@ Deno.test("cartões do checkout usam uma única grade fixa sem sobreposição de
   assertEquals(html.includes(".checkout-screen #checkoutForm .checkout-choice-end{\n grid-column:4!important;grid-row:1!important;\n position:static!important"), true);
   assertEquals(html.includes("white-space:nowrap!important;overflow-wrap:normal!important"), true);
   assertEquals(html.includes('class="s checkout-pickup-address">Av. Lourenço da Silva Braga, 700</span><span class="s checkout-pickup-hours">Segunda a sábado, 6h às 13h</span>'), true);
+});
+
+Deno.test("acompanhamento usa quatro etapas horizontais e mensagens por modalidade", async () => {
+  const html = await Deno.readTextFile("loja.html");
+  for (const required of [
+    "['Pago','💳'],['Preparo','📦'],['Caminho','🛵'],['Entregue','✓']",
+    "['Pago','💳'],['Preparo','📦'],['Pronto','✓'],['Retirado','✓']",
+    "grid-template-columns:repeat(4,minmax(0,1fr))",
+    "white-space:nowrap",
+    "Aguardando pagamento do Pix",
+    "Procurando entregador…",
+    "Retire na Av. Lourenço da Silva Braga, 700",
+    "A solicitação expirou. Estamos chamando outro entregador.",
+    "Taxa '+money(Number(o.delivery_fee||0))",
+    "Acompanhar entrega",
+    "Abrir rastreio da Lalamove",
+  ]) assertEquals(html.includes(required), true, "missing order tracking requirement: " + required);
+  const card = html.slice(html.indexOf("const replacement="), html.indexOf("const u=await"));
+  assertEquals(card.includes("Peso estimado"), false, "customer tracking must not show delivery weight");
+});
+
+Deno.test("mapa usa função autenticada, rate limit e atualiza enquanto visível", async () => {
+  const map = await Deno.readTextFile("lalamove-map.js");
+  const endpoint = await Deno.readTextFile("supabase/functions/lalamove-tracking/index.ts");
+  const migration = await Deno.readTextFile("supabase/migrations/20261115230000_lalamove_tracking_rate_limit.sql");
+  const panel = await Deno.readTextFile("painel.html");
+  for (const required of ["15000", "visibilitychange", "pagehide", "openstreetmap.org", "IntersectionObserver"]) {
+    assertEquals(map.includes(required), true, "missing map lifecycle requirement: " + required);
+  }
+  for (const required of ['.eq("id", orderId)', '.eq("user_id", authData.user.id)', 'consume_lalamove_tracking_rate_limit', 'p_max_requests: 30', 'getLalamoveTracking']) {
+    assertEquals(endpoint.includes(required), true, "missing tracking security requirement: " + required);
+  }
+  assertEquals(migration.includes("service role required"), true);
+  assertEquals(migration.includes("revoke all on function public.consume_lalamove_tracking_rate_limit"), true);
+  assertEquals(migration.includes("grant execute on function public.consume_lalamove_tracking_rate_limit"), true);
+  assertEquals(panel.includes("data-lalamove-map"), true);
+  assertEquals(panel.includes("Nenhum motorista aceitou — chame de novo"), true);
 });
