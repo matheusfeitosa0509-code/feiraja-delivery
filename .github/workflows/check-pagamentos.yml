@@ -61,7 +61,7 @@ jobs:
         run: deno check loja-delivery-ui.js
 
       - name: Test delivery checkout UI
-        run: deno test --allow-read=loja.html loja-delivery-ui_test.ts
+        run: deno test --allow-read loja-delivery-ui_test.ts
 
       - name: Check inline store module syntax
         run: |
