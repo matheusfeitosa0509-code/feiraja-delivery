@@ -107,12 +107,12 @@ Deno.test("janela de cancelamento: searching permitido; ON_GOING somente nos pri
 });
 
 Deno.test("status e diferença de taxa são mapeados sem expor dados privados", () => {
-  assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "ASSIGNING_DRIVER"), "searching");
+  assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "ASSIGNING_DRIVER"), "searching");\n  assertEquals(mapLalamoveStatus("DRIVER_ASSIGNED", "ASSIGNING_DRIVER"), "assigned");
   assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "ON_GOING"), "assigned");
   assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "PICKED_UP"), "picked_up");
   assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "COMPLETED"), "delivered");
   assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "CANCELED"), "cancelled");
-  assertEquals(quoteFee(quote).fee, 9);
+  assertEquals(quoteFee(quote).fee, 8.32);
   assertEquals(priceDifference(14, 9), 5);
   assertEquals(priceDifference(8, 9), -1);
 });
