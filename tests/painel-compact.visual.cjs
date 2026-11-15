@@ -4,7 +4,7 @@ const { chromium } = require("playwright");
 
 (async () => {
   const source = fs.readFileSync(path.join(process.cwd(), "painel.html"), "utf8");
-  const style = source.match(/<style>([\\s\\S]*?)<\\/style>/);
+  const style = source.match(/<style>([\s\S]*?)<\/style>/);
   if (!style) throw new Error("CSS do painel não encontrado");
   const renderStart = source.indexOf("function lalamoveStatusLabel(status){");
   const renderEnd = source.indexOf("async function lalamoveErrorMessage", renderStart);
@@ -52,7 +52,7 @@ const { chromium } = require("playwright");
         const itemSeparationKey = (item, occurrence) => String(item.id || item.name) + ":" + occurrence;
         const formatOrderItemDescription = item => "Coco — 4 un";
         const noop = () => {};
-        const render = new Function("allOrders", "$", "statuses", "normalizeOrderStatus", "esc", "money", "shortOrderNumber", "orderItemTotal", "separatedKeysFor", "itemSeparationKey", "formatOrderItemDescription", "saveStatus", "markRefundDone", "toggleSeparatedItem", "startLalamoveQuote", "cancelLalamoveDelivery", renderSource + "\\nreturn render;")(
+        const render = new Function("allOrders", "$", "statuses", "normalizeOrderStatus", "esc", "money", "shortOrderNumber", "orderItemTotal", "separatedKeysFor", "itemSeparationKey", "formatOrderItemDescription", "saveStatus", "markRefundDone", "toggleSeparatedItem", "startLalamoveQuote", "cancelLalamoveDelivery", renderSource + "\nreturn render;")(
           [order], $, statuses, normalizeOrderStatus, esc, money, shortOrderNumber, orderItemTotal,
           separatedKeysFor, itemSeparationKey, formatOrderItemDescription, noop, noop, noop, noop, noop
         );
