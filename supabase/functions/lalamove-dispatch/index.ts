@@ -68,7 +68,7 @@ async function fetchQuote(apiKey: string, apiSecret: string, serviceType: "LALAG
   }
   return payload?.data;
 }
-async function quoteBoth(db: any, order: any) {
+async function quoteBoth(db: any, order: any, userId: string) {\n  const { data: allowed, error: rateError } = await db.rpc("consume_delivery_quote_rate_limit", { p_user_id: userId, p_max_requests: 5, p_window_seconds: 60 });\n  if (rateError) throw new Error("QUOTE_RATE_LIMIT_UNAVAILABLE");\n  if (allowed !== true) throw new Error("TOO_MANY_QUOTES");
   const { key, secret } = sandboxCredentials();
   const address = order.delivery_address;
   const dropoff = formatDropoff(address);
@@ -103,7 +103,7 @@ async function quoteBoth(db: any, order: any) {
 }
 async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "MOTO" | "CAR") {
   const { key, secret } = sandboxCredentials();
-  const senderName = requiredEnv("LALAMOVE_SENDER_NAME");
+  const senderName = Deno.env.get("LALAMOVE_SENDER_NAME") || "Feira On Delivery";
   const senderPhone = requiredEnv("LALAMOVE_SENDER_PHONE");
   if (!String(order.customer_name || "").trim() || !String(order.customer_phone || "").trim()) {
     throw new Error("CUSTOMER_CONTACT_MISSING");
@@ -191,7 +191,7 @@ Deno.serve(async (req: Request) => {
     if (!["quote", "create", "cancel"].includes(action)) return json({ error: "Ação inválida." }, 400);
     if (action === "cancel") return json(await cancelOrder(context.db, orderId));
     const order = await getOrder(context.db, orderId);
-    if (action === "quote") return json(await quoteBoth(context.db, order));
+    if (action === "quote") return json(await quoteBoth(context.db, order, context.user.id));
     const sessionId = String(body.quote_session_id || "");
     const vehicle = String(body.vehicle || "") as "MOTO" | "CAR";
     if (!/^[0-9a-f-]{36}$/i.test(sessionId) || !["MOTO", "CAR"].includes(vehicle)) {
@@ -218,7 +218,7 @@ Deno.serve(async (req: Request) => {
       GEOCODER_UNAVAILABLE: { message: "Serviço de localização temporariamente indisponível.", status: 503 },
       SANDBOX_CREDENTIALS_REQUIRED: { message: "Credenciais de Sandbox ausentes ou inválidas.", status: 503 },
       INVALID_QUOTE_RESPONSE: { message: "A Lalamove retornou uma cotação inválida.", status: 502 },
-      QUOTE_STORE_FAILED: { message: "Não foi possível guardar a cotação com segurança.", status: 503 },
+      QUOTE_STORE_FAILED: { message: "Não foi possível guardar a cotação com segurança.", status: 503 },\n      QUOTE_RATE_LIMIT_UNAVAILABLE: { message: "Limite de cotações temporariamente indisponível.", status: 503 },\n      TOO_MANY_QUOTES: { message: "Muitas cotações. Aguarde um minuto.", status: 429 },
       QUOTE_EXPIRED: { message: "A cotação expirou. Faça uma nova cotação antes de confirmar.", status: 409 },
       CUSTOMER_CONTACT_MISSING: { message: "O pedido não tem nome e telefone válidos para o motorista.", status: 400 },
       INVALID_PHONE: { message: "Telefone do cliente ou da loja inválido. Use DDD e número brasileiro.", status: 400 },
