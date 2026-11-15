@@ -10,12 +10,14 @@ on:
       - 'supabase/tests/lalamove-tracking-migration.test.sql'
       - '.github/workflows/ordem-197-postgres17.yml'
   push:
-    branches: [feat/ordem-191-retirada-only, main]
+    branches: [feat/ordem-191-retirada-only, fix/lalamove-tracking-sql-quoting, main]
     paths:
       - 'supabase/tests/minimal_schema.sql'
       - 'supabase/tests/test_rollback_191.sh'
       - 'supabase/migrations/20261110020000_ordem_191_pickup_only.sql'
       - 'supabase/migrations/20261113010000_checkout_idempotency.sql'
+      - 'supabase/migrations/20261115230000_lalamove_tracking_rate_limit.sql'
+      - 'supabase/tests/lalamove-tracking-migration.test.sql'
       - '.github/workflows/ordem-197-postgres17.yml'
   workflow_dispatch:
 jobs:
