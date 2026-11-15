@@ -54,7 +54,7 @@ begin
   if current_setting('request.jwt.claim.role', true) is distinct from 'service_role' then
     raise exception 'service role required' using errcode='42501';
   end if;
-  if p_order_id is null or p_lalamove_order_id is null
+  if p_order_id is null or p_lalamove_order_id is null or p_status is null
      or p_status not in ('searching','assigned','enroute_pickup','picked_up','delivered','cancelled','rejected','expired') then
     raise exception 'invalid Lalamove tracking update' using errcode='22023';
   end if;
