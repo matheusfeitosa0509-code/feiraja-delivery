@@ -17,12 +17,6 @@ Deno.test("retirada com Uber fica oculta quando entrega está ativa", () => {
   assertEquals(canShowUberPickupOption(null), true);
 });
 
-Deno.test("retirada com Uber fica oculta quando entrega está ativa", () => {
-  assertEquals(canShowUberPickupOption(false), true);
-  assertEquals(canShowUberPickupOption(true), false);
-  assertEquals(canShowUberPickupOption(null), true);
-});
-
 Deno.test("pagamentos da entrega: Pix para todos e Pix de teste só para admin", () => {
   assertEquals(deliveryPaymentOptions(false), ["pix"]);
   assertEquals(deliveryPaymentOptions(true), ["pix", "pix_test"]);
@@ -99,7 +93,7 @@ Deno.test("checkout novo mantém a ordem visual dos cards e os campos funcionais
     'id="checkoutProductsTotal"', 'id="checkoutDeliveryTotal"',
     'id="checkoutSummaryTotal"', 'id="deliveryStartingPrice"',
     'id="payPixTestOption"', 'checkout-test-badge">TESTE',
-    'id="submitOrder"', 'id="modalTotal"', 'id="cpf"', 'id="phone"', 'id="email"', 'id="deliveryUberOption"', 'canShowUberPickupOption(deliveryActive)', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga a corrida no app da Uber', 'id="deliveryUberOption"', 'canShowUberPickupOption(deliveryActive)', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga a corrida no app da Uber',
+    'id="submitOrder"', 'id="modalTotal"', 'id="cpf"', 'id="phone"', 'id="email"', 'id="deliveryUberOption"', 'canShowUberPickupOption(deliveryActive)', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga a corrida no app da Uber', "const uberAction=o.delivery_type==='pickup_uber'", 'id="deliveryUberOption"', 'canShowUberPickupOption(deliveryActive)', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga a corrida no app da Uber',
     'position:fixed!important', 'min-height:64px', '#delivery,#payment{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}',
     "function updateCheckoutSummary()", "A partir de '+money(deliveryQuote.fee)",
   ]) assertEquals(html.includes(required), true, "missing checkout presentation: " + required);
