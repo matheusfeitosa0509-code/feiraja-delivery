@@ -986,6 +986,10 @@ try {
  .checkout-footer{left:50%;right:auto;transform:translateX(-50%)}
 }
 
+
+/* Prioridade final sobre o espaçamento padrão do modal do checkout. */
+.checkout-screen .checkout-page{padding-bottom:calc(270px + env(safe-area-inset-bottom))!important}
+@media(max-width:380px){.checkout-screen .checkout-page{padding-bottom:calc(280px + env(safe-area-inset-bottom))!important}}
 </style></head><body>
 <header class="app-header" aria-label="Feira On Delivery"><a class="brand" href="#" aria-label="Feira On Delivery">Feira On Delivery<small>Tudo da feira, pronto para retirada</small></a><div class="search home-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="homeSearch" placeholder="Buscar produtos da feira…" aria-label="Buscar produtos da feira"></div></header>
 <main class="wrap">
