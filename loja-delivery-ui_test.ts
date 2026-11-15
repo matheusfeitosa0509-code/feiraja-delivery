@@ -52,7 +52,7 @@ Deno.test("loja.html conecta a opção, cotação, endereço salvo e acompanhame
     "get_delivery_enabled", "supabase.rpc('is_current_user_admin')", "functions.invoke('delivery-quote'",
     "address_street", "address_reference", "delivery_vehicle", "delivery_fee",
     "Pix de teste (admin)", "Sai para entrega quando o pedido estiver pronto",
-    "await loadDeliveryAccess(currentUser)", "async function openCheckoutModal()", "delivery-address", "session_token", "deliveryMapCoordinates",
+    "await loadDeliveryAccess(currentUser)", "async function openCheckoutModal()", "delivery-address", "session_token", "deliveryMapCoordinates", "deliveryPlacesSessionToken=null;$('#deliveryMapFallback').hidden=false",
   ]) assertEquals(html.includes(required), true, "missing UI wiring: " + required);
 });
 
