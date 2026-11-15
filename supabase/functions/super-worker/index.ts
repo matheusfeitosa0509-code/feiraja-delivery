@@ -127,12 +127,13 @@ Deno.serve(async (req: Request) => {
     const { data: authData, error: authError } = await authClient.auth.getUser(accessToken);
     if (authError || !authData?.user) return json({ error: "Sessão inválida." }, 401);
     const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data, error } = await db.from("orders").select("id,status,user_id").eq("id", orderId).maybeSingle();
+    const { data, error } = await db.from("orders").select("id,status,user_id,is_test_order").eq("id", orderId).maybeSingle();
     if (error) return json({ error: "Não foi possível consultar o pedido." }, 500);
     if (!data) return json({ error: "Pedido não encontrado." }, 404);
     const { data: adminMembership } = await db.from("admin_users").select("user_id").eq("user_id", authData.user.id).maybeSingle();
     const isAdmin = !!adminMembership;
     if (data.user_id !== authData.user.id && !isAdmin) return json({ error: "Acesso negado." }, 403);
+    if (data.is_test_order === true && !isAdmin) return json({ error: "Pedido não encontrado." }, 404);
     return json({ orderId: data.id, status: data.status });
   }
   if (req.method !== "POST") return json({ error: "Método não permitido." }, 405);
@@ -595,9 +596,6 @@ Deno.serve(async (req: Request) => {
       user_id: orderUserId,
       customer: { name, phone, cpf, email, delivery_type: deliveryType, delivery_address: normalizedDeliveryAddress },
       payment_method: paymentMethod,
-      delivery_fee: deliveryFee,
-      delivery_vehicle: deliveryQuote?.vehicle || null,
-      delivery_weight_kg: deliveryQuote?.weightKg || null,
       items: items.slice().sort((a: any, b: any) => String(a.id).localeCompare(String(b.id))),
       subtotal_cents: subtotalCents,
       notes: String(body?.notes ?? "").trim().slice(0, paymentMethod === "pix" ? 500 : 1000),
