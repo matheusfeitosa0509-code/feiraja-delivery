@@ -1,3 +1,7 @@
+export function isAdminRpcTrue(value) {
+  return value === true || value === "true" || value === 1;
+}
+
 export function canShowDeliveryOption(deliveryActive, isAdmin) {
   return deliveryActive === true || isAdmin === true;
 }
