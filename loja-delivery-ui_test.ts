@@ -47,11 +47,11 @@ Deno.test("loja.html conecta a opção, cotação, endereço salvo e acompanhame
   const html = await Deno.readTextFile("loja.html");
   for (const required of [
     'id="deliveryHomeOption"', 'id="deliveryAddressFields"',
-    'id="deliveryStreet"', 'id="deliveryNumber"', 'id="deliveryNeighborhood"', 'id="deliveryStreetSuggestions"', 'id="deliveryMapFallback"', 'id="deliveryMapPanel"', 'id="deliveryMap"', 'id="deliveryMapUse"',
+    'id="deliveryStreet"', 'id="deliveryNumber"', 'id="deliveryNeighborhood"', 'id="deliveryStreetSuggestions"', 'id="deliveryMapFallback"', 'id="deliveryMapPanel"', 'id="deliveryMap"', 'id="deliveryMapUse"', 'id="deliveryMapAdjust"', 'id="deliveryAddressSummary"', 'id="deliveryAddressEdit"', 'id="deliveryStartingPrice"', 'id="checkoutProductsTotal"', 'id="checkoutDeliveryTotal"', 'id="checkoutSummaryTotal"', 'id="checkoutDeliveryMeta"',
     'id="deliveryComplement"', 'id="deliveryReference"',
     "get_delivery_enabled", "supabase.rpc('is_current_user_admin')", "functions.invoke('delivery-quote'",
     "address_street", "address_reference", "delivery_vehicle", "delivery_fee",
-    "Pix de teste (admin)", "Sai para entrega quando o pedido estiver pronto",
+    "Pix de teste (admin)", "Sai quando o pedido estiver pronto",
     "await loadDeliveryAccess(currentUser)", "async function openCheckoutModal()", "delivery-address", "session_token", "deliveryMapCoordinates", "deliveryPlacesSessionToken=null;$('#deliveryMapFallback').hidden=false",
   ]) assertEquals(html.includes(required), true, "missing UI wiring: " + required);
 });
@@ -69,4 +69,26 @@ Deno.test("resultado da RPC administrativa é normalizado sem falsos negativos",
   assertEquals(isAdminRpcTrue(1), true);
   assertEquals(isAdminRpcTrue(false), false);
   assertEquals(isAdminRpcTrue(null), false);
+});
+
+
+Deno.test("checkout novo mantém a ordem visual dos cards e os campos funcionais", async () => {
+  const html = await Deno.readTextFile("loja.html");
+  const receive = html.indexOf('id="checkoutReceiveTitle"');
+  const address = html.indexOf('id="checkoutAddressTitle"');
+  const summary = html.indexOf('id="checkoutSummaryTitle"');
+  const payment = html.indexOf('id="checkoutPaymentTitle"');
+  const customer = html.indexOf('id="checkoutCustomerTitle"');
+  assertEquals(receive > 0 && receive < address && address < summary && summary < payment && payment < customer, true);
+  for (const required of [
+    'placeholder="Digite sua rua e número"', 'id="deliveryStreetSuggestions"',
+    'id="deliveryAddressSummaryStreet"', 'id="deliveryAddressEdit"',
+    'id="deliveryMapAdjust"', '+ Adicionar complemento ou referência',
+    'id="checkoutProductsTotal"', 'id="checkoutDeliveryTotal"',
+    'id="checkoutSummaryTotal"', 'id="deliveryStartingPrice"',
+    'id="payPixTestOption"', 'checkout-test-badge">TESTE',
+    'id="submitOrder"', 'id="modalTotal"', 'id="cpf"', 'id="phone"', 'id="email"',
+    'position:fixed!important', 'min-height:64px',
+    "function updateCheckoutSummary()", "A partir de '+money(deliveryQuote.fee)",
+  ]) assertEquals(html.includes(required), true, "missing checkout presentation: " + required);
 });
