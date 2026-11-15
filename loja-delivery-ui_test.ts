@@ -88,7 +88,7 @@ Deno.test("checkout novo mantém a ordem visual dos cards e os campos funcionais
     'id="checkoutSummaryTotal"', 'id="deliveryStartingPrice"',
     'id="payPixTestOption"', 'checkout-test-badge">TESTE',
     'id="submitOrder"', 'id="modalTotal"', 'id="cpf"', 'id="phone"', 'id="email"',
-    'position:fixed!important', 'min-height:64px',
+    'position:fixed!important', 'min-height:64px', '#delivery,#payment{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}',
     "function updateCheckoutSummary()", "A partir de '+money(deliveryQuote.fee)",
   ]) assertEquals(html.includes(required), true, "missing checkout presentation: " + required);
 });
