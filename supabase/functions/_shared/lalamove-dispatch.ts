@@ -212,7 +212,8 @@ export function requireSupabaseSecretKey(value: unknown): string {
 /** New secret keys authenticate through apikey; never forward them as Bearer JWTs. */
 export function secretKeyFetch(secretKey: string, fetcher: typeof fetch = fetch): typeof fetch {
   return (input: RequestInfo | URL, init?: RequestInit) => {
-    const headers = new Headers(init?.headers);
+    const headers = new Headers(input instanceof Request ? input.headers : undefined);
+    new Headers(init?.headers).forEach((value, name) => headers.set(name, value));
     headers.set("apikey", secretKey);
     headers.delete("Authorization");
     return fetcher(input, { ...init, headers });
