@@ -53,7 +53,7 @@ Deno.serve(async (req: Request) => {
     const order = data.order && typeof data.order === "object" ? data.order : data;
     const orderId = String(order.orderId || order.id || data.orderId || data.id || "");
     // V3 eventId is normally present; signature is a stable fallback for signed payload variants.
-    const eventId = String(payload.eventId || data.eventId || payload.id || data.id || payload.signature || "");
+    const eventId = String(payload.eventId || data.eventId || payload.id || payload.signature || "");
     const eventType = String(payload.eventType || data.eventType || payload.type || "UNKNOWN");
     const status = mapLalamoveStatus(eventType, String(order.status || data.status || ""));
     if (!orderId || !eventId) return json({ error: "Missing event or order identifier." }, 400);
