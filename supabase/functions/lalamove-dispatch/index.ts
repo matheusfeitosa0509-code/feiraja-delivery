@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { formatDropoff, requestSandboxQuotation } from "../_shared/delivery-quote.ts";
 import { geocodeManausAddress } from "../_shared/geocoding.ts";
 import {
-  buildLalamoveOrderBody, cancelLalamoveOrder, canStartDispatch, createLalamoveOrder,
+  buildLalamoveOrderBody, cancelLalamoveOrder, createLalamoveOrder,
   mapLalamoveStatus, priceDifference, quoteFee,
 } from "../_shared/lalamove-dispatch.ts";
 
@@ -14,7 +14,6 @@ const cors = {
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { ...cors, "Content-Type": "application/json" },
 });
-const ORIGIN = "Av. Lourenço da Silva Braga, 700 - Centro, Manaus - AM, Brasil";
 const ORIGIN_LATLNG = "Av. Lourenço da Silva Braga, 700 - Centro, Manaus - AM, Brasil";
 
 function requiredEnv(name: string) {
@@ -28,7 +27,7 @@ function sandboxCredentials() {
   if (!key.startsWith("pk_test") || !secret.startsWith("sk_test")) throw new Error("SANDBOX_CREDENTIALS_REQUIRED");
   return { key, secret };
 }
-async function adminContext(req: Request) {
+async function adminContext(req: Request): Promise<{ db: any; user: any; error?: undefined } | { error: Response; db?: undefined; user?: undefined }> {
   const url = requiredEnv("SUPABASE_URL");
   const anon = requiredEnv("SUPABASE_ANON_KEY");
   const service = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
