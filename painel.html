@@ -213,6 +213,19 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 .panel-test-tool #pixSimulationCard{margin:8px 0}
 @media(max-width:380px){.order-contact{font-size:10px;gap:3px}.order-contact>strong{max-width:34%}.order-email{font-size:9px}.order{padding:10px!important}.order-summary-top{gap:5px}.order-summary-top .pill{font-size:9px}.order-contact{font-size:11px}.order-email{margin-left:0}.order-chips{gap:4px}.order-chip{font-size:9px}.lalamove-facts{gap:4px}.lalamove-facts span{font-size:9px}.statusrow{grid-template-columns:minmax(0,1fr) auto}}
 
+
+/* Confirmações próprias do painel: substituem diálogos nativos do navegador. */
+.app-dialog-backdrop{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(12,30,18,.56);backdrop-filter:blur(3px)}
+.app-dialog-backdrop[hidden]{display:none!important}
+.app-dialog{width:min(440px,100%);padding:22px;background:#fff;border:1px solid #e0eade;border-radius:24px;box-shadow:0 20px 70px rgba(0,0,0,.24)}
+.app-dialog h2{margin:0 0 9px;font-size:19px;letter-spacing:-.3px}
+.app-dialog p{margin:0;color:#58695e;font-size:14px;line-height:1.6;white-space:pre-wrap}
+.app-dialog-actions{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap;margin-top:22px}
+.app-dialog-actions button{min-width:105px;min-height:46px}
+.app-dialog-actions .app-dialog-back{background:#edf3eb;color:#285d39}
+.app-dialog-actions .app-dialog-confirm.danger{background:#b3261e;color:#fff}
+@media(max-width:380px){.app-dialog{padding:19px;border-radius:21px}.app-dialog-actions{display:grid;grid-template-columns:1fr 1fr}.app-dialog-actions button{min-width:0;width:100%}}
+
 </style>
 </head>
 <body><main class="wrap">
@@ -434,7 +447,7 @@ let allOrders=[],seenOrderIds=new Set(),firstLoadDone=false,hasMoreOrders=true,n
  async function toggleSeparatedItem(orderId,key){
   const order=allOrders.find(o=>String(o.id)===String(orderId));if(!order||separatedPending.has(String(orderId))||normalizeOrderStatus(order.status)==='Cancelada')return;
   const id=String(orderId),previous=[...separatedKeysFor(order)],next=previous.includes(key)?previous.filter(v=>v!==key):[...previous,key];
-  if(!order.separation_started_at&&!order.separation_started_legacy&&previous.length===0&&next.length>0&&!confirm('Ao começar a separar, o cliente não poderá mais cancelar este pedido. Continuar?'))return;
+  if(!order.separation_started_at&&!order.separation_started_legacy&&previous.length===0&&next.length>0&&!(await appConfirm('Ao começar a separar, o cliente não poderá mais cancelar este pedido.',{title:'Começar a separar?',confirmText:'Começar a separar'})))return;
   separatedPending.set(id,next);order.separated_items=next;render();
   if(!separatedColumnAvailable){separatedMemory.set(id,next);separatedPending.delete(id);return;}
   try{
@@ -692,7 +705,7 @@ async function saveProductSheet(){
   if(saleUnit!=='kg'&&(!Number.isInteger(min)||!Number.isInteger(step)))throw new Error('Unidades, maços e pacotes usam mínimo e passo inteiros.');
   if(saleUnit==='kg'&&Math.abs(min/step-Math.round(min/step))>1e-8)throw new Error('O mínimo precisa respeitar o passo da unidade.');
   if(saleUnit==='kg'&&Math.abs(valueMin-min)>1e-8)throw new Error('O mínimo do “por valor” deve ser igual ao mínimo do produto.');
-  if(saleUnit!==product.sale_unit&&!window.confirm('Isso muda como o cliente compra. Confirmar?'))throw new Error('Alteração de unidade cancelada.');
+  if(saleUnit!==product.sale_unit&&!(await appConfirm('Isso muda como o cliente compra.',{title:'Alterar unidade?',confirmText:'Confirmar alteração'})))throw new Error('Alteração de unidade cancelada.');
   if(sheetPendingPhoto){setSheetMessage('Enviando foto…');uploadedPhoto=await uploadProductPhoto(id,sheetPendingPhoto.blob);image=uploadedPhoto.url;}
   const productChanges={};
   if(name!==product.name)productChanges.name=name;
@@ -1017,7 +1030,7 @@ async function confirmLalamoveDispatch(orderId,sessionId,vehicle,button){
  finally{button.disabled=false;button.textContent='Confirmar e criar corrida';}
 }
 async function cancelLalamoveDelivery(orderId,button){
- if(!confirm('Cancelar esta corrida na Lalamove Sandbox? A loja continuará responsável pelo pedido.'))return;
+ if(!(await appConfirm('Cancelar esta corrida na Lalamove Sandbox? A loja continuará responsável pelo pedido.',{title:'Cancelar corrida?',confirmText:'Cancelar corrida',danger:true})))return;
  button.disabled=true;button.textContent='Cancelando…';
  try{
   const {data,error}=await db.functions.invoke('lalamove-dispatch',{body:{action:'cancel',order_id:orderId}});
@@ -1044,7 +1057,7 @@ async function saveStatus(id,button){
  }
 }
 async function markRefundDone(id,button){
- if(!confirm('Confirmar que a devolução do Pix deste pedido foi feita?'))return;
+ if(!(await appConfirm('Confirmar que a devolução do Pix deste pedido foi feita?',{title:'Confirmar devolução do Pix?',confirmText:'Marcar como feita'})))return;
  button.disabled=true;button.textContent='Salvando…';
  try{
   const{data,error}=await db.from('orders').update({refund_pending:false}).eq('id',id).eq('refund_pending',true).select('id');
@@ -1725,4 +1738,33 @@ document.getElementById('tabProducts').addEventListener('click',()=>selectMainTa
 
 selectMainTab(requestedTab);
 selectProductSection(requestedTab==='products'?requestedSection:'formBox');
-</script></body></html>
+
+function appConfirm(message,options={}){
+ const backdrop=$('appDialogBackdrop'),title=$('appDialogTitle'),body=$('appDialogMessage'),back=$('appDialogBack'),confirm=$('appDialogConfirm');
+ if(!backdrop||!title||!body||!back||!confirm)return Promise.resolve(false);
+ title.textContent=options.title||'Confirmar ação';body.textContent=String(message||'');
+ back.textContent=options.cancelText||'Voltar';confirm.textContent=options.confirmText||'Confirmar';
+ confirm.classList.toggle('danger',options.danger===true);backdrop.hidden=false;
+ return new Promise(resolve=>{
+  let finished=false;
+  const close=value=>{if(finished)return;finished=true;backdrop.hidden=true;back.onclick=null;confirm.onclick=null;backdrop.onclick=null;document.removeEventListener('keydown',onKey);resolve(value);};
+  const onKey=event=>{if(event.key==='Escape'){event.preventDefault();close(false);}};
+  back.onclick=()=>close(false);confirm.onclick=()=>close(true);
+  backdrop.onclick=event=>{if(event.target===backdrop)close(false);};
+  document.addEventListener('keydown',onKey);confirm.focus();
+ });
+}
+
+</script>
+<div id="appDialogBackdrop" class="app-dialog-backdrop" hidden>
+ <section class="app-dialog" role="dialog" aria-modal="true" aria-labelledby="appDialogTitle" aria-describedby="appDialogMessage">
+  <h2 id="appDialogTitle">Confirmar ação</h2>
+  <p id="appDialogMessage"></p>
+  <div class="app-dialog-actions">
+   <button id="appDialogBack" type="button" class="app-dialog-back">Voltar</button>
+   <button id="appDialogConfirm" type="button" class="app-dialog-confirm">Confirmar</button>
+  </div>
+ </section>
+</div>
+
+</body></html>
