@@ -60,4 +60,5 @@ for(const [label,existing,expected,attempts] of [
  await runCase('Cenário adicional: '+label,existing,expected,attempts);
 }
 console.log('PASS: fallback independente das colunas de separação');
-\nawait runCase('5. administrador pode abrir o pedido TESTE no acompanhamento do cliente',['separation_started_at','separation_started_legacy'],both,[both],true);\n
+
+await runCase('5. administrador pode abrir o pedido TESTE no acompanhamento do cliente',['separation_started_at','separation_started_legacy'],both,[both],true);
