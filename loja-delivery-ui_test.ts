@@ -134,9 +134,13 @@ Deno.test("acompanhamento usa quatro etapas horizontais e mensagens por modalida
     "Taxa '+money(Number(o.delivery_fee||0))",
     "Acompanhar entrega",
     "Abrir rastreio da Lalamove",
+    "data-lalamove-map",
   ]) assertEquals(html.includes(required), true, "missing order tracking requirement: " + required);
-  const card = html.slice(html.indexOf("const replacement="), html.indexOf("const u=await"));
-  assertEquals(card.includes("Peso estimado"), false, "customer tracking must not show delivery weight");
+  const renderStart = html.indexOf("const html=data.map(o=>");
+  const renderEnd = html.indexOf("paint(html);", renderStart);
+  const orderRendering = html.slice(renderStart, renderEnd);
+  assertEquals(renderStart >= 0 && renderEnd > renderStart, true, "customer order rendering must be present");
+  assertEquals(orderRendering.includes("Peso estimado"), false, "customer tracking must not show delivery weight");
 });
 
 Deno.test("mapa usa função autenticada, rate limit e atualiza enquanto visível", async () => {
@@ -155,4 +159,6 @@ Deno.test("mapa usa função autenticada, rate limit e atualiza enquanto visíve
   assertEquals(migration.includes("grant execute on function public.consume_lalamove_tracking_rate_limit"), true);
   assertEquals(panel.includes("data-lalamove-map"), true);
   assertEquals(panel.includes("Nenhum motorista aceitou — chame de novo"), true);
+  assertEquals(panel.includes("Entrega cancelada"), true);
+  assertEquals(panel.includes("Entrega Feira On"), true);
 });
