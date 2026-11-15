@@ -60,7 +60,7 @@ Deno.test("rótulo da cotação e endereço fora da área", () => {
 Deno.test("loja.html conecta a opção, cotação, endereço salvo e acompanhamento", async () => {
   const html = await Deno.readTextFile("loja.html");
   for (const required of [
-    'id="deliveryHomeOption"', 'Entrega Feira On', 'Em breve', 'Receber com seu Uber', 'id="deliveryAddressFields"',
+    'id="deliveryHomeOption"', 'aria-disabled="true"', 'disabled', 'Entrega Feira On', 'Receba em casa sem precisar pedir Uber.', 'Em breve', 'Receber com seu Uber', 'id="deliveryAddressFields"',
     'id="deliveryStreet"', 'id="deliveryNumber"', 'id="deliveryNeighborhood"', 'id="deliveryStreetSuggestions"', 'id="deliveryMapFallback"', 'id="deliveryMapPanel"', 'id="deliveryMap"', 'id="deliveryMapUse"', 'id="deliveryMapAdjust"', 'id="deliveryAddressSummary"', 'id="deliveryAddressEdit"', 'id="deliveryStartingPrice"', 'id="checkoutProductsTotal"', 'id="checkoutDeliveryTotal"', 'id="checkoutSummaryTotal"', 'id="checkoutDeliveryMeta"',
     'id="deliveryComplement"', 'id="deliveryReference"',
     "get_delivery_enabled", "supabase.rpc('is_current_user_admin')", "functions.invoke('delivery-quote'",
@@ -157,8 +157,14 @@ Deno.test("mapa usa função autenticada, rate limit e atualiza enquanto visíve
   assertEquals(migration.includes("service role required"), true);
   assertEquals(migration.includes("revoke all on function public.consume_lalamove_tracking_rate_limit"), true);
   assertEquals(migration.includes("grant execute on function public.consume_lalamove_tracking_rate_limit"), true);
+  assertEquals(migration.includes("service_update_lalamove_tracking_status"), true);
+  assertEquals(migration.includes("p_status in ('cancelled','rejected','expired')"), true);
+  assertEquals(migration.includes("when p_status = 'delivered' then 'Entregue'"), true);
+  assertEquals(migration.includes("delivery_fee"), false, "tracking migration must not change price fields");
   assertEquals(panel.includes("data-lalamove-map"), true);
   assertEquals(panel.includes("Nenhum motorista aceitou — chame de novo"), true);
   assertEquals(panel.includes("Entrega cancelada"), true);
   assertEquals(panel.includes("Entrega Feira On"), true);
+  assertEquals(panel.includes("data-lalamove-status-label"), true);
+  assertEquals(map.includes("syncOrderUI(data)"), true);
 });
