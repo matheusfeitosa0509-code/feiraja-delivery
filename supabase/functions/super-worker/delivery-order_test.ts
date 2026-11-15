@@ -6,11 +6,27 @@ const products = [
   { id: "melancia", delivery_unit_weight_kg: 2, delivery_bulky: true, sale_unit: "unidade" },
 ];
 const address = { street: "Rua A", number: "10", neighborhood: "Centro" };
+const mockGeocoder = async (input: RequestInfo | URL) => {
+  const url = new URL(String(input));
+  assertEquals(url.hostname, "maps.googleapis.com");
+  assertEquals(url.searchParams.get("address")?.includes("Manaus - AM, Brasil"), true);
+  return new Response(JSON.stringify({ status: "OK", results: [{
+    types: ["street_address"],
+    address_components: [
+      { long_name: "Manaus", short_name: "Manaus", types: ["locality", "political"] },
+      { long_name: "Amazonas", short_name: "AM", types: ["administrative_area_level_1", "political"] },
+      { long_name: "Brasil", short_name: "BR", types: ["country", "political"] },
+    ],
+    geometry: { location: { lat: -3.1, lng: -60.02 } },
+  }] }), { status: 200 });
+};
 const mockLalamove = (total = "8.32") => async (input: RequestInfo | URL, init?: RequestInit) => {
   assertEquals(String(input), "https://rest.sandbox.lalamove.com/v3/quotations");
   const body = JSON.parse(String(init?.body));
   assertEquals(body.data.stops[0].address.includes("Av. Lourenço da Silva Braga, 700"), true);
   assertEquals(body.data.stops[1].address.includes("Rua A, 10"), true);
+  assertEquals(body.data.stops[0].coordinates, { lat: "-3.1", lng: "-60.02" });
+  assertEquals(body.data.stops[1].coordinates, { lat: "-3.1", lng: "-60.02" });
   assertEquals(body.data.serviceType, "LALAGO");
   return new Response(JSON.stringify({
     data: { expiresAt: new Date(Date.now() + 60_000).toISOString(),
@@ -25,7 +41,8 @@ Deno.test("entrega admin com Pix de teste: autoriza, calcula cotação Sandbox e
   const quote = await calculateServerDelivery({
     items: [{ product_id: "banana", quantity: 2 }],
     products, address, motoLimitKg: 8,
-    apiKey: "pk_test_demo", apiSecret: "sk_test_demo", fetcher: mockLalamove("8.32"),
+    apiKey: "pk_test_demo", apiSecret: "sk_test_demo", geocodingApiKey: "google-test",
+    geocodeFetcher: mockGeocoder, fetcher: mockLalamove("8.32"),
   });
   assertEquals(quote.vehicle, "MOTO");
   assertEquals(quote.weightKg, 1);
@@ -73,7 +90,8 @@ Deno.test("produto volumoso força CAR na cotação real mockada", async () => {
   const quote = await calculateServerDelivery({
     items: [{ product_id: "melancia", quantity: 1 }],
     products, address, motoLimitKg: 8,
-    apiKey: "pk_test_demo", apiSecret: "sk_test_demo", fetcher,
+    apiKey: "pk_test_demo", apiSecret: "sk_test_demo", geocodingApiKey: "google-test",
+    geocodeFetcher: mockGeocoder, fetcher,
   });
   assertEquals(quote.vehicle, "CAR");
   assertEquals(quote.fee, 14);
