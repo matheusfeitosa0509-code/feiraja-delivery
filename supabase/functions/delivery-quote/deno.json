@@ -1,0 +1,8 @@
+{
+  "tasks": {
+    "test": "deno test --allow-env --allow-net"
+  },
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.57.4"
+  }
+}

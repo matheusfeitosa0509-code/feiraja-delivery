@@ -2,6 +2,8 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { calculateLineTotalCents, calculateQuantityFromValueCents, calculateValueLineTotalCents, isValidSalesQuantity, isValueSaleEnabled, selectEffectiveUnitPriceCents, sumDecimalQuantities } from "../_shared/sales-rules.js";
 import { resolveMercadoPagoOrderStatus } from "./payment-status.ts";
 import { normalizeItemPreference } from "../_shared/item-preferences.ts";
+import { formatDropoff } from "../_shared/delivery-quote.ts";
+import { calculateServerDelivery, orderTotals, validateCheckoutDelivery } from "./delivery-order.ts";
 
 function isValidCpf(value: string) { const cpf = String(value || "").replace(/\D/g, ""); if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false; const calc = (base: string, factor: number) => { let sum = 0; for (const digit of base) sum += Number(digit) * factor--; const mod = (sum * 10) % 11; return mod === 10 ? 0 : mod; }; return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10]); }
 
@@ -125,12 +127,13 @@ Deno.serve(async (req: Request) => {
     const { data: authData, error: authError } = await authClient.auth.getUser(accessToken);
     if (authError || !authData?.user) return json({ error: "Sessão inválida." }, 401);
     const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data, error } = await db.from("orders").select("id,status,user_id").eq("id", orderId).maybeSingle();
+    const { data, error } = await db.from("orders").select("id,status,user_id,is_test_order").eq("id", orderId).maybeSingle();
     if (error) return json({ error: "Não foi possível consultar o pedido." }, 500);
     if (!data) return json({ error: "Pedido não encontrado." }, 404);
     const { data: adminMembership } = await db.from("admin_users").select("user_id").eq("user_id", authData.user.id).maybeSingle();
     const isAdmin = !!adminMembership;
     if (data.user_id !== authData.user.id && !isAdmin) return json({ error: "Acesso negado." }, 403);
+    if (data.is_test_order === true && !isAdmin) return json({ error: "Pedido não encontrado." }, 404);
     return json({ orderId: data.id, status: data.status });
   }
   if (req.method !== "POST") return json({ error: "Método não permitido." }, 405);
@@ -275,6 +278,10 @@ Deno.serve(async (req: Request) => {
     if (authError || !authData?.user) return json({ error: "Sessão expirada. Entre novamente e tente o pedido." }, 401);
     if (authData.user.is_anonymous) return json({ error: 'Crie uma conta ou entre na sua conta antes de concluir o pedido, para manter seu histórico salvo.' }, 403);
     const orderUserId = authData.user.id;
+    const { data: adminMembership, error: adminMembershipError } = await db.from("admin_users")
+      .select("user_id").eq("user_id", orderUserId).maybeSingle();
+    if (adminMembershipError) return json({ error: "Não foi possível validar as permissões da conta." }, 503);
+    const isAdmin = !!adminMembership;
     let asaasEnabled = Deno.env.get("ASAAS_ENABLED") === "true";
     let asaasApiKey = asaasEnabled ? (Deno.env.get("ASAAS_API_KEY") || "") : "";
     const { data: priorAttempt, error: priorAttemptError } = await db.from("checkout_idempotency")
@@ -288,7 +295,7 @@ Deno.serve(async (req: Request) => {
     let priorOrder: any = null;
     if (priorAttempt) {
       const { data: existingOrder, error: existingOrderError } = await db.from("orders")
-        .select("id,status,total,payment_id,pix_qr_code,pix_qr_code_base64,pickup_code,payment_provider,payment_method")
+        .select("id,status,total,payment_id,pix_qr_code,pix_qr_code_base64,pickup_code,payment_provider,payment_method,delivery_address,delivery_vehicle,delivery_weight_kg,delivery_fee")
         .eq("id", String(priorAttempt.order_id)).eq("user_id", orderUserId).maybeSingle();
       if (existingOrderError || !existingOrder) return json({ error: "Não foi possível recuperar o pedido desta tentativa." }, 503);
       priorOrder = existingOrder;
@@ -299,8 +306,12 @@ Deno.serve(async (req: Request) => {
     const customer = body?.customer;
     const requestedItems = body?.items;
     const paymentMethod = String(body?.paymentMethod || "pix").toLowerCase();
+    if (paymentMethod === "pix_test") {
+      asaasEnabled = false;
+      asaasApiKey = "";
+    }
     const MIN_ORDER_SUBTOTAL_CENTS = 3000;
-    if (!["pix", "cash", "card_on_delivery"].includes(paymentMethod)) return json({ error: "Forma de pagamento inválida." }, 400);
+    if (!["pix", "pix_test", "cash", "card_on_delivery"].includes(paymentMethod)) return json({ error: "Forma de pagamento inválida." }, 400);
     if (!customer || !Array.isArray(requestedItems) || requestedItems.length < 1 || requestedItems.length > 50) {
       return json({ error: "Pedido inválido: informe os dados do cliente e os produtos." }, 400);
     }
@@ -309,18 +320,42 @@ Deno.serve(async (req: Request) => {
     const cpf = paymentMethod === "pix" ? String(customer.cpf ?? "").replace(/\D/g, "").slice(0, asaasEnabled ? 14 : 11) : "";
     const validPixDocument = asaasEnabled ? isValidCpfOrCnpj(cpf) : isValidCpf(cpf);
     const email = String(customer.email ?? "").trim().toLowerCase().slice(0, 254);
-    const requestedDeliveryType = String(customer.deliveryType ?? "");
-    if (!["pickup_store", "pickup_uber"].includes(requestedDeliveryType)) {
-      return json({ error: "Modalidade inválida. Escolha retirada na loja ou retirada com Uber." }, 400);
+    const requestedDeliveryType = String(customer.deliveryType ?? body?.delivery_type ?? "");
+    const deliveryAddressInput = customer.deliveryAddress || customer.delivery_address || body?.delivery_address || null;
+    let deliveryActive = false;
+    let deliveryMotoLimitKg = 8;
+    if (requestedDeliveryType === "delivery") {
+      const { data: deliverySettings, error: deliverySettingsError } = await db.from("delivery_settings")
+        .select("delivery_ativa,moto_limite_kg").eq("singleton", true).maybeSingle();
+      if (deliverySettingsError || !deliverySettings) return json({ error: "Não foi possível validar a configuração de entrega." }, 503);
+      deliveryActive = deliverySettings.delivery_ativa === true;
+      deliveryMotoLimitKg = Number(deliverySettings.moto_limite_kg || 8);
     }
+    const deliveryAccess = validateCheckoutDelivery({
+      deliveryType: requestedDeliveryType, paymentMethod, isAdmin, deliveryActive,
+    });
+    if (!deliveryAccess.ok) return json({ error: deliveryAccess.error }, deliveryAccess.status);
     const deliveryType = requestedDeliveryType;
-    if (deliveryType === "pickup_uber" && paymentMethod !== "pix") {
-      return json({ error: "Na retirada com Uber, o pagamento é somente por Pix." }, 400);
-    }
     if (paymentMethod === "pix" && (asaasEnabled ? !asaasApiKey : !mpToken)) {
       return json({ error: asaasEnabled ? "Asaas Pix ainda não está configurado." : "Pagamento Pix ainda não está configurado." }, 503);
     }
-    const address = "Av. Lourenço da Silva Braga, 700 (em frente à feira)";
+    let normalizedDeliveryAddress: { street: string; number: string; neighborhood: string; complement?: string; reference?: string } | null = null;
+    let address = "Av. Lourenço da Silva Braga, 700 (em frente à feira)";
+    if (deliveryType === "delivery") {
+      const rawAddress = deliveryAddressInput || {};
+      normalizedDeliveryAddress = {
+        street: String(rawAddress.street || "").trim().slice(0, 160),
+        number: String(rawAddress.number || "").trim().slice(0, 30),
+        neighborhood: String(rawAddress.neighborhood || "").trim().slice(0, 100),
+        ...(String(rawAddress.complement || "").trim() ? { complement: String(rawAddress.complement).trim().slice(0, 100) } : {}),
+        ...(String(rawAddress.reference || "").trim() ? { reference: String(rawAddress.reference).trim().slice(0, 160) } : {}),
+      };
+      try {
+        address = formatDropoff(normalizedDeliveryAddress);
+      } catch {
+        return json({ error: "Informe rua, número e bairro para a entrega." }, 400);
+      }
+    }
     let pickupCode = priorOrder?.pickup_code || (deliveryType === "pickup_uber"
       ? String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, "0")
       : null);
@@ -370,7 +405,7 @@ Deno.serve(async (req: Request) => {
     const amountCentsById = new Map<string, number>();
     const saleModeById = new Map<string, string>();
     const { data: products, error: productsError } = await db.from("products")
-      .select("id,name,price,category,image,available,resale_enabled,resale_price,resale_min_qty").in("id", ids);
+      .select("id,name,price,category,image,available,resale_enabled,resale_price,resale_min_qty,delivery_unit_weight_kg,delivery_bulky").in("id", ids);
     if (productsError) throw productsError;
     if (!products || products.length !== ids.length) return json({ error: "Um ou mais produtos não existem mais. Atualize a feira e tente novamente." }, 409);
     if (products.some((p: any) => p.available !== true)) return json({ error: "Um dos produtos está indisponível. Atualize a feira e tente novamente." }, 409);
@@ -529,14 +564,71 @@ Deno.serve(async (req: Request) => {
     }
 
     const subtotal = subtotalCents / 100;
-    if (subtotalCents < MIN_ORDER_SUBTOTAL_CENTS) return json({ error: "Pedido mínimo de R$ 30,00 em produtos para retirada." }, 400);
-    const totalCents = subtotalCents;
-    const total = totalCents / 100;
+    if (subtotalCents < MIN_ORDER_SUBTOTAL_CENTS) {
+      return json({ error: deliveryType === "delivery"
+        ? "Pedido mínimo de R$ 30,00 em produtos para entrega."
+        : "Pedido mínimo de R$ 30,00 em produtos para retirada." }, 400);
+    }
+    let deliveryQuote: Awaited<ReturnType<typeof calculateServerDelivery>> | null = null;
+    if (deliveryType === "delivery") {
+      if (priorOrder) {
+        const storedAddress = priorOrder.delivery_address;
+        const sameStoredAddress = !!storedAddress && ["street", "number", "neighborhood", "complement", "reference"]
+          .every((key) => String(storedAddress[key] || "") === String((normalizedDeliveryAddress as any)?.[key] || ""));
+        if (!sameStoredAddress || !priorOrder.delivery_vehicle ||
+            priorOrder.delivery_weight_kg == null || priorOrder.delivery_fee == null) {
+          return json({ error: "Os dados desta tentativa de entrega não conferem. Inicie um novo checkout." }, 409);
+        }
+        deliveryQuote = {
+          vehicle: priorOrder.delivery_vehicle,
+          weightKg: Number(priorOrder.delivery_weight_kg),
+          fee: Number(priorOrder.delivery_fee),
+          validUntil: "",
+          address: normalizedDeliveryAddress!,
+          formattedAddress: address,
+        };
+      } else {
+        const { data: quoteAllowed, error: quoteRateError } = await db.rpc("consume_delivery_quote_rate_limit", {
+          p_user_id: orderUserId, p_max_requests: 5, p_window_seconds: 60,
+        });
+        if (quoteRateError) return json({ error: "Limite de cotações temporariamente indisponível." }, 503);
+        if (quoteAllowed !== true) return json({ error: "Muitas cotações. Aguarde um minuto." }, 429);
+        try {
+          deliveryQuote = await calculateServerDelivery({
+            items: items.map((item: any) => ({ product_id: String(item.id), quantity: Number(item.qty) })),
+            products: (products as any[]).map((product: any) => ({
+              id: String(product.id),
+              delivery_unit_weight_kg: product.delivery_unit_weight_kg == null ? null : Number(product.delivery_unit_weight_kg),
+              delivery_bulky: product.delivery_bulky === true,
+              sale_unit: String(salesRulesById.get(String(product.id))?.sale_unit || ""),
+            })),
+            address: normalizedDeliveryAddress!,
+            motoLimitKg: deliveryMotoLimitKg,
+            apiKey: Deno.env.get("LALAMOVE_SANDBOX_API_KEY") || "",
+            apiSecret: Deno.env.get("LALAMOVE_SANDBOX_API_SECRET") || "",
+          });
+        } catch (error) {
+          const code = error instanceof Error ? error.message : "UNKNOWN";
+          if (code === "OUT_OF_SERVICE_AREA") return json({ error: "Este endereço está fora da área de atendimento da entrega." }, 422);
+          if (code === "INVALID_ADDRESS") return json({ error: "Informe rua, número e bairro para a entrega." }, 400);
+          if (code === "SANDBOX_CREDENTIALS_REQUIRED") return json({ error: "Cotação de entrega temporariamente indisponível." }, 503);
+          console.error("super-worker", { code: "DELIVERY_QUOTE_FAILED", stage: "checkout_quote", reason: code });
+          return json({ error: "Não foi possível calcular a taxa de entrega. Tente novamente." }, 502);
+        }
+      }
+    }
+    const totals = orderTotals(subtotalCents, deliveryQuote?.fee || 0, deliveryType);
+    const totalCents = totals.totalCents;
+    const deliveryFee = totals.deliveryFee;
+    const total = totals.total;
     if (!Number.isFinite(total) || totalCents <= 0 || totalCents > 10000000) return json({ error: "Valor total inválido." }, 400);
 
     const hashPayload = JSON.stringify({
       user_id: orderUserId,
-      customer: { name, phone, cpf, email, delivery_type: deliveryType },
+      customer: {
+        name, phone, cpf, email, delivery_type: deliveryType,
+        ...(deliveryType === "delivery" ? { delivery_address: normalizedDeliveryAddress } : {}),
+      },
       payment_method: paymentMethod,
       items: items.slice().sort((a: any, b: any) => String(a.id).localeCompare(String(b.id))),
       subtotal_cents: subtotalCents,
@@ -606,9 +698,9 @@ Deno.serve(async (req: Request) => {
         customer_name: name, customer_phone: phone,
         customer_cpf: null, customer_email: email || null, customer_address: address,
         delivery_type: deliveryType,
-        payment_method: paymentMethod === "cash" ? "Dinheiro na retirada" : "Cartão na retirada",
+        payment_method: paymentMethod === "pix_test" ? "Pix de teste (admin)" : paymentMethod === "cash" ? "Dinheiro na retirada" : "Cartão na retirada",
         pickup_code: pickupCode,
-        items, subtotal, delivery_fee: 0, total, status: "Pedido Recebido",
+        items, subtotal, delivery_fee: deliveryFee, total, status: paymentMethod === "pix_test" ? "Pagamento Pendente" : "Pedido Recebido",
         market_checklist: { notes: String(body?.notes ?? "").trim().slice(0, 1000) },
       };
       const { data: createdOrderRows, error: insertError } = await db.rpc("create_order_with_rate_limit", { p_order: orderPayload });
@@ -625,14 +717,33 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Não foi possível registrar o pedido." }, 500);
       }
       orderId = String(createdOrder.order_id);
+      if (deliveryType === "delivery" || paymentMethod === "pix_test") {
+        const orderUpdate: Record<string, unknown> = {};
+        if (deliveryType === "delivery") Object.assign(orderUpdate, {
+          delivery_address: normalizedDeliveryAddress,
+          delivery_vehicle: deliveryQuote?.vehicle,
+          delivery_weight_kg: deliveryQuote?.weightKg,
+        });
+        if (paymentMethod === "pix_test") Object.assign(orderUpdate, {
+          is_test_order: true,
+          status: "Pagamento Confirmado",
+        });
+        const { error: metadataError } = await db.from("orders").update(orderUpdate)
+          .eq("id", orderId).eq("user_id", orderUserId);
+        if (metadataError) {
+          await db.from("orders").update({ status: "Cancelada" }).eq("id", orderId).eq("user_id", orderUserId);
+          console.error("super-worker", { code: "DB_ERROR", stage: "save_delivery_order_metadata" });
+          return json({ error: "Não foi possível salvar os dados da entrega. O pedido foi cancelado." }, 500);
+        }
+      }
       const { data: savedOrderRow, error: savedOrderReadError } = await db.from("orders")
-        .select("pickup_code")
+        .select("pickup_code,status,total")
         .eq("id", orderId).eq("user_id", orderUserId).maybeSingle();
       if (savedOrderReadError || !savedOrderRow) return json({ error: "Não foi possível recuperar o pedido registrado." }, 500);
       const savedOrder = {
         id: orderId,
-        status: createdOrder.order_status,
-        total: createdOrder.order_total,
+        status: savedOrderRow.status,
+        total: savedOrderRow.total,
         pickupCode: savedOrderRow.pickup_code || null,
       };
       return json({ order: savedOrder, id: savedOrder.id, paymentStatus: savedOrder.status });
@@ -645,7 +756,7 @@ Deno.serve(async (req: Request) => {
       customer_cpf: cpf, customer_email: email, customer_address: address,
       delivery_type: deliveryType, pickup_code: pickupCode, payment_method: asaasEnabled ? "Asaas Pix" : "Mercado Pago Pix",
       ...(asaasEnabled ? { payment_provider: "asaas" } : {}),
-      items, subtotal, delivery_fee: 0, total, status: "Pagamento Pendente",
+      items, subtotal, delivery_fee: deliveryFee, total, status: "Pagamento Pendente",
       market_checklist: { items: items.map((item: any) => ({ id: item.id, name: item.name, qty: item.qty, bought: false })), notes: String(body?.notes ?? "").trim().slice(0, 500) },
     };
     const { data: draftOrderRows, error: draftError } = await db.rpc("create_order_with_rate_limit", { p_order: draftOrder });
@@ -659,6 +770,18 @@ Deno.serve(async (req: Request) => {
     const createdDraftOrder = Array.isArray(draftOrderRows) ? draftOrderRows[0] : draftOrderRows;
     if (!createdDraftOrder?.order_id) return json({ error: "Não foi possível recuperar o pedido registrado." }, 500);
     orderId = String(createdDraftOrder.order_id);
+    if (deliveryType === "delivery") {
+      const { error: deliveryMetadataError } = await db.from("orders").update({
+        delivery_address: normalizedDeliveryAddress,
+        delivery_vehicle: deliveryQuote?.vehicle,
+        delivery_weight_kg: deliveryQuote?.weightKg,
+      }).eq("id", orderId).eq("user_id", orderUserId).eq("status", "Pagamento Pendente");
+      if (deliveryMetadataError) {
+        await db.from("orders").update({ status: "Cancelada" }).eq("id", orderId).eq("status", "Pagamento Pendente");
+        console.error("super-worker", { code: "DB_ERROR", stage: "save_delivery_metadata_pix" });
+        return json({ error: "Não foi possível salvar os dados da entrega. O pedido foi cancelado; nenhum Pix foi criado." }, 500);
+      }
+    }
     const { data: storedPixOrder, error: storedPixOrderError } = await db.from("orders")
       .select("id,status,total,payment_id,pix_qr_code,pix_qr_code_base64,pickup_code,payment_provider,payment_method")
       .eq("id", orderId).eq("user_id", orderUserId).maybeSingle();
