@@ -92,8 +92,8 @@
    const labels={searching:'Procurando motorista',assigned:'A caminho',enroute_pickup:'A caminho',picked_up:'Coletado',delivered:'Entregue',cancelled:'Entrega cancelada',rejected:'Entrega recusada',expired:'Nenhum motorista aceitou — chame de novo'};
    if(statusLabel&&labels[value])statusLabel.textContent=labels[value];
    const terminal=['cancelled','rejected','expired'].includes(value);
-   if(!card)return;
    if(terminal||value==='delivered'){const section=container.closest('.customer-lalamove-tracking');if(section)section.hidden=true;container.hidden=true;}
+   if(!card)return;
    const heading=card.querySelector('.order-status-top b');
    const subtitle=card.querySelector('.order-subtitle');
    const timeline=card.querySelector('.order-timeline');
@@ -122,7 +122,7 @@
     if(!data||data.active===false){
      stop();status.textContent=data?.status==='delivered'?'Entrega concluída.':data?.status==='expired'?'A solicitação expirou.':data?.status==='cancelled'?'Entrega cancelada.':'O rastreio não está ativo neste momento.';
      if(state.map){state.map.remove();state.map=null;}
-     canvas.hidden=true;driverInfo.hidden=true;return;
+     canvas.hidden=true;driverInfo.hidden=true;container.hidden=true;return;
     }
     if(!data.driver_assigned){status.textContent='Procurando entregador… O mapa aparecerá quando um motorista aceitar.';return;}
     await ensureMap(data);
