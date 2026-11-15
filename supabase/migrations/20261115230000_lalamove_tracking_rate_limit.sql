@@ -49,7 +49,7 @@ create or replace function public.service_update_lalamove_tracking_status(
 ) returns jsonb
 language plpgsql security definer set search_path=''
 as $
-declare v_order_id text;
+declare v_order_id text; v_existing_status text; v_existing_rank integer; v_new_rank integer;
 begin
   if current_setting('request.jwt.claim.role', true) is distinct from 'service_role' then
     raise exception 'service role required' using errcode='42501';
@@ -57,6 +57,29 @@ begin
   if p_order_id is null or p_lalamove_order_id is null or p_status is null
      or p_status not in ('searching','assigned','enroute_pickup','picked_up','delivered','cancelled','rejected','expired') then
     raise exception 'invalid Lalamove tracking update' using errcode='22023';
+  end if;
+
+  select lalamove_status into v_existing_status
+  from feira_cost_private.lalamove_dispatches
+  where order_id = p_order_id and lalamove_order_id = p_lalamove_order_id
+  for update;
+  if not found then
+    return jsonb_build_object('ignored', true, 'stale_attempt', true);
+  end if;
+
+  if v_existing_status in ('delivered','cancelled','rejected','expired') and p_status <> v_existing_status then
+    return jsonb_build_object('ignored', true, 'terminal_status', v_existing_status);
+  end if;
+  v_existing_rank := case v_existing_status
+    when 'searching' then 1 when 'assigned' then 2 when 'enroute_pickup' then 2
+    when 'picked_up' then 3 when 'delivered' then 4
+    when 'cancelled' then 5 when 'rejected' then 5 when 'expired' then 5 else 0 end;
+  v_new_rank := case p_status
+    when 'searching' then 1 when 'assigned' then 2 when 'enroute_pickup' then 2
+    when 'picked_up' then 3 when 'delivered' then 4
+    when 'cancelled' then 5 when 'rejected' then 5 when 'expired' then 5 else 0 end;
+  if v_new_rank < v_existing_rank then
+    return jsonb_build_object('ignored', true, 'stale_status', true, 'status', v_existing_status);
   end if;
 
   update feira_cost_private.lalamove_dispatches
