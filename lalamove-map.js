@@ -121,7 +121,8 @@
     if(data?.tracking_url){if(existingFallback){existingFallback.href=String(data.tracking_url);existingFallback.hidden=false;}else{fallback.href=String(data.tracking_url);fallback.hidden=false;}}
     if(!data||data.active===false){
      stop();status.textContent=data?.status==='delivered'?'Entrega concluída.':data?.status==='expired'?'A solicitação expirou.':data?.status==='cancelled'?'Entrega cancelada.':'O rastreio não está ativo neste momento.';
-     if(state.map){state.map.remove();state.map=null;}\n     canvas.hidden=true;driverInfo.hidden=true;return;
+     if(state.map){state.map.remove();state.map=null;}
+     canvas.hidden=true;driverInfo.hidden=true;return;
     }
     if(!data.driver_assigned){status.textContent='Procurando entregador… O mapa aparecerá quando um motorista aceitar.';return;}
     await ensureMap(data);
