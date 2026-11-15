@@ -16,6 +16,7 @@ on:
       - "supabase/rollback/*lalamove-tracking*.sql"
       - "lalamove-map.js"
       - "tests/order-tracking.visual.cjs"
+      - "tests/checkout-delivery-access.visual.cjs"
       - ".github/workflows/pages.yml"
       - ".github/workflows/deploy-functions.yml"
       - "supabase/migrations/*lalamove-dispatch-and-webhook.sql"
@@ -44,6 +45,7 @@ on:
       - "supabase/rollback/*lalamove-tracking*.sql"
       - "lalamove-map.js"
       - "tests/order-tracking.visual.cjs"
+      - "tests/checkout-delivery-access.visual.cjs"
       - "painel.html"
       - "loja.html"
       - "loja-delivery-ui.js"
@@ -74,6 +76,7 @@ jobs:
       - run: /tmp/playwright/node_modules/.bin/playwright install --with-deps chromium
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-compact.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/order-tracking.visual.cjs
+      - run: NODE_PATH=/tmp/playwright/node_modules node tests/checkout-delivery-access.visual.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -87,4 +90,10 @@ jobs:
           path: |
             artifacts/order-tracking-*.png
             artifacts/order-tracking-*.webm
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checkout-delivery-admin-playwright
+          path: artifacts/checkout-delivery-admin-*.png
           if-no-files-found: warn

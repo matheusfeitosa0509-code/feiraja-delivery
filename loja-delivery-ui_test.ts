@@ -1,26 +1,57 @@
 import { assertEquals, assertThrows } from "jsr:@std/assert@1.0.14";
 import {
   buildDeliveryQuoteItems, canShowDeliveryOption, canShowUberPickupOption, checkoutGrandTotal,
-  deliveryUnavailableMessage, isDeliveryOptionDisabled,
+  deliveryUnavailableMessage, isDeliveryOptionDisabled, loadDeliveryAccessState,
   deliveryPaymentOptions, deliveryQuoteErrorMessage, deliveryQuoteLabel, isAdminRpcTrue, isDeliveryOutOfArea,
   normalizeDeliveryAddress,
 } from "./loja-delivery-ui.js";
 
-Deno.test("modalidade de entrega só fica habilitada para admin enquanto inativa", () => {
+Deno.test("Entrega Feira On exige admin confirmado mesmo quando a entrega está ativa", () => {
   assertEquals(canShowDeliveryOption(false, false), false);
-  assertEquals(isDeliveryOptionDisabled(false, false, false), true);
-  assertEquals(isDeliveryOptionDisabled(false, true, false), true);
-  assertEquals(isDeliveryOptionDisabled(false, true, true), false);
-  assertEquals(isDeliveryOptionDisabled(false, false, true), true, "a confirmed ordinary account stays locked");
+  assertEquals(canShowDeliveryOption(true, false), false);
   assertEquals(canShowDeliveryOption(false, true), true);
-  assertEquals(canShowDeliveryOption(true, false), true);
+  assertEquals(isDeliveryOptionDisabled(false, false, false), true);
+  assertEquals(isDeliveryOptionDisabled(false, true, false), true, "admin pendente fica bloqueado");
+  assertEquals(isDeliveryOptionDisabled(true, true, false), true, "entrega ativa não libera antes da checagem");
+  assertEquals(isDeliveryOptionDisabled(false, true, true), false);
+  assertEquals(isDeliveryOptionDisabled(true, true, true), false);
+  assertEquals(isDeliveryOptionDisabled(true, false, true), true, "conta comum permanece bloqueada");
+  assertEquals(isDeliveryOptionDisabled(true, false), true, "omitir confirmação falha fechado");
+  assertEquals(deliveryUnavailableMessage(), "A Entrega Feira On chega em breve. Por enquanto, retire na loja ou receba com seu Uber.");
 });
 
-Deno.test("Entrega Feira On fica visível mas desabilitada para cliente enquanto inativa", () => {
-  assertEquals(isDeliveryOptionDisabled(false, false), true);
-  assertEquals(isDeliveryOptionDisabled(false, true), false);
-  assertEquals(isDeliveryOptionDisabled(true, false), false);
-  assertEquals(deliveryUnavailableMessage(), "A Entrega Feira On chega em breve. Por enquanto, retire na loja ou receba com seu Uber.");
+Deno.test("acesso à entrega: anônimo não chama RPC e conta comum não ganha acesso", async () => {
+  let calls = 0;
+  const rpc = async () => { calls++; return { data: true, error: null }; };
+  const anonymous = await loadDeliveryAccessState({ id: "anon", is_anonymous: true }, rpc);
+  assertEquals(anonymous, { adminCheckComplete: false, isAdmin: false, deliveryActive: false });
+  assertEquals(calls, 0);
+  const common = await loadDeliveryAccessState({ id: "common" }, async (name: string) => {
+    calls++;
+    return name === "is_current_user_admin" ? { data: false, error: null } : { data: true, error: null };
+  });
+  assertEquals(common, { adminCheckComplete: true, isAdmin: false, deliveryActive: true });
+  assertEquals(isDeliveryOptionDisabled(common.deliveryActive, common.isAdmin, common.adminCheckComplete), true);
+});
+
+Deno.test("falha da RPC administrativa mantém Em breve mesmo se a flag estiver ativa", async () => {
+  const access = await loadDeliveryAccessState({ id: "admin" }, async (name: string) => {
+    if (name === "is_current_user_admin") throw new Error("network failure");
+    return { data: true, error: null };
+  });
+  assertEquals(access, { adminCheckComplete: false, isAdmin: false, deliveryActive: true });
+  assertEquals(isDeliveryOptionDisabled(access.deliveryActive, access.isAdmin, access.adminCheckComplete), true);
+});
+
+Deno.test("admin confirmado pode testar; Consulte o valor depende da flag ativa", async () => {
+  const inactive = await loadDeliveryAccessState({ id: "admin" }, async (name: string) => ({
+    data: name === "is_current_user_admin" ? true : false, error: null,
+  }));
+  assertEquals(inactive, { adminCheckComplete: true, isAdmin: true, deliveryActive: false });
+  const active = await loadDeliveryAccessState({ id: "admin" }, async (name: string) => ({
+    data: true, error: null,
+  }));
+  assertEquals(active, { adminCheckComplete: true, isAdmin: true, deliveryActive: true });
 });
 
 Deno.test("retirada com Uber fica oculta quando entrega está ativa", () => {
@@ -63,15 +94,19 @@ Deno.test("rótulo da cotação e endereço fora da área", () => {
 
 Deno.test("loja.html conecta a opção, cotação, endereço salvo e acompanhamento", async () => {
   const html = await Deno.readTextFile("loja.html");
+  const deliveryUi = await Deno.readTextFile("loja-delivery-ui.js");
   for (const required of [
     'id="deliveryHomeOption"', 'aria-disabled="true"', 'disabled', 'Entrega Feira On', 'Receba em casa sem precisar pedir Uber.', 'Em breve', 'Receber com seu Uber', 'id="deliveryAddressFields"',
     'id="deliveryStreet"', 'id="deliveryNumber"', 'id="deliveryNeighborhood"', 'id="deliveryStreetSuggestions"', 'id="deliveryMapFallback"', 'id="deliveryMapPanel"', 'id="deliveryMap"', 'id="deliveryMapUse"', 'id="deliveryMapAdjust"', 'id="deliveryAddressSummary"', 'id="deliveryAddressEdit"', 'id="deliveryStartingPrice"', 'id="checkoutProductsTotal"', 'id="checkoutDeliveryTotal"', 'id="checkoutSummaryTotal"', 'id="checkoutDeliveryMeta"',
     'id="deliveryComplement"', 'id="deliveryReference"',
-    "get_delivery_enabled", "supabase.rpc('is_current_user_admin')", "functions.invoke('delivery-quote'",
+    "loadDeliveryAccessState(user", "hasConfirmedDeliveryAdmin()", "functions.invoke('delivery-quote'",
     "address_street", "address_reference", "delivery_vehicle", "delivery_fee",
     "Pix de teste (admin)", "Sai quando o pedido estiver pronto",
     "await loadDeliveryAccess(currentUser)", "async function openCheckoutModal()", "delivery-address", "session_token", "deliveryMapCoordinates", "deliveryPlacesSessionToken=null;$('#deliveryMapFallback').hidden=false",
   ]) assertEquals(html.includes(required), true, "missing UI wiring: " + required);
+  for (const required of ['rpc("is_current_user_admin")', 'rpc("get_delivery_enabled")', 'adminCheckComplete !== true || isAdmin !== true']) {
+    assertEquals(deliveryUi.includes(required), true, "missing delivery access rule: " + required);
+  }
 });
 
 Deno.test("erros da cotação diferenciam endereço, Manaus e cobertura Lalamove", () => {
@@ -107,7 +142,7 @@ Deno.test("checkout novo mantém a ordem visual dos cards e os campos funcionais
     'id="payPixTestOption"', 'checkout-test-badge">TESTE',
     'id="submitOrder"', 'id="modalTotal"', 'id="cpf"', 'id="phone"', 'id="email"', 'id="deliveryUberOption"', 'canShowUberPickupOption(deliveryActive)', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga o Uber pelo app. Nós levamos o pedido até o carro.', "const uberAction=o.delivery_type==='pickup_uber'", 'id="deliveryUberOption"', 'canShowUberPickupOption(deliveryActive)', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga o Uber pelo app. Nós levamos o pedido até o carro.',
     'position:fixed!important', 'min-height:64px', '#delivery,#payment{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}',
-    "function updateCheckoutSummary()", "A partir de '+money(deliveryQuote.fee)",
+    "function updateCheckoutSummary()", "value.textContent=money(deliveryQuote.fee)",
   ]) assertEquals(html.includes(required), true, "missing checkout presentation: " + required);
 });
 

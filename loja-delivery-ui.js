@@ -3,11 +3,51 @@ export function isAdminRpcTrue(value) {
 }
 
 export function canShowDeliveryOption(deliveryActive, isAdmin) {
-  return deliveryActive === true || isAdmin === true;
+  return isAdmin === true;
 }
 
-export function isDeliveryOptionDisabled(deliveryActive, isAdmin, adminCheckComplete = true) {
-  return deliveryActive !== true && (adminCheckComplete !== true || isAdmin !== true);
+export function isDeliveryOptionDisabled(deliveryActive, isAdmin, adminCheckComplete = false) {
+  // Entrega Feira On é um recurso de teste restrito a administrador confirmado.
+  // deliveryActive controla apenas a informação de cotação, nunca concede acesso.
+  return adminCheckComplete !== true || isAdmin !== true;
+}
+
+export async function loadDeliveryAccessState(user, rpc) {
+  const denied = { adminCheckComplete: false, isAdmin: false, deliveryActive: false };
+  if (!user?.id || user.is_anonymous === true) return denied;
+
+  const [adminResult, enabledResult] = await Promise.all([
+    Promise.resolve().then(() => rpc("is_current_user_admin")).catch((error) => ({ error })),
+    Promise.resolve().then(() => rpc("get_delivery_enabled")).catch((error) => ({ error })),
+  ]);
+
+  const adminCheckComplete = !adminResult?.error;
+  const isAdmin = adminCheckComplete && isAdminRpcTrue(adminResult?.data);
+  return {
+    adminCheckComplete,
+    isAdmin,
+    deliveryActive: !enabledResult?.error && enabledResult?.data === true,
+  };
+}
+
+export function renderDeliveryOption({ option, radio, starting, description, isAdmin, adminCheckComplete, deliveryActive }) {
+  const disabled = isDeliveryOptionDisabled(deliveryActive, isAdmin, adminCheckComplete);
+  option.hidden = false;
+  radio.disabled = disabled;
+  option.classList.toggle("is-disabled", disabled);
+  option.setAttribute("aria-disabled", String(disabled));
+  starting.replaceChildren();
+  if (disabled) {
+    starting.textContent = "Em breve";
+  } else {
+    const badge = document.createElement("span");
+    badge.className = "checkout-test-badge";
+    badge.textContent = "TESTE";
+    starting.append(badge);
+  }
+  description.textContent = "Receba em casa sem precisar pedir Uber." +
+    (!disabled && deliveryActive ? " Consulte o valor." : "");
+  return disabled;
 }
 
 export function deliveryUnavailableMessage() {
