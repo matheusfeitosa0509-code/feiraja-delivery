@@ -122,15 +122,41 @@ async function runViewport(browser, width, height) {
   }
 }
 
+async function runTrackingFailureModes(browser) {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await page.setContent('<main><div id="customer" data-order-id="MOCK-CUSTOMER"></div><div id="admin" data-order-id="MOCK-ADMIN"></div></main>');
+  await page.evaluate(() => { delete window.IntersectionObserver; });
+  await page.addScriptTag({ path: path.join(root, 'lalamove-map.js') });
+  await page.waitForFunction(() => document.querySelector('#customer .feira-lalamove-map-status')?.textContent.includes('Carregando'));
+  await page.evaluate(() => {
+    window.FeiraLalamoveMap.mount(document.querySelector('#customer'), async () => { throw new Error('tracking unavailable'); });
+    window.FeiraLalamoveMap.mount(document.querySelector('#admin'), async () => { throw new Error('tracking unavailable'); }, { admin: true });
+  });
+  await page.waitForFunction(() => document.querySelector('#customer').hidden && document.querySelector('#admin .feira-lalamove-map-status')?.textContent.includes('Rastreio indisponível'));
+  const result = await page.evaluate(() => ({
+    customerHidden: document.querySelector('#customer').hidden,
+    customerErrorVisible: !!document.querySelector('#customer .feira-lalamove-map-status')?.textContent.trim(),
+    adminVisible: !document.querySelector('#admin').hidden,
+    adminMessage: document.querySelector('#admin .feira-lalamove-map-status')?.textContent || '',
+    adminCanvasHidden: document.querySelector('#admin .feira-lalamove-map-canvas').hidden,
+  }));
+  assert.equal(result.customerHidden, true, 'customer map must disappear silently after a tracking failure');
+  assert.equal(result.adminVisible, true, 'admin must retain the map panel');
+  assert.match(result.adminMessage, /Rastreio indisponível/, 'admin receives a diagnostic notice');
+  assert.equal(result.adminCanvasHidden, true, 'failed admin map canvas stays hidden');
+  await page.close();
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
     await runViewport(browser, 360, 800);
     await runViewport(browser, 412, 915);
+    await runTrackingFailureModes(browser);
   } finally {
     await browser.close();
   }
-  process.stdout.write('Order tracking mock map: 360px and 412px passed; screenshots and videos saved in artifacts/.\\n');
+  process.stdout.write('Order tracking mock map: 360px/412px and silent customer failure passed; screenshots and videos saved in artifacts/.\\n');
 })().catch(error => {
   process.stderr.write(String(error && error.stack || error) + '\\n');
   process.exitCode = 1;
