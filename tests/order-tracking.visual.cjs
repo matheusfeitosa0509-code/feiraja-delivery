@@ -9,12 +9,14 @@ const videos = path.join(artifacts, 'order-tracking-videos');
 fs.mkdirSync(videos, { recursive: true });
 
 const storeHtml = fs.readFileSync(path.join(root, 'loja.html'), 'utf8');
-const trackingStyle = storeHtml.match(/<style id="orderTrackingLayout">([\\s\\S]*?)<\\/style>/);
-if (!trackingStyle) throw new Error('orderTrackingLayout CSS missing from loja.html');
+const styleStart = storeHtml.indexOf('<style id="orderTrackingLayout">');
+const styleEnd = storeHtml.indexOf('</style>', styleStart);
+if (styleStart < 0 || styleEnd < 0) throw new Error('orderTrackingLayout CSS missing from loja.html');
+const trackingCss = storeHtml.slice(styleStart + '<style id="orderTrackingLayout">'.length, styleEnd);
 const timelineCss = `:root{--mut:#607467;--ink:#203b27;--g:#2f8a4c}
 *{box-sizing:border-box}body{margin:0;background:#f4f7f2;font-family:Arial,sans-serif;color:#203b27}
 .frame{width:100%;max-width:520px;margin:0 auto;padding:14px;background:#fff}
-${trackingStyle[1]}
+${trackingCss}
 #map{width:100%;min-width:0}
 `;
 
