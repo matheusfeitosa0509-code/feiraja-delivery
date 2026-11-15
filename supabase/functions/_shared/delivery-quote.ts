@@ -51,10 +51,14 @@ export function formatDropoff(address: DeliveryAddress): string {
   return [street + ", " + number, complement, neighborhood, reference, "Manaus - AM, Brasil"].filter(Boolean).join(", ");
 }
 
-export function buildQuotationBody(serviceType: "LALAGO" | "CAR", dropoff: string) {
+export function buildQuotationBody(
+  serviceType: "LALAGO" | "CAR",
+  dropoff: string,
+  coordinates: { origin: DeliveryCoordinates; dropoff: DeliveryCoordinates },
+) {
   return { data: { serviceType, language: "pt_BR", stops: [
-    { address: "Av. Lourenço da Silva Braga, 700 - Centro, Manaus - AM, Brasil" },
-    { address: dropoff },
+    { coordinates: coordinates.origin, address: "Av. Lourenço da Silva Braga, 700 - Centro, Manaus - AM, Brasil" },
+    { coordinates: coordinates.dropoff, address: dropoff },
   ] } };
 }
 
@@ -74,12 +78,13 @@ export function isQuoteAllowed(deliveryActive: boolean, isAdmin: boolean): boole
 
 export async function requestSandboxQuotation(
   apiKey: string, apiSecret: string, serviceType: "LALAGO" | "CAR", dropoff: string,
+  coordinates: { origin: DeliveryCoordinates; dropoff: DeliveryCoordinates },
   fetcher: typeof fetch = fetch,
 ): Promise<Response> {
   if (!apiKey.startsWith("pk_test") || !apiSecret.startsWith("sk_test")) throw new Error("SANDBOX_CREDENTIALS_REQUIRED");
   const path = "/v3/quotations";
   const url = "https://rest.sandbox.lalamove.com" + path;
-  const body = JSON.stringify(buildQuotationBody(serviceType, dropoff));
+  const body = JSON.stringify(buildQuotationBody(serviceType, dropoff, coordinates));
   const timestamp = String(Date.now());
   const raw = timestamp + "\r\nPOST\r\n" + path + "\r\n\r\n" + body;
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(apiSecret),
