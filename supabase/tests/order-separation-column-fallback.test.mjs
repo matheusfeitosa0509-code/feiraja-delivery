@@ -16,20 +16,20 @@ assert.ok(loja.includes('Seu pedido já está sendo separado e não pode mais se
 assert.ok(loja.includes('Em separação'));
 
 function mockSupabase(existing){
- const calls=[];
+ const calls=[];\n const filters=[];
  const supabase={from(table){
   assert.equal(table,'orders');
   return {select(columns){
    calls.push(columns);
    const requested=columns.split(',').filter(c=>c.startsWith('separation_started_'));
    const missing=requested.find(column=>!existing.includes(column));
-   return {eq(){return this;},order(){return this;},limit(){
+   return {eq(...args){filters.push(args);return this;},order(){return this;},limit(){
     if(missing)return Promise.resolve({data:null,error:{code:'PGRST204',message:"Could not find the '"+missing+"' column in the schema cache"}});
     return Promise.resolve({data:[{id:'order-test'}],error:null});
    }};
   }};
  }};
- return {supabase,calls};
+ return {supabase,calls,filters};
 }
 async function runCase(label,existing,expectedSelection,expectedAttempts){
  const {supabase,calls}=mockSupabase(existing);
@@ -60,3 +60,4 @@ for(const [label,existing,expected,attempts] of [
  await runCase('Cenário adicional: '+label,existing,expected,attempts);
 }
 console.log('PASS: fallback independente das colunas de separação');
+\nawait runCase('5. administrador pode abrir o pedido TESTE no acompanhamento do cliente',['separation_started_at','separation_started_legacy'],both,[both],true);\n
