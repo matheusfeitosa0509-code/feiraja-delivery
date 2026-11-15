@@ -9,6 +9,7 @@ const manifest=fs.readFileSync(new URL('../../manifest-painel.json',import.meta.
 const serviceWorker=fs.readFileSync(new URL('../../sw.js',import.meta.url),'utf8');
 const pages=fs.readFileSync(new URL('../../.github/workflows/pages.yml',import.meta.url),'utf8');
 const cadastro=fs.readFileSync(new URL('../../cadastro-produto.html',import.meta.url),'utf8');
+const trackingMigration=fs.readFileSync(new URL('../migrations/20261115230000_lalamove_tracking_rate_limit.sql',import.meta.url),'utf8');
 
 function extractFrom(source,name){
   const start=source.indexOf('function '+name+'(');
