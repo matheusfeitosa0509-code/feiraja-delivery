@@ -68,7 +68,10 @@ async function fetchQuote(apiKey: string, apiSecret: string, serviceType: "LALAG
   }
   return payload?.data;
 }
-async function quoteBoth(db: any, order: any, userId: string) {\n  const { data: allowed, error: rateError } = await db.rpc("consume_delivery_quote_rate_limit", { p_user_id: userId, p_max_requests: 5, p_window_seconds: 60 });\n  if (rateError) throw new Error("QUOTE_RATE_LIMIT_UNAVAILABLE");\n  if (allowed !== true) throw new Error("TOO_MANY_QUOTES");
+async function quoteBoth(db: any, order: any, userId: string) {
+  const { data: allowed, error: rateError } = await db.rpc("consume_delivery_quote_rate_limit", { p_user_id: userId, p_max_requests: 5, p_window_seconds: 60 });
+  if (rateError) throw new Error("QUOTE_RATE_LIMIT_UNAVAILABLE");
+  if (allowed !== true) throw new Error("TOO_MANY_QUOTES");
   const { key, secret } = sandboxCredentials();
   const address = order.delivery_address;
   const dropoff = formatDropoff(address);
@@ -218,7 +221,9 @@ Deno.serve(async (req: Request) => {
       GEOCODER_UNAVAILABLE: { message: "Serviço de localização temporariamente indisponível.", status: 503 },
       SANDBOX_CREDENTIALS_REQUIRED: { message: "Credenciais de Sandbox ausentes ou inválidas.", status: 503 },
       INVALID_QUOTE_RESPONSE: { message: "A Lalamove retornou uma cotação inválida.", status: 502 },
-      QUOTE_STORE_FAILED: { message: "Não foi possível guardar a cotação com segurança.", status: 503 },\n      QUOTE_RATE_LIMIT_UNAVAILABLE: { message: "Limite de cotações temporariamente indisponível.", status: 503 },\n      TOO_MANY_QUOTES: { message: "Muitas cotações. Aguarde um minuto.", status: 429 },
+      QUOTE_STORE_FAILED: { message: "Não foi possível guardar a cotação com segurança.", status: 503 },
+      QUOTE_RATE_LIMIT_UNAVAILABLE: { message: "Limite de cotações temporariamente indisponível.", status: 503 },
+      TOO_MANY_QUOTES: { message: "Muitas cotações. Aguarde um minuto.", status: 429 },
       QUOTE_EXPIRED: { message: "A cotação expirou. Faça uma nova cotação antes de confirmar.", status: 409 },
       CUSTOMER_CONTACT_MISSING: { message: "O pedido não tem nome e telefone válidos para o motorista.", status: 400 },
       INVALID_PHONE: { message: "Telefone do cliente ou da loja inválido. Use DDD e número brasileiro.", status: 400 },
