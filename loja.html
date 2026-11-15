@@ -1631,8 +1631,8 @@ async function loadMyOrders(knownUser){
   }else if(delivery){
    if(deliveryStatus==='delivered'||status==='Entregue'||status==='Pedido Concluído'){index=3;detail='Entrega concluída.';}
    else if(status==='Saiu para Entrega'){index=2;detail='O motorista está levando seu pedido.';}
-   else if(deliveryStatus==='picked_up'){index=2;detail=(order.lalamove_driver?.name?String(order.lalamove_driver.name)+' está levando seu pedido.':'O entregador está levando seu pedido.');}
-   else if(['assigned','enroute_pickup'].includes(deliveryStatus)){index=2;detail=(order.lalamove_driver?.name?String(order.lalamove_driver.name)+' está a caminho da loja.':'Motorista a caminho da loja.');}
+   else if(deliveryStatus==='picked_up'){index=2;detail='O entregador está levando seu pedido.';}
+   else if(['assigned','enroute_pickup'].includes(deliveryStatus)){index=2;detail='Motorista a caminho da loja.';}
    else if(deliveryStatus==='searching'){index=1;detail='Procurando entregador…';}
    else if(status==='Preparando'){index=1;detail='Seu pedido está sendo preparado.';}
    else if(status==='Pronto para Retirada'){index=1;detail='Procurando entregador…';}
