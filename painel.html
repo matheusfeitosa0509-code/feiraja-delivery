@@ -919,7 +919,7 @@ function renderLalamoveDelivery(order,currentStatus){
  return '<section class="lalamove-admin"><div class="lalamove-admin-head"><strong>Entrega Feira On</strong></div>'
   +'<div class="lalamove-address"><small>ENDEREÇO</small><strong>'+esc(fullAddress||order.customer_address||'Endereço não informado')+'</strong><a href="'+esc(mapUrl)+'" target="_blank" rel="noopener noreferrer">Abrir no mapa</a></div>'
   +'<div class="lalamove-facts"><span>Veículo: <b>'+esc(vehicle)+'</b></span><span>Peso: <b>'+esc(weightText)+'</b></span><span>Taxa: <b>'+money(order.delivery_fee)+'</b></span></div>'
-  +(order.lalamove_status?'<p class="lalamove-state"><small>STATUS DA ENTREGA</small><strong>'+esc(lalamoveStatusLabel(order.lalamove_status))+'</strong></p>':'')
+  +(order.lalamove_status?'<p class="lalamove-state"><small>STATUS DA ENTREGA</small><strong data-lalamove-status-label>'+esc(lalamoveStatusLabel(order.lalamove_status))+'</strong></p>':'')
   +driverHtml+mapHtml+(tracking?'<p>'+tracking+'</p>':'')+'<div class="actions">'+callButton+refreshButton+cancelButton+'</div>'
   +'<p class="lalamove-feedback" data-lalamove-feedback="'+esc(order.id)+'" role="status" aria-live="polite" hidden></p>'
   +(canQuote?'<div class="lalamove-quote-box" data-lalamove-quote-box="'+esc(order.id)+'" hidden></div>':'')+'</section>';
