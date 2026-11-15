@@ -101,8 +101,8 @@ Deno.serve(async (req: Request) => {
       if (syncError) return json({ error: "Não foi possível atualizar o status do rastreio." }, 503);
       syncResult = syncData;
       if (syncResult?.stale_attempt) return json({ active: false, status: storedStatus || "cancelled" });
-      if (syncResult?.terminal_status) effectiveStatus = String(syncResult.terminal_status);
-      else if (syncResult?.stale_status) effectiveStatus = String(syncResult.status || storedStatus || status);
+      if (syncResult?.terminal_status) effectiveStatus = String(syncResult.terminal_status) as typeof status;
+      else if (syncResult?.stale_status) effectiveStatus = String(syncResult.status || storedStatus || status) as typeof status;
     }
     return json({
       active: !isTerminalTrackingStatus(effectiveStatus),
