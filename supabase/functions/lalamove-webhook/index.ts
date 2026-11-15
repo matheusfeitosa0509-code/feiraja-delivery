@@ -7,12 +7,13 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 });
 
 function safeDriver(value: any) {
-  if (!value || typeof value !== "object") return {};
-  return {
+  if (!value || typeof value !== "object") return null;
+  const driver = {
     name: String(value.name || "").slice(0, 100),
     phone: String(value.phone || "").slice(0, 40),
     plateNumber: String(value.plateNumber || "").slice(0, 20),
   };
+  return Object.values(driver).some(Boolean) ? driver : null;
 }
 
 Deno.serve(async (req: Request) => {
