@@ -1021,8 +1021,8 @@ async function cancelLalamoveDelivery(orderId,button){
  try{
   const {data,error}=await db.functions.invoke('lalamove-dispatch',{body:{action:'cancel',order_id:orderId}});
   if(error)throw error;
-  if(data?.cancelled){notice('Entrega cancelada na Lalamove Sandbox.');await load();}
- }catch(error){notice(await lalamoveErrorMessage(error,'A Lalamove não permitiu cancelar a entrega.'),true);await load();}
+  if(data?.cancelled){setLalamoveFeedback(orderId,'Entrega cancelada na Lalamove Sandbox.',false);}
+ }catch(error){setLalamoveFeedback(orderId,await lalamoveErrorMessage(error,'A Lalamove não permitiu cancelar a entrega.'),true);}
  finally{button.disabled=false;button.textContent='Cancelar entrega';}
 }
 async function saveStatus(id,button){
