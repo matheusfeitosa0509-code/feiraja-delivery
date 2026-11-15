@@ -1,4 +1,4 @@
-import { assertEquals, assertRejects } from "jsr:@std/assert@1.0.14";
+import { assertEquals, assertRejects, assertThrows } from "jsr:@std/assert@1.0.14";
 import {
   formatManausGeocodeQuery, geocodeManausAddress, validateManausGeocodeResult,
 } from "./geocoding.ts";
@@ -25,11 +25,11 @@ Deno.test("aceita coordenadas de endereço em Manaus e devolve lat/lng como text
 Deno.test("rejeita resultados fora de Manaus mesmo dentro do Brasil", () => {
   const result = validResult(-3.1, -60.02);
   result.address_components[0].long_name = "Iranduba";
-  assertRejects(() => Promise.resolve(validateManausGeocodeResult(result)), Error, "ADDRESS_OUTSIDE_MANAUS");
+  assertThrows(() => validateManausGeocodeResult(result), Error, "ADDRESS_OUTSIDE_MANAUS");
 });
 
 Deno.test("rejeita coordenadas fora dos limites de Manaus", () => {
-  assertRejects(() => Promise.resolve(validateManausGeocodeResult(validResult(-3.9, -60.02))), Error, "ADDRESS_OUTSIDE_MANAUS");
+  assertThrows(() => validateManausGeocodeResult(validResult(-3.9, -60.02)), Error, "ADDRESS_OUTSIDE_MANAUS");
 });
 
 Deno.test("ZERO_RESULTS vira endereço não encontrado", async () => {
