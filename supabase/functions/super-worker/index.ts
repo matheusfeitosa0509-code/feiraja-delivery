@@ -606,12 +606,19 @@ Deno.serve(async (req: Request) => {
             motoLimitKg: deliveryMotoLimitKg,
             apiKey: Deno.env.get("LALAMOVE_SANDBOX_API_KEY") || "",
             apiSecret: Deno.env.get("LALAMOVE_SANDBOX_API_SECRET") || "",
+            geocodingApiKey: Deno.env.get("GOOGLE_GEOCODING_API_KEY") || "",
           });
         } catch (error) {
           const code = error instanceof Error ? error.message : "UNKNOWN";
-          if (code === "OUT_OF_SERVICE_AREA") return json({ error: "Este endereço está fora da área de atendimento da entrega." }, 422);
-          if (code === "INVALID_ADDRESS") return json({ error: "Informe rua, número e bairro para a entrega." }, 400);
-          if (code === "SANDBOX_CREDENTIALS_REQUIRED") return json({ error: "Cotação de entrega temporariamente indisponível." }, 503);
+          if (code === "OUT_OF_SERVICE_AREA") return json({ error: "Endereço localizado, mas a Lalamove não atende esta região.", code: "LALAMOVE_OUT_OF_SERVICE_AREA" }, 422);
+          if (code === "ADDRESS_NOT_FOUND") return json({ error: "Endereço não encontrado. Confira a rua, o número e o bairro.", code }, 400);
+          if (code === "ADDRESS_OUTSIDE_MANAUS") return json({ error: "Este endereço fica fora de Manaus - AM. Informe um endereço dentro de Manaus.", code }, 422);
+          if (code === "GEOCODER_NOT_CONFIGURED") return json({ error: "Serviço de localização não configurado. Falta o Secret GOOGLE_GEOCODING_API_KEY no Supabase.", code }, 503);
+          if (code === "GEOCODER_UNAVAILABLE") return json({ error: "Não foi possível localizar o endereço agora. Tente novamente em instantes.", code }, 503);
+          if (code === "LALAMOVE_REVERSE_GEOCODE_FAILURE") return json({ error: "A Lalamove não conseguiu validar a rota mesmo com as coordenadas. Tente novamente.", code }, 502);
+          if (code === "LALAMOVE_RATE_LIMIT") return json({ error: "A Lalamove está recebendo muitas cotações. Aguarde um minuto e tente novamente.", code }, 429);
+          if (code === "INVALID_ADDRESS") return json({ error: "Informe rua, número e bairro para a entrega.", code }, 400);
+          if (code === "SANDBOX_CREDENTIALS_REQUIRED") return json({ error: "Cotação de entrega temporariamente indisponível.", code }, 503);
           console.error("super-worker", { code: "DELIVERY_QUOTE_FAILED", stage: "checkout_quote", reason: code });
           return json({ error: "Não foi possível calcular a taxa de entrega. Tente novamente." }, 502);
         }
