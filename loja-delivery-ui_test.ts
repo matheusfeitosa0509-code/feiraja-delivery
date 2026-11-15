@@ -151,7 +151,7 @@ Deno.test("mapa usa função autenticada, rate limit e atualiza enquanto visíve
   for (const required of ["15000", "visibilitychange", "pagehide", "openstreetmap.org", "IntersectionObserver"]) {
     assertEquals(map.includes(required), true, "missing map lifecycle requirement: " + required);
   }
-  for (const required of ['.eq("id", orderId)', '.eq("user_id", authData.user.id)', 'consume_lalamove_tracking_rate_limit', 'p_max_requests: 30', 'getLalamoveTracking']) {
+  for (const required of ['.eq("id", orderId)', '.eq("user_id", authData.user.id)', 'consume_lalamove_tracking_rate_limit', 'p_max_requests: 30', 'getProviderTracking']) {
     assertEquals(endpoint.includes(required), true, "missing tracking security requirement: " + required);
   }
   assertEquals(migration.includes("service role required"), true);
