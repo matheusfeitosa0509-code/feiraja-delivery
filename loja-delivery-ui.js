@@ -6,6 +6,14 @@ export function canShowDeliveryOption(deliveryActive, isAdmin) {
   return deliveryActive === true || isAdmin === true;
 }
 
+export function isDeliveryOptionDisabled(deliveryActive, isAdmin) {
+  return deliveryActive !== true && isAdmin !== true;
+}
+
+export function deliveryUnavailableMessage() {
+  return "A Entrega Feira On chega em breve. Por enquanto, retire na loja ou receba com seu Uber.";
+}
+
 export function canShowUberPickupOption(deliveryActive) {
   return deliveryActive !== true;
 }

@@ -52,7 +52,7 @@ Deno.test("entrega admin com Pix de teste: autoriza, calcula cotação Sandbox e
 Deno.test("não-admin bloqueado quando entrega está desligada", () => {
   assertEquals(validateCheckoutDelivery({
     deliveryType: "delivery", paymentMethod: "pix", isAdmin: false, deliveryActive: false,
-  }), { ok: false, status: 403, error: "A entrega em casa está temporariamente desativada." });
+  }), { ok: false, status: 403, error: "A Entrega Feira On está temporariamente desativada." });
 });
 
 Deno.test("dinheiro e cartão são recusados para entrega", () => {

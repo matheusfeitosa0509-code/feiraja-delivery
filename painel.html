@@ -144,6 +144,8 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 .separation-preference{grid-column:2/-1;display:block;font-size:11px;color:var(--muted);line-height:1.35}
 /* Cartão administrativo de despacho Lalamove — isolado do restante do painel. */
 .lalamove-admin{margin:12px 0;padding:13px;border:1px solid #cfe2cc;border-radius:14px;background:#f5faf3;display:grid;gap:9px;min-width:0}
+.lalamove-admin .feira-lalamove-map-canvas{height:205px}
+.lalamove-admin .feira-lalamove-map{margin:7px 0}
 .lalamove-admin-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .lalamove-admin p{margin:0;display:grid;gap:3px;overflow-wrap:anywhere}
 .lalamove-admin small{font-size:10px;color:var(--muted);font-weight:800}
@@ -412,6 +414,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 </section>
 </section></main>
 <script src="./turnstile.js" defer></script>
+<script src="./lalamove-map.js"></script>
 <script type="module">
 import{createClient}from'https://esm.sh/@supabase/supabase-js@2.117.1';
 const db=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',{auth:{persistSession:true,autoRefreshToken:true}});
@@ -885,7 +888,7 @@ function formatOrderQuantity(quantity){return Number(quantity).toLocaleString('p
 function formatOrderItemDescription(item){const quantity=item.quantity??item.qty??1;const rawName=String(item.name||item.product_name||item.id||'Produto');const name=rawName.replace(/\s*\((?:kg|un|unidade)\)\s*$/i,'').trim();const unit=String(item.unit??item.unit_name??'').toLowerCase();if(item.sale_mode==='value'){const cents=Number(item.line_total_cents??item.amount_cents);const amount=Number.isSafeInteger(cents)&&cents>0?money(cents/100):orderItemTotal(item.price,quantity,item);return name+' — '+amount+' (~'+formatOrderQuantity(quantity)+' kg)';}if(item.sale_mode==='unit'||item.sale_mode==='un'||['un','unidade'].includes(unit)||/\((?:un|unidade)\)\s*$/i.test(rawName))return name+' — '+formatOrderQuantity(quantity)+' un';if(item.sale_mode==='kg'||unit==='kg'||/\(kg\)\s*$/i.test(rawName))return name+' — '+formatOrderQuantity(quantity)+' kg';return rawName+' × '+formatOrderQuantity(quantity)+(item.unit?' '+String(item.unit):'');}
 function orderItemTotal(price,quantity,item=null){if(item?.sale_mode==='value'){const cents=Number(item.line_total_cents??item.amount_cents);if(Number.isSafeInteger(cents)&&cents>0)return money(cents/100);}const unitPriceCents=Math.round(Number(price||0)*100);return money(Math.round(unitPriceCents*Number(quantity||1))/100);}
 function lalamoveStatusLabel(status){
- const labels={pending:'Confirmando criação',searching:'Procurando motorista',assigned:'A caminho',enroute_pickup:'A caminho',picked_up:'Coletado',delivered:'Entregue',cancelled:'Cancelado',rejected:'Cancelado',expired:'Cancelado'};
+ const labels={pending:'Confirmando criação',searching:'Procurando motorista',assigned:'A caminho',enroute_pickup:'A caminho',picked_up:'Coletado',delivered:'Entregue',cancelled:'Entrega cancelada',rejected:'Entrega recusada',expired:'Nenhum motorista aceitou — chame de novo'};
  return labels[String(status||'')]||'Aguardando chamada do entregador';
 }
 function renderLalamoveDelivery(order,currentStatus){
@@ -905,17 +908,19 @@ function renderLalamoveDelivery(order,currentStatus){
  const vehicle=order.delivery_vehicle==='MOTO'?'Moto':order.delivery_vehicle==='CAR'?'Carro':'Não informado';
  const weight=Number(order.delivery_weight_kg);
  const weightText=Number.isFinite(weight)&&weight>0?weight.toLocaleString('pt-BR',{maximumFractionDigits:3})+' kg':'Não informado';
- const tracking=order.lalamove_tracking_url?'<a href="'+esc(order.lalamove_tracking_url)+'" target="_blank" rel="noopener noreferrer">Abrir rastreio</a>':'';
+ const tracking=order.lalamove_tracking_url?'<a class="lalamove-tracking-link" href="'+esc(order.lalamove_tracking_url)+'" target="_blank" rel="noopener noreferrer">Abrir rastreio da Lalamove</a>':'';
  const driverParts=[driver.name,driver.phone,driver.plateNumber?'Placa '+driver.plateNumber:''].filter(Boolean);
  const driverHtml=driverParts.length?'<p class="lalamove-driver"><small>MOTORISTA</small><strong>'+driverParts.map(esc).join(' · ')+'</strong></p>':'';
  const callButton=canQuote?'<button type="button" data-lalamove-quote="'+esc(order.id)+'">Chamar entregador</button>':'';
  const refreshButton=order.lalamove_status?'<button type="button" class="secondary" data-lalamove-refresh="'+esc(order.id)+'">Atualizar status</button>':'';
  const cancelButton=canCancel?'<button type="button" class="danger" data-lalamove-cancel="'+esc(order.id)+'">Cancelar entrega</button>':'';
- return '<section class="lalamove-admin"><div class="lalamove-admin-head"><strong>Entrega Lalamove</strong></div>'
+ const trackingActive=['searching','assigned','enroute_pickup','picked_up'].includes(cancelStatus);
+ const mapHtml=trackingActive?'<div data-lalamove-map data-order-id="'+esc(order.id)+'"></div>':'';
+ return '<section class="lalamove-admin"><div class="lalamove-admin-head"><strong>Entrega Feira On</strong></div>'
   +'<div class="lalamove-address"><small>ENDEREÇO</small><strong>'+esc(fullAddress||order.customer_address||'Endereço não informado')+'</strong><a href="'+esc(mapUrl)+'" target="_blank" rel="noopener noreferrer">Abrir no mapa</a></div>'
   +'<div class="lalamove-facts"><span>Veículo: <b>'+esc(vehicle)+'</b></span><span>Peso: <b>'+esc(weightText)+'</b></span><span>Taxa: <b>'+money(order.delivery_fee)+'</b></span></div>'
-  +(order.lalamove_status?'<p class="lalamove-state"><small>STATUS DA ENTREGA</small><strong>'+esc(lalamoveStatusLabel(order.lalamove_status))+'</strong></p>':'')
-  +driverHtml+(tracking?'<p>'+tracking+'</p>':'')+'<div class="actions">'+callButton+refreshButton+cancelButton+'</div>'
+  +(order.lalamove_status?'<p class="lalamove-state"><small>STATUS DA ENTREGA</small><strong data-lalamove-status-label>'+esc(lalamoveStatusLabel(order.lalamove_status))+'</strong></p>':'')
+  +driverHtml+mapHtml+(tracking?'<p>'+tracking+'</p>':'')+'<div class="actions">'+callButton+refreshButton+cancelButton+'</div>'
   +'<p class="lalamove-feedback" data-lalamove-feedback="'+esc(order.id)+'" role="status" aria-live="polite" hidden></p>'
   +(canQuote?'<div class="lalamove-quote-box" data-lalamove-quote-box="'+esc(order.id)+'" hidden></div>':'')+'</section>';
 }
@@ -954,7 +959,7 @@ function render(){
   const phoneDigits=String(o.customer_phone||'').replace(/\D/g,'');
   const waDigits=phoneDigits?(phoneDigits.startsWith('55')?phoneDigits:'55'+phoneDigits):'';
   const phoneHtml=waDigits?'<a class="order-phone" href="https://wa.me/'+esc(waDigits)+'" target="_blank" rel="noopener noreferrer">'+esc(o.customer_phone||'Telefone não informado')+'</a>':'<span>Telefone não informado</span>';
-  const mode=o.delivery_type==='delivery'?'Entrega em casa (Lalamove)':o.delivery_type==='pickup_uber'?'Retirada com Uber':'Retirada na loja';
+  const mode=o.delivery_type==='delivery'?'Entrega Feira On':o.delivery_type==='pickup_uber'?'Receber com seu Uber':'Retirada na loja';
   const codeHtml=o.delivery_type==='delivery'?'':('<div class="order-extra"><small>CÓDIGO DE RETIRADA</small><strong>'+esc(o.pickup_code||'—')+'</strong></div>');
   const pickupAddress=o.delivery_type==='delivery'?'':(o.customer_address?'<div class="order-extra"><small>LOCAL DE RETIRADA</small><strong>'+esc(o.customer_address)+'</strong></div>':'');
   const contact='<div class="order-contact"><strong>'+esc(o.customer_name||'Cliente')+'</strong><span>·</span>'+phoneHtml+'<details class="order-email"><summary>E-mail</summary><span>'+esc(o.customer_email||'Não informado')+'</span></details></div>';
@@ -983,6 +988,7 @@ function render(){
  document.querySelectorAll('[data-lalamove-quote]').forEach(b=>b.addEventListener('click',()=>startLalamoveQuote(b.dataset.lalamoveQuote,b)));
  document.querySelectorAll('[data-lalamove-cancel]').forEach(b=>b.addEventListener('click',()=>cancelLalamoveDelivery(b.dataset.lalamoveCancel,b)));
  document.querySelectorAll('[data-lalamove-refresh]').forEach(b=>b.addEventListener('click',()=>refreshLalamoveStatus(b.dataset.lalamoveRefresh,b)));
+ if(window.FeiraLalamoveMap)window.FeiraLalamoveMap.mountAll('[data-lalamove-map]',async orderId=>{const {data,error}=await db.functions.invoke('lalamove-tracking',{body:{order_id:orderId}});if(error)throw error;return data;});
 }
 async function lalamoveErrorMessage(error,fallback){
  const response=error?.context;

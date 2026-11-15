@@ -16,21 +16,21 @@ export function validateCheckoutDelivery(input: {
   deliveryActive: boolean;
 }): { ok: true } | { ok: false; status: number; error: string } {
   if (!["pickup_store", "pickup_uber", "delivery"].includes(input.deliveryType)) {
-    return { ok: false, status: 400, error: "Modalidade inválida. Escolha retirada, retirada com Uber ou entrega em casa." };
+    return { ok: false, status: 400, error: "Modalidade inválida. Escolha retirada, Receber com seu Uber ou Entrega Feira On." };
   }
   if (input.paymentMethod === "pix_test" && !input.isAdmin) {
     return { ok: false, status: 403, error: "Pix de teste disponível somente para administradores." };
   }
   if (input.deliveryType === "delivery") {
     if (!input.deliveryActive && !input.isAdmin) {
-      return { ok: false, status: 403, error: "A entrega em casa está temporariamente desativada." };
+      return { ok: false, status: 403, error: "A Entrega Feira On está temporariamente desativada." };
     }
     if (!["pix", "pix_test"].includes(input.paymentMethod)) {
-      return { ok: false, status: 400, error: "Entrega em casa aceita somente Pix." };
+      return { ok: false, status: 400, error: "Entrega Feira On aceita somente Pix." };
     }
   }
   if (input.deliveryType === "pickup_uber" && !["pix", "pix_test"].includes(input.paymentMethod)) {
-    return { ok: false, status: 400, error: "Na retirada com Uber, o pagamento é somente por Pix." };
+    return { ok: false, status: 400, error: "Na modalidade Receber com seu Uber, o pagamento é somente por Pix." };
   }
   return { ok: true };
 }

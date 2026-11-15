@@ -203,7 +203,8 @@ Deno.test("mapeia todos os status operacionais do Sandbox", () => {
   assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "PICKED_UP"), "picked_up");
   assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "COMPLETED"), "delivered");
   assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "CANCELED"), "cancelled");
-  assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "EXPIRED"), "cancelled");
+  assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "EXPIRED"), "expired");
+  assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "REJECTED"), "rejected");
 });
 
 Deno.test("webhook signed V3 can use signature as stable fallback event identifier", () => {

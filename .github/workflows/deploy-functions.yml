@@ -16,6 +16,7 @@ on:
           - push-notify
           - delivery-quote
           - delivery-address
+          - lalamove-tracking
       ref:
         description: "SHA completo de commit alcançável por main (vazio = commit atual de main)"
         required: false
@@ -50,7 +51,7 @@ jobs:
           set -euo pipefail
 
           case "$FUNCTION_NAME" in
-            super-worker|asaas-webhook|asaas-saque-validacao|expire-pix|assistente|push-notify|delivery-quote|delivery-address) ;;
+            super-worker|asaas-webhook|asaas-saque-validacao|expire-pix|assistente|push-notify|delivery-quote|delivery-address|lalamove-tracking) ;;
             *)
               echo "::error::Função não permitida."
               exit 1
@@ -141,6 +142,12 @@ jobs:
         if: inputs.function == 'delivery-address'
         run: |
           supabase functions deploy delivery-address \
+            --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Implantar lalamove-tracking
+        if: inputs.function == 'lalamove-tracking'
+        run: |
+          supabase functions deploy lalamove-tracking \
             --project-ref "$SUPABASE_PROJECT_REF"
 
       - name: Registrar SHA implantado

@@ -10,6 +10,7 @@ on:
       - "supabase/functions/asaas-saque-validacao/**"
       - "supabase/functions/delivery-quote/**"
       - "loja.html"
+      - "lalamove-map.js"
       - "loja-delivery-ui.js"
       - "loja-delivery-ui_test.ts"
       - ".github/workflows/check-pagamentos.yml"
@@ -61,7 +62,10 @@ jobs:
         run: deno check loja-delivery-ui.js
 
       - name: Test delivery checkout UI
-        run: deno test --allow-read=loja.html loja-delivery-ui_test.ts
+        run: deno test --allow-read loja-delivery-ui_test.ts
+
+      - name: Check shared tracking map syntax
+        run: node --check lalamove-map.js
 
       - name: Check inline store module syntax
         run: |
