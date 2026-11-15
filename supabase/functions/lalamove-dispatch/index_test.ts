@@ -1,6 +1,6 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
-  buildLalamoveOrderBody, canCancelLalamove, canStartDispatch, cancelLalamoveOrder, createLalamoveOrder, getLalamoveDriverDetails,
+  buildLalamoveOrderBody, canCancelLalamove, canQuoteLalamove, canStartDispatch, isLalamoveDispatchReady, cancelLalamoveOrder, createLalamoveOrder, getLalamoveDriverDetails,
   isWebhookVerificationProbe, makeWebhookSignature, mapLalamoveStatus, normalizeBrazilPhone, priceDifference, quoteFee, verifyWebhookSignature,
 } from "../_shared/lalamove-dispatch.ts";
 
@@ -145,4 +145,15 @@ Deno.test("verificação inicial Lalamove: corpo vazio ou sem envelope assinado 
   assertEquals(isWebhookVerificationProbe({
     apiKey: "pk_test_demo", timestamp: "123", signature: "abc", data: { eventType: "ORDER_STATUS_CHANGED" },
   }), false);
+});
+
+Deno.test("cotação pode ocorrer antes de Pronto, mas corrida só após Pronto para Retirada", () => {
+  assertEquals(canQuoteLalamove("Pagamento Confirmado", "Pix", true), true);
+  assertEquals(canQuoteLalamove("Pagamento Confirmado", "Pix", false), true);
+  assertEquals(canQuoteLalamove("Preparando", "Pix", false), true);
+  assertEquals(canQuoteLalamove("Pedido Recebido", "Dinheiro", false), false);
+  assertEquals(canQuoteLalamove("Cancelada", "Pix", true), false);
+  assertEquals(isLalamoveDispatchReady("Pagamento Confirmado"), false);
+  assertEquals(isLalamoveDispatchReady("Pronto para Retirada"), true);
+  assertEquals(isLalamoveDispatchReady("Pronto"), true);
 });
