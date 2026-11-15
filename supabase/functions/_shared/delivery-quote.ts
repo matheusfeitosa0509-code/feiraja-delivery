@@ -81,7 +81,7 @@ export async function requestSandboxQuotation(
   const url = "https://rest.sandbox.lalamove.com" + path;
   const body = JSON.stringify(buildQuotationBody(serviceType, dropoff));
   const timestamp = String(Date.now());
-  const raw = timestamp + "\\r\\nPOST\\r\\n" + path + "\\r\\n\\r\\n" + body;
+  const raw = timestamp + "\r\nPOST\r\n" + path + "\r\n\r\n" + body;
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(apiSecret),
     { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const signed = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(raw));
