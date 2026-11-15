@@ -974,8 +974,11 @@ async function startLalamoveQuote(orderId,button){
   const order=allOrders.find(o=>String(o.id)===String(orderId));
   const ready=['Pronto para Retirada','Pronto'].includes(normalizeOrderStatus(order?.status));
   if(!ready){
+   const confirmButton=box.querySelector('[data-lalamove-confirm]');
+   confirmButton.disabled=true;
+   confirmButton.title='Disponível quando o pedido estiver Pronto para Retirada';
    const note=document.createElement('p');note.className='lalamove-ready-warning';note.textContent='Cotação salva. Para criar a corrida, primeiro altere o status do pedido para “Pronto para Retirada”.';
-   box.querySelector('[data-lalamove-confirm]').before(note);
+   confirmButton.before(note);
   }
   box.querySelector('[data-lalamove-confirm]').addEventListener('click',event=>confirmLalamoveDispatch(orderId,data.quote_session_id,box.querySelector('[data-lalamove-vehicle]').value,event.currentTarget));
   box.querySelector('[data-lalamove-close]').addEventListener('click',()=>{box.hidden=true;});
