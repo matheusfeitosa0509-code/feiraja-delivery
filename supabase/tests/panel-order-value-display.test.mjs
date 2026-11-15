@@ -80,7 +80,11 @@ for(const [item,expected] of displayCases){
   assert.equal(storeContext.formatOrderItemDescription(item),expected,'store label: '+item.name);
 }
 assert.match(store,/const cashAtPickup=method\.includes\('dinheiro'\)\|\|method\.includes\('cart'\)/,'cash/card at pickup uses the cash timeline');
-assert.match(store,/steps=delivery\?\[\['Pago','💳'\],\['Preparando','📦'\],\['Caminho','🛵'\],\['Entregue','✓'\]\]:\[\['Pago','💳'\],\['Preparando','📦'\],\['Pronto','✓'\],\['Retirado','✓'\]\]/,'pickup and delivery use the exact four requested timeline stages');
+assert.match(store,/const icon=\(kind\)=>/,'timeline uses checkout-style line SVG icons');
+assert.match(store,/data-tracking-url=/,'customer tracking button keeps the Lalamove fallback URL');
+assert.doesNotMatch(store,/customer-tracking-fallback/,'customer card has no duplicate external tracking link');
+assert.match(store,/deliveryAdminCheckComplete=false/,'delivery option starts locked while admin authorization is pending');
+assert.match(trackingMigration,/as \$\$[\s\S]*?\$\$;/,'tracking RPC migration uses a valid dollar-quoted function body');
 assert.match(store,/const paid=cashAtPickup\?\['Pedido Concluído','Entregue'\]\.includes\(status\):/,'cash pickup only marks Pago complete after pickup');
 assert.match(store,/const refundHelp=isPixPayment\?/,'refund explanation is limited to Pix orders');
 assert.match(store,/cancelMyOrder\(b\.dataset\.cancelOrder,b,b\.dataset\.cancelPayment==='pix'\)/,'cancellation confirmation receives the payment type');
