@@ -573,8 +573,10 @@ Deno.serve(async (req: Request) => {
     if (deliveryType === "delivery") {
       if (priorOrder) {
         const storedAddress = priorOrder.delivery_address;
-        if (!storedAddress || JSON.stringify(storedAddress) !== JSON.stringify(normalizedDeliveryAddress) ||
-            !priorOrder.delivery_vehicle || priorOrder.delivery_weight_kg == null || priorOrder.delivery_fee == null) {
+        const sameStoredAddress = !!storedAddress && ["street", "number", "neighborhood", "complement", "reference"]
+          .every((key) => String(storedAddress[key] || "") === String((normalizedDeliveryAddress as any)?.[key] || ""));
+        if (!sameStoredAddress || !priorOrder.delivery_vehicle ||
+            priorOrder.delivery_weight_kg == null || priorOrder.delivery_fee == null) {
           return json({ error: "Os dados desta tentativa de entrega não conferem. Inicie um novo checkout." }, 409);
         }
         deliveryQuote = {
