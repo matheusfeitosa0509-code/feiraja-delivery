@@ -7,6 +7,11 @@ on:
       - "supabase/functions/_shared/geocoding_test.ts"
       - "supabase/functions/delivery-address/**"
       - "supabase/functions/delivery-quote/**"
+      - "supabase/functions/lalamove-dispatch/**"
+      - "supabase/functions/lalamove-webhook/**"
+      - "supabase/functions/_shared/lalamove-dispatch.ts"
+      - "supabase/migrations/*lalamove-dispatch-and-webhook.sql"
+      - "painel.html"
       - "loja.html"
       - "loja-delivery-ui.js"
       - "loja-delivery-ui_test.ts"
@@ -14,9 +19,13 @@ on:
   push:
     branches:
       - feat/lalamove-delivery-sandbox
+      - feat/lalamove-delivery-stage-3
     paths:
       - "supabase/functions/_shared/delivery-quote.ts"
       - "supabase/functions/delivery-quote/**"
+      - "supabase/functions/lalamove-dispatch/**"
+      - "supabase/functions/lalamove-webhook/**"
+      - "supabase/functions/_shared/lalamove-dispatch.ts"
       - ".github/workflows/delivery-quote-tests.yml"
 jobs:
   test:
@@ -28,5 +37,7 @@ jobs:
           deno-version: v2.x
       - run: deno check --config supabase/functions/delivery-address/deno.json supabase/functions/delivery-address/index.ts
       - run: deno check --config supabase/functions/delivery-quote/deno.json supabase/functions/delivery-quote/index.ts
-      - run: deno test --allow-net --allow-read supabase/functions/delivery-quote/index_test.ts supabase/functions/_shared/geocoding_test.ts supabase/functions/delivery-address/index_test.ts
+      - run: deno check --config supabase/functions/lalamove-dispatch/deno.json supabase/functions/lalamove-dispatch/index.ts
+      - run: deno check --config supabase/functions/lalamove-webhook/deno.json supabase/functions/lalamove-webhook/index.ts
+      - run: deno test --allow-net --allow-read supabase/functions/delivery-quote/index_test.ts supabase/functions/_shared/geocoding_test.ts supabase/functions/delivery-address/index_test.ts supabase/functions/lalamove-dispatch/index_test.ts
       - run: deno test --allow-read loja-delivery-ui_test.ts
