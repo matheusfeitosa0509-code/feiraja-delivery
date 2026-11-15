@@ -21,9 +21,8 @@ export async function loadDeliveryAccessState(user, rpc) {
     Promise.resolve().then(() => rpc("get_delivery_enabled")).catch((error) => ({ error })),
   ]);
 
-  if (adminResult?.error) return denied;
-  const adminCheckComplete = true;
-  const isAdmin = isAdminRpcTrue(adminResult?.data);
+  const adminCheckComplete = !adminResult?.error;
+  const isAdmin = adminCheckComplete && isAdminRpcTrue(adminResult?.data);
   return {
     adminCheckComplete,
     isAdmin,
