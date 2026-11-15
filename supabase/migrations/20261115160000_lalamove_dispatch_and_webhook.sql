@@ -131,7 +131,8 @@ begin
  end if;
  update feira_cost_private.lalamove_dispatches set state='created',lalamove_order_id=p_lalamove_order_id,
   lalamove_status=coalesce(p_status,'searching'),tracking_url=nullif(p_tracking_url,''),
-  driver=coalesce(p_driver,'{}'::jsonb),updated_at=now(),last_error_code=null
+  driver=coalesce(p_driver,'{}'::jsonb),event_updated_at=case when p_status='assigned' then now() else null end,
+  updated_at=now(),last_error_code=null
  where order_id=p_order_id and state='creating' and lalamove_order_id is null;
  get diagnostics v_updated = row_count;
  if v_updated=0 then
@@ -146,7 +147,7 @@ begin
  update public.orders set lalamove_status=coalesce(p_status,'searching'),
   lalamove_tracking_url=nullif(p_tracking_url,''),lalamove_driver=coalesce(p_driver,'{}'::jsonb),
   delivery_vehicle=(select d.selected_vehicle from feira_cost_private.lalamove_dispatches d where d.order_id=p_order_id),
-  lalamove_status_updated_at=null,
+  lalamove_status_updated_at=case when p_status='assigned' then now() else null end,
   status=case when p_status='delivered' then 'Entregue'
    when p_status in ('assigned','enroute_pickup','picked_up') then 'Saiu para Entrega'
    else status end
@@ -212,6 +213,14 @@ begin
  if v_inserted=0 then return jsonb_build_object('applied',false,'duplicate',true); end if;
  select o.lalamove_status_updated_at into v_existing_at from public.orders o where o.id=v_order_id for update;
  if v_existing_at is not null and p_event_at < v_existing_at then
+  update feira_cost_private.lalamove_dispatches set
+   tracking_url=coalesce(nullif(p_tracking_url,''),tracking_url),
+   driver=coalesce(p_driver,driver,'{}'::jsonb),updated_at=now()
+  where order_id=v_order_id;
+  update public.orders set
+   lalamove_tracking_url=coalesce(nullif(p_tracking_url,''),lalamove_tracking_url),
+   lalamove_driver=coalesce(p_driver,lalamove_driver,'{}'::jsonb)
+  where id=v_order_id;
   return jsonb_build_object('applied',false,'out_of_order',true);
  end if;
  update feira_cost_private.lalamove_dispatches set lalamove_status=p_status,
@@ -241,7 +250,7 @@ begin
  end if;
  return (select jsonb_build_object(
   'state',d.state,'lalamove_order_id',d.lalamove_order_id,'lalamove_status',d.lalamove_status,
-  'tracking_url',d.tracking_url,'driver',d.driver
+  'tracking_url',d.tracking_url,'driver',d.driver,'event_updated_at',d.event_updated_at
  ) from feira_cost_private.lalamove_dispatches d where d.order_id=p_order_id);
 end;
 $$;
