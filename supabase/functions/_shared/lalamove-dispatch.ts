@@ -46,7 +46,8 @@ export function mapLalamoveStatus(eventType: string, rawStatus: string): Lalamov
 
 export function normalizeBrazilPhone(input: unknown): string {
   const digits = String(input || "").replace(/\D/g, "");
-  const national = digits.startsWith("55") ? digits.slice(2) : digits;
+  const withoutCountry = digits.startsWith("55") ? digits.slice(2) : digits;
+  const national = withoutCountry.startsWith("0") ? withoutCountry.slice(1) : withoutCountry;
   if (!/^\d{10,11}$/.test(national)) throw new Error("INVALID_PHONE");
   return "+55" + national;
 }
