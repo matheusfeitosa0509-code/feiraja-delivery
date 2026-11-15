@@ -50,7 +50,7 @@ Não crie outro pedido nem outro pagamento para este roteiro.
 6. Escolha **Moto** ou **Carro** e só então toque em **Confirmar e criar corrida**.
 7. Aguarde o retorno. O painel deve mostrar **Procurando motorista** e, quando a Lalamove enviar o evento, o motorista/telefone/placa e o link de rastreio.
 8. Abra o link de rastreio. Na conta do cliente, o acompanhamento mostra o status e o mesmo link; pedidos de teste não aparecem no histórico do cliente.
-9. Se quiser validar cancelamento, use **Cancelar entrega** enquanto o status estiver procurando motorista ou motorista a caminho, antes de coletado. A Lalamove ainda pode recusar se a janela de cancelamento tiver fechado.
+9. Se quiser validar cancelamento, use **Cancelar entrega** enquanto estiver procurando motorista ou nos primeiros 5 minutos após o motorista aceitar (antes de coletado). A própria Lalamove valida a janela e pode recusar com HTTP 409.
 10. Confira **Webhook Attempts** no portal e o status atualizado no painel. A entrega concluída deve mudar o pedido para **Entregue**.
 
 Se a criação ficar em **Confirmando criação no Sandbox**, não toque novamente. Atualize o painel e confira o estado antes de qualquer nova tentativa; o bloqueio permanece intencionalmente ativo até confirmação/reconciliação.
