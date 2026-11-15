@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
-import { getLalamoveDriverDetails, isWebhookVerificationProbe, mapLalamoveStatus, verifyWebhookSignature } from "../_shared/lalamove-dispatch.ts";
+import { getLalamoveDriverDetails, isWebhookVerificationProbe, mapLalamoveStatus, verifyWebhookSignature, requireSupabaseSecretKey, secretKeyFetch } from "../_shared/lalamove-dispatch.ts";
 
 const PATH = "/functions/v1/lalamove-webhook";
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
@@ -39,7 +39,8 @@ Deno.serve(async (req: Request) => {
     const apiKey = Deno.env.get("LALAMOVE_SANDBOX_API_KEY") || "";
     const apiSecret = Deno.env.get("LALAMOVE_SANDBOX_API_SECRET") || "";
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    let serviceKey = "";
+    try { serviceKey = requireSupabaseSecretKey(Deno.env.get("SUPABASE_SECRET_KEYS")); } catch { /* return generic configuration error */ }
     if (!apiKey.startsWith("pk_test") || !apiSecret.startsWith("sk_test") || !supabaseUrl || !serviceKey) {
       return json({ error: "Sandbox webhook is not configured." }, 503);
     }
@@ -71,7 +72,10 @@ Deno.serve(async (req: Request) => {
       }
     }
     const trackingUrl = String(order.shareLink || data.shareLink || "");
-    const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const db = createClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: secretKeyFetch(serviceKey) },
+    });
     const { data: result, error } = await db.rpc("service_apply_lalamove_webhook", {
       p_event_id: eventId, p_event_type: eventType, p_event_at: eventAt,
       p_lalamove_order_id: orderId, p_status: status || "assigned",
