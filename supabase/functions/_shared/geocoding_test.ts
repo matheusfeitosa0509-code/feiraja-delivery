@@ -15,6 +15,7 @@ const validResult = (lat = -3.10, lng = -60.02) => ({
 
 Deno.test("consulta sempre completa o endereço com Manaus - AM, Brasil", () => {
   assertEquals(formatManausGeocodeQuery("Rua Japiassu, 140 - Viver Melhor 2"), "Rua Japiassu, 140 - Viver Melhor 2, Manaus - AM, Brasil");
+  assertEquals(formatManausGeocodeQuery("Rua A, 1, Manaus - AM"), "Rua A, 1, Manaus - AM, Brasil");
   assertEquals(formatManausGeocodeQuery("Rua A, 1, Manaus - AM, Brasil"), "Rua A, 1, Manaus - AM, Brasil");
 });
 
@@ -51,4 +52,10 @@ Deno.test("sem chave Google não tenta consulta externa", async () => {
   const fetcher = async () => { called = true; return new Response("{}"); };
   await assertRejects(() => geocodeManausAddress("Rua A, 1", "", fetcher), Error, "GEOCODER_NOT_CONFIGURED");
   assertEquals(called, false);
+});
+
+Deno.test("não aceita somente o centro da rua como se fosse número residencial exato", () => {
+  const result = validResult();
+  result.types = ["route"];
+  assertThrows(() => validateManausGeocodeResult(result), Error, "ADDRESS_NOT_FOUND");
 });
