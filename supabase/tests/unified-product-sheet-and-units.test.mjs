@@ -11,7 +11,8 @@ for(const id of ['unifiedProductSearch','unifiedCategoryFilter','unifiedProductL
 assert.match(panel,/normalizeProductSearch\(\$\('unifiedProductSearch'\)\.value\)/,'search is accent/case insensitive');
 assert.match(panel,/data-quick-availability/,'availability can be changed directly in the list');
 assert.match(panel,/data-open-product/,'tapping a product opens its detail sheet');
-assert.match(panel,/if\(saleUnit!==product\.sale_unit&&!window\.confirm\('Isso muda como o cliente compra\. Confirmar\?'\)\)/,'sale unit changes require explicit confirmation');
+assert.match(panel,/if\(saleUnit!==product\.sale_unit&&!\(await appConfirm\('Isso muda como o cliente compra\.'/,'sale unit changes use the app confirmation modal');
+assert.doesNotMatch(panel,/\b(?:window\.)?(?:alert|confirm|prompt)\s*\(/,'panel must not use native browser dialogs');
 assert.match(panel,/admin_update_product_sales_rule/,'sale unit and quantity rules use the admin RPC');
 assert.match(panel,/admin_set_product_cost/,'private product cost uses the existing admin RPC');
 assert.match(panel,/db\.rpc\('admin_get_cost_report'/,'inline costs continue to come from the administrative report RPC');
