@@ -26,11 +26,11 @@ export function validateCheckoutDelivery(input: {
       return { ok: false, status: 403, error: "A Entrega Feira On está temporariamente desativada." };
     }
     if (!["pix", "pix_test"].includes(input.paymentMethod)) {
-      return { ok: false, status: 400, error: "Entrega em casa aceita somente Pix." };
+      return { ok: false, status: 400, error: "Entrega Feira On aceita somente Pix." };
     }
   }
   if (input.deliveryType === "pickup_uber" && !["pix", "pix_test"].includes(input.paymentMethod)) {
-    return { ok: false, status: 400, error: "Na Receber com seu Uber, o pagamento é somente por Pix." };
+    return { ok: false, status: 400, error: "Na modalidade Receber com seu Uber, o pagamento é somente por Pix." };
   }
   return { ok: true };
 }
