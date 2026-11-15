@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.117.1";
 import { requireSupabaseSecretKey, secretKeyFetch } from "../_shared/lalamove-dispatch.ts";
 import { isTerminalTrackingStatus } from "../_shared/lalamove-tracking.ts";
-import { getLalamoveTracking } from "./providers/lalamove.ts";
+import { getProviderTracking } from "./providers/index.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
     }
     if (isTerminalTrackingStatus(storedStatus)) return json({ active: false, status: storedStatus });
     const { key, secret } = sandboxCredentials();
-    const tracking = await getLalamoveTracking(key, secret, String(dispatch.lalamove_order_id));
+    const tracking = await getProviderTracking("lalamove", key, secret, String(dispatch.lalamove_order_id));
     const status = tracking.status;
     const driverSummary = tracking.driver ? {
       ...(tracking.driver.name ? { name: tracking.driver.name } : {}),
