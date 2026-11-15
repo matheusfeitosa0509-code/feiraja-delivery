@@ -1521,7 +1521,7 @@ function syncDeliveryOptionVisibility(){
  option.setAttribute('aria-disabled',String(disabled));
  const starting=$('#deliveryStartingPrice');
  if(disabled)starting.textContent='Em breve';
- else if(!deliveryActive&&currentUserIsAdmin)starting.textContent='TESTE';
+ else if(!deliveryActive&&currentUserIsAdmin)starting.innerHTML='<span class="checkout-test-badge">TESTE</span>';
  else starting.textContent=deliveryQuote?'A partir de '+money(deliveryQuote.fee):'Consulte o valor';
  option.onclick=event=>{
   if(disabled){event.preventDefault();event.stopPropagation();showStoreNotice(deliveryUnavailableMessage());}
