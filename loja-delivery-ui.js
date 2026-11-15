@@ -6,6 +6,10 @@ export function canShowDeliveryOption(deliveryActive, isAdmin) {
   return deliveryActive === true || isAdmin === true;
 }
 
+export function canShowUberPickupOption(deliveryActive) {
+  return deliveryActive !== true;
+}
+
 export function deliveryPaymentOptions(isAdmin) {
   return ["pix", ...(isAdmin ? ["pix_test"] : [])];
 }
