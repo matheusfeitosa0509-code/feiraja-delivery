@@ -8,6 +8,9 @@ import {
 
 Deno.test("modalidade de entrega só fica habilitada para admin enquanto inativa", () => {
   assertEquals(canShowDeliveryOption(false, false), false);
+  assertEquals(isDeliveryOptionDisabled(false, false, false), true);
+  assertEquals(isDeliveryOptionDisabled(false, true, false), true);
+  assertEquals(isDeliveryOptionDisabled(false, true, true), false);
   assertEquals(canShowDeliveryOption(false, true), true);
   assertEquals(canShowDeliveryOption(true, false), true);
 });
