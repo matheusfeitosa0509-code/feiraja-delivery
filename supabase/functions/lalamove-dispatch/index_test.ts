@@ -1,7 +1,7 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   buildLalamoveOrderBody, canCancelLalamove, canQuoteLalamove, canStartDispatch, isLalamoveDispatchReady, cancelLalamoveOrder, createLalamoveOrder, getLalamoveDriverDetails,
-  isWebhookVerificationProbe, makeWebhookSignature, mapLalamoveStatus, normalizeBrazilPhone, priceDifference, quoteFee, verifyWebhookSignature, requireSupabaseSecretKey, secretKeyFetch,
+  isWebhookVerificationProbe, makeWebhookSignature, mapLalamoveStatus, normalizeBrazilPhone, priceDifference, quoteFee, verifyWebhookSignature, requireSupabaseSecretKey, secretKeyFetch, getLalamoveOrderDetails,
 } from "../_shared/lalamove-dispatch.ts";
 
 const quote = {
