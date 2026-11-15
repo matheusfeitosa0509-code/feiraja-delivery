@@ -49,7 +49,7 @@ Não crie outro pedido nem outro pagamento para este roteiro.
 5. Compare o preço atual de cada veículo com a taxa já cobrada. A diferença é absorvida pela loja.
 6. Escolha **Moto** ou **Carro** e só então toque em **Confirmar e criar corrida**.
 7. Aguarde o retorno. O painel deve mostrar **Procurando motorista** e, quando a Lalamove enviar o evento, o motorista/telefone/placa e o link de rastreio.
-8. Abra o link de rastreio. Na conta do cliente, o acompanhamento mostra o status e o mesmo link; pedidos de teste não aparecem no histórico do cliente.
+8. Abra o link de rastreio. Na conta administradora que criou o pedido TESTE, ele também aparece em **Meus pedidos** para validar o acompanhamento do cliente. Contas de clientes que não são administradores continuam sem ver pedidos marcados como teste.
 9. Se quiser validar cancelamento, use **Cancelar entrega** enquanto estiver procurando motorista ou nos primeiros 5 minutos após o motorista aceitar (antes de coletado). A própria Lalamove valida a janela e pode recusar com HTTP 409.
 10. Confira **Webhook Attempts** no portal e o status atualizado no painel. A entrega concluída deve mudar o pedido para **Entregue**.
 
