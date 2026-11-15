@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.117.1";
 import { formatDropoff, requestSandboxQuotation } from "../_shared/delivery-quote.ts";
 import { geocodeManausAddress } from "../_shared/geocoding.ts";
 import {
-  buildLalamoveOrderBody, canCancelLalamove, canStartDispatch, cancelLalamoveOrder, createLalamoveOrder, normalizeBrazilPhone,
+  buildLalamoveOrderBody, canCancelLalamove, canQuoteLalamove, canStartDispatch, isLalamoveDispatchReady, cancelLalamoveOrder, createLalamoveOrder, normalizeBrazilPhone,
   mapLalamoveStatus, priceDifference, quoteFee,
 } from "../_shared/lalamove-dispatch.ts";
 
@@ -63,14 +63,16 @@ async function getOrder(db: any, orderId: string, requireReady = false) {
   if (!data) throw new Error("ORDER_NOT_FOUND");
   if (data.delivery_type !== "delivery" || !data.delivery_address) throw new Error("NOT_HOME_DELIVERY");
   const status = String(data.status || "").trim().toLowerCase();
-  const ready = ["pronto", "pronto para retirada"].includes(status);
-  const terminal = ["cancelada", "cancelado", "pagamento cancelado", "pagamento recusado", "reembolsado", "contestado"].includes(status);
+  const ready = isLalamoveDispatchReady(status);
   if (requireReady && !ready) throw new Error("ORDER_NOT_READY");
-  if (!requireReady && terminal) throw new Error("ORDER_NOT_QUOTABLE");
-  if (data.is_test_order !== true) {
-    const paidByPix = String(data.payment_method || "").toLowerCase().includes("pix");
-    const quoteableStatus = ["pagamento confirmado", "preparando", "pronto", "pronto para retirada"].includes(status);
-    if (!paidByPix || (!requireReady && !quoteableStatus)) throw new Error("ORDER_NOT_PAID");
+  if (!requireReady && !canQuoteLalamove(status, data.payment_method, data.is_test_order === true)) {
+    if (["cancelada", "cancelado", "pagamento cancelado", "pagamento recusado", "reembolsado", "contestado"].includes(status)) {
+      throw new Error("ORDER_NOT_QUOTABLE");
+    }
+    throw new Error("ORDER_NOT_PAID");
+  }
+  if (requireReady && data.is_test_order !== true && !String(data.payment_method || "").toLowerCase().includes("pix")) {
+    throw new Error("ORDER_NOT_PAID");
   }
   return data;
 }
