@@ -1174,7 +1174,7 @@ try {
 <script src="./turnstile.js" defer></script>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.1';
-import { canShowDeliveryOption, buildDeliveryQuoteItems, checkoutGrandTotal, deliveryQuoteErrorMessage, deliveryQuoteLabel, isAdminRpcTrue, isDeliveryOutOfArea, normalizeDeliveryAddress } from './loja-delivery-ui.js';
+import { canShowDeliveryOption, canShowUberPickupOption, buildDeliveryQuoteItems, checkoutGrandTotal, deliveryQuoteErrorMessage, deliveryQuoteLabel, isAdminRpcTrue, isDeliveryOutOfArea, normalizeDeliveryAddress } from './loja-delivery-ui.js';
 const supabase=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW');
 
 const VAPID_PUBLIC_KEY = 'BJ9dTvmRGcTHYQSOOLj61AG2kC2YEMuhWMM2J6GdDdTuofeBkYJsyF5uNIhCfnV03jZBn2fFP1ZUqty0QZ_uuog'; // VAPID pública
@@ -1439,7 +1439,7 @@ async function loadDeliveryAccess(user){
 }
 function syncUberPickupVisibility(){
   const option=$('#deliveryUberOption'),radio=$('#deliveryUber');if(!option||!radio)return;
-  const visible=!deliveryActive;option.hidden=!visible;radio.disabled=!visible;
+  const visible=canShowUberPickupOption(deliveryActive);option.hidden=!visible;radio.disabled=!visible;
   if(!visible&&$('#delivery')?.value==='pickup_uber'){$('#delivery').value='pickup_store';deliveryQuote=null;}
 }
 function syncDeliveryOptionVisibility(){
