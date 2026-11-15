@@ -4,7 +4,7 @@ const { chromium } = require("playwright");
 
 (async () => {
   const source = fs.readFileSync(path.join(process.cwd(), "painel.html"), "utf8");
-  const style = source.match(/<style>([\\s\\S]*?)<\\/style>/);
+  const style = source.match(/<style>([\s\S]*?)<\/style>/);
   if (!style) throw new Error("CSS do painel não encontrado");
   const renderStart = source.indexOf("function renderLalamoveDelivery(order,currentStatus){");
   const renderEnd = source.indexOf("async function startLalamoveQuote", renderStart);
