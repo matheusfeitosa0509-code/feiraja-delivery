@@ -66,9 +66,11 @@ Deno.serve(async (req: Request) => {
     if (!dispatch?.lalamove_order_id) return json({ active: false, status: "searching", driver_assigned: false });
 
     const storedStatus = String(dispatch.lalamove_status || "");
-    if (isTerminalTrackingStatus(storedStatus) || ["Entregue", "Cancelada"].includes(String(order.status || ""))) {
-      return json({ active: false, status: storedStatus || (order.status === "Entregue" ? "delivered" : "cancelled") });
+    if (String(order.status || "") === "Entregue") return json({ active: false, status: "delivered" });
+    if (["Cancelada", "Reembolsado", "Contestado", "Pagamento cancelado", "Pagamento recusado"].includes(String(order.status || ""))) {
+      return json({ active: false, status: "cancelled" });
     }
+    if (isTerminalTrackingStatus(storedStatus)) return json({ active: false, status: storedStatus });
     const { key, secret } = sandboxCredentials();
     const tracking = await getLalamoveTracking(key, secret, String(dispatch.lalamove_order_id));
     const status = tracking.status;
