@@ -1,7 +1,7 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   buildLalamoveOrderBody, canCancelLalamove, canStartDispatch, cancelLalamoveOrder, createLalamoveOrder,
-  makeWebhookSignature, mapLalamoveStatus, priceDifference, quoteFee, verifyWebhookSignature,
+  makeWebhookSignature, mapLalamoveStatus, normalizeBrazilPhone, priceDifference, quoteFee, verifyWebhookSignature,
 } from "../_shared/lalamove-dispatch.ts";
 
 const quote = {
@@ -29,6 +29,7 @@ Deno.test("criação Lalamove MOCKADA: envia quotationId e contatos, recebe orde
       assertEquals(sent.data.sender.phone, "+5592999990000");
       assertEquals(sent.data.recipients[0].stopId, "dropoff-456");
       assertEquals(sent.data.recipients[0].phone, "+5592988887777");
+      assertEquals(normalizeBrazilPhone("092999990000"), "+5592999990000");
       assertEquals(sent.data.isPODEnabled, true);
       return new Response(JSON.stringify({ data: {
         orderId: "LALA-123456789", status: "ASSIGNING_DRIVER",
@@ -107,7 +108,8 @@ Deno.test("janela de cancelamento: searching permitido; ON_GOING somente nos pri
 });
 
 Deno.test("status e diferença de taxa são mapeados sem expor dados privados", () => {
-  assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "ASSIGNING_DRIVER"), "searching");\n  assertEquals(mapLalamoveStatus("DRIVER_ASSIGNED", "ASSIGNING_DRIVER"), "assigned");
+  assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "ASSIGNING_DRIVER"), "searching");
+  assertEquals(mapLalamoveStatus("DRIVER_ASSIGNED", "ASSIGNING_DRIVER"), "assigned");
   assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "ON_GOING"), "assigned");
   assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "PICKED_UP"), "picked_up");
   assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "COMPLETED"), "delivered");
