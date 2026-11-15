@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { chooseVehicle, estimateLoad, formatDropoff, isQuoteAllowed, parseQuotation, requestSandboxQuotation } from "../_shared/delivery-quote.ts";
+import { geocodeManausAddress } from "../_shared/geocoding.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -77,21 +78,38 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Credenciais Lalamove Sandbox ausentes ou inválidas." }, 503);
     }
     const serviceType = vehicle === "MOTO" ? "LALAGO" : "CAR";
-    const response = await requestSandboxQuotation(apiKey, apiSecret, serviceType, dropoff);
+    const geocodingKey = Deno.env.get("GOOGLE_GEOCODING_API_KEY") || "";
+    const [originCoordinates, dropoffCoordinates] = await Promise.all([
+      geocodeManausAddress(ORIGIN, geocodingKey),
+      geocodeManausAddress(dropoff, geocodingKey),
+    ]);
+    const response = await requestSandboxQuotation(apiKey, apiSecret, serviceType, dropoff, {
+      origin: originCoordinates, dropoff: dropoffCoordinates,
+    });
     const result = await response.json().catch(() => ({}));
-    if (response.status === 422 && String(result?.message || "").includes("ERR_OUT_OF_SERVICE_AREA")) {
-      return json({ error: "Endereço fora da área de atendimento." }, 422);
+    const upstreamCode = String(result?.message || "");
+    if (upstreamCode === "ERR_OUT_OF_SERVICE_AREA") {
+      return json({ error: "Endereço localizado, mas a Lalamove não atende esta região.", code: "LALAMOVE_OUT_OF_SERVICE_AREA" }, 422);
+    }
+    if (upstreamCode === "ERR_REVERSE_GEOCODE_FAILURE") {
+      console.error("delivery-quote", { stage: "lalamove_quote", status: response.status, code: "ERR_REVERSE_GEOCODE_FAILURE" });
+      return json({ error: "A Lalamove não conseguiu validar a rota mesmo com as coordenadas. Tente novamente.", code: "LALAMOVE_REVERSE_GEOCODE_FAILURE" }, 502);
     }
     if (!response.ok) {
-      console.error("delivery-quote", { stage: "lalamove_quote", status: response.status, code: String(result?.message || "UPSTREAM_ERROR").slice(0, 80) });
-      return json({ error: "Não foi possível cotar a entrega neste endereço." }, response.status === 429 ? 429 : 502);
+      const code = response.status === 429 ? "LALAMOVE_RATE_LIMIT" : "LALAMOVE_QUOTE_FAILED";
+      console.error("delivery-quote", { stage: "lalamove_quote", status: response.status, code: upstreamCode.slice(0, 80) || code });
+      return json({ error: "A localização foi encontrada, mas a Lalamove não concluiu a cotação. Tente novamente.", code }, response.status === 429 ? 429 : 502);
     }
     const quote = parseQuotation(result?.data, vehicle, load.weightKg);
     return json({ vehicle: quote.vehicle, estimated_weight_kg: quote.weightKg, fee: quote.fee, valid_until: quote.validUntil });
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
-    if (code === "INVALID_ADDRESS") return json({ error: "Informe rua, número e bairro." }, 400);
-    if (code === "INVALID_ITEMS") return json({ error: "Itens ou quantidades inválidos." }, 400);
+    if (code === "INVALID_ADDRESS") return json({ error: "Informe rua, número e bairro.", code }, 400);
+    if (code === "ADDRESS_NOT_FOUND") return json({ error: "Endereço não encontrado. Confira a rua, o número e o bairro.", code }, 400);
+    if (code === "ADDRESS_OUTSIDE_MANAUS") return json({ error: "Este endereço fica fora de Manaus - AM. Informe um endereço dentro de Manaus.", code }, 422);
+    if (code === "GEOCODER_NOT_CONFIGURED") return json({ error: "Serviço de localização não configurado. Falta o Secret GOOGLE_GEOCODING_API_KEY no Supabase.", code }, 503);
+    if (code === "GEOCODER_UNAVAILABLE") return json({ error: "Não foi possível localizar o endereço agora. Tente novamente em instantes.", code }, 503);
+    if (code === "INVALID_ITEMS") return json({ error: "Itens ou quantidades inválidos.", code }, 400);
     if (code === "INVALID_QUOTE_PRICE" || code === "INVALID_QUOTE_RESPONSE") return json({ error: "Resposta de cotação inválida." }, 502);
     console.error("delivery-quote", { stage: "request", code });
     return json({ error: "Erro interno ao calcular a entrega." }, 500);

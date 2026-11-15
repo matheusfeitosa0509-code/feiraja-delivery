@@ -45,6 +45,12 @@ jobs:
         with:
           deno-version: v2.x
 
+      - name: Check delivery geocoding
+        run: deno check supabase/functions/_shared/geocoding.ts
+
+      - name: Test delivery geocoding
+        run: deno test supabase/functions/_shared/geocoding_test.ts
+
       - name: Check delivery quote
         run: deno check supabase/functions/delivery-quote/index.ts
 

@@ -47,5 +47,21 @@ export function deliveryQuoteLabel(vehicle, fee) {
 }
 
 export function isDeliveryOutOfArea(status, message = "") {
-  return Number(status) === 422 || /fora da área|out.of.service.area|ERR_OUT_OF_SERVICE_AREA/i.test(String(message));
+  return Number(status) === 422 || /fora da área|out.of.service.area|ERR_OUT_OF_SERVICE_AREA|LALAMOVE_OUT_OF_SERVICE_AREA|ADDRESS_OUTSIDE_MANAUS/i.test(String(message));
+}
+
+export function deliveryQuoteErrorMessage(status, code = "") {
+  const known = {
+    ADDRESS_NOT_FOUND: "Endereço não encontrado. Confira a rua, o número e o bairro.",
+    ADDRESS_OUTSIDE_MANAUS: "Este endereço fica fora de Manaus - AM. Informe um endereço dentro de Manaus.",
+    GEOCODER_NOT_CONFIGURED: "Serviço de localização não configurado. Falta o Secret GOOGLE_GEOCODING_API_KEY no Supabase.",
+    GEOCODER_UNAVAILABLE: "Não foi possível localizar o endereço agora. Tente novamente em instantes.",
+    LALAMOVE_OUT_OF_SERVICE_AREA: "Endereço localizado, mas a Lalamove não atende esta região.",
+    LALAMOVE_REVERSE_GEOCODE_FAILURE: "A Lalamove não conseguiu validar a rota mesmo com as coordenadas. Tente novamente.",
+    LALAMOVE_RATE_LIMIT: "A Lalamove está recebendo muitas cotações. Aguarde um minuto e tente novamente.",
+    LALAMOVE_QUOTE_FAILED: "A localização foi encontrada, mas a Lalamove não concluiu a cotação. Tente novamente.",
+  };
+  return known[String(code)] || (Number(status) === 422
+    ? "Endereço localizado, mas não está disponível para entrega."
+    : "Não foi possível calcular a entrega. Tente novamente.");
 }

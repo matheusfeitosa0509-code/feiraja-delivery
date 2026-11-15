@@ -11,11 +11,14 @@ const products = [
   { id: "unknown", delivery_unit_weight_kg: null, delivery_bulky: false, sale_unit: "unidade" },
 ];
 const dropoff = formatDropoff({ street: "Rua A", number: "10", neighborhood: "Centro" });
+const coordinates = { origin: { lat: "-3.10", lng: "-60.02" }, dropoff: { lat: "-3.11", lng: "-60.03" } };
 const mockQuote = (total = "8.32", status = 200) => async (input: RequestInfo | URL, init?: RequestInit) => {
   assertEquals(String(input).startsWith("https://rest.sandbox.lalamove.com/v3/quotations"), true);
   assertEquals(init?.method, "POST");
   const body = JSON.parse(String(init?.body));
   assertEquals(body.data.stops[0].address.includes("Av. Lourenço da Silva Braga, 700"), true);
+  assertEquals(body.data.stops[0].coordinates, coordinates.origin);
+  assertEquals(body.data.stops[1].coordinates, coordinates.dropoff);
   return new Response(JSON.stringify(status === 200 ? {
     data: { expiresAt: new Date(Date.now() + 60_000).toISOString(),
       priceBreakdown: { total, currency: "BRL" } },
@@ -33,7 +36,7 @@ Deno.test("Lalamove MOCKADA: peso leve usa serviço LALAGO (MOTO)", async () => 
     assertEquals(body.data.serviceType, "LALAGO");
     return mockQuote("8.32")(input, init);
   };
-  const response = await requestSandboxQuotation("pk_test_demo", "sk_test_demo", "LALAGO", dropoff, fetcher);
+  const response = await requestSandboxQuotation("pk_test_demo", "sk_test_demo", "LALAGO", dropoff, coordinates, fetcher);
   const result = await response.json();
   assertEquals(called, true);
   assertEquals(parseQuotation(result.data, vehicle, load.weightKg).fee, 9);
@@ -46,7 +49,7 @@ Deno.test("Lalamove MOCKADA: peso acima do limite usa serviço CAR", async () =>
     assertEquals(JSON.parse(String(init?.body)).data.serviceType, "CAR");
     return mockQuote("13.90")(input, init);
   };
-  const response = await requestSandboxQuotation("pk_test_demo", "sk_test_demo", "CAR", dropoff, fetcher);
+  const response = await requestSandboxQuotation("pk_test_demo", "sk_test_demo", "CAR", dropoff, coordinates, fetcher);
   assertEquals(parseQuotation((await response.json()).data, vehicle, load.weightKg).fee, 14);
 });
 Deno.test("Lalamove MOCKADA: produto volumoso força CAR mesmo abaixo do limite", async () => {
@@ -57,12 +60,12 @@ Deno.test("Lalamove MOCKADA: produto volumoso força CAR mesmo abaixo do limite"
     assertEquals(JSON.parse(String(init?.body)).data.serviceType, "CAR");
     return mockQuote("13.01")(input, init);
   };
-  const response = await requestSandboxQuotation("pk_test_demo", "sk_test_demo", "CAR", dropoff, fetcher);
+  const response = await requestSandboxQuotation("pk_test_demo", "sk_test_demo", "CAR", dropoff, coordinates, fetcher);
   assertEquals(parseQuotation((await response.json()).data, vehicle, load.weightKg).fee, 14);
 });
 Deno.test("Lalamove MOCKADA: endereço fora da área retorna 422 sem expor custo", async () => {
   const fetcher = async () => new Response(JSON.stringify({ message: "ERR_OUT_OF_SERVICE_AREA" }), { status: 422 });
-  const response = await requestSandboxQuotation("pk_test_demo", "sk_test_demo", "LALAGO", dropoff, fetcher);
+  const response = await requestSandboxQuotation("pk_test_demo", "sk_test_demo", "LALAGO", dropoff, coordinates, fetcher);
   assertEquals(response.status, 422);
   assertEquals((await response.json()).message, "ERR_OUT_OF_SERVICE_AREA");
 });
