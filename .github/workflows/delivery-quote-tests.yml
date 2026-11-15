@@ -19,6 +19,8 @@ on:
       - ".github/workflows/delivery-quote-tests.yml"
   push:
     branches:
+      - main
+      - fix/lalamove-dispatch-compact-panel
       - feat/lalamove-delivery-sandbox
       - feat/lalamove-delivery-stage-3
     paths:
@@ -27,6 +29,8 @@ on:
       - "supabase/functions/lalamove-dispatch/**"
       - "supabase/functions/lalamove-webhook/**"
       - "supabase/functions/_shared/lalamove-dispatch.ts"
+      - "painel.html"
+      - "tests/painel-compact.visual.cjs"
       - ".github/workflows/delivery-quote-tests.yml"
 jobs:
   test:
