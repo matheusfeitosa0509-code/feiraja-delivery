@@ -59,6 +59,8 @@ export function deliveryQuoteErrorMessage(status, code = "") {
     ADDRESS_NOT_FOUND: "Endereço não encontrado. Confira a rua, o número e o bairro.",
     ADDRESS_OUTSIDE_MANAUS: "Este endereço fica fora de Manaus - AM. Informe um endereço dentro de Manaus.",
     GEOCODER_NOT_CONFIGURED: "Serviço de localização não configurado. Falta o Secret GOOGLE_GEOCODING_API_KEY no Supabase.",
+    GOOGLE_PLACES_NOT_CONFIGURED: "Autocomplete não configurado. Ative Places API (New) na chave Google salva no Supabase.",
+    PLACES_UNAVAILABLE: "Não foi possível consultar sugestões do Google agora. Tente novamente ou marque no mapa.",
     GEOCODER_UNAVAILABLE: "Não foi possível localizar o endereço agora. Tente novamente em instantes.",
     LALAMOVE_OUT_OF_SERVICE_AREA: "Endereço localizado, mas a Lalamove não atende esta região.",
     LALAMOVE_REVERSE_GEOCODE_FAILURE: "A Lalamove não conseguiu validar a rota mesmo com as coordenadas. Tente novamente.",
