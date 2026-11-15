@@ -84,7 +84,8 @@ assert.match(store,/const icon=\(kind\)=>/,'timeline uses checkout-style line SV
 assert.match(store,/data-tracking-url=/,'customer tracking button keeps the Lalamove fallback URL');
 assert.doesNotMatch(store,/customer-tracking-fallback/,'customer card has no duplicate external tracking link');
 assert.match(store,/deliveryAdminCheckComplete=false/,'delivery option starts locked while admin authorization is pending');
-assert.match(trackingMigration,/as \$\$[\s\S]*?\$\$;/,'tracking RPC migration uses a valid dollar-quoted function body');
+assert.equal((trackingMigration.match(/as \$\$/g)||[]).length,2,'both tracking RPCs open with dollar-quoted bodies');
+assert.equal((trackingMigration.match(/\$\$;/g)||[]).length,2,'both tracking RPCs close with matching dollar quotes');
 assert.match(store,/const paid=cashAtPickup\?\['Pedido Concluído','Entregue'\]\.includes\(status\):/,'cash pickup only marks Pago complete after pickup');
 assert.match(store,/const refundHelp=isPixPayment\?/,'refund explanation is limited to Pix orders');
 assert.match(store,/cancelMyOrder\(b\.dataset\.cancelOrder,b,b\.dataset\.cancelPayment==='pix'\)/,'cancellation confirmation receives the payment type');
