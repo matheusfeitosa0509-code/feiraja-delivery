@@ -128,7 +128,7 @@ Deno.test("acompanhamento usa quatro etapas horizontais e mensagens por modalida
   const html = await Deno.readTextFile("loja.html");
   for (const required of [
     "const icon=(kind)=>",
-    "['Pago',icon('card')],['Preparando',icon('bag')],['Caminho',icon('bike')],['Entregue',icon('check')]",
+    "['Pago',icon('card')],['Preparando',icon('bag')],['A caminho',icon('bike')],['Entregue',icon('check')]",
     "['Pago',icon('card')],['Preparando',icon('bag')],['Pronto',icon('check')],['Retirado',icon('check')]",
     "grid-template-columns:repeat(4,minmax(0,1fr))",
     "white-space:nowrap",

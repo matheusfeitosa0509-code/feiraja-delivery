@@ -37,7 +37,7 @@ async function runViewport(browser, width, height) {
       <div class="order-timeline"><ol>
         <li class="done"><span class="timeline-dot"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect></svg></span><span class="timeline-label">Pago</span></li>
         <li class="done"><span class="timeline-dot"><svg viewBox="0 0 24 24"><path d="M5 8h14l1 13H4L5 8Z"></path></svg></span><span class="timeline-label">Preparando</span></li>
-        <li class="now"><span class="timeline-dot"><svg viewBox="0 0 24 24"><circle cx="6" cy="17" r="3"></circle></svg></span><span class="timeline-label">Caminho</span></li>
+        <li class="now"><span class="timeline-dot"><svg viewBox="0 0 24 24"><circle cx="6" cy="17" r="3"></circle></svg></span><span class="timeline-label">A caminho</span></li>
         <li><span class="timeline-dot"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"></path></svg></span><span class="timeline-label">Entregue</span></li>
       </ol><p class="order-timeline-detail">Motorista simulado está levando seu pedido.</p></div>
       <div id="map" data-order-id="MOCK-TRACKING"></div>
