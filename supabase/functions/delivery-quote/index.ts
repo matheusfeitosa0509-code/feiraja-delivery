@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { chooseVehicle, estimateLoad, formatDropoff, isQuoteAllowed, parseQuotation, requestSandboxQuotation } from "../_shared/delivery-quote.ts";
-import { geocodeManausAddress } from "../_shared/geocoding.ts";
+import { geocodeManausAddress, geocodeManausCoordinates } from "../_shared/geocoding.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -79,11 +79,16 @@ Deno.serve(async (req: Request) => {
     }
     const serviceType = vehicle === "MOTO" ? "LALAGO" : "CAR";
     const geocodingKey = Deno.env.get("GOOGLE_GEOCODING_API_KEY") || "";
+    const pinnedAddress = body.coordinates && typeof body.coordinates === "object"
+      ? await geocodeManausCoordinates(body.coordinates.lat, body.coordinates.lng, geocodingKey)
+      : null;
     const [originCoordinates, dropoffCoordinates] = await Promise.all([
       geocodeManausAddress(ORIGIN, geocodingKey),
-      geocodeManausAddress(dropoff, geocodingKey),
+      pinnedAddress ? Promise.resolve({ lat: pinnedAddress.lat, lng: pinnedAddress.lng }) :
+        geocodeManausAddress(dropoff, geocodingKey),
     ]);
-    const response = await requestSandboxQuotation(apiKey, apiSecret, serviceType, dropoff, {
+    const lalamoveDropoff = pinnedAddress?.formattedAddress || dropoff;
+    const response = await requestSandboxQuotation(apiKey, apiSecret, serviceType, lalamoveDropoff, {
       origin: originCoordinates, dropoff: dropoffCoordinates,
     });
     const result = await response.json().catch(() => ({}));
