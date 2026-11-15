@@ -1,7 +1,7 @@
 import { assertEquals, assertThrows } from "jsr:@std/assert@1.0.14";
 import {
   buildDeliveryQuoteItems, canShowDeliveryOption, checkoutGrandTotal,
-  deliveryPaymentOptions, deliveryQuoteLabel, isDeliveryOutOfArea,
+  deliveryPaymentOptions, deliveryQuoteErrorMessage, deliveryQuoteLabel, isDeliveryOutOfArea,
   normalizeDeliveryAddress,
 } from "./loja-delivery-ui.js";
 
@@ -53,4 +53,11 @@ Deno.test("loja.html conecta a opção, cotação, endereço salvo e acompanhame
     "address_street", "address_reference", "delivery_vehicle", "delivery_fee",
     "Pix de teste (admin)", "Sai para entrega quando o pedido estiver pronto",
   ]) assertEquals(html.includes(required), true, "missing UI wiring: " + required);
+});
+
+Deno.test("erros da cotação diferenciam endereço, Manaus e cobertura Lalamove", () => {
+  assertEquals(deliveryQuoteErrorMessage(400, "ADDRESS_NOT_FOUND").startsWith("Endereço não encontrado"), true);
+  assertEquals(deliveryQuoteErrorMessage(422, "ADDRESS_OUTSIDE_MANAUS").includes("fora de Manaus"), true);
+  assertEquals(deliveryQuoteErrorMessage(422, "LALAMOVE_OUT_OF_SERVICE_AREA").includes("Lalamove não atende"), true);
+  assertEquals(deliveryQuoteErrorMessage(503, "GEOCODER_NOT_CONFIGURED").includes("GOOGLE_GEOCODING_API_KEY"), true);
 });
