@@ -892,7 +892,8 @@ function renderLalamoveDelivery(order,currentStatus){
   +'<div class="lalamove-facts"><span>Veículo: <b>'+esc(vehicle)+'</b></span><span>Peso: <b>'+esc(weightText)+'</b></span><span>Taxa: <b>'+money(order.delivery_fee)+'</b></span></div>'
   +(order.lalamove_status?'<p class="lalamove-state"><small>STATUS DA ENTREGA</small><strong>'+esc(lalamoveStatusLabel(order.lalamove_status))+'</strong></p>':'')
   +driverHtml+(tracking?'<p>'+tracking+'</p>':'')+'<div class="actions">'+callButton+cancelButton+'</div>'
-  +(canQuote?'<p class="lalamove-feedback" data-lalamove-feedback="'+esc(order.id)+'" role="status" aria-live="polite" hidden></p><div class="lalamove-quote-box" data-lalamove-quote-box="'+esc(order.id)+'" hidden></div>':'')+'</section>';
+  +'<p class="lalamove-feedback" data-lalamove-feedback="'+esc(order.id)+'" role="status" aria-live="polite" hidden></p>'
+  +(canQuote?'<div class="lalamove-quote-box" data-lalamove-quote-box="'+esc(order.id)+'" hidden></div>':'')+'</section>';
 }
 function render(){
  const q=$('search').value.trim().toLowerCase(),f=$('filter').value;
