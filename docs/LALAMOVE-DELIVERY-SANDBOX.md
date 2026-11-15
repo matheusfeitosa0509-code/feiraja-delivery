@@ -37,4 +37,4 @@ Configure no Supabase (Project Settings → Edge Functions → Secrets) o segred
 - Nome: `GOOGLE_GEOCODING_API_KEY`
 - Valor: chave do Google Maps Platform com a Geocoding API habilitada.
 
-A chave não deve ser colocada no HTML, no repositório ou em variáveis públicas. Se o segredo não estiver configurado, a função responde com `GEOCODER_NOT_CONFIGURED` e não tenta cotar por texto puro. A resposta ao cliente diferencia endereço não encontrado, endereço fora de Manaus e região não atendida pela Lalamove.
+A chave não deve ser colocada no HTML, no repositório ou em variáveis públicas. Habilite a Geocoding API no projeto Google Cloud e configure a restrição da chave para essa API. O Google pode exigir faturamento ativo. Se o segredo não estiver configurado, a função responde com `GEOCODER_NOT_CONFIGURED` e não tenta cotar por texto puro. A resposta ao cliente diferencia endereço não encontrado, endereço fora de Manaus e região não atendida pela Lalamove.
