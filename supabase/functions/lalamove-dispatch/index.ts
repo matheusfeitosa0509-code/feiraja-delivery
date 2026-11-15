@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { formatDropoff, requestSandboxQuotation } from "../_shared/delivery-quote.ts";
 import { geocodeManausAddress } from "../_shared/geocoding.ts";
 import {
-  buildLalamoveOrderBody, canCancelLalamove, cancelLalamoveOrder, createLalamoveOrder, normalizeBrazilPhone,
+  buildLalamoveOrderBody, canCancelLalamove, canStartDispatch, cancelLalamoveOrder, createLalamoveOrder, normalizeBrazilPhone,
   mapLalamoveStatus, priceDifference, quoteFee,
 } from "../_shared/lalamove-dispatch.ts";
 
@@ -122,7 +122,7 @@ async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "M
     if (/expired|replaced/i.test(message)) throw new Error("QUOTE_EXPIRED");
     throw new Error("DISPATCH_START_FAILED");
   }
-  if (start?.started !== true) return { duplicate: true, state: start?.state || "creating" };
+  if (!canStartDispatch(start?.state) || start?.started !== true) return { duplicate: true, state: start?.state || "creating" };
   const address = order.delivery_address || {};
   const remarks = [address.complement, address.reference].map((v) => String(v || "").trim()).filter(Boolean).join(" · ");
   const body = buildLalamoveOrderBody({
