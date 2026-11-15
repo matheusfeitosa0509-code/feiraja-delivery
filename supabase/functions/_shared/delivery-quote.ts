@@ -67,3 +67,33 @@ export function parseQuotation(data: any, vehicle: "MOTO" | "CAR", weightKg: num
   }
   return { vehicle, weightKg, fee: roundFeeUpToReal(total), validUntil: new Date(expiresMs).toISOString() };
 }
+
+export function isQuoteAllowed(deliveryActive: boolean, isAdmin: boolean): boolean {
+  return deliveryActive || isAdmin;
+}
+
+export async function requestSandboxQuotation(
+  apiKey: string, apiSecret: string, serviceType: "LALAGO" | "CAR", dropoff: string,
+  fetcher: typeof fetch = fetch,
+): Promise<Response> {
+  if (!apiKey.startsWith("pk_test") || !apiSecret.startsWith("sk_test")) throw new Error("SANDBOX_CREDENTIALS_REQUIRED");
+  const path = "/v3/quotations";
+  const url = "https://rest.sandbox.lalamove.com" + path;
+  const body = JSON.stringify(buildQuotationBody(serviceType, dropoff));
+  const timestamp = String(Date.now());
+  const raw = timestamp + "\\r\\nPOST\\r\\n" + path + "\\r\\n\\r\\n" + body;
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(apiSecret),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signed = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(raw));
+  const signature = Array.from(new Uint8Array(signed), (b) => b.toString(16).padStart(2, "0")).join("");
+  return await fetcher(url, {
+    method: "POST",
+    headers: {
+      "Authorization": "hmac " + apiKey + ":" + timestamp + ":" + signature,
+      "Market": "BR", "Request-ID": crypto.randomUUID(),
+      "Content-Type": "application/json; charset=utf-8", "Accept": "application/json",
+    },
+    body,
+    signal: AbortSignal.timeout(12000),
+  });
+}
