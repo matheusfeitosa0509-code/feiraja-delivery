@@ -1,7 +1,7 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   buildLalamoveOrderBody, canCancelLalamove, canStartDispatch, cancelLalamoveOrder, createLalamoveOrder, getLalamoveDriverDetails,
-  makeWebhookSignature, mapLalamoveStatus, normalizeBrazilPhone, priceDifference, quoteFee, verifyWebhookSignature,
+  isWebhookVerificationProbe, makeWebhookSignature, mapLalamoveStatus, normalizeBrazilPhone, priceDifference, quoteFee, verifyWebhookSignature,
 } from "../_shared/lalamove-dispatch.ts";
 
 const quote = {
@@ -132,4 +132,17 @@ Deno.test("status e diferença de taxa são mapeados sem expor dados privados", 
   assertEquals(quoteFee(quote).fee, 8.32);
   assertEquals(priceDifference(14, 9), 5);
   assertEquals(priceDifference(8, 9), -1);
+});
+
+Deno.test("verificação inicial Lalamove: corpo vazio ou sem envelope assinado é probe", () => {
+  assertEquals(isWebhookVerificationProbe(null), true);
+  assertEquals(isWebhookVerificationProbe({}), true);
+  assertEquals(isWebhookVerificationProbe({ data: {} }), true);
+  assertEquals(isWebhookVerificationProbe({ apiKey: "pk_test_demo", timestamp: 123, data: {} }), true);
+  assertEquals(isWebhookVerificationProbe({
+    apiKey: "pk_test_demo", timestamp: 123, signature: "abc", data: {},
+  }), false);
+  assertEquals(isWebhookVerificationProbe({
+    apiKey: "pk_test_demo", timestamp: "123", signature: "abc", data: { eventType: "ORDER_STATUS_CHANGED" },
+  }), false);
 });

@@ -167,3 +167,13 @@ export async function verifyWebhookSignature(input: {
 export async function makeWebhookSignature(apiSecret: string, timestamp: string, path: string, data: unknown) {
   return await hmacHex(apiSecret, timestamp + "\r\nPOST\r\n" + path + "\r\n\r\n" + JSON.stringify(data));
 }
+
+/** True for Lalamove's initial endpoint-connectivity probe (no signed event envelope). */
+export function isWebhookVerificationProbe(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return true;
+  const value = payload as Record<string, unknown>;
+  return typeof value.apiKey !== "string" || !value.apiKey ||
+    (typeof value.timestamp !== "string" && typeof value.timestamp !== "number") ||
+    !value.timestamp || typeof value.signature !== "string" || !value.signature ||
+    !value.data || typeof value.data !== "object" || Array.isArray(value.data);
+}

@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
-import { getLalamoveDriverDetails, mapLalamoveStatus, verifyWebhookSignature } from "../_shared/lalamove-dispatch.ts";
+import { getLalamoveDriverDetails, isWebhookVerificationProbe, mapLalamoveStatus, verifyWebhookSignature } from "../_shared/lalamove-dispatch.ts";
 
 const PATH = "/functions/v1/lalamove-webhook";
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
@@ -17,10 +17,24 @@ function safeDriver(value: any) {
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  // Lalamove/Partner Portal may probe the URL with GET, HEAD, OPTIONS, or an empty POST.
+  // Acknowledge these synchronously without touching credentials, parsing, or the database.
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+    return new Response(null, { status: 200, headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "content-type, authorization, x-signature",
+    } });
+  }
+  if (req.method !== "POST") return new Response(null, { status: 200 });
   const rawBody = await req.text();
-  // Lalamove's initial webhook connectivity check may contain no body; acknowledge it.
   if (!rawBody.trim()) return new Response(null, { status: 200 });
+  let payload: any;
+  try { payload = JSON.parse(rawBody); }
+  catch { return new Response(null, { status: 200 }); }
+  if (isWebhookVerificationProbe(payload)) {
+    return json({ received: true, verification: true });
+  }
   try {
     const apiKey = Deno.env.get("LALAMOVE_SANDBOX_API_KEY") || "";
     const apiSecret = Deno.env.get("LALAMOVE_SANDBOX_API_SECRET") || "";
@@ -29,10 +43,10 @@ Deno.serve(async (req: Request) => {
     if (!apiKey.startsWith("pk_test") || !apiSecret.startsWith("sk_test") || !supabaseUrl || !serviceKey) {
       return json({ error: "Sandbox webhook is not configured." }, 503);
     }
-    let payload: any;
-    try { payload = JSON.parse(rawBody); } catch { return json({ error: "Invalid JSON." }, 400); }
     const valid = await verifyWebhookSignature({ apiKey, apiSecret, path: PATH, payload });
-    if (!valid) return json({ error: "Invalid webhook signature." }, 401);
+    // Never process an unsigned/forged event. HTTP 200 acknowledges receipt so Lalamove
+    // does not disable the configured URL; the event has no database side effects.
+    if (!valid) return json({ received: true, ignored: true });
 
     const data = payload.data || {};
     const order = data.order && typeof data.order === "object" ? data.order : data;
