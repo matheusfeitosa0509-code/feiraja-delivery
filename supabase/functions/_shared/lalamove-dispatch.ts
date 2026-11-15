@@ -191,3 +191,10 @@ export function canQuoteLalamove(status: unknown, paymentMethod: unknown, isTest
 export function isLalamoveDispatchReady(status: unknown): boolean {
   return ["pronto", "pronto para retirada"].includes(String(status || "").trim().toLowerCase());
 }
+
+/** Internal PostgREST RPCs rely on the legacy service-role JWT claim. */
+export function requireServiceRoleJwt(value: unknown): string {
+  const key = String(value || "").trim();
+  if (!key || key.split(".").length !== 3) throw new Error("MISSING_SUPABASE_SERVICE_ROLE_KEY");
+  return key;
+}
