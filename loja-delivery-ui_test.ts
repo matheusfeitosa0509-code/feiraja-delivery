@@ -1,6 +1,7 @@
 import { assertEquals, assertThrows } from "jsr:@std/assert@1.0.14";
 import {
   buildDeliveryQuoteItems, canShowDeliveryOption, canShowUberPickupOption, checkoutGrandTotal,
+  deliveryUnavailableMessage, isDeliveryOptionDisabled,
   deliveryPaymentOptions, deliveryQuoteErrorMessage, deliveryQuoteLabel, isAdminRpcTrue, isDeliveryOutOfArea,
   normalizeDeliveryAddress,
 } from "./loja-delivery-ui.js";
@@ -9,6 +10,13 @@ Deno.test("entrega oculta para cliente quando desativada e visível para admin",
   assertEquals(canShowDeliveryOption(false, false), false);
   assertEquals(canShowDeliveryOption(false, true), true);
   assertEquals(canShowDeliveryOption(true, false), true);
+});
+
+Deno.test("Entrega Feira On fica visível mas desabilitada para cliente enquanto inativa", () => {
+  assertEquals(isDeliveryOptionDisabled(false, false), true);
+  assertEquals(isDeliveryOptionDisabled(false, true), false);
+  assertEquals(isDeliveryOptionDisabled(true, false), false);
+  assertEquals(deliveryUnavailableMessage(), "A Entrega Feira On chega em breve. Por enquanto, retire na loja ou receba com seu Uber.");
 });
 
 Deno.test("retirada com Uber fica oculta quando entrega está ativa", () => {
@@ -52,7 +60,7 @@ Deno.test("rótulo da cotação e endereço fora da área", () => {
 Deno.test("loja.html conecta a opção, cotação, endereço salvo e acompanhamento", async () => {
   const html = await Deno.readTextFile("loja.html");
   for (const required of [
-    'id="deliveryHomeOption"', 'id="deliveryAddressFields"',
+    'id="deliveryHomeOption"', 'Entrega Feira On', 'Em breve', 'Receber com seu Uber', 'id="deliveryAddressFields"',
     'id="deliveryStreet"', 'id="deliveryNumber"', 'id="deliveryNeighborhood"', 'id="deliveryStreetSuggestions"', 'id="deliveryMapFallback"', 'id="deliveryMapPanel"', 'id="deliveryMap"', 'id="deliveryMapUse"', 'id="deliveryMapAdjust"', 'id="deliveryAddressSummary"', 'id="deliveryAddressEdit"', 'id="deliveryStartingPrice"', 'id="checkoutProductsTotal"', 'id="checkoutDeliveryTotal"', 'id="checkoutSummaryTotal"', 'id="checkoutDeliveryMeta"',
     'id="deliveryComplement"', 'id="deliveryReference"',
     "get_delivery_enabled", "supabase.rpc('is_current_user_admin')", "functions.invoke('delivery-quote'",
