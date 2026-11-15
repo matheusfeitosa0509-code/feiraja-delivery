@@ -1,6 +1,6 @@
 import { assertEquals, assertRejects, assertThrows } from "jsr:@std/assert@1.0.14";
 import {
-  formatManausGeocodeQuery, geocodeManausAddress, validateManausGeocodeResult,
+  formatManausGeocodeQuery, geocodeManausAddress, geocodeManausCoordinates, validateManausGeocodeResult,
 } from "./geocoding.ts";
 
 const validResult = (lat = -3.10, lng = -60.02) => ({
@@ -58,4 +58,35 @@ Deno.test("não aceita somente o centro da rua como se fosse número residencial
   const result = validResult();
   result.types = ["route"];
   assertThrows(() => validateManausGeocodeResult(result), Error, "ADDRESS_NOT_FOUND");
+});
+
+Deno.test("reverse geocoding valida Manaus e devolve rua, bairro e coordenadas", async () => {
+  const fetcher = async (input: RequestInfo | URL) => {
+    const url = new URL(String(input));
+    assertEquals(url.searchParams.get("latlng"), "-3.1,-60.02");
+    return new Response(JSON.stringify({ status: "OK", results: [{
+      formatted_address: "Rua Japiassu, Manaus - AM, Brasil",
+      address_components: [
+        { long_name: "Rua Japiassu", short_name: "Rua Japiassu", types: ["route"] },
+        { long_name: "Viver Melhor 2", short_name: "Viver Melhor 2", types: ["neighborhood", "political"] },
+        { long_name: "Manaus", short_name: "Manaus", types: ["locality", "political"] },
+        { long_name: "Amazonas", short_name: "AM", types: ["administrative_area_level_1", "political"] },
+        { long_name: "Brasil", short_name: "BR", types: ["country", "political"] },
+      ],
+    }] }), { status: 200 });
+  };
+  assertEquals(await geocodeManausCoordinates(-3.1, -60.02, "google-test", fetcher), {
+    lat: "-3.1", lng: "-60.02", formattedAddress: "Rua Japiassu, Manaus - AM, Brasil",
+    street: "Rua Japiassu", number: "", neighborhood: "Viver Melhor 2",
+  });
+});
+Deno.test("reverse geocoding rejeita coordenada fora de Manaus sem chamar Google", async () => {
+  let called = false;
+  const fetcher = async () => { called = true; return new Response("{}"); };
+  await assertRejects(() => geocodeManausCoordinates(-3.9, -60.02, "google-test", fetcher), Error, "ADDRESS_OUTSIDE_MANAUS");
+  assertEquals(called, false);
+});
+Deno.test("reverse geocoding registra ZERO_RESULTS como endereço sem resultado", async () => {
+  const fetcher = async () => new Response(JSON.stringify({ status: "ZERO_RESULTS", results: [] }), { status: 200 });
+  await assertRejects(() => geocodeManausCoordinates(-3.1, -60.02, "google-test", fetcher), Error, "ADDRESS_NOT_FOUND");
 });
