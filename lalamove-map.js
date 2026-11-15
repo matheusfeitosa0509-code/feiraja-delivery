@@ -111,7 +111,6 @@
    else if(value==='delivered'){if(heading)heading.textContent='Entregue';if(subtitle)subtitle.textContent='Seu pedido chegou.';if(detail)detail.textContent='Entrega concluída.';}
    else if(value==='expired'){if(heading)heading.textContent='Estamos chamando outro entregador';if(subtitle)subtitle.textContent='A solicitação anterior expirou.';if(detail)detail.textContent='A solicitação expirou. Estamos chamando outro entregador.';}
    else if(value==='cancelled'||value==='rejected'){if(heading)heading.textContent='Entrega cancelada';if(subtitle)subtitle.textContent='A entrega foi cancelada.';if(detail)detail.textContent='A entrega foi cancelada. Fale com a loja se precisar de ajuda.';}
-   if(terminal||value==='delivered'){const section=container.closest('.customer-lalamove-tracking');if(section)section.hidden=true;container.hidden=true;}
   }
   async function refresh(){
    if(state.stopped||!container.isConnected)return;
