@@ -1,5 +1,20 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
-import { buildQuotationBody, chooseVehicle, estimateLoad, formatDropoff, parseQuotation } from "../_shared/delivery-quote.ts";
+import { chooseVehicle, estimateLoad, formatDropoff, isQuoteAllowed, parseQuotation, requestSandboxQuotation } from "../_shared/delivery-quote.ts";
+
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+  status, headers: { ...cors, "Content-Type": "application/json" },
+});
+const SANDBOX_URL = "https://rest.sandbox.lalamove.com";
+const PATH = "/v3/quotations";
+const ORIGIN = "Av. Lourenço da Silva Braga, 700 - Centro, Manaus - AM, Brasil";
+
+mport { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { chooseVehicle, estimateLoad, formatDropoff, isQuoteAllowed, parseQuotation, requestSandboxQuotation } from "../_shared/delivery-quote.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -46,7 +61,7 @@ Deno.serve(async (req: Request) => {
     ]);
     if (adminError || settingsError) return json({ error: "Não foi possível validar a configuração de entrega." }, 500);
     const isAdmin = !!adminRow;
-    if (settings?.delivery_ativa !== true && !isAdmin) return json({ error: "Entrega indisponível." }, 403);
+    if (!isQuoteAllowed(settings?.delivery_ativa === true, isAdmin)) return json({ error: "Entrega indisponível." }, 403);
 
     const { data: allowed, error: rateError } = await db.rpc("consume_delivery_quote_rate_limit", {
       p_user_id: authData.user.id, p_max_requests: 5, p_window_seconds: 60,
@@ -77,17 +92,7 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Credenciais Lalamove Sandbox ausentes ou inválidas." }, 503);
     }
     const serviceType = vehicle === "MOTO" ? "LALAGO" : "CAR";
-    const requestBody = buildQuotationBody(serviceType, dropoff);
-    const serialized = JSON.stringify(requestBody);
-    const signed = await signRequest(apiKey, apiSecret, serialized);
-    const response = await fetch(SANDBOX_URL + PATH, {
-      method: "POST",
-      headers: {
-        "Authorization": signed.authorization, "Market": "BR", "Request-ID": crypto.randomUUID(),
-        "Content-Type": "application/json; charset=utf-8", "Accept": "application/json",
-      },
-      body: serialized, signal: AbortSignal.timeout(12000),
-    });
+    const response = await requestSandboxQuotation(apiKey, apiSecret, serviceType, dropoff);
     const result = await response.json().catch(() => ({}));
     if (response.status === 422 && String(result?.message || "").includes("ERR_OUT_OF_SERVICE_AREA")) {
       return json({ error: "Endereço fora da área de atendimento." }, 422);
