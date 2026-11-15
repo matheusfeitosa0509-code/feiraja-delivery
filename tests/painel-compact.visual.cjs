@@ -6,45 +6,79 @@ const { chromium } = require("playwright");
   const source = fs.readFileSync(path.join(process.cwd(), "painel.html"), "utf8");
   const style = source.match(/<style>([\s\S]*?)<\/style>/);
   if (!style) throw new Error("CSS do painel não encontrado");
-  const fixture = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${style[1]}</style></head><body><main class="wrap">
-  <article class="order">
-    <div class="order-summary">
-      <div class="order-summary-top"><div><h3>Pedido 4BCCB4BF</h3><small class="muted">15/11/2026, 12:03</small></div><strong class="total">R$ 139,95</strong><span class="pill">Pagamento Confirmado</span><span class="lalamove-test-badge">TESTE</span><button type="button" class="order-expand" data-order-toggle="4BCCB4BF" aria-expanded="false">Expandir</button></div>
-      <div class="order-contact"><strong>Cliente de teste</strong><span>·</span><a class="order-phone" href="https://wa.me/5592999990000"> (92) 99999-0000</a><details class="order-email"><summary>E-mail</summary><span>cliente.teste@example.com</span></details></div>
-      <div class="order-chips"><span class="order-chip">Entrega em casa (Lalamove)</span><span class="order-chip">Pix</span></div>
-    </div>
-    <div class="order-content" data-order-content="4BCCB4BF" hidden>
-      <section class="lalamove-admin"><div class="lalamove-admin-head"><strong>Entrega Lalamove</strong></div><div class="lalamove-address"><small>ENDEREÇO</small><strong>Rua Teste, 700, Centro, Manaus - AM, Brasil</strong><a href="https://maps.google.com">Abrir no mapa</a></div><div class="lalamove-facts"><span>Veículo: <b>Moto</b></span><span>Peso: <b>3 kg</b></span><span>Taxa: <b>R$ 15,00</b></span></div><button>Chamar entregador</button><div class="lalamove-quote-box"><strong>Nova cotação Lalamove — Sandbox</strong><p>Moto: R$ 9,00</p><p>Carro: R$ 16,00</p><p class="lalamove-ready-warning">Cotação salva. Para criar a corrida, primeiro altere o status do pedido para “Pronto para Retirada”.</p><button disabled>Confirmar e criar corrida</button></div></section>
-      <div class="order-observation"><small>OBSERVAÇÕES DO CLIENTE</small><span>Se faltar, me chamar pelo WhatsApp.</span></div>
-      <div class="items"><div class="separation-header"><strong>Itens do pedido</strong><span>0 de 2 separados</span></div><div class="separation-item"><button class="separation-check"> </button><span class="separation-name">Banana prata — 2 kg</span><small class="separation-preference">Se faltar: substituir por similar</small><strong>R$ 12,00</strong></div><div class="item"><span>Subtotal</span><span>R$ 124,95</span></div><div class="item"><span>Taxa</span><span>R$ 15,00</span></div><div class="item item-total"><strong>Total</strong><strong>R$ 139,95</strong></div></div>
-      <div class="statusrow"><div><label>Status</label><select><option>Pagamento Confirmado</option><option>Pronto para Retirada</option></select></div><button>Salvar</button></div>
-    </div>
-  </article></main><script>document.querySelector('[data-order-toggle]').addEventListener('click',e=>{const c=document.querySelector('[data-order-content]');c.hidden=!c.hidden;e.currentTarget.textContent=c.hidden?'Expandir':'Recolher';});</script></body></html>`;
+  const renderStart = source.indexOf("function renderLalamoveDelivery(order,currentStatus){");
+  const renderEnd = source.indexOf("async function startLalamoveQuote", renderStart);
+  if (renderStart < 0 || renderEnd < 0) throw new Error("Renderizador real do painel não encontrado");
+  const renderSource = source.slice(renderStart, renderEnd);
+  if (!source.includes("confirmButton.disabled=true") || !source.includes("Cotação salva. Para criar a corrida")) {
+    throw new Error("Regra visual de bloqueio da corrida não encontrada");
+  }
+  const pageHtml = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>' +
+    style[1] + '</style></head><body><main class="wrap"><input id="search" value=""><select id="filter"><option value="">Todos</option></select>' +
+    '<strong id="count"></strong><strong id="pending"></strong><strong id="active"></strong><strong id="sum"></strong>' +
+    '<div id="orders" class="orders"></div></main></body></html>';
+  const order = {
+    id: "TESTE4BCCB4BF", is_test_order: true, status: "Pagamento Confirmado",
+    delivery_type: "delivery", delivery_address: { street: "Rua Teste", number: "700", neighborhood: "Centro" },
+    customer_address: "Rua Teste, 700, Centro, Manaus", customer_name: "Cliente de teste",
+    customer_phone: "(92) 99999-0000", customer_email: "cliente.teste@example.com",
+    payment_method: "Pix", delivery_vehicle: "MOTO", delivery_weight_kg: 3,
+    delivery_fee: 15, subtotal: 124.95, total: 139.95, pickup_code: "ABCD",
+    items: [{ id: "i1", name: "Banana prata", unit: "kg", price: 6, quantity: 2, substitution_preference: "replace", item_note: "madura" }],
+    market_checklist: { notes: "Se faltar, me chamar." }
+  };
   fs.mkdirSync("artifacts", { recursive: true });
   const browser = await chromium.launch({ headless: true });
   try {
     for (const width of [360, 412]) {
       const page = await browser.newPage({ viewport: { width, height: 1000 }, deviceScaleFactor: 1 });
-      await page.setContent(fixture, { waitUntil: "domcontentloaded" });
+      await page.setContent(pageHtml, { waitUntil: "domcontentloaded" });
+      await page.evaluate(({ renderSource, order }) => {
+        const $ = id => document.getElementById(id);
+        const statuses = ["Pedido Recebido", "Pagamento Pendente", "Pagamento Confirmado", "Preparando", "Pronto para Retirada", "Entregue", "Cancelada"];
+        const normalizeOrderStatus = status => {
+          const s = String(status || "").trim().toLowerCase();
+          if (s === "pronto") return "Pronto para Retirada";
+          if (s === "pago" || s === "pagamento confirmado") return "Pagamento Confirmado";
+          if (s === "preparando") return "Preparando";
+          if (s === "cancelada" || s === "cancelado") return "Cancelada";
+          return "Pagamento Pendente";
+        };
+        const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+        const money = value => "R$ " + Number(value || 0).toFixed(2).replace(".", ",");
+        const shortOrderNumber = id => String(id).slice(-8);
+        const orderItemTotal = (price, quantity) => money(Number(price || 0) * Number(quantity || 1));
+        const separatedKeysFor = () => [];
+        const itemSeparationKey = (item, occurrence) => String(item.id || item.name) + ":" + occurrence;
+        const formatOrderItemDescription = item => item.name || "Item";
+        const lalamoveStatusLabel = status => String(status || "");
+        const allOrders = [order];
+        const render = new Function("allOrders", "$", "statuses", "normalizeOrderStatus", "esc", "money", "shortOrderNumber", "orderItemTotal", "separatedKeysFor", "itemSeparationKey", "formatOrderItemDescription", "lalamoveStatusLabel", renderSource + "\nreturn render;")(
+          allOrders, $, statuses, normalizeOrderStatus, esc, money, shortOrderNumber, orderItemTotal, separatedKeysFor, itemSeparationKey, formatOrderItemDescription, lalamoveStatusLabel
+        );
+        render();
+      }, { renderSource, order });
       const contactY = await page.locator(".order-contact").evaluate(el => {
         const nodes = [el.querySelector("strong"), el.querySelector("a"), el.querySelector("summary")];
         return nodes.map(node => node.getBoundingClientRect().y);
       });
-      if (Math.max(...contactY) - Math.min(...contactY) > 3) throw new Error(`Contato quebrou linha em ${width}px: ${contactY}`);
+      if (Math.max(...contactY) - Math.min(...contactY) > 3) throw new Error("Contato quebrou linha em " + width + "px: " + contactY);
       const chipY = await page.locator(".order-chip").evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().y));
-      if (Math.max(...chipY) - Math.min(...chipY) > 3) throw new Error(`Chips não ficaram lado a lado em ${width}px`);
+      if (Math.max(...chipY) - Math.min(...chipY) > 3) throw new Error("Chips não ficaram lado a lado em " + width + "px");
       if (await page.locator(".order-content").isVisible()) throw new Error("Detalhes deveriam iniciar recolhidos");
       if (await page.locator(".lalamove-address").count() !== 1) throw new Error("Endereço deve aparecer uma única vez");
-      await page.screenshot({ path: `artifacts/painel-${width}-resumo.png`, fullPage: true });
+      if (await page.locator(".order-extra").count() !== 0) throw new Error("Código de retirada/endereço duplicado apareceu em entrega");
+      if (await page.locator("#count").textContent() !== "0") throw new Error("Pedido de teste entrou no contador");
+      await page.screenshot({ path: "artifacts/painel-" + width + "-resumo.png", fullPage: true });
       await page.locator("[data-order-toggle]").click();
       if (!(await page.locator(".order-content").isVisible())) throw new Error("O cartão não expandiu");
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
-      if (overflow) throw new Error(`Há rolagem horizontal em ${width}px`);
-      await page.screenshot({ path: `artifacts/painel-${width}-expandido.png`, fullPage: true });
+      if (overflow) throw new Error("Há rolagem horizontal em " + width + "px");
+      await page.screenshot({ path: "artifacts/painel-" + width + "-expandido.png", fullPage: true });
       await page.close();
     }
   } finally {
     await browser.close();
   }
-  console.log("Playwright: cartões compactos aprovados em 360px e 412px; quatro capturas geradas.");
+  console.log("Playwright: renderizador real do painel aprovado em 360px e 412px; quatro capturas geradas.");
 })().catch(error => { console.error(error); process.exit(1); });
