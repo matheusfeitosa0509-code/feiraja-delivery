@@ -110,6 +110,7 @@ begin
  end if;
  update feira_cost_private.lalamove_dispatches set state='creating',selected_vehicle=p_vehicle,updated_at=now()
  where order_id=p_order_id;
+ update public.orders set lalamove_status='pending',lalamove_status_updated_at=now() where id=p_order_id;
  return jsonb_build_object('started',true,'quote',v_quote,'vehicle',p_vehicle,
   'delivery_fee',v_order.delivery_fee,'test_order',coalesce(v_order.is_test_order,false));
 end;
@@ -160,8 +161,10 @@ begin
  update feira_cost_private.lalamove_dispatches set state='failed',
   last_error_code=left(coalesce(p_error_code,'UPSTREAM_ERROR'),80),updated_at=now()
  where order_id=p_order_id and state='creating' and lalamove_order_id is null;
+ update public.orders set lalamove_status=null,lalamove_status_updated_at=null where id=p_order_id
+  and lalamove_status='pending';
 end;
-$$;
+$;
 
 create or replace function public.service_cancel_lalamove_dispatch(p_order_id text)
 returns jsonb language plpgsql security definer set search_path=''
