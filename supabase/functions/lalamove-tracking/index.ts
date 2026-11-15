@@ -88,9 +88,11 @@ Deno.serve(async (req: Request) => {
     };
     const driverChanged = !!driverSummary &&
       JSON.stringify(driverSummary) !== JSON.stringify(Object.keys(storedDriverSummary).length ? storedDriverSummary : null);
+    let effectiveStatus = status;
+    let syncResult: any = null;
     if (status !== storedStatus || driverChanged ||
         (tracking.tracking_url && tracking.tracking_url !== dispatch.tracking_url)) {
-      const { error: syncError } = await db.rpc("service_update_lalamove_tracking_status", {
+      const { data: syncData, error: syncError } = await db.rpc("service_update_lalamove_tracking_status", {
         p_order_id: orderId,
         p_lalamove_order_id: String(dispatch.lalamove_order_id),
         p_status: status,
@@ -98,10 +100,14 @@ Deno.serve(async (req: Request) => {
         p_driver: driverSummary,
       });
       if (syncError) return json({ error: "Não foi possível atualizar o status do rastreio." }, 503);
+      syncResult = syncData;
+      if (syncResult?.stale_attempt) return json({ active: false, status: storedStatus || "cancelled" });
+      if (syncResult?.terminal_status) effectiveStatus = String(syncResult.terminal_status);
+      else if (syncResult?.stale_status) effectiveStatus = String(syncResult.status || storedStatus || status);
     }
     return json({
-      active,
-      status,
+      active: !isTerminalTrackingStatus(effectiveStatus),
+      status: effectiveStatus,
       provider: tracking.provider,
       driver_assigned: tracking.driver_assigned,
       vehicle: order.delivery_vehicle === "CAR" ? "CAR" : "MOTO",
