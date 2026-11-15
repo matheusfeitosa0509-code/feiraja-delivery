@@ -8,18 +8,13 @@ const artifacts = path.join(root, 'artifacts');
 const videos = path.join(artifacts, 'order-tracking-videos');
 fs.mkdirSync(videos, { recursive: true });
 
-const timelineCss = `
+const storeHtml = fs.readFileSync(path.join(root, 'loja.html'), 'utf8');
+const trackingStyle = storeHtml.match(/<style id="orderTrackingLayout">([\\s\\S]*?)<\\/style>/);
+if (!trackingStyle) throw new Error('orderTrackingLayout CSS missing from loja.html');
+const timelineCss = `:root{--mut:#607467;--ink:#203b27;--g:#2f8a4c}
 *{box-sizing:border-box}body{margin:0;background:#f4f7f2;font-family:Arial,sans-serif;color:#203b27}
 .frame{width:100%;max-width:520px;margin:0 auto;padding:14px;background:#fff}
-.order-timeline{margin:14px 0 12px;min-width:0;width:100%}
-.order-timeline ol{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;padding:0;margin:0;list-style:none;width:100%}
-.order-timeline li{position:relative;display:flex;flex-direction:column;align-items:center;min-width:0;text-align:center;color:#879187}
-.order-timeline li:not(:last-child)::after{content:'';position:absolute;left:50%;top:14px;width:100%;height:2px;background:#d4ddd1;z-index:0}
-.timeline-dot{width:28px;height:28px;min-width:28px;border-radius:50%;display:grid;place-items:center;background:#e1e7df;color:#718072;border:1px solid #cbd7c8;z-index:1;font-size:14px}
-.order-timeline li.done .timeline-dot,.order-timeline li.now .timeline-dot{background:#2f8a4c;color:#fff;border-color:#2f8a4c}
-.order-timeline li.done::after{background:#2f8a4c}
-.timeline-label{display:block;max-width:100%;margin-top:5px;font-size:10px;line-height:1.15;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:clip}
-.order-timeline-detail{margin:10px 0;text-align:center;font-size:12px}
+${trackingStyle[1]}
 #map{width:100%;min-width:0}
 `;
 
