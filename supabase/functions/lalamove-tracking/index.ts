@@ -74,7 +74,6 @@ Deno.serve(async (req: Request) => {
     const { key, secret } = sandboxCredentials();
     const tracking = await getLalamoveTracking(key, secret, String(dispatch.lalamove_order_id));
     const status = tracking.status;
-    const active = !isTerminalTrackingStatus(status);
     const driverSummary = tracking.driver ? {
       ...(tracking.driver.name ? { name: tracking.driver.name } : {}),
       ...(tracking.driver.plateNumber ? { plateNumber: tracking.driver.plateNumber } : {}),
