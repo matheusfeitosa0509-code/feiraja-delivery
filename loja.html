@@ -994,7 +994,7 @@ try {
 /* Checkout option cards — única regra de layout, aplicada após toda a folha antiga. */
 .checkout-screen #checkoutForm .checkout-choice-card.opt{
  display:grid!important;
- grid-template-columns:22px 32px minmax(0,1fr) max-content!important;
+ grid-template-columns:22px 32px minmax(0,1fr) auto!important;
  align-items:center!important;
  gap:12px!important;
  min-width:0!important;
@@ -1048,7 +1048,6 @@ try {
  white-space:nowrap;
 }
 @media(max-width:380px){
- .checkout-screen #checkoutForm .checkout-choice-copy .checkout-pickup-address{font-size:9px;letter-spacing:-.25px}
  .checkout-screen #checkoutForm .checkout-choice-copy b{font-size:12px}
  .checkout-screen #checkoutForm .checkout-choice-copy .s{font-size:10px}
  .checkout-screen #checkoutForm .checkout-choice-copy .checkout-pickup-address{font-size:9px;letter-spacing:-.25px}
