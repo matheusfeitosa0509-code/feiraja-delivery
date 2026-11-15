@@ -138,7 +138,7 @@ grant execute on function public.admin_set_lalamove_actual_cost(text,numeric) to
 
 create function public.admin_get_cost_report_with_delivery(p_start timestamptz,p_end timestamptz)
 returns jsonb language plpgsql security definer set search_path=''
-as $lalamove$
+as $$
 declare v_result jsonb;
 begin
  if auth.uid() is null or not public.is_current_user_admin() then
@@ -180,7 +180,7 @@ begin
  into v_result from totals cross join delivery_totals;
  return v_result;
 end;
-$lalamove$;
+$$;
 
 revoke all on function public.admin_get_cost_report_with_delivery(timestamptz,timestamptz) from public,anon;
 grant execute on function public.admin_get_cost_report_with_delivery(timestamptz,timestamptz) to authenticated;
