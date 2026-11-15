@@ -62,7 +62,6 @@ begin
   update feira_cost_private.lalamove_dispatches
   set lalamove_status = p_status,
       state = case
-        when p_status = 'delivered' then 'completed'
         when p_status in ('cancelled','rejected','expired') then 'cancelled'
         else state
       end,
