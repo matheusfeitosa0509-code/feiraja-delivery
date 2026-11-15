@@ -91,13 +91,14 @@
    const statusLabel=container.closest('.lalamove-admin')?.querySelector('[data-lalamove-status-label]');
    const labels={searching:'Procurando motorista',assigned:'A caminho',enroute_pickup:'A caminho',picked_up:'Coletado',delivered:'Entregue',cancelled:'Entrega cancelada',rejected:'Entrega recusada',expired:'Nenhum motorista aceitou — chame de novo'};
    if(statusLabel&&labels[value])statusLabel.textContent=labels[value];
+   const terminal=['cancelled','rejected','expired'].includes(value);
    if(!card)return;
+   if(terminal||value==='delivered'){const section=container.closest('.customer-lalamove-tracking');if(section)section.hidden=true;container.hidden=true;}
    const heading=card.querySelector('.order-status-top b');
    const subtitle=card.querySelector('.order-subtitle');
    const timeline=card.querySelector('.order-timeline');
    if(!timeline)return;
    const detail=timeline.querySelector('.order-timeline-detail');
-   const terminal=['cancelled','rejected','expired'].includes(value);
    const index=value==='delivered'?3:value==='picked_up'||value==='assigned'||value==='enroute_pickup'?2:value==='searching'?1:-1;
    timeline.classList.toggle('is-terminal',terminal);
    [...timeline.querySelectorAll('li')].forEach((step,i)=>{
