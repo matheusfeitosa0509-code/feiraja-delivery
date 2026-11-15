@@ -166,10 +166,10 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 .order-summary-top .total{font-size:16px}
 .order-summary-top .pill{margin:0;padding:4px 7px;font-size:10px}
 .order-expand{min-height:31px;padding:6px 10px;border-radius:999px;font-size:11px;white-space:nowrap}
-.order-contact{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:12px;min-width:0}
-.order-contact>strong{overflow-wrap:anywhere}
-.order-phone{color:#176b3a;font-weight:800;text-decoration:underline}
-.order-email{font-size:11px;margin-left:auto;min-width:0}
+.order-contact{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;white-space:nowrap;font-size:12px;min-width:0;overflow:hidden}
+.order-contact>strong{max-width:38%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 auto}
+.order-phone{color:#176b3a;font-weight:800;text-decoration:underline;white-space:nowrap;flex:0 0 auto}
+.order-email{font-size:10px;margin-left:auto;min-width:0;flex:0 0 auto}
 .order-email summary{color:#526b59;font-weight:750;cursor:pointer}
 .order-email span{display:block;max-width:100%;overflow-wrap:anywhere;color:var(--muted)}
 .order-chips{display:flex;gap:5px;flex-wrap:wrap}
@@ -205,7 +205,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 .panel-test-tool{margin:18px 0}
 .panel-test-tool>summary{padding:12px 14px;border:1px dashed #b9cbb6;border-radius:12px;color:#526b59;font-size:12px;font-weight:800;cursor:pointer}
 .panel-test-tool #pixSimulationCard{margin:8px 0}
-@media(max-width:380px){.order{padding:10px!important}.order-summary-top{gap:5px}.order-summary-top .pill{font-size:9px}.order-contact{font-size:11px}.order-email{margin-left:0}.order-chips{gap:4px}.order-chip{font-size:9px}.lalamove-facts{gap:4px}.lalamove-facts span{font-size:9px}.statusrow{grid-template-columns:minmax(0,1fr) auto}}
+@media(max-width:380px){.order-contact{font-size:10px;gap:3px}.order-contact>strong{max-width:34%}.order-email{font-size:9px}.order{padding:10px!important}.order-summary-top{gap:5px}.order-summary-top .pill{font-size:9px}.order-contact{font-size:11px}.order-email{margin-left:0}.order-chips{gap:4px}.order-chip{font-size:9px}.lalamove-facts{gap:4px}.lalamove-facts span{font-size:9px}.statusrow{grid-template-columns:minmax(0,1fr) auto}}
 
 </style>
 </head>
