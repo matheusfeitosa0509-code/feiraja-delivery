@@ -47,12 +47,12 @@ Deno.test("loja.html conecta a opção, cotação, endereço salvo e acompanhame
   const html = await Deno.readTextFile("loja.html");
   for (const required of [
     'id="deliveryHomeOption"', 'id="deliveryAddressFields"',
-    'id="deliveryStreet"', 'id="deliveryNumber"', 'id="deliveryNeighborhood"',
+    'id="deliveryStreet"', 'id="deliveryNumber"', 'id="deliveryNeighborhood"', 'id="deliveryStreetSuggestions"', 'id="deliveryMapFallback"', 'id="deliveryMapPanel"', 'id="deliveryMap"', 'id="deliveryMapUse"',
     'id="deliveryComplement"', 'id="deliveryReference"',
     "get_delivery_enabled", "supabase.rpc('is_current_user_admin')", "functions.invoke('delivery-quote'",
     "address_street", "address_reference", "delivery_vehicle", "delivery_fee",
     "Pix de teste (admin)", "Sai para entrega quando o pedido estiver pronto",
-    "await loadDeliveryAccess(currentUser)", "async function openCheckoutModal()",
+    "await loadDeliveryAccess(currentUser)", "async function openCheckoutModal()", "delivery-address", "session_token", "deliveryMapCoordinates",
   ]) assertEquals(html.includes(required), true, "missing UI wiring: " + required);
 });
 

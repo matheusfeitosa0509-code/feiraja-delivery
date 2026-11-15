@@ -3,6 +3,9 @@ on:
   pull_request:
     paths:
       - "supabase/functions/_shared/delivery-quote.ts"
+      - "supabase/functions/_shared/geocoding.ts"
+      - "supabase/functions/_shared/geocoding_test.ts"
+      - "supabase/functions/delivery-address/**"
       - "supabase/functions/delivery-quote/**"
       - ".github/workflows/delivery-quote-tests.yml"
   push:
@@ -20,4 +23,6 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - run: deno test --allow-net supabase/functions/delivery-quote/index_test.ts
+      - run: deno check --config supabase/functions/delivery-address/deno.json supabase/functions/delivery-address/index.ts
+      - run: deno check --config supabase/functions/delivery-quote/deno.json supabase/functions/delivery-quote/index.ts
+      - run: deno test --allow-net --allow-read supabase/functions/delivery-quote/index_test.ts supabase/functions/_shared/geocoding_test.ts supabase/functions/delivery-address/index_test.ts

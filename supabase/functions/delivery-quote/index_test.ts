@@ -84,3 +84,21 @@ Deno.test("taxa arredonda para cima e resposta pública contém apenas campos pe
   assertEquals(parsed.fee, 9);
   assertEquals(Object.keys(parsed).sort(), ["fee", "validUntil", "vehicle", "weightKg"]);
 });
+
+Deno.test("melancia M e G forçam CAR pela regra de produto volumoso", async () => {
+  const melancias = [
+    { id: "feiraja_melancia_m", delivery_unit_weight_kg: 5, delivery_bulky: true, sale_unit: "unidade" },
+    { id: "feiraja_melancia_g", delivery_unit_weight_kg: 8, delivery_bulky: true, sale_unit: "unidade" },
+  ];
+  for (const product of melancias) {
+    const load = estimateLoad([{ product_id: product.id, quantity: 1 }], [product]);
+    assertEquals(load.bulky, true);
+    assertEquals(chooseVehicle(load.weightKg, load.bulky, 8), "CAR");
+    const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
+      assertEquals(JSON.parse(String(init?.body)).data.serviceType, "CAR");
+      return mockQuote("13.90")(input, init);
+    };
+    const response = await requestSandboxQuotation("pk_test_demo", "sk_test_demo", "CAR", dropoff, coordinates, fetcher);
+    assertEquals(parseQuotation((await response.json()).data, "CAR", load.weightKg).fee, 14);
+  }
+});

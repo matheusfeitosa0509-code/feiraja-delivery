@@ -14,6 +14,8 @@ on:
           - expire-pix
           - assistente
           - push-notify
+          - delivery-quote
+          - delivery-address
       ref:
         description: "SHA completo de commit alcançável por main (vazio = commit atual de main)"
         required: false
@@ -48,7 +50,7 @@ jobs:
           set -euo pipefail
 
           case "$FUNCTION_NAME" in
-            super-worker|asaas-webhook|asaas-saque-validacao|expire-pix|assistente|push-notify) ;;
+            super-worker|asaas-webhook|asaas-saque-validacao|expire-pix|assistente|push-notify|delivery-quote|delivery-address) ;;
             *)
               echo "::error::Função não permitida."
               exit 1
@@ -128,6 +130,18 @@ jobs:
           supabase functions deploy push-notify \
             --project-ref "$SUPABASE_PROJECT_REF" \
             --no-verify-jwt
+
+      - name: Implantar delivery-quote
+        if: inputs.function == 'delivery-quote'
+        run: |
+          supabase functions deploy delivery-quote \
+            --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Implantar delivery-address
+        if: inputs.function == 'delivery-address'
+        run: |
+          supabase functions deploy delivery-address \
+            --project-ref "$SUPABASE_PROJECT_REF"
 
       - name: Registrar SHA implantado
         if: success()
