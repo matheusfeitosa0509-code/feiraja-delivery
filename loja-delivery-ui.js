@@ -3,7 +3,7 @@ export function isAdminRpcTrue(value) {
 }
 
 export function canShowDeliveryOption(deliveryActive, isAdmin) {
-  return deliveryActive === true || isAdmin === true;
+  return isAdmin === true;
 }
 
 export function isDeliveryOptionDisabled(deliveryActive, isAdmin, adminCheckComplete = false) {
