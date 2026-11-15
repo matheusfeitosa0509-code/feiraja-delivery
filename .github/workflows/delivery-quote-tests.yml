@@ -10,6 +10,14 @@ on:
       - "supabase/functions/lalamove-dispatch/**"
       - "supabase/functions/lalamove-webhook/**"
       - "supabase/functions/_shared/lalamove-dispatch.ts"
+      - "supabase/functions/lalamove-tracking/**"
+      - "supabase/functions/_shared/lalamove-tracking.ts"
+      - "supabase/migrations/*lalamove-tracking*.sql"
+      - "supabase/rollback/*lalamove-tracking*.sql"
+      - "lalamove-map.js"
+      - "tests/order-tracking.visual.cjs"
+      - ".github/workflows/pages.yml"
+      - ".github/workflows/deploy-functions.yml"
       - "supabase/migrations/*lalamove-dispatch-and-webhook.sql"
       - "painel.html"
       - "tests/painel-compact.visual.cjs"
@@ -23,6 +31,7 @@ on:
       - fix/lalamove-dispatch-compact-panel
       - feat/lalamove-delivery-sandbox
       - feat/lalamove-delivery-stage-3
+      - feat/checkout-order-tracking-map
     paths:
       - "supabase/functions/_shared/delivery-quote.ts"
       - "supabase/functions/delivery-quote/**"
@@ -44,7 +53,8 @@ jobs:
       - run: deno check --config supabase/functions/delivery-quote/deno.json supabase/functions/delivery-quote/index.ts
       - run: deno check --config supabase/functions/lalamove-dispatch/deno.json supabase/functions/lalamove-dispatch/index.ts
       - run: deno check --config supabase/functions/lalamove-webhook/deno.json supabase/functions/lalamove-webhook/index.ts
-      - run: deno test --allow-net --allow-read supabase/functions/delivery-quote/index_test.ts supabase/functions/_shared/geocoding_test.ts supabase/functions/delivery-address/index_test.ts supabase/functions/lalamove-dispatch/index_test.ts
+      - run: deno check --config supabase/functions/lalamove-tracking/deno.json supabase/functions/lalamove-tracking/index.ts
+      - run: deno test --allow-net --allow-read supabase/functions/delivery-quote/index_test.ts supabase/functions/_shared/geocoding_test.ts supabase/functions/delivery-address/index_test.ts supabase/functions/lalamove-dispatch/index_test.ts supabase/functions/lalamove-tracking/index_test.ts
       - run: deno test --allow-read loja-delivery-ui_test.ts
       - uses: actions/setup-node@v4
         with:
@@ -52,9 +62,18 @@ jobs:
       - run: npm install --prefix /tmp/playwright playwright@1.58.2
       - run: /tmp/playwright/node_modules/.bin/playwright install --with-deps chromium
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-compact.visual.cjs
+      - run: NODE_PATH=/tmp/playwright/node_modules node tests/order-tracking.visual.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: painel-mobile-playwright-screenshots
           path: artifacts/painel-*.png
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: order-tracking-mobile-screenshots-and-video
+          path: |
+            artifacts/order-tracking-*.png
+            artifacts/order-tracking-*.webm
           if-no-files-found: warn
