@@ -1,6 +1,6 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
-  buildLalamoveOrderBody, canCancelLalamove, canStartDispatch, cancelLalamoveOrder, createLalamoveOrder,
+  buildLalamoveOrderBody, canCancelLalamove, canStartDispatch, cancelLalamoveOrder, createLalamoveOrder, getLalamoveDriverDetails,
   makeWebhookSignature, mapLalamoveStatus, normalizeBrazilPhone, priceDifference, quoteFee, verifyWebhookSignature,
 } from "../_shared/lalamove-dispatch.ts";
 
@@ -77,6 +77,21 @@ Deno.test("webhook inválido: rejeita assinatura, chave e caminho incorretos", a
   assertEquals(await verifyWebhookSignature({
     apiKey: "pk_test_demo", apiSecret: "sk_test_wrong", path, payload,
   }), false);
+});
+
+Deno.test("consulta do motorista MOCKADA: recupera nome, telefone e placa pelo ID", async () => {
+  const result = await getLalamoveDriverDetails("pk_test_demo", "sk_test_demo", "LALA-123456789", "driver-123",
+    async (input, init) => {
+      assertEquals(String(input), "https://rest.sandbox.lalamove.com/v3/orders/LALA-123456789/drivers/driver-123");
+      assertEquals(init?.method, "GET");
+      return new Response(JSON.stringify({ data: {
+        driverId: "driver-123", name: "Motorista Sandbox", phone: "+5592999990000", plateNumber: "ABC1D23",
+      } }), { status: 200 });
+    });
+  assertEquals(result.response.status, 200);
+  assertEquals(result.payload.name, "Motorista Sandbox");
+  assertEquals(result.payload.phone, "+5592999990000");
+  assertEquals(result.payload.plateNumber, "ABC1D23");
 });
 
 Deno.test("cancelamento MOCKADO: DELETE sandbox 204 confirma cancelamento", async () => {
