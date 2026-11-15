@@ -1,7 +1,7 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   buildLalamoveOrderBody, canCancelLalamove, canQuoteLalamove, canStartDispatch, isLalamoveDispatchReady, cancelLalamoveOrder, createLalamoveOrder, getLalamoveDriverDetails,
-  isWebhookVerificationProbe, makeWebhookSignature, mapLalamoveStatus, normalizeBrazilPhone, priceDifference, quoteFee, verifyWebhookSignature, requireServiceRoleJwt,
+  isWebhookVerificationProbe, makeWebhookSignature, mapLalamoveStatus, normalizeBrazilPhone, priceDifference, quoteFee, verifyWebhookSignature, requireSupabaseSecretKey, secretKeyFetch,
 } from "../_shared/lalamove-dispatch.ts";
 
 const quote = {
@@ -158,15 +158,29 @@ Deno.test("cotação pode ocorrer antes de Pronto, mas corrida só após Pronto 
   assertEquals(isLalamoveDispatchReady("Pronto"), true);
 });
 
-Deno.test("RPC interno exige JWT service_role e rejeita sb_secret sem claim JWT", () => {
-  const jwt = "header.payload.signature";
-  assertEquals(requireServiceRoleJwt(jwt), jwt);
+Deno.test("RPC interno usa chave secreta moderna sem depender do JWT legado", () => {
+  const key = "sb_secret_test_example";
+  assertEquals(requireSupabaseSecretKey(JSON.stringify({ default: key })), key);
+  assertEquals(requireSupabaseSecretKey(key), key);
   let rejected = false;
-  try { requireServiceRoleJwt("sb_secret_example_not_a_jwt"); } catch (error) {
-    rejected = error instanceof Error && error.message === "MISSING_SUPABASE_SERVICE_ROLE_KEY";
+  try { requireSupabaseSecretKey("header.payload.signature"); } catch (error) {
+    rejected = error instanceof Error && error.message === "MISSING_SUPABASE_SECRET_KEY";
   }
   assertEquals(rejected, true);
   rejected = false;
-  try { requireServiceRoleJwt(""); } catch { rejected = true; }
+  try { requireSupabaseSecretKey(""); } catch { rejected = true; }
   assertEquals(rejected, true);
+});
+
+Deno.test("cliente PostgREST envia chave secreta somente em apikey, sem Authorization Bearer", async () => {
+  const fetcher = secretKeyFetch("sb_secret_test_example", async (_input, init) => {
+    const headers = new Headers(init?.headers);
+    assertEquals(headers.get("apikey"), "sb_secret_test_example");
+    assertEquals(headers.has("Authorization"), false);
+    return new Response("ok");
+  });
+  const response = await fetcher(new Request("https://example.supabase.co/rest/v1/rpc/test", {
+    headers: { Authorization: "Bearer sb_secret_test_example" },
+  }));
+  assertEquals(response.status, 200);
 });

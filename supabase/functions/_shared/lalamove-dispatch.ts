@@ -192,9 +192,30 @@ export function isLalamoveDispatchReady(status: unknown): boolean {
   return ["pronto", "pronto para retirada"].includes(String(status || "").trim().toLowerCase());
 }
 
-/** Internal PostgREST RPCs rely on the legacy service-role JWT claim. */
-export function requireServiceRoleJwt(value: unknown): string {
-  const key = String(value || "").trim();
-  if (!key || key.split(".").length !== 3) throw new Error("MISSING_SUPABASE_SERVICE_ROLE_KEY");
+
+/** Reads Supabase's modern secret-key collection; legacy JWT keys are not required. */
+export function requireSupabaseSecretKey(value: unknown): string {
+  const raw = String(value || "").trim();
+  let key = raw;
+  if (raw.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(raw);
+      key = String(parsed?.default || "").trim();
+    } catch {
+      key = "";
+    }
+  }
+  if (!key.startsWith("sb_secret_")) throw new Error("MISSING_SUPABASE_SECRET_KEY");
   return key;
+}
+
+/** New secret keys authenticate through apikey; never forward them as Bearer JWTs. */
+export function secretKeyFetch(secretKey: string, fetcher: typeof fetch = fetch): typeof fetch {
+  return (input: RequestInfo | URL, init?: RequestInit) => {
+    const headers = new Headers(input instanceof Request ? input.headers : undefined);
+    new Headers(init?.headers).forEach((value, name) => headers.set(name, value));
+    headers.set("apikey", secretKey);
+    headers.delete("Authorization");
+    return fetcher(input, { ...init, headers });
+  };
 }
