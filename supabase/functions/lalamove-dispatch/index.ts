@@ -3,7 +3,7 @@ import { formatDropoff, requestSandboxQuotation } from "../_shared/delivery-quot
 import { geocodeManausAddress } from "../_shared/geocoding.ts";
 import {
   buildLalamoveOrderBody, canCancelLalamove, canQuoteLalamove, canStartDispatch, isLalamoveDispatchReady, cancelLalamoveOrder, createLalamoveOrder, normalizeBrazilPhone,
-  mapLalamoveStatus, priceDifference, quoteFee, requireSupabaseSecretKey, secretKeyFetch,
+  getLalamoveDriverDetails, getLalamoveOrderDetails, mapLalamoveStatus, priceDifference, quoteFee, requireSupabaseSecretKey, secretKeyFetch,
 } from "../_shared/lalamove-dispatch.ts";
 
 const cors = {
@@ -186,6 +186,45 @@ async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "M
   if (finishError) return { pending_confirmation: true };
   return { created: true, status: mapped, tracking_url: String(data?.shareLink || ""), vehicle };
 }
+async function refreshOrderStatus(db: any, orderId: string) {
+  const { data: current, error } = await db.rpc("service_get_lalamove_dispatch", { p_order_id: orderId });
+  if (error || !current?.lalamove_order_id) throw new Error("DISPATCH_NOT_FOUND");
+  const { key, secret } = sandboxCredentials();
+  const result = await getLalamoveOrderDetails(key, secret, String(current.lalamove_order_id));
+  if (!result.response.ok) throw new Error("LALAMOVE_STATUS_FAILED");
+  const data = result.payload || {};
+  const status = mapLalamoveStatus("ORDER_STATUS_CHANGED", String(data.status || ""));
+  if (!status) throw new Error("LALAMOVE_STATUS_UNKNOWN");
+  let driver = data.driver && typeof data.driver === "object" ? {
+    name: String(data.driver.name || "").slice(0, 100),
+    phone: String(data.driver.phone || "").slice(0, 40),
+    plateNumber: String(data.driver.plateNumber || "").slice(0, 20),
+  } : {};
+  const driverId = String(data.driverId || data.driver?.driverId || "");
+  if (!Object.values(driver).some(Boolean) && driverId) {
+    try {
+      const lookup = await getLalamoveDriverDetails(key, secret, String(current.lalamove_order_id), driverId);
+      if (lookup.response.ok) driver = {
+        name: String(lookup.payload?.name || "").slice(0, 100),
+        phone: String(lookup.payload?.phone || "").slice(0, 40),
+        plateNumber: String(lookup.payload?.plateNumber || "").slice(0, 20),
+      };
+    } catch { /* status update must not depend on optional driver detail */ }
+  }
+  const actualCost = Number(data.priceBreakdown?.total);
+  const currency = String(data.priceBreakdown?.currency || "BRL").toUpperCase();
+  if (!Number.isFinite(actualCost) || actualCost < 0 || currency !== "BRL") throw new Error("LALAMOVE_COST_INVALID");
+  const eventAt = new Date().toISOString();
+  const { error: syncError } = await db.rpc("service_sync_lalamove_dispatch", {
+    p_order_id: orderId, p_status: status, p_actual_cost: actualCost,
+    p_tracking_url: String(data.shareLink || ""), p_driver: driver, p_event_at: eventAt,
+  });
+  if (syncError) {
+    console.error("lalamove status sync failed", { code: syncError.code || null, message: syncError.message || null });
+    throw new Error("STATUS_SYNC_FAILED");
+  }
+  return { refreshed: true, status, tracking_url: String(data.shareLink || ""), driver };
+}
 async function cancelOrder(db: any, orderId: string) {
   const { key, secret } = sandboxCredentials();
   const { data: current, error } = await db.rpc("service_get_lalamove_dispatch", { p_order_id: orderId });
@@ -212,8 +251,9 @@ Deno.serve(async (req: Request) => {
     const orderId = String(body.order_id || "").trim();
     if (!orderId || orderId.length > 100) return json({ error: "Pedido inválido." }, 400);
     const action = String(body.action || "");
-    if (!["quote", "create", "cancel"].includes(action)) return json({ error: "Ação inválida." }, 400);
+    if (!["quote", "create", "cancel", "status"].includes(action)) return json({ error: "Ação inválida." }, 400);
     if (action === "cancel") return json(await cancelOrder(context.db, orderId));
+    if (action === "status") return json(await refreshOrderStatus(context.db, orderId));
     if (action === "quote") {
       const quoteOrder = await getOrder(context.db, orderId, false);
       return json(await quoteBoth(context.db, quoteOrder, context.user.id));
@@ -258,6 +298,10 @@ Deno.serve(async (req: Request) => {
       MISSING_LALAMOVE_SENDER_NAME: { message: "Configure o Secret LALAMOVE_SENDER_NAME no Supabase.", status: 503 },
       MISSING_LALAMOVE_SENDER_PHONE: { message: "Configure o Secret LALAMOVE_SENDER_PHONE no Supabase.", status: 503 },
       DISPATCH_NOT_FOUND: { message: "Corrida Lalamove não encontrada.", status: 404 },
+      LALAMOVE_STATUS_FAILED: { message: "Não foi possível consultar o status da corrida na Lalamove.", status: 502 },
+      LALAMOVE_STATUS_UNKNOWN: { message: "A Lalamove retornou um status ainda não reconhecido.", status: 502 },
+      LALAMOVE_COST_INVALID: { message: "A Lalamove retornou um custo real inválido.", status: 502 },
+      STATUS_SYNC_FAILED: { message: "O status foi consultado, mas não foi possível salvá-lo no painel.", status: 503 },
       CANCELLATION_WINDOW_CLOSED: { message: "A janela de cancelamento da Lalamove já terminou.", status: 409 },
       CANCELLATION_FORBIDDEN: { message: "A Lalamove recusou o cancelamento porque a corrida não está mais na janela permitida.", status: 409 },
       LALAMOVE_CREATE_FAILED: { message: "A Lalamove recusou a criação da corrida. Você pode atualizar a cotação e tentar novamente.", status: 502 },
