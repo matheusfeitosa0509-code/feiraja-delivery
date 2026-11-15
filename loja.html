@@ -1470,7 +1470,7 @@ async function requestDeliveryAutocomplete(input,sessionToken){
   const {data,error}=await supabase.functions.invoke('delivery-address',{body:{action:'autocomplete',input,session_token:sessionToken}});
   if($('#deliveryStreet').value.trim()!==input||deliveryPlacesSessionToken!==sessionToken)return;
   const box=$('#deliveryStreetSuggestions');box.replaceChildren();
-  if(error||!Array.isArray(data?.suggestions)||!data.suggestions.length){hideDeliverySuggestions();return;}
+  if(error||!Array.isArray(data?.suggestions)||!data.suggestions.length){hideDeliverySuggestions();$('#deliveryMapFallback').hidden=false;return;}
   for(const item of data.suggestions){
    const button=document.createElement('button');button.type='button';button.className='delivery-suggestion';button.setAttribute('role','option');
    button.textContent=item.description;button.dataset.placeId=item.place_id;box.append(button);
