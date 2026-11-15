@@ -985,38 +985,64 @@ try {
 </div></div></div>
 <footer class="legal-footer" aria-label="Informações e documentos da loja"><nav class="legal-links"><a href="#termos" data-legal-page="termos">Termos de uso</a><span>·</span><a href="#privacidade" data-legal-page="privacidade">Política de privacidade</a><span>·</span><a href="#retirada" data-legal-page="retirada">Retirada e trocas</a></nav><div class="legal-brand">Feira On Delivery · Manaus, AM</div><div>Retirada: Av. Lourenço da Silva Braga, 700 - Centro, Manaus - AM</div><div>Horário: Segunda a sábado, 6h às 13h. Domingo fechado.</div><div>Contato: <a href="#" data-whatsapp-link target="_blank" rel="noopener noreferrer">WhatsApp</a> · <a href="mailto:feiraondelivery2026@gmail.com">feiraondelivery2026@gmail.com</a></div><div id="legalDocumentLine">CNPJ/CPF: <span id="legalDocumentValue">65.414.756/0001-22</span></div></footer>
 <div class="modal checkout-screen" id="modal"><div class="dialog"><button class="close" id="close" type="button" aria-label="Voltar">‹</button><div class="checkout-page"><h1>Finalizar</h1><p class="sm">Confira seus dados, a retirada e o pagamento.</p><p id="checkoutScheduleNotice" class="sm" role="status" aria-live="polite"></p>
- <form id="checkoutForm"><div class="checkout-fields"><div class="formgrid">
-  <div class="field fullrow"><label for="name">Nome completo *</label><input id="name" required maxlength="120" autocomplete="name"></div>
-  <div class="field"><label for="phone">WhatsApp / telefone *</label><input id="phone" required maxlength="30" autocomplete="tel" placeholder="+55 92 9444-4989"></div>
-  <div class="field pixfield cpffield"><label for="cpf">CPF <span id="cpfRequiredHint">(obrigatório para Pix)</span></label><input id="cpf" inputmode="numeric" maxlength="14" autocomplete="off" placeholder="000.000.000-00"></div>
-  <div class="field pixfield"><label for="email">E-mail *</label><input id="email" type="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" required></div>
-  <input id="address" type="hidden" value="Av. Lourenço da Silva Braga, 700 (em frente à feira)">
-  <div class="field fullrow choice-group"><div class="step-ttl">Como deseja receber?</div>
-   <label class="opt sel" for="deliveryStore"><input class="choice-radio" id="deliveryStore" type="radio" name="deliveryChoice" checked><span class="r"></span><span><b>Retirada na loja</b><span class="s">Você retira dentro da feira.</span></span><span class="end">Grátis</span></label>
-   <label class="opt" for="deliveryUber"><input class="choice-radio" id="deliveryUber" type="radio" name="deliveryChoice"><span class="r"></span><span><b>Retirada com Uber</b><span class="s">Você chama e paga o Uber diretamente no aplicativo.</span></span><span class="end">Uber pago por você, no app</span></label>
-   <label class="opt" id="deliveryHomeOption" for="deliveryHome" hidden><input class="choice-radio" id="deliveryHome" type="radio" name="deliveryChoice"><span class="r"></span><span><b>Entrega em casa</b><span class="s">Receba no endereço informado.</span></span></label>
-   <select id="delivery" aria-label="Modalidade de recebimento"><option value="pickup_store">Retirada na loja</option><option value="pickup_uber">Retirada com Uber</option><option value="delivery">Entrega em casa</option></select>
-   <div class="sm" style="margin-top:8px"><b>Endereço:</b> Av. Lourenço da Silva Braga, 700 (bem em frente à feira).<br><b>Horário:</b> segunda a sábado, 6h às 13h. Domingo fechado.<br>Ao chegar, avise pelo WhatsApp. Eu fico dentro da feira e saio para levar o pedido até você ou até o motorista do Uber, em frente ao endereço. Na retirada com Uber, você paga a corrida diretamente à Uber; a loja não escolhe o motorista e o código é pessoal.</div>
-   <div id="deliveryAddressFields" class="hidden" aria-label="Endereço para entrega">
-    <div class="field delivery-street-field"><label for="deliveryStreet">Rua *</label><input id="deliveryStreet" maxlength="160" autocomplete="off" aria-autocomplete="list" aria-controls="deliveryStreetSuggestions"><div id="deliveryStreetSuggestions" class="delivery-suggestions" role="listbox" hidden></div></div>
-    <div class="field"><label for="deliveryNumber">Número *</label><input id="deliveryNumber" maxlength="30" autocomplete="address-line2"></div>
-    <div class="field"><label for="deliveryNeighborhood">Bairro *</label><input id="deliveryNeighborhood" maxlength="100" autocomplete="address-level3"></div>
-    <div class="field"><label for="deliveryComplement">Complemento</label><input id="deliveryComplement" maxlength="100"></div>
-    <div class="field"><label for="deliveryReference">Ponto de referência</label><input id="deliveryReference" maxlength="160"></div>
-    <button type="button" id="deliveryMapFallback" class="delivery-map-fallback" hidden>Marcar minha casa no mapa</button>
-    <div id="deliveryMapPanel" class="delivery-map-panel" hidden>
-     <p class="sm">Arraste o pino até sua casa. O ponto será conferido para garantir que esteja em Manaus.</p>
-     <div id="deliveryMap" role="application" aria-label="Mapa para marcar o endereço"></div>
-     <button type="button" id="deliveryMapUse" class="delivery-map-use">Usar este ponto</button>
+ <form id="checkoutForm">
+  <div class="checkout-fields"><div class="formgrid checkout-layout">
+   <section class="checkout-card checkout-receive" aria-labelledby="checkoutReceiveTitle">
+    <h2 class="checkout-card-title" id="checkoutReceiveTitle"><span class="checkout-title-icon" aria-hidden="true">🧺</span>Como você quer receber?</h2>
+    <div class="checkout-choice-list">
+     <label class="opt sel checkout-choice-card" for="deliveryStore"><input class="choice-radio" id="deliveryStore" type="radio" name="deliveryChoice" checked><span class="checkout-choice-icon" aria-hidden="true">🏬</span><span class="checkout-choice-copy"><b>Retirar na loja</b><span class="s">Grátis · Av. Lourenço da Silva Braga, 700 - Centro<br>Segunda a sábado, 6h às 13h</span></span><span class="checkout-choice-end">Grátis</span><span class="r" aria-hidden="true"></span></label>
+     <label class="opt checkout-choice-card" for="deliveryUber"><input class="choice-radio" id="deliveryUber" type="radio" name="deliveryChoice"><span class="checkout-choice-icon" aria-hidden="true">🚗</span><span class="checkout-choice-copy"><b>Retirada com Uber</b><span class="s">Você chama e paga a corrida diretamente no aplicativo.</span></span><span class="r" aria-hidden="true"></span></label>
+     <label class="opt checkout-choice-card" id="deliveryHomeOption" for="deliveryHome" hidden><input class="choice-radio" id="deliveryHome" type="radio" name="deliveryChoice"><span class="checkout-choice-icon" aria-hidden="true">🏠</span><span class="checkout-choice-copy"><b>Entrega em casa</b><span class="s">Receba no endereço informado.</span></span><span class="checkout-choice-end" id="deliveryStartingPrice">Consulte o valor</span><span class="r" aria-hidden="true"></span></label>
     </div>
-    <p class="sm">Sai para entrega quando o pedido estiver pronto (seg a sáb, 6h às 13h).</p>
-   </div>
-   <p id="deliveryQuoteStatus" class="sm" role="status" aria-live="polite" hidden></p>
-  </div>
-  <div class="field fullrow choice-group"><div class="step-ttl">Pagamento</div><label class="opt sel" for="payPix"><input class="choice-radio" id="payPix" type="radio" name="paymentChoice" checked><span class="r"></span><span><b>Pix</b><span class="s">Pagamento instantâneo</span></span></label><label class="opt" id="payPixTestOption" for="payPixTest" hidden><input class="choice-radio" id="payPixTest" type="radio" name="paymentChoice"><span class="r"></span><span><b>Pix de teste (admin)</b><span class="s">Confirmação de teste, sem cobrança real.</span></span></label><label class="opt" for="payCash"><input class="choice-radio" id="payCash" type="radio" name="paymentChoice"><span class="r"></span><span><b>Dinheiro na retirada</b></span></label><label class="opt" for="payCard"><input class="choice-radio" id="payCard" type="radio" name="paymentChoice"><span class="r"></span><span><b>Cartão na retirada</b></span></label><p id="uberPixNotice" class="sm hidden" role="status">Com Uber, o pagamento é somente por Pix.</p><select id="payment" aria-label="Forma de pagamento"><option value="pix">Pix instantâneo</option><option value="pix_test">Pix de teste (admin)</option><option value="cash">Dinheiro na retirada</option><option value="card_on_delivery">Cartão na retirada (se disponível)</option></select></div>
-  <div class="field fullrow notes-row"><label class="sr-only" for="notes">Observação (opcional)</label><input id="notes" maxlength="500" placeholder="Observação (opcional)"></div>
- </div></div><div class="checkout-footer"><div class="checkout-total"><span>Total</span><strong id="modalTotal">R$ 0,00</strong></div><p id="minimumCheckoutNotice" class="sm hidden" role="status"></p><button type="submit" class="btn pix" id="submitOrder">Pagar com Pix · R$ 0,00</button><p class="legal-agreement">Ao finalizar você concorda com os <a href="#termos" data-legal-page="termos">Termos de uso</a> e a <a href="#privacidade" data-legal-page="privacidade">Política de privacidade</a>.</p><p class="sm">O CPF é solicitado apenas para pagamento via Pix.</p></div></form>
- <div id="result" class="status hidden"></div></div></div></div>
+    <select id="delivery" aria-label="Modalidade de recebimento"><option value="pickup_store">Retirada na loja</option><option value="pickup_uber">Retirada com Uber</option><option value="delivery">Entrega em casa</option></select>
+    <div class="checkout-pickup-note"><b>📍 Endereço da feira</b><span>Av. Lourenço da Silva Braga, 700 - Centro, Manaus - AM</span><small>Segunda a sábado, 6h às 13h · Domingo fechado</small><p>Ao chegar, avise pelo WhatsApp. Na retirada com Uber, você paga a corrida diretamente à Uber; a loja não escolhe o motorista e o código é pessoal.</p></div>
+   </section>
+
+   <section id="deliveryAddressFields" class="checkout-card checkout-address hidden" aria-label="Endereço de entrega" aria-labelledby="checkoutAddressTitle">
+    <h2 class="checkout-card-title" id="checkoutAddressTitle"><span class="checkout-title-icon" aria-hidden="true">📍</span>Endereço de entrega</h2>
+    <div id="deliveryStreetSearch" class="field delivery-street-field"><label for="deliveryStreet">Rua e número</label><div class="checkout-address-input"><span aria-hidden="true">⌕</span><input id="deliveryStreet" maxlength="160" autocomplete="off" aria-autocomplete="list" aria-controls="deliveryStreetSuggestions" placeholder="Digite sua rua e número"></div><div id="deliveryStreetSuggestions" class="delivery-suggestions" role="listbox" hidden></div></div>
+    <div id="deliveryAddressSummary" class="checkout-address-summary" hidden><span class="checkout-address-pin" aria-hidden="true">📍</span><div class="checkout-address-summary-copy"><strong id="deliveryAddressSummaryStreet">Endereço selecionado</strong><span id="deliveryAddressSummaryNeighborhood"></span></div><button type="button" id="deliveryAddressEdit" class="checkout-text-action">Alterar</button></div>
+    <div class="field" id="deliveryNumberField"><label for="deliveryNumber">Número *</label><input id="deliveryNumber" maxlength="30" autocomplete="address-line2" placeholder="Número da casa"></div>
+    <div class="field hidden" id="deliveryNeighborhoodField"><label for="deliveryNeighborhood">Bairro *</label><input id="deliveryNeighborhood" maxlength="100" autocomplete="address-level3"></div>
+    <details class="checkout-optional"><summary>+ Adicionar complemento ou referência</summary><div class="field"><label for="deliveryComplement">Complemento (opcional)</label><input id="deliveryComplement" maxlength="100" placeholder="Apartamento, bloco, casa…"></div><div class="field"><label for="deliveryReference">Ponto de referência (opcional)</label><input id="deliveryReference" maxlength="160" placeholder="Próximo a…"></div></details>
+    <button type="button" id="deliveryMapAdjust" class="checkout-map-link">Ajustar no mapa</button>
+    <button type="button" id="deliveryMapFallback" class="delivery-map-fallback" hidden>📍 Marcar minha casa no mapa</button>
+    <div id="deliveryMapPanel" class="delivery-map-panel" hidden><p class="sm">Arraste o pino até sua casa. O ponto será conferido para garantir que esteja em Manaus.</p><div id="deliveryMap" role="application" aria-label="Mapa para marcar o endereço"></div><button type="button" id="deliveryMapUse" class="delivery-map-use">Usar este ponto</button></div>
+    <p id="deliveryQuoteStatus" class="checkout-alert" role="status" aria-live="polite" hidden></p>
+   </section>
+
+   <section class="checkout-card checkout-summary" aria-labelledby="checkoutSummaryTitle">
+    <h2 class="checkout-card-title" id="checkoutSummaryTitle"><span class="checkout-title-icon" aria-hidden="true">🧾</span>Resumo</h2>
+    <div class="checkout-summary-row"><span>Produtos</span><strong id="checkoutProductsTotal">R$ 0,00</strong></div>
+    <div class="checkout-summary-row checkout-delivery-row"><span id="checkoutDeliveryLabel">📦 Retirada na loja</span><strong id="checkoutDeliveryTotal">Grátis</strong></div>
+    <p class="checkout-summary-meta" id="checkoutDeliveryMeta">Retire na feira · seg a sáb, 6h às 13h</p>
+    <div class="checkout-summary-total"><span>Total</span><strong id="checkoutSummaryTotal">R$ 0,00</strong></div>
+   </section>
+
+   <section class="checkout-card checkout-payment" aria-labelledby="checkoutPaymentTitle">
+    <h2 class="checkout-card-title" id="checkoutPaymentTitle"><span class="checkout-title-icon" aria-hidden="true">💳</span>Pagamento</h2>
+    <div class="checkout-choice-list">
+     <label class="opt sel checkout-choice-card" for="payPix"><input class="choice-radio" id="payPix" type="radio" name="paymentChoice" checked><span class="checkout-choice-icon" aria-hidden="true">◇</span><span class="checkout-choice-copy"><b>Pix</b><span class="s">Pagamento instantâneo e seguro</span></span><span class="r" aria-hidden="true"></span></label>
+     <label class="opt checkout-choice-card checkout-test-payment" id="payPixTestOption" for="payPixTest" hidden><input class="choice-radio" id="payPixTest" type="radio" name="paymentChoice"><span class="checkout-choice-icon" aria-hidden="true">🧪</span><span class="checkout-choice-copy"><b>Pix de teste (admin)</b><span class="s">Confirmação de teste, sem cobrança real.</span></span><span class="checkout-test-badge">TESTE</span><span class="r" aria-hidden="true"></span></label>
+     <label class="opt checkout-choice-card" for="payCash"><input class="choice-radio" id="payCash" type="radio" name="paymentChoice"><span class="checkout-choice-icon" aria-hidden="true">💵</span><span class="checkout-choice-copy"><b>Dinheiro na retirada</b><span class="s">Pagamento presencial na loja.</span></span><span class="r" aria-hidden="true"></span></label>
+     <label class="opt checkout-choice-card" for="payCard"><input class="choice-radio" id="payCard" type="radio" name="paymentChoice"><span class="checkout-choice-icon" aria-hidden="true">💳</span><span class="checkout-choice-copy"><b>Cartão na retirada</b><span class="s">Pagamento presencial na loja.</span></span><span class="r" aria-hidden="true"></span></label>
+    </div>
+    <p id="uberPixNotice" class="sm hidden" role="status">Com Uber, o pagamento é somente por Pix.</p>
+    <select id="payment" aria-label="Forma de pagamento"><option value="pix">Pix instantâneo</option><option value="pix_test">Pix de teste (admin)</option><option value="cash">Dinheiro na retirada</option><option value="card_on_delivery">Cartão na retirada (se disponível)</option></select>
+   </section>
+
+   <section class="checkout-card checkout-customer" aria-labelledby="checkoutCustomerTitle">
+    <h2 class="checkout-card-title" id="checkoutCustomerTitle"><span class="checkout-title-icon" aria-hidden="true">👤</span>Seus dados</h2>
+    <div class="field"><label for="name">Nome completo *</label><input id="name" required maxlength="120" autocomplete="name"></div>
+    <div class="field"><label for="phone">WhatsApp / telefone *</label><input id="phone" required maxlength="30" autocomplete="tel" placeholder="+55 92 9444-4989"></div>
+    <div class="field pixfield cpffield"><label for="cpf">CPF <span id="cpfRequiredHint">(obrigatório para Pix)</span></label><input id="cpf" inputmode="numeric" maxlength="14" autocomplete="off" placeholder="000.000.000-00"></div>
+    <div class="field pixfield"><label for="email">E-mail *</label><input id="email" type="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" required></div>
+    <input id="address" type="hidden" value="Av. Lourenço da Silva Braga, 700 (em frente à feira)">
+    <div class="field notes-row"><label class="sr-only" for="notes">Observação (opcional)</label><input id="notes" maxlength="500" placeholder="Observação do pedido (opcional)"></div>
+   </section>
+  </div></div>
+  <div class="checkout-footer"><div class="checkout-total"><span>Total do pedido</span><strong id="modalTotal">R$ 0,00</strong></div><p id="minimumCheckoutNotice" class="sm hidden" role="status"></p><button type="submit" class="btn pix" id="submitOrder">Pagar com Pix · R$ 0,00</button><p class="legal-agreement">Ao finalizar você concorda com os <a href="#termos" data-legal-page="termos">Termos de uso</a> e a <a href="#privacidade" data-legal-page="privacidade">Política de privacidade</a>.</p><p class="sm">O CPF é solicitado apenas para pagamento via Pix.</p></div>
+ </form> <div id="result" class="status hidden"></div></div></div></div>
 <section id="legalModal" role="dialog" aria-modal="true" aria-labelledby="legalTitle" aria-hidden="true"><div class="legal-dialog"><header class="legal-header"><button id="legalBack" class="legal-back" type="button" aria-label="Voltar">‹</button><h2 id="legalTitle">Termos de uso</h2></header><div id="legalContent" class="legal-content" tabindex="0"></div></div></section><footer class="preview-footer" aria-hidden="true"></footer></body>
 <script src="./turnstile.js" defer></script>
 <script type="module">
