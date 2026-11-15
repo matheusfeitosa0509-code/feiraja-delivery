@@ -8,6 +8,7 @@ on:
       - "supabase/functions/_shared/**"
       - "supabase/functions/expire-pix/**"
       - "supabase/functions/asaas-saque-validacao/**"
+      - "supabase/functions/delivery-quote/**"
       - ".github/workflows/check-pagamentos.yml"
   push:
     branches: [main]
@@ -37,6 +38,12 @@ jobs:
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+
+      - name: Check delivery quote
+        run: deno check supabase/functions/delivery-quote/index.ts
+
+      - name: Test delivery quote (Lalamove mocked)
+        run: deno test supabase/functions/delivery-quote/index_test.ts
 
       - name: Check Asaas webhook
         run: deno check supabase/functions/asaas-webhook/index.ts
