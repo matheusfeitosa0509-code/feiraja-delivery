@@ -42,7 +42,7 @@ language plpgsql security definer set search_path=''
 as $$
 declare v_state text;
 begin
- if current_setting('request.jwt.claim.role',true) <> 'service_role' then
+ if current_setting('request.jwt.claim.role',true) is distinct from 'service_role' then
   raise exception 'service role required' using errcode='42501';
  end if;
  if p_order_id is null or p_session_id is null or p_moto_quote is null or p_car_quote is null
@@ -78,7 +78,7 @@ language plpgsql security definer set search_path=''
 as $$
 declare v_order record; v_dispatch record; v_quote jsonb; v_expiry timestamptz;
 begin
- if current_setting('request.jwt.claim.role',true) <> 'service_role' then
+ if current_setting('request.jwt.claim.role',true) is distinct from 'service_role' then
   raise exception 'service role required' using errcode='42501';
  end if;
  if p_vehicle not in ('MOTO','CAR') then raise exception 'invalid vehicle' using errcode='22023'; end if;
@@ -122,7 +122,7 @@ language plpgsql security definer set search_path=''
 as $$
 declare v_updated integer;
 begin
- if current_setting('request.jwt.claim.role',true) <> 'service_role' then
+ if current_setting('request.jwt.claim.role',true) is distinct from 'service_role' then
   raise exception 'service role required' using errcode='42501';
  end if;
  if coalesce(p_order_id,'')='' or coalesce(p_lalamove_order_id,'')='' or p_actual_cost is null or p_actual_cost<0 then
@@ -154,7 +154,7 @@ create or replace function public.service_fail_lalamove_dispatch(p_order_id text
 returns void language plpgsql security definer set search_path=''
 as $$
 begin
- if current_setting('request.jwt.claim.role',true) <> 'service_role' then
+ if current_setting('request.jwt.claim.role',true) is distinct from 'service_role' then
   raise exception 'service role required' using errcode='42501';
  end if;
  update feira_cost_private.lalamove_dispatches set state='failed',
@@ -167,7 +167,7 @@ create or replace function public.service_cancel_lalamove_dispatch(p_order_id te
 returns jsonb language plpgsql security definer set search_path=''
 as $$
 begin
- if current_setting('request.jwt.claim.role',true) <> 'service_role' then
+ if current_setting('request.jwt.claim.role',true) is distinct from 'service_role' then
   raise exception 'service role required' using errcode='42501';
  end if;
  update feira_cost_private.lalamove_dispatches set state='cancelled',lalamove_status='cancelled',
@@ -188,20 +188,20 @@ language plpgsql security definer set search_path=''
 as $$
 declare v_order_id text; v_existing_at timestamptz; v_inserted integer;
 begin
- if current_setting('request.jwt.claim.role',true) <> 'service_role' then
+ if current_setting('request.jwt.claim.role',true) is distinct from 'service_role' then
   raise exception 'service role required' using errcode='42501';
  end if;
  if coalesce(p_event_id,'')='' or coalesce(p_lalamove_order_id,'')='' or p_event_at is null then
   raise exception 'invalid webhook event' using errcode='22023';
  end if;
- insert into feira_cost_private.lalamove_webhook_events(event_id,event_type,event_at)
- values(p_event_id,left(coalesce(p_event_type,'UNKNOWN'),80),p_event_at)
- on conflict(event_id) do nothing;
- get diagnostics v_inserted = row_count;
- if v_inserted=0 then return jsonb_build_object('applied',false,'duplicate',true); end if;
  select d.order_id into v_order_id from feira_cost_private.lalamove_dispatches d
  where d.lalamove_order_id=p_lalamove_order_id for update;
  if v_order_id is null then return jsonb_build_object('applied',false,'unknown_order',true); end if;
+ insert into feira_cost_private.lalamove_webhook_events(event_id,order_id,event_type,event_at)
+ values(p_event_id,v_order_id,left(coalesce(p_event_type,'UNKNOWN'),80),p_event_at)
+ on conflict(event_id) do nothing;
+ get diagnostics v_inserted = row_count;
+ if v_inserted=0 then return jsonb_build_object('applied',false,'duplicate',true); end if;
  select o.lalamove_status_updated_at into v_existing_at from public.orders o where o.id=v_order_id for update;
  if v_existing_at is not null and p_event_at < v_existing_at then
   return jsonb_build_object('applied',false,'out_of_order',true);
@@ -223,12 +223,28 @@ begin
 end;
 $$;
 
+create or replace function public.service_get_lalamove_dispatch(p_order_id text)
+returns jsonb language plpgsql security definer set search_path=''
+as $
+begin
+ if current_setting('request.jwt.claim.role',true) is distinct from 'service_role' then
+  raise exception 'service role required' using errcode='42501';
+ end if;
+ return (select jsonb_build_object(
+  'state',d.state,'lalamove_order_id',d.lalamove_order_id,'lalamove_status',d.lalamove_status,
+  'tracking_url',d.tracking_url,'driver',d.driver
+ ) from feira_cost_private.lalamove_dispatches d where d.order_id=p_order_id);
+end;
+$;
+
+revoke all on function public.service_get_lalamove_dispatch(text) from public,anon,authenticated;
 revoke all on function public.service_store_lalamove_quotes(text,uuid,jsonb,jsonb,numeric,numeric,timestamptz,timestamptz) from public,anon,authenticated;
 revoke all on function public.service_begin_lalamove_dispatch(text,uuid,text) from public,anon,authenticated;
 revoke all on function public.service_finish_lalamove_dispatch(text,text,numeric,text,text,jsonb) from public,anon,authenticated;
 revoke all on function public.service_fail_lalamove_dispatch(text,text) from public,anon,authenticated;
 revoke all on function public.service_cancel_lalamove_dispatch(text) from public,anon,authenticated;
 revoke all on function public.service_apply_lalamove_webhook(text,text,timestamptz,text,text,text,jsonb) from public,anon,authenticated;
+grant execute on function public.service_get_lalamove_dispatch(text) to service_role;
 grant execute on function public.service_store_lalamove_quotes(text,uuid,jsonb,jsonb,numeric,numeric,timestamptz,timestamptz) to service_role;
 grant execute on function public.service_begin_lalamove_dispatch(text,uuid,text) to service_role;
 grant execute on function public.service_finish_lalamove_dispatch(text,text,numeric,text,text,jsonb) to service_role;
