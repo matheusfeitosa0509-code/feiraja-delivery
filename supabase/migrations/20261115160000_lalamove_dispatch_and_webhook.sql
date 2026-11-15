@@ -145,7 +145,11 @@ begin
  on conflict(order_id) do update set actual_cost=excluded.actual_cost,updated_at=now();
  update public.orders set lalamove_status=coalesce(p_status,'searching'),
   lalamove_tracking_url=nullif(p_tracking_url,''),lalamove_driver=coalesce(p_driver,'{}'::jsonb),
-  lalamove_status_updated_at=now()
+  delivery_vehicle=(select d.selected_vehicle from feira_cost_private.lalamove_dispatches d where d.order_id=p_order_id),
+  lalamove_status_updated_at=null,
+  status=case when p_status='delivered' then 'Entregue'
+   when p_status in ('assigned','enroute_pickup','picked_up') then 'Saiu para Entrega'
+   else status end
  where id=p_order_id;
  return jsonb_build_object('created',true,'duplicate',false);
 end;
@@ -177,7 +181,8 @@ begin
   updated_at=now(),event_updated_at=now()
  where order_id=p_order_id and state='created' and lalamove_order_id is not null;
  if not found then raise exception 'dispatch not cancellable' using errcode='55000'; end if;
- update public.orders set lalamove_status='cancelled',lalamove_status_updated_at=now()
+ update public.orders set lalamove_status='cancelled',lalamove_status_updated_at=now(),
+  status=case when status='Saiu para Entrega' then 'Pronto para Retirada' else status end
  where id=p_order_id;
  return jsonb_build_object('cancelled',true);
 end;
@@ -219,6 +224,7 @@ begin
   lalamove_status_updated_at=p_event_at,
   status=case when p_status='delivered' then 'Entregue'
    when p_status in ('assigned','enroute_pickup','picked_up') then 'Saiu para Entrega'
+   when p_status='cancelled' and status='Saiu para Entrega' then 'Pronto para Retirada'
    else status end
  where id=v_order_id;
  update feira_cost_private.lalamove_webhook_events set order_id=v_order_id where event_id=p_event_id;
