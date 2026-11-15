@@ -122,6 +122,21 @@ export async function createLalamoveOrder(
   return { response, payload };
 }
 
+export async function getLalamoveDriverDetails(
+  apiKey: string, apiSecret: string, orderId: string, driverId: string, fetcher: typeof fetch = fetch,
+): Promise<{ response: Response; payload: any }> {
+  if (!/^[A-Za-z0-9_-]{6,80}$/.test(orderId) || !/^[A-Za-z0-9_-]{1,80}$/.test(driverId)) {
+    throw new Error("INVALID_DRIVER_LOOKUP");
+  }
+  const path = "/v3/orders/" + encodeURIComponent(orderId) + "/drivers/" + encodeURIComponent(driverId);
+  const signed = await signApiRequest(apiKey, apiSecret, "GET", path);
+  const response = await fetcher("https://rest.sandbox.lalamove.com" + path, {
+    method: "GET", headers: signed.headers, signal: AbortSignal.timeout(10000),
+  });
+  const payload = await response.json().catch(() => ({}));
+  return { response, payload: payload?.data || {} };
+}
+
 export async function cancelLalamoveOrder(
   apiKey: string, apiSecret: string, orderId: string, fetcher: typeof fetch = fetch,
 ): Promise<Response> {
