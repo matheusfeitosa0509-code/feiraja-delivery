@@ -11,6 +11,7 @@ Deno.test("modalidade de entrega só fica habilitada para admin enquanto inativa
   assertEquals(isDeliveryOptionDisabled(false, false, false), true);
   assertEquals(isDeliveryOptionDisabled(false, true, false), true);
   assertEquals(isDeliveryOptionDisabled(false, true, true), false);
+  assertEquals(isDeliveryOptionDisabled(false, false, true), true, "a confirmed ordinary account stays locked");
   assertEquals(canShowDeliveryOption(false, true), true);
   assertEquals(canShowDeliveryOption(true, false), true);
 });
