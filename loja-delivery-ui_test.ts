@@ -141,6 +141,7 @@ Deno.test("acompanhamento usa quatro etapas horizontais e mensagens por modalida
   const orderRendering = html.slice(renderStart, renderEnd);
   assertEquals(renderStart >= 0 && renderEnd > renderStart, true, "customer order rendering must be present");
   assertEquals(orderRendering.includes("Peso estimado"), false, "customer tracking must not show delivery weight");
+  assertEquals(html.includes("delivery_weight_kg"), false, "customer order query must not fetch delivery weight");
 });
 
 Deno.test("mapa usa função autenticada, rate limit e atualiza enquanto visível", async () => {
