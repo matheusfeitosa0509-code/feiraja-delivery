@@ -54,6 +54,12 @@ jobs:
       - name: Test Mercado Pago cancelled-order handling
         run: deno test supabase/functions/super-worker/payment-status_test.ts
 
+      - name: Check server delivery order
+        run: deno check supabase/functions/super-worker/delivery-order.ts
+
+      - name: Test server delivery order (Lalamove mocked)
+        run: deno test supabase/functions/super-worker/delivery-order_test.ts
+
       - name: Test item preference validation
         run: deno test supabase/functions/_shared/item-preferences_test.ts
 
