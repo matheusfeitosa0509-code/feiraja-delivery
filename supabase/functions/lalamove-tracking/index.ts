@@ -73,6 +73,29 @@ Deno.serve(async (req: Request) => {
     const tracking = await getLalamoveTracking(key, secret, String(dispatch.lalamove_order_id));
     const status = tracking.status;
     const active = !isTerminalTrackingStatus(status);
+    const driverSummary = tracking.driver ? {
+      ...(tracking.driver.name ? { name: tracking.driver.name } : {}),
+      ...(tracking.driver.plateNumber ? { plateNumber: tracking.driver.plateNumber } : {}),
+      ...(tracking.driver.photo ? { photo: tracking.driver.photo } : {}),
+    } : null;
+    const storedDriver = dispatch.driver && typeof dispatch.driver === "object" ? dispatch.driver : {};
+    const storedDriverSummary = {
+      ...(storedDriver.name ? { name: storedDriver.name } : {}),
+      ...(storedDriver.plateNumber ? { plateNumber: storedDriver.plateNumber } : {}),
+      ...(storedDriver.photo ? { photo: storedDriver.photo } : {}),
+    };
+    if (status !== storedStatus ||
+        JSON.stringify(driverSummary) !== JSON.stringify(Object.keys(storedDriverSummary).length ? storedDriverSummary : null) ||
+        (tracking.tracking_url && tracking.tracking_url !== dispatch.tracking_url)) {
+      const { error: syncError } = await db.rpc("service_update_lalamove_tracking_status", {
+        p_order_id: orderId,
+        p_lalamove_order_id: String(dispatch.lalamove_order_id),
+        p_status: status,
+        p_tracking_url: tracking.tracking_url || null,
+        p_driver: driverSummary,
+      });
+      if (syncError) return json({ error: "Não foi possível atualizar o status do rastreio." }, 503);
+    }
     return json({
       active,
       status,
