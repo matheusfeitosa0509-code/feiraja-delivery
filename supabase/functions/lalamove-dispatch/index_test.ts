@@ -184,3 +184,24 @@ Deno.test("cliente PostgREST envia chave secreta somente em apikey, sem Authoriz
   }));
   assertEquals(response.status, 200);
 });
+
+Deno.test("consulta de status Lalamove usa GET assinado em /v3/orders/{id}", async () => {
+  let called = "";
+  const result = await getLalamoveOrderDetails("pk_test_key", "sk_test_secret", "ORDER123456", async (input, init) => {
+    called = String(input);
+    assertEquals(init?.method, "GET");
+    assertEquals(new Headers(init?.headers).get("Market"), "BR");
+    return new Response(JSON.stringify({ data: { orderId: "ORDER123456", status: "ON_GOING" } }), { status: 200 });
+  });
+  assertEquals(called, "https://rest.sandbox.lalamove.com/v3/orders/ORDER123456");
+  assertEquals(result.payload.status, "ON_GOING");
+});
+
+Deno.test("mapeia todos os status operacionais do Sandbox", () => {
+  assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "ASSIGNING_DRIVER"), "searching");
+  assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "ON_GOING"), "assigned");
+  assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "PICKED_UP"), "picked_up");
+  assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "COMPLETED"), "delivered");
+  assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "CANCELED"), "cancelled");
+  assertEquals(mapLalamoveStatus("ORDER_STATUS_CHANGED", "EXPIRED"), "cancelled");
+});
