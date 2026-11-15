@@ -42,3 +42,15 @@ Deno.test("rótulo da cotação e endereço fora da área", () => {
   assertEquals(isDeliveryOutOfArea(422), true);
   assertEquals(isDeliveryOutOfArea(502, "upstream"), false);
 });
+
+Deno.test("loja.html conecta a opção, cotação, endereço salvo e acompanhamento", async () => {
+  const html = await Deno.readTextFile("loja.html");
+  for (const required of [
+    'id="deliveryHomeOption"', 'id="deliveryAddressFields"',
+    'id="deliveryStreet"', 'id="deliveryNumber"', 'id="deliveryNeighborhood"',
+    'id="deliveryComplement"', 'id="deliveryReference"',
+    "get_delivery_enabled", "functions.invoke('delivery-quote'",
+    "address_street", "address_reference", "delivery_vehicle", "delivery_fee",
+    "Pix de teste (admin)", "Sai para entrega quando o pedido estiver pronto",
+  ]) assertEquals(html.includes(required), true, "missing UI wiring: " + required);
+});
