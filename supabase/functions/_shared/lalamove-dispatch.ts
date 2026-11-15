@@ -1,5 +1,5 @@
 export type Vehicle = "MOTO" | "CAR";
-export type LalamoveStatus = "searching" | "assigned" | "enroute_pickup" | "picked_up" | "delivered" | "cancelled";
+export type LalamoveStatus = "searching" | "assigned" | "enroute_pickup" | "picked_up" | "delivered" | "cancelled" | "rejected" | "expired";
 
 export function quoteFee(data: any): { fee: number; expiresAt: string } {
   const raw = data?.priceBreakdown?.total ?? data?.total;
@@ -40,7 +40,9 @@ export function mapLalamoveStatus(eventType: string, rawStatus: string): Lalamov
   if (status === "ON_GOING") return "assigned";
   if (status === "PICKED_UP") return "picked_up";
   if (status === "COMPLETED") return "delivered";
-  if (["CANCELED", "CANCELLED", "REJECTED", "EXPIRED"].includes(status)) return "cancelled";
+  if (["CANCELED", "CANCELLED"].includes(status)) return "cancelled";
+  if (status === "REJECTED") return "rejected";
+  if (status === "EXPIRED") return "expired";
   return null;
 }
 
