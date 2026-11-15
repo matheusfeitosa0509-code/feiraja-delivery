@@ -27,8 +27,9 @@ export function canStartDispatch(state: string | null | undefined): boolean {
 
 export function mapLalamoveStatus(eventType: string, rawStatus: string): LalamoveStatus | null {
   const status = String(rawStatus || "").toUpperCase();
+  if (eventType === "DRIVER_ASSIGNED") return "assigned";
   if (status === "ASSIGNING_DRIVER") return "searching";
-  if (status === "ON_GOING" || eventType === "DRIVER_ASSIGNED") return "assigned";
+  if (status === "ON_GOING") return "assigned";
   if (status === "PICKED_UP") return "picked_up";
   if (status === "COMPLETED") return "delivered";
   if (["CANCELED", "CANCELLED", "REJECTED", "EXPIRED"].includes(status)) return "cancelled";
