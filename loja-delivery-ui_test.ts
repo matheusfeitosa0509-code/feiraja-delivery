@@ -123,8 +123,8 @@ Deno.test("cartões do checkout usam uma única grade fixa sem sobreposição de
 Deno.test("acompanhamento usa quatro etapas horizontais e mensagens por modalidade", async () => {
   const html = await Deno.readTextFile("loja.html");
   for (const required of [
-    "['Pago','💳'],['Preparo','📦'],['Caminho','🛵'],['Entregue','✓']",
-    "['Pago','💳'],['Preparo','📦'],['Pronto','✓'],['Retirado','✓']",
+    "['Pago','💳'],['Preparando','📦'],['Caminho','🛵'],['Entregue','✓']",
+    "['Pago','💳'],['Preparando','📦'],['Pronto','✓'],['Retirado','✓']",
     "grid-template-columns:repeat(4,minmax(0,1fr))",
     "white-space:nowrap",
     "Aguardando pagamento do Pix",
