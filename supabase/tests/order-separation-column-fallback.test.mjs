@@ -16,7 +16,8 @@ assert.ok(loja.includes('Seu pedido já está sendo separado e não pode mais se
 assert.ok(loja.includes('Em separação'));
 
 function mockSupabase(existing){
- const calls=[];\n const filters=[];
+ const calls=[];
+ const filters=[];
  const supabase={from(table){
   assert.equal(table,'orders');
   return {select(columns){
@@ -31,18 +32,20 @@ function mockSupabase(existing){
  }};
  return {supabase,calls,filters};
 }
-async function runCase(label,existing,expectedSelection,expectedAttempts){
- const {supabase,calls}=mockSupabase(existing);
- const fetchOrders=runInNewContext(helper+'; fetchMyOrdersWithSeparationFallback',{supabase});
+async function runCase(label,existing,expectedSelection,expectedAttempts,isAdmin=false){
+ const {supabase,calls,filters}=mockSupabase(existing);
+ const fetchOrders=runInNewContext(helper+'; fetchMyOrdersWithSeparationFallback',{supabase,currentUserIsAdmin:isAdmin});
  const result=await fetchOrders('user-test');
  assert.equal(result.error,null,label+': consulta deve concluir sem erro');
  assert.equal(result.data[0].id,'order-test',label+': deve retornar o pedido');
  assert.deepEqual(calls,expectedAttempts,label+': sequência de tentativas incorreta');
  assert.equal(calls.at(-1),expectedSelection,label+': seleção final incorreta');
+ const filtersPerAttempt=isAdmin?[['user_id','user-test']]:[['user_id','user-test'],['is_test_order',false]];
+ assert.deepEqual(filters,Array.from({length:expectedAttempts.length},()=>filtersPerAttempt).flat(),label+': filtro de pedidos de teste incorreto');
  console.log('PASS:',label);
 }
 
-const base='id,created_at,items,total,status,payment_method,delivery_type,pickup_code,delivery_address,delivery_vehicle,delivery_weight_kg,delivery_fee,lalamove_status,lalamove_tracking_url,is_test_order';
+const base='id,created_at,items,total,status,payment_method,delivery_type,pickup_code,delivery_address,delivery_vehicle,delivery_weight_kg,delivery_fee,lalamove_status,lalamove_status_updated_at,lalamove_tracking_url,is_test_order';
 const both=base+',separation_started_at,separation_started_legacy';
 const timestamp=base+',separation_started_at';
 const legacy=base+',separation_started_legacy';
@@ -52,13 +55,11 @@ await runCase('2. somente separation_started_at existe',['separation_started_at'
 await runCase('3. somente separation_started_legacy existe',['separation_started_legacy'],legacy,[both,timestamp,legacy]);
 await runCase('4. nenhuma coluna opcional existe',[],base,[both,timestamp,legacy,base]);
 
-// A quarta condição pedida ("apenas uma das duas") é exercitada nos dois sentidos:
 for(const [label,existing,expected,attempts] of [
  ['4a. apenas a coluna de data', ['separation_started_at'], timestamp, [both,timestamp]],
  ['4b. apenas a coluna legada', ['separation_started_legacy'], legacy, [both,timestamp,legacy]]
 ]){
  await runCase('Cenário adicional: '+label,existing,expected,attempts);
 }
-console.log('PASS: fallback independente das colunas de separação');
-
-await runCase('5. administrador pode abrir o pedido TESTE no acompanhamento do cliente',['separation_started_at','separation_started_legacy'],both,[both],true);
+await runCase('5. administrador pode ver pedido TESTE no acompanhamento do cliente',['separation_started_at','separation_started_legacy'],both,[both],true);
+console.log('PASS: fallback independente das colunas de separação e filtro de pedidos de teste por papel');
