@@ -177,3 +177,17 @@ export function isWebhookVerificationProbe(payload: unknown): boolean {
     !value.timestamp || typeof value.signature !== "string" || !value.signature ||
     !value.data || typeof value.data !== "object" || Array.isArray(value.data);
 }
+
+export function canQuoteLalamove(status: unknown, paymentMethod: unknown, isTestOrder: boolean): boolean {
+  const current = String(status || "").trim().toLowerCase();
+  if (["cancelada", "cancelado", "pagamento cancelado", "pagamento recusado", "reembolsado", "contestado"].includes(current)) {
+    return false;
+  }
+  if (isTestOrder) return true;
+  const paidByPix = String(paymentMethod || "").toLowerCase().includes("pix");
+  return paidByPix && ["pagamento confirmado", "preparando", "pronto", "pronto para retirada"].includes(current);
+}
+
+export function isLalamoveDispatchReady(status: unknown): boolean {
+  return ["pronto", "pronto para retirada"].includes(String(status || "").trim().toLowerCase());
+}

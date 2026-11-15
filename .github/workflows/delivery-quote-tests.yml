@@ -12,12 +12,15 @@ on:
       - "supabase/functions/_shared/lalamove-dispatch.ts"
       - "supabase/migrations/*lalamove-dispatch-and-webhook.sql"
       - "painel.html"
+      - "tests/painel-compact.visual.cjs"
       - "loja.html"
       - "loja-delivery-ui.js"
       - "loja-delivery-ui_test.ts"
       - ".github/workflows/delivery-quote-tests.yml"
   push:
     branches:
+      - main
+      - fix/lalamove-dispatch-compact-panel
       - feat/lalamove-delivery-sandbox
       - feat/lalamove-delivery-stage-3
     paths:
@@ -26,10 +29,12 @@ on:
       - "supabase/functions/lalamove-dispatch/**"
       - "supabase/functions/lalamove-webhook/**"
       - "supabase/functions/_shared/lalamove-dispatch.ts"
+      - "painel.html"
+      - "tests/painel-compact.visual.cjs"
       - ".github/workflows/delivery-quote-tests.yml"
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
@@ -41,3 +46,15 @@ jobs:
       - run: deno check --config supabase/functions/lalamove-webhook/deno.json supabase/functions/lalamove-webhook/index.ts
       - run: deno test --allow-net --allow-read supabase/functions/delivery-quote/index_test.ts supabase/functions/_shared/geocoding_test.ts supabase/functions/delivery-address/index_test.ts supabase/functions/lalamove-dispatch/index_test.ts
       - run: deno test --allow-read loja-delivery-ui_test.ts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --prefix /tmp/playwright playwright@1.58.2
+      - run: /tmp/playwright/node_modules/.bin/playwright install --with-deps chromium
+      - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-compact.visual.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: painel-mobile-playwright-screenshots
+          path: artifacts/painel-*.png
+          if-no-files-found: warn

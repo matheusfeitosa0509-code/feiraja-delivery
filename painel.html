@@ -156,6 +156,57 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 .lalamove-quote-box label{margin:0}
 .lalamove-quote-box .actions button{flex:1}
 @media(max-width:420px){.lalamove-admin-grid{grid-template-columns:1fr 1fr}.lalamove-admin .actions button{width:100%}}
+
+/* Painel compacto mobile: resumo sempre visível, detalhes recolhidos por padrão. */
+.order{padding:12px!important;border-radius:17px!important;display:grid;gap:8px}
+.order-summary{display:grid;gap:7px;min-width:0}
+.order-summary-top{display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-width:0}
+.order-summary-top>div{min-width:0;flex:1 1 125px}
+.order-summary-top h3{font-size:14px;line-height:1.25}
+.order-summary-top .total{font-size:16px}
+.order-summary-top .pill{margin:0;padding:4px 7px;font-size:10px}
+.order-expand{min-height:31px;padding:6px 10px;border-radius:999px;font-size:11px;white-space:nowrap}
+.order-contact{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;white-space:nowrap;font-size:12px;min-width:0;overflow:hidden}
+.order-contact>strong{max-width:38%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 auto}
+.order-phone{color:#176b3a;font-weight:800;text-decoration:underline;white-space:nowrap;flex:0 0 auto}
+.order-email{font-size:10px;margin-left:auto;min-width:0;flex:0 0 auto}
+.order-email summary{color:#526b59;font-weight:750;cursor:pointer}
+.order-email span{display:block;max-width:100%;overflow-wrap:anywhere;color:var(--muted)}
+.order-chips{display:flex;gap:5px;flex-wrap:wrap}
+.order-chip{display:inline-flex;align-items:center;max-width:100%;padding:4px 8px;border-radius:999px;background:#edf5eb;color:#315b3b;font-size:10px;line-height:1.3;font-weight:800;overflow-wrap:anywhere}
+.order-content{min-width:0}
+.order-content[hidden]{display:none!important}
+.order-observation{margin:8px 0;padding:8px 9px;border-radius:10px;background:#f7f9f6;display:grid;gap:2px;font-size:11px;line-height:1.35}
+.order-observation small,.order-extra small{font-size:9px;color:var(--muted);font-weight:800}
+.order-observation span{overflow-wrap:anywhere}
+.order-extra{margin:7px 0;padding:7px 9px;border-radius:10px;background:#f7f9f6;display:grid;gap:2px;font-size:11px}
+.lalamove-admin{margin:8px 0;padding:10px;gap:7px;border-radius:13px}
+.lalamove-admin-head{font-size:12px}
+.lalamove-address{display:grid;gap:2px;font-size:11px;line-height:1.35;overflow-wrap:anywhere}
+.lalamove-address small,.lalamove-state small,.lalamove-driver small{font-size:9px;color:var(--muted);font-weight:800}
+.lalamove-facts{display:flex;gap:7px;flex-wrap:wrap;font-size:10px;line-height:1.35}
+.lalamove-facts span{padding:4px 6px;border-radius:8px;background:#eaf3e7}
+.lalamove-admin .actions button{min-height:35px;padding:7px 11px;font-size:11px}
+.lalamove-quote-box{padding:9px;gap:7px;font-size:11px}
+.lalamove-quote-box label{font-size:11px}
+.lalamove-quote-box select{min-height:37px;font-size:12px}
+.lalamove-ready-warning{margin:0;padding:7px 8px;border-radius:8px;background:#fff4dc;color:#76530c;font-size:11px;line-height:1.35}
+.separation-item{grid-template-columns:27px minmax(0,1fr) auto;gap:6px;padding:4px 0}
+.separation-check{width:23px;min-height:23px;height:23px;padding:0;border-radius:7px;font-size:12px}
+.separation-name{font-size:12px;line-height:1.3}
+.separation-preference{font-size:10px;line-height:1.25}
+.separation-item>strong{font-size:11px}
+.items{padding-top:7px;margin-top:7px}
+.items .item{padding:4px 0;font-size:11px}
+.items .item-total{border-top:1px solid var(--line);margin-top:3px;padding-top:6px;font-size:12px}
+.statusrow{grid-template-columns:minmax(0,1fr) auto;gap:7px;margin-top:9px}
+.statusrow select{min-height:39px;padding:7px 9px;font-size:12px}
+.statusrow button{min-height:39px;padding:7px 12px;font-size:12px}
+.panel-test-tool{margin:18px 0}
+.panel-test-tool>summary{padding:12px 14px;border:1px dashed #b9cbb6;border-radius:12px;color:#526b59;font-size:12px;font-weight:800;cursor:pointer}
+.panel-test-tool #pixSimulationCard{margin:8px 0}
+@media(max-width:380px){.order-contact{font-size:10px;gap:3px}.order-contact>strong{max-width:34%}.order-email{font-size:9px}.order{padding:10px!important}.order-summary-top{gap:5px}.order-summary-top .pill{font-size:9px}.order-contact{font-size:11px}.order-email{margin-left:0}.order-chips{gap:4px}.order-chip{font-size:9px}.lalamove-facts{gap:4px}.lalamove-facts span{font-size:9px}.statusrow{grid-template-columns:minmax(0,1fr) auto}}
+
 </style>
 </head>
 <body><main class="wrap">
@@ -168,8 +219,9 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 </div>
 <section id="ordersTab" role="tabpanel">
 <div id="notice" class="notice hidden" role="status"></div>
-<section class="card" id="pixSimulationCard"><h2>Simulação de expiração de Pix</h2><p class="muted">Somente consulta. Nenhum pedido será cancelado ou alterado.</p><button id="simulatePixExpiry" type="button">Simular expiração de Pix</button><p id="pixSimulationMessage" class="muted" role="status"></p><div id="pixSimulationResults" class="simulation-wrap"></div></section>
+
 <div class="stats"><div class="stat"><small>Pedidos encontrados</small><strong id="count">0</strong></div><div class="stat"><small>Aguardando pagamento</small><strong id="pending">0</strong></div><div class="stat"><small>Em andamento</small><strong id="active">0</strong></div><div class="stat"><small>Vendas pagas (sem cancelados)</small><strong id="sum">R$ 0,00</strong></div></div><section class="card"><div class="filters"><input id="search" placeholder="Buscar por pedido, cliente ou telefone" aria-label="Buscar pedidos"><select id="filter" aria-label="Filtrar por status"><option value="">Todos os status</option><option>Pedido Recebido</option><option>Pagamento Pendente</option><option>Pagamento Confirmado</option><option>Preparando</option><option>Pronto para Retirada</option><option>Entregue</option><option>Cancelada</option><option value="Saiu para Entrega">Saiu para Entrega (pedido antigo)</option><option>Reembolsado</option><option>Contestado</option></select></div></section><div id="orders" class="orders"></div><div class="actions" style="justify-content:center;margin:16px 0"><button id="loadMore" class="secondary">Carregar mais pedidos</button></div>
+<details class="panel-test-tool"><summary>Ferramenta de teste · Simulação de expiração de Pix</summary><section class="card" id="pixSimulationCard"><h2>Simulação de expiração de Pix</h2><p class="muted">Somente consulta. Nenhum pedido será cancelado ou alterado.</p><button id="simulatePixExpiry" type="button">Simular expiração de Pix</button><p id="pixSimulationMessage" class="muted" role="status"></p><div id="pixSimulationResults" class="simulation-wrap"></div></section></details>
 </section>
 <section id="productTools" class="hidden" role="tabpanel">
 <section class="card unified-products" aria-label="Produtos">
@@ -813,26 +865,101 @@ function renderLalamoveDelivery(order,currentStatus){
  const fullAddress=[address.street,address.number,address.complement,address.neighborhood,address.reference,'Manaus - AM, Brasil'].filter(Boolean).join(', ');
  const mapUrl='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(fullAddress||String(order.customer_address||'Manaus - AM'));
  const ready=['Pronto para Retirada','Pronto'].includes(currentStatus);
- const paidOrTest=order.is_test_order===true||(ready&&String(order.payment_method||'').toLowerCase().includes('pix'));
- const canCall=ready&&paidOrTest&&!order.lalamove_status;
- const cancelStatus=String(order.lalamove_status||'');const matchedAt=Date.parse(String(order.lalamove_status_updated_at||''));const canCancel=cancelStatus==='searching'||(['assigned','enroute_pickup'].includes(cancelStatus)&&Number.isFinite(matchedAt)&&Date.now()>=matchedAt&&Date.now()-matchedAt<5*60*1000);
+ const pix=String(order.payment_method||'').toLowerCase().includes('pix');
+ const paidOrTest=order.is_test_order===true||(pix&&['Pagamento Confirmado','Preparando','Pronto para Retirada','Pronto'].includes(currentStatus));
+ const terminal=['Cancelada','Reembolsado','Contestado','Pagamento cancelado','Pagamento recusado'].includes(currentStatus);
+ const canQuote=paidOrTest&&!terminal&&!order.lalamove_status;
+ const cancelStatus=String(order.lalamove_status||'');
+ const matchedAt=Date.parse(String(order.lalamove_status_updated_at||''));
+ const canCancel=cancelStatus==='searching'||(['assigned','enroute_pickup'].includes(cancelStatus)&&Number.isFinite(matchedAt)&&Date.now()>=matchedAt&&Date.now()-matchedAt<5*60*1000);
  const driver=order.lalamove_driver&&typeof order.lalamove_driver==='object'?order.lalamove_driver:{};
  const vehicle=order.delivery_vehicle==='MOTO'?'Moto':order.delivery_vehicle==='CAR'?'Carro':'Não informado';
  const weight=Number(order.delivery_weight_kg);
  const weightText=Number.isFinite(weight)&&weight>0?weight.toLocaleString('pt-BR',{maximumFractionDigits:3})+' kg':'Não informado';
- const tracking=order.lalamove_tracking_url?'<a href="'+esc(order.lalamove_tracking_url)+'" target="_blank" rel="noopener noreferrer">Abrir rastreio Lalamove</a>':'';
+ const tracking=order.lalamove_tracking_url?'<a href="'+esc(order.lalamove_tracking_url)+'" target="_blank" rel="noopener noreferrer">Abrir rastreio</a>':'';
  const driverParts=[driver.name,driver.phone,driver.plateNumber?'Placa '+driver.plateNumber:''].filter(Boolean);
- const driverHtml=driverParts.length?'<p><small>MOTORISTA</small><strong>'+driverParts.map(esc).join(' · ')+'</strong></p>':'';
- const callButton=canCall?'<button type="button" data-lalamove-quote="'+esc(order.id)+'">Chamar entregador</button>':'';
+ const driverHtml=driverParts.length?'<p class="lalamove-driver"><small>MOTORISTA</small><strong>'+driverParts.map(esc).join(' · ')+'</strong></p>':'';
+ const callButton=canQuote?'<button type="button" data-lalamove-quote="'+esc(order.id)+'">Chamar entregador</button>':'';
  const cancelButton=canCancel?'<button type="button" class="danger" data-lalamove-cancel="'+esc(order.id)+'">Cancelar entrega</button>':'';
- return '<section class="lalamove-admin"><div class="lalamove-admin-head"><strong>Entrega Lalamove</strong>'+(order.is_test_order===true?'<span class="lalamove-test-badge">TESTE</span>':'')+'</div>'
-  +'<p><small>ENDEREÇO COMPLETO</small><strong>'+esc(fullAddress||order.customer_address||'Endereço não informado')+'</strong><a href="'+esc(mapUrl)+'" target="_blank" rel="noopener noreferrer">Abrir no mapa</a></p>'
-  +'<div class="lalamove-admin-grid"><p><small>VEÍCULO ESCOLHIDO</small><strong>'+esc(vehicle)+'</strong></p><p><small>PESO ESTIMADO</small><strong>'+esc(weightText)+'</strong></p><p><small>TAXA COBRADA</small><strong>'+money(order.delivery_fee)+'</strong></p></div>'
-  +(order.lalamove_status?'<p><small>STATUS DA ENTREGA</small><strong>'+esc(lalamoveStatusLabel(order.lalamove_status))+'</strong></p>':'')
+ return '<section class="lalamove-admin"><div class="lalamove-admin-head"><strong>Entrega Lalamove</strong></div>'
+  +'<div class="lalamove-address"><small>ENDEREÇO</small><strong>'+esc(fullAddress||order.customer_address||'Endereço não informado')+'</strong><a href="'+esc(mapUrl)+'" target="_blank" rel="noopener noreferrer">Abrir no mapa</a></div>'
+  +'<div class="lalamove-facts"><span>Veículo: <b>'+esc(vehicle)+'</b></span><span>Peso: <b>'+esc(weightText)+'</b></span><span>Taxa: <b>'+money(order.delivery_fee)+'</b></span></div>'
+  +(order.lalamove_status?'<p class="lalamove-state"><small>STATUS DA ENTREGA</small><strong>'+esc(lalamoveStatusLabel(order.lalamove_status))+'</strong></p>':'')
   +driverHtml+(tracking?'<p>'+tracking+'</p>':'')+'<div class="actions">'+callButton+cancelButton+'</div>'
-  +(canCall?'<div class="lalamove-quote-box" data-lalamove-quote-box="'+esc(order.id)+'" hidden></div>':'')+'</section>';
+  +(canQuote?'<div class="lalamove-quote-box" data-lalamove-quote-box="'+esc(order.id)+'" hidden></div>':'')+'</section>';
 }
-function render(){const q=$('search').value.trim().toLowerCase(),f=$('filter').value;const filtered=allOrders.filter(o=>(!f||normalizeOrderStatus(o.status)===f)&&(!q||[o.id,o.customer_name,o.customer_phone].some(v=>String(v||'').toLowerCase().includes(q))));$('count').textContent=allOrders.length;$('pending').textContent=allOrders.filter(o=>['Pedido Recebido','Pagamento Pendente'].includes(normalizeOrderStatus(o.status))).length;$('active').textContent=allOrders.filter(o=>['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega'].includes(normalizeOrderStatus(o.status))).length;$('sum').textContent=money(allOrders.filter(o=>{const status=normalizeOrderStatus(o.status),method=String(o.payment_method||'').toLowerCase();const pix=method.includes('pix');return pix?['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega','Entregue'].includes(status):status==='Entregue';}).reduce((s,o)=>s+Number(o.total||0),0));$('orders').innerHTML=filtered.map(o=>{const items=Array.isArray(o.items)?o.items:[];const checklist=o.market_checklist;const notes=Array.isArray(checklist)?'':String(checklist?.notes||'');const currentStatus=normalizeOrderStatus(o.status),preservedStatus=['Reembolsado','Contestado','Saiu para Entrega','Pagamento cancelado','Pagamento recusado'].includes(currentStatus);const opts=statuses.map(s=>'<option value="'+esc(s)+'" '+(currentStatus===s?'selected':'')+'>'+esc(s)+'</option>').join('')+(preservedStatus?'<option value="'+esc(currentStatus)+'" selected disabled>'+esc(currentStatus)+'</option>':'');const refundAction=o.refund_pending?'<div class="actions" style="margin-top:10px"><button class="secondary" type="button" data-refund-done="'+esc(o.id)+'">Marcar devolução feita</button></div>':'';const deliveryBlock=renderLalamoveDelivery(o,currentStatus);const itemOccurrences=new Map();const separatedKeys=separatedKeysFor(o);const itemRows=items.map(i=>{const fingerprint=JSON.stringify([String(i?.product_id??i?.productId??i?.id??''),String(i?.name??''),String(i?.unit??i?.unit_name??''),Number(i?.price??0),Number(i?.quantity??i?.qty??1)]);const occurrence=itemOccurrences.get(fingerprint)||0;itemOccurrences.set(fingerprint,occurrence+1);const key=itemSeparationKey(i,occurrence);const marked=separatedKeys.includes(key);return '<div class="separation-item '+(marked?'is-separated':'')+'"><button type="button" class="separation-check" data-separate-order="'+esc(o.id)+'" data-separate-key="'+esc(key)+'" aria-label="'+(marked?'Desmarcar item separado':'Marcar item como separado')+'" aria-pressed="'+String(marked)+'" '+(currentStatus==='Cancelada'?'disabled':'')+'>'+(marked?'✓':'')+'</button><span class="separation-name">'+esc(formatOrderItemDescription(i))+'</span>'+(i.item_note?'<small class="separation-preference">'+esc(i.item_note)+'</small>':'')+'<small class="separation-preference">Se faltar: '+esc(({replace:'substituir por similar',remove:'não substituir, retirar do pedido',call:'me chamar'})[i.substitution_preference]||'me chamar')+'</small><strong>'+orderItemTotal(i.price,i.quantity??i.qty??1,i)+'</strong></div>'}).join('');const separatedCount=items.length?items.filter((i,index)=>{const fingerprint=JSON.stringify([String(i?.product_id??i?.productId??i?.id??''),String(i?.name??''),String(i?.unit??i?.unit_name??''),Number(i?.price??0),Number(i?.quantity??i?.qty??1)]);const occurrence=items.slice(0,index).filter(x=>JSON.stringify([String(x?.product_id??x?.productId??x?.id??''),String(x?.name??''),String(x?.unit??x?.unit_name??''),Number(x?.price??0),Number(x?.quantity??x?.qty??1)])===fingerprint).length;return separatedKeys.includes(itemSeparationKey(i,occurrence));}).length:0;const separationHeader='<div class="separation-header"><strong>Itens do pedido</strong><span>'+separatedCount+' de '+items.length+' separados</span></div>'+(items.length&&separatedCount===items.length?'<p class="separation-done">Tudo separado</p>':'');return '<article class="order"><div class="orderhead"><div><h3>Pedido '+esc(shortOrderNumber(o.id))+'</h3><small class="muted">'+(o.created_at?new Date(o.created_at).toLocaleString('pt-BR'):'Data indisponível')+'</small></div><div class="total">'+money(o.total)+'</div></div><span class="pill '+(currentStatus==='Reembolsado'?'status-reembolsado':currentStatus==='Contestado'?'status-contestado':'')+'">'+esc(currentStatus)+'</span>'+(o.separation_started_at?'<span class="pill">Separação iniciada · '+esc(new Date(o.separation_started_at).toLocaleString('pt-BR'))+'</span>':o.separation_started_legacy?'<span class="pill">Separação iniciada · pedido anterior (horário não registrado)</span>':'')+(currentStatus==='Cancelada'?'<p class="muted">Pedido cancelado. Não é possível marcar itens como separados.</p>':'')+(o.refund_pending?'<span class="pill" style="background:#fff0ed;color:#a02d20">Devolver Pix</span>':'')+'<div class="details"><div><small>CLIENTE</small><strong>'+esc(o.customer_name)+'</strong></div><div><small>TELEFONE</small><strong>'+esc(o.customer_phone)+'</strong></div><div><small>RETIRADA</small><strong>'+esc(o.delivery_type==='pickup_uber'?'Retirada com Uber':(['pickup_store','pickup'].includes(o.delivery_type)?'Retirada na loja':'Entrega (pedido antigo)'))+'</strong></div><div><small>CÓDIGO DE RETIRADA</small><strong>'+esc(o.pickup_code||'—')+'</strong></div><div><small>PAGAMENTO</small><strong>'+esc(o.payment_method)+'</strong></div><div><small>ENDEREÇO</small><strong>'+esc(o.customer_address)+'</strong></div><div><small>E-MAIL</small><strong>'+esc(o.customer_email||'Não informado')+'</strong></div></div>'+deliveryBlock+'<div class="details"><div style="grid-column:1/-1"><small>OBSERVAÇÕES DO CLIENTE</small><strong>'+esc(notes||'Nenhuma observação')+'</strong></div></div><div class="items">'+separationHeader+(items.length?itemRows:'<p class="muted">Itens não detalhados</p>')+'<div class="item"><span>Subtotal</span><span>'+money(o.subtotal)+'</span></div><div class="item"><span>Taxa</span><span>'+money(o.delivery_fee)+'</span></div></div><div class="statusrow"><div><label for="status-'+esc(o.id)+'">Atualizar status</label><select id="status-'+esc(o.id)+'" data-status="'+esc(o.id)+'">'+opts+'</select></div><button data-save="'+esc(o.id)+'">Salvar</button></div>'+refundAction+'</article>'}).join('')||'<div class="card empty">Nenhum pedido corresponde a esse filtro.</div>';document.querySelectorAll('[data-save]').forEach(b=>b.addEventListener('click',()=>saveStatus(b.dataset.save,b)));document.querySelectorAll('[data-refund-done]').forEach(b=>b.addEventListener('click',()=>markRefundDone(b.dataset.refundDone,b)));document.querySelectorAll('[data-separate-order]').forEach(b=>b.addEventListener('click',()=>toggleSeparatedItem(b.dataset.separateOrder,b.dataset.separateKey)));document.querySelectorAll('[data-lalamove-quote]').forEach(b=>b.addEventListener('click',()=>startLalamoveQuote(b.dataset.lalamoveQuote,b)));document.querySelectorAll('[data-lalamove-cancel]').forEach(b=>b.addEventListener('click',()=>cancelLalamoveDelivery(b.dataset.lalamoveCancel,b)))}
+function render(){
+ const q=$('search').value.trim().toLowerCase(),f=$('filter').value;
+ const filtered=allOrders.filter(o=>(!f||normalizeOrderStatus(o.status)===f)&&(!q||[o.id,o.customer_name,o.customer_phone].some(v=>String(v||'').toLowerCase().includes(q))));
+ const statsOrders=allOrders.filter(o=>o.is_test_order!==true);
+ $('count').textContent=statsOrders.length;
+ $('pending').textContent=statsOrders.filter(o=>['Pedido Recebido','Pagamento Pendente'].includes(normalizeOrderStatus(o.status))).length;
+ $('active').textContent=statsOrders.filter(o=>['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega'].includes(normalizeOrderStatus(o.status))).length;
+ $('sum').textContent=money(statsOrders.filter(o=>{const status=normalizeOrderStatus(o.status),method=String(o.payment_method||'').toLowerCase();const pix=method.includes('pix');return pix?['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega','Entregue'].includes(status):status==='Entregue';}).reduce((s,o)=>s+Number(o.total||0),0));
+ $('orders').innerHTML=filtered.map(o=>{
+  const items=Array.isArray(o.items)?o.items:[];
+  const checklist=o.market_checklist;
+  const notes=Array.isArray(checklist)?'':String(checklist?.notes||'');
+  const currentStatus=normalizeOrderStatus(o.status);
+  const preservedStatus=['Reembolsado','Contestado','Saiu para Entrega','Pagamento cancelado','Pagamento recusado'].includes(currentStatus);
+  const opts=statuses.map(s=>'<option value="'+esc(s)+'" '+(currentStatus===s?'selected':'')+'>'+esc(s)+'</option>').join('')+(preservedStatus?'<option value="'+esc(currentStatus)+'" selected disabled>'+esc(currentStatus)+'</option>':'');
+  const refundAction=o.refund_pending?'<div class="actions" style="margin-top:8px"><button class="secondary" type="button" data-refund-done="'+esc(o.id)+'">Marcar devolução feita</button></div>':'';
+  const deliveryBlock=renderLalamoveDelivery(o,currentStatus);
+  const itemOccurrences=new Map(),separatedKeys=separatedKeysFor(o);
+  const itemRows=items.map(i=>{
+   const fingerprint=JSON.stringify([String(i?.product_id??i?.productId??i?.id??''),String(i?.name??''),String(i?.unit??i?.unit_name??''),Number(i?.price??0),Number(i?.quantity??i?.qty??1)]);
+   const occurrence=itemOccurrences.get(fingerprint)||0;itemOccurrences.set(fingerprint,occurrence+1);
+   const key=itemSeparationKey(i,occurrence),marked=separatedKeys.includes(key);
+   const preference=({replace:'substituir por similar',remove:'não substituir, retirar do pedido',call:'me chamar'})[i.substitution_preference]||'me chamar';
+   return '<div class="separation-item '+(marked?'is-separated':'')+'"><button type="button" class="separation-check" data-separate-order="'+esc(o.id)+'" data-separate-key="'+esc(key)+'" aria-label="'+(marked?'Desmarcar item separado':'Marcar item como separado')+'" aria-pressed="'+String(marked)+'" '+(currentStatus==='Cancelada'?'disabled':'')+'>'+(marked?'✓':'')+'</button><span class="separation-name">'+esc(formatOrderItemDescription(i))+'</span>'+(i.item_note?'<small class="separation-preference">'+esc(i.item_note)+'</small>':'')+'<small class="separation-preference">Se faltar: '+esc(preference)+'</small><strong>'+orderItemTotal(i.price,i.quantity??i.qty??1,i)+'</strong></div>';
+  }).join('');
+  const separatedCount=items.filter((i,index)=>{
+   const fingerprint=JSON.stringify([String(i?.product_id??i?.productId??i?.id??''),String(i?.name??''),String(i?.unit??i?.unit_name??''),Number(i?.price??0),Number(i?.quantity??i?.qty??1)]);
+   const occurrence=items.slice(0,index).filter(x=>JSON.stringify([String(x?.product_id??x?.productId??x?.id??''),String(x?.name??''),String(x?.unit??x?.unit_name??''),Number(x?.price??0),Number(x?.quantity??x?.qty??1)])===fingerprint).length;
+   return separatedKeys.includes(itemSeparationKey(i,occurrence));
+  }).length;
+  const separationHeader='<div class="separation-header"><strong>Itens do pedido</strong><span>'+separatedCount+' de '+items.length+' separados</span></div>'+(items.length&&separatedCount===items.length?'<p class="separation-done">Tudo separado</p>':'');
+  const date=o.created_at?new Date(o.created_at).toLocaleString('pt-BR'):'Data indisponível';
+  const phoneDigits=String(o.customer_phone||'').replace(/\D/g,'');
+  const waDigits=phoneDigits?(phoneDigits.startsWith('55')?phoneDigits:'55'+phoneDigits):'';
+  const phoneHtml=waDigits?'<a class="order-phone" href="https://wa.me/'+esc(waDigits)+'" target="_blank" rel="noopener noreferrer">'+esc(o.customer_phone||'Telefone não informado')+'</a>':'<span>Telefone não informado</span>';
+  const mode=o.delivery_type==='delivery'?'Entrega em casa (Lalamove)':o.delivery_type==='pickup_uber'?'Retirada com Uber':'Retirada na loja';
+  const codeHtml=o.delivery_type==='delivery'?'':('<div class="order-extra"><small>CÓDIGO DE RETIRADA</small><strong>'+esc(o.pickup_code||'—')+'</strong></div>');
+  const pickupAddress=o.delivery_type==='delivery'?'':(o.customer_address?'<div class="order-extra"><small>LOCAL DE RETIRADA</small><strong>'+esc(o.customer_address)+'</strong></div>':'');
+  const contact='<div class="order-contact"><strong>'+esc(o.customer_name||'Cliente')+'</strong><span>·</span>'+phoneHtml+'<details class="order-email"><summary>E-mail</summary><span>'+esc(o.customer_email||'Não informado')+'</span></details></div>';
+  const chips='<div class="order-chips"><span class="order-chip">'+esc(mode)+'</span><span class="order-chip">'+esc(o.payment_method||'Pagamento não informado')+'</span></div>';
+  const testBadge=o.is_test_order===true?'<span class="lalamove-test-badge">TESTE</span>':'';
+  const separationPill=o.separation_started_at?'<span class="pill">Separação iniciada · '+esc(new Date(o.separation_started_at).toLocaleString('pt-BR'))+'</span>':o.separation_started_legacy?'<span class="pill">Separação iniciada · pedido anterior (horário não registrado)</span>':'';
+  const cancelNote=currentStatus==='Cancelada'?'<p class="muted">Pedido cancelado. Não é possível marcar itens como separados.</p>':'';
+  const refundPill=o.refund_pending?'<span class="pill" style="background:#fff0ed;color:#a02d20">Devolver Pix</span>':'';
+  return '<article class="order">'
+   +'<div class="order-summary"><div class="order-summary-top"><div><h3>Pedido '+esc(shortOrderNumber(o.id))+'</h3><small class="muted">'+esc(date)+'</small></div><strong class="total">'+money(o.total)+'</strong><span class="pill '+(currentStatus==='Reembolsado'?'status-reembolsado':currentStatus==='Contestado'?'status-contestado':'')+'">'+esc(currentStatus)+'</span>'+testBadge+'<button type="button" class="order-expand" data-order-toggle="'+esc(o.id)+'" aria-expanded="false">Expandir</button></div>'
+   +contact+chips+'</div>'
+   +'<div class="order-content" data-order-content="'+esc(o.id)+'" hidden>'
+   +separationPill+refundPill+cancelNote+pickupAddress+codeHtml+deliveryBlock
+   +'<div class="order-observation"><small>OBSERVAÇÕES DO CLIENTE</small><span>'+esc(notes||'Nenhuma observação')+'</span></div>'
+   +'<div class="items">'+separationHeader+(items.length?itemRows:'<p class="muted">Itens não detalhados</p>')+'<div class="item"><span>Subtotal</span><span>'+money(o.subtotal)+'</span></div><div class="item"><span>Taxa</span><span>'+money(o.delivery_fee)+'</span></div><div class="item item-total"><strong>Total</strong><strong>'+money(o.total)+'</strong></div></div>'
+   +'<div class="statusrow"><div><label for="status-'+esc(o.id)+'">Atualizar status</label><select id="status-'+esc(o.id)+'" data-status="'+esc(o.id)+'">'+opts+'</select></div><button data-save="'+esc(o.id)+'">Salvar</button></div>'+refundAction+'</div></article>';
+ }).join('')||'<div class="card empty">Nenhum pedido corresponde a esse filtro.</div>';
+ document.querySelectorAll('[data-order-toggle]').forEach(b=>b.addEventListener('click',()=>{
+  const content=document.querySelector('[data-order-content="'+CSS.escape(b.dataset.orderToggle)+'"]');
+  if(!content)return;
+  content.hidden=!content.hidden;b.setAttribute('aria-expanded',String(!content.hidden));b.textContent=content.hidden?'Expandir':'Recolher';
+ }));
+ document.querySelectorAll('[data-save]').forEach(b=>b.addEventListener('click',()=>saveStatus(b.dataset.save,b)));
+ document.querySelectorAll('[data-refund-done]').forEach(b=>b.addEventListener('click',()=>markRefundDone(b.dataset.refundDone,b)));
+ document.querySelectorAll('[data-separate-order]').forEach(b=>b.addEventListener('click',()=>toggleSeparatedItem(b.dataset.separateOrder,b.dataset.separateKey)));
+ document.querySelectorAll('[data-lalamove-quote]').forEach(b=>b.addEventListener('click',()=>startLalamoveQuote(b.dataset.lalamoveQuote,b)));
+ document.querySelectorAll('[data-lalamove-cancel]').forEach(b=>b.addEventListener('click',()=>cancelLalamoveDelivery(b.dataset.lalamoveCancel,b)));
+}
+async function lalamoveErrorMessage(error,fallback){
+ const response=error?.context;
+ if(response&&typeof response.clone==='function'){
+  const payload=await response.clone().json().catch(()=>null);
+  if(payload?.error)return String(payload.error);
+ }
+ return String(error?.message||fallback);
+}
 async function startLalamoveQuote(orderId,button){
  button.disabled=true;button.textContent='Cotando moto e carro…';
  const box=document.querySelector('[data-lalamove-quote-box="'+CSS.escape(orderId)+'"]');
@@ -844,12 +971,26 @@ async function startLalamoveQuote(orderId,button){
   const explanation=value=>Number(value)>0?'Diferença por conta da loja.':Number(value)<0?'Custo atual abaixo da taxa já cobrada.':'Sem diferença para a taxa cobrada.';
   box.hidden=false;
   box.innerHTML='<strong>Nova cotação Lalamove — Sandbox</strong><p>Moto: <b>'+money(data.moto.fee)+'</b> · Diferença para taxa cobrada: <b>'+differenceText(data.moto.difference)+'</b><br><small>'+explanation(data.moto.difference)+'</small></p><p>Carro: <b>'+money(data.car.fee)+'</b> · Diferença para taxa cobrada: <b>'+differenceText(data.car.difference)+'</b><br><small>'+explanation(data.car.difference)+'</small></p><label>Veículo para esta corrida<select data-lalamove-vehicle><option value="MOTO" '+(data.selected_vehicle==='MOTO'?'selected':'')+'>Moto</option><option value="CAR" '+(data.selected_vehicle==='CAR'?'selected':'')+'>Carro</option></select></label><div class="actions"><button type="button" data-lalamove-confirm>Confirmar e criar corrida</button><button type="button" class="secondary" data-lalamove-close>Fechar</button></div><p class="muted">A corrida só será criada depois de tocar em “Confirmar e criar corrida”. A diferença fica por conta da loja.</p>';
+  const order=allOrders.find(o=>String(o.id)===String(orderId));
+  const ready=['Pronto para Retirada','Pronto'].includes(normalizeOrderStatus(order?.status));
+  if(!ready){
+   const confirmButton=box.querySelector('[data-lalamove-confirm]');
+   confirmButton.disabled=true;
+   confirmButton.title='Disponível quando o pedido estiver Pronto para Retirada';
+   const note=document.createElement('p');note.className='lalamove-ready-warning';note.textContent='Cotação salva. Para criar a corrida, primeiro altere o status do pedido para “Pronto para Retirada”.';
+   confirmButton.before(note);
+  }
   box.querySelector('[data-lalamove-confirm]').addEventListener('click',event=>confirmLalamoveDispatch(orderId,data.quote_session_id,box.querySelector('[data-lalamove-vehicle]').value,event.currentTarget));
   box.querySelector('[data-lalamove-close]').addEventListener('click',()=>{box.hidden=true;});
- }catch(error){notice(error?.message||'Não foi possível obter as duas cotações.',true);}
+ }catch(error){notice(await lalamoveErrorMessage(error,'Não foi possível cotar moto e carro. Confira o endereço e tente novamente.'),true);}
  finally{button.disabled=false;button.textContent='Chamar entregador';}
 }
 async function confirmLalamoveDispatch(orderId,sessionId,vehicle,button){
+ const order=allOrders.find(o=>String(o.id)===String(orderId));
+ if(!['Pronto para Retirada','Pronto'].includes(normalizeOrderStatus(order?.status))){
+  notice('A cotação está pronta, mas só é possível criar a corrida quando o pedido estiver com status “Pronto para Retirada”.',true);
+  return;
+ }
  button.disabled=true;button.textContent='Criando corrida no Sandbox…';
  try{
   const {data,error}=await db.functions.invoke('lalamove-dispatch',{body:{action:'create',order_id:orderId,quote_session_id:sessionId,vehicle}});
@@ -857,7 +998,7 @@ async function confirmLalamoveDispatch(orderId,sessionId,vehicle,button){
   if(data?.pending_confirmation){notice(data.message||'A Lalamove ainda está confirmando a criação. Não toque novamente.',true);await load();return;}
   if(data?.created){notice('Corrida criada no Sandbox. O acompanhamento será atualizado pelos webhooks.');await load();return;}
   notice('A Lalamove não confirmou a criação. Atualize o painel antes de tentar novamente.',true);await load();
- }catch(error){notice(error?.message||'Não foi possível criar a corrida.',true);await load();}
+ }catch(error){notice(await lalamoveErrorMessage(error,'Não foi possível criar a corrida. Confira os dados e tente novamente.'),true);await load();}
  finally{button.disabled=false;button.textContent='Confirmar e criar corrida';}
 }
 async function cancelLalamoveDelivery(orderId,button){
@@ -867,7 +1008,7 @@ async function cancelLalamoveDelivery(orderId,button){
   const {data,error}=await db.functions.invoke('lalamove-dispatch',{body:{action:'cancel',order_id:orderId}});
   if(error)throw error;
   if(data?.cancelled){notice('Entrega cancelada na Lalamove Sandbox.');await load();}
- }catch(error){notice(error?.message||'A Lalamove não permitiu cancelar a entrega.',true);await load();}
+ }catch(error){notice(await lalamoveErrorMessage(error,'A Lalamove não permitiu cancelar a entrega.'),true);await load();}
  finally{button.disabled=false;button.textContent='Cancelar entrega';}
 }
 async function saveStatus(id,button){
