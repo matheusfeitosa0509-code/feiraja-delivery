@@ -9,6 +9,9 @@ on:
       - "supabase/functions/expire-pix/**"
       - "supabase/functions/asaas-saque-validacao/**"
       - "supabase/functions/delivery-quote/**"
+      - "loja.html"
+      - "loja-delivery-ui.js"
+      - "loja-delivery-ui_test.ts"
       - ".github/workflows/check-pagamentos.yml"
   push:
     branches: [main]
@@ -44,6 +47,12 @@ jobs:
 
       - name: Test delivery quote (Lalamove mocked)
         run: deno test supabase/functions/delivery-quote/index_test.ts
+
+      - name: Check delivery checkout UI module
+        run: deno check loja-delivery-ui.js
+
+      - name: Test delivery checkout UI
+        run: deno test loja-delivery-ui_test.ts
 
       - name: Check Asaas webhook
         run: deno check supabase/functions/asaas-webhook/index.ts
