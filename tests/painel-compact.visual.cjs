@@ -4,7 +4,7 @@ const { chromium } = require("playwright");
 
 (async () => {
   const source = fs.readFileSync(path.join(process.cwd(), "painel.html"), "utf8");
-  const style = source.match(/<style>([\\s\\S]*?)<\\/style>/);
+  const style = source.match(/<style>([\s\S]*?)<\/style>/);
   if (!style) throw new Error("CSS do painel não encontrado");
   const fixture = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${style[1]}</style></head><body><main class="wrap">
   <article class="order">
