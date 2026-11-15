@@ -107,7 +107,7 @@ begin
       status = case
         when p_status = 'delivered' then 'Entregue'
         when p_status in ('assigned','enroute_pickup','picked_up') then 'Saiu para Entrega'
-        when p_status in ('cancelled','rejected','expired') and status = 'Saiu para Entrega' then 'Pronto para Retirada'
+        when p_status in ('cancelled','rejected','expired') and status = 'Saiu para Entrega' then 'Preparando'
         else status
       end
   where id = p_order_id
