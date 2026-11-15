@@ -306,6 +306,10 @@ Deno.serve(async (req: Request) => {
     const customer = body?.customer;
     const requestedItems = body?.items;
     const paymentMethod = String(body?.paymentMethod || "pix").toLowerCase();
+    if (paymentMethod === "pix_test") {
+      asaasEnabled = false;
+      asaasApiKey = "";
+    }
     const MIN_ORDER_SUBTOTAL_CENTS = 3000;
     if (!["pix", "pix_test", "cash", "card_on_delivery"].includes(paymentMethod)) return json({ error: "Forma de pagamento inválida." }, 400);
     if (!customer || !Array.isArray(requestedItems) || requestedItems.length < 1 || requestedItems.length > 50) {
@@ -560,7 +564,11 @@ Deno.serve(async (req: Request) => {
     }
 
     const subtotal = subtotalCents / 100;
-    if (subtotalCents < MIN_ORDER_SUBTOTAL_CENTS) return json({ error: "Pedido mínimo de R$ 30,00 em produtos." }, 400);
+    if (subtotalCents < MIN_ORDER_SUBTOTAL_CENTS) {
+      return json({ error: deliveryType === "delivery"
+        ? "Pedido mínimo de R$ 30,00 em produtos para entrega."
+        : "Pedido mínimo de R$ 30,00 em produtos para retirada." }, 400);
+    }
     let deliveryQuote: Awaited<ReturnType<typeof calculateServerDelivery>> | null = null;
     if (deliveryType === "delivery") {
       try {
@@ -594,7 +602,10 @@ Deno.serve(async (req: Request) => {
 
     const hashPayload = JSON.stringify({
       user_id: orderUserId,
-      customer: { name, phone, cpf, email, delivery_type: deliveryType, delivery_address: normalizedDeliveryAddress },
+      customer: {
+        name, phone, cpf, email, delivery_type: deliveryType,
+        ...(deliveryType === "delivery" ? { delivery_address: normalizedDeliveryAddress } : {}),
+      },
       payment_method: paymentMethod,
       items: items.slice().sort((a: any, b: any) => String(a.id).localeCompare(String(b.id))),
       subtotal_cents: subtotalCents,
