@@ -1492,7 +1492,7 @@ async function chooseDeliveryPlace(placeId){
   $('#deliveryMapFallback').hidden=true;
   setDeliveryQuoteStatus('Rua e bairro preenchidos. Confira o número e aguarde a cotação.');
   scheduleDeliveryQuote();
- }catch(error){deliveryPlacesSessionToken=null;setDeliveryQuoteStatus(String(error?.message||'Não foi possível selecionar o endereço.'),true);}
+ }catch(error){deliveryPlacesSessionToken=null;$('#deliveryMapFallback').hidden=false;setDeliveryQuoteStatus(String(error?.message||'Não foi possível selecionar o endereço.'),true);}
 }
 function loadLeaflet(){
  if(window.L)return Promise.resolve(window.L);
