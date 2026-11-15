@@ -47,7 +47,6 @@ alter table public.orders
  add column if not exists lalamove_status_updated_at timestamptz,
  add column if not exists is_test_order boolean not null default false;
 
-comment on column public.orders.delivery_fee is 'Taxa cobrada do cliente; para Lalamove corresponde a cotacao arredondada para cima.';
 comment on column public.orders.is_test_order is 'Pedido administrativo de sandbox, invisivel para clientes e excluido de relatorios.';
 
 create table if not exists public.delivery_settings (
@@ -61,7 +60,6 @@ insert into public.delivery_settings(singleton,delivery_ativa,moto_limite_kg)
 values(true,false,8) on conflict(singleton) do nothing;
 alter table public.delivery_settings enable row level security;
 revoke all on public.delivery_settings from anon,authenticated;
-drop policy if exists delivery_settings_admin_only on public.delivery_settings;
 create policy delivery_settings_admin_only on public.delivery_settings for all to authenticated
  using(public.is_current_user_admin()) with check(public.is_current_user_admin());
 
@@ -138,11 +136,7 @@ $$;
 revoke all on function public.admin_set_lalamove_actual_cost(text,numeric) from public,anon;
 grant execute on function public.admin_set_lalamove_actual_cost(text,numeric) to authenticated;
 
-drop policy if exists "Customers and admin can view permitted orders" on public.orders;
-create policy "Customers and admin can view permitted orders" on public.orders for select to authenticated
- using ((user_id=(select auth.uid()) and coalesce(is_test_order,false)=false) or public.is_current_user_admin());
-
-create or replace function public.admin_get_cost_report(p_start timestamptz,p_end timestamptz)
+create function public.admin_get_cost_report_with_delivery(p_start timestamptz,p_end timestamptz)
 returns jsonb language plpgsql security definer set search_path=''
 as $function$
 declare v_result jsonb;
@@ -187,5 +181,8 @@ begin
  return v_result;
 end;
 $function$;
+
+revoke all on function public.admin_get_cost_report_with_delivery(timestamptz,timestamptz) from public,anon;
+grant execute on function public.admin_get_cost_report_with_delivery(timestamptz,timestamptz) to authenticated;
 
 commit;
