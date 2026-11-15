@@ -1,5 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1.0.14";
 import { isTerminalTrackingStatus, normalizeTrackingCoordinates, publicDriverDetails, safeTrackingPhoto } from "../_shared/lalamove-tracking.ts";
+import { getProviderTracking } from "./providers/index.ts";
 
 Deno.test("posição do motorista valida latitude e longitude", () => {
   assertEquals(normalizeTrackingCoordinates({ lat: "-3.12", lng: "-60.02", updatedAt: "2026-11-15T12:00:00Z" }), {
@@ -25,4 +26,14 @@ Deno.test("rastreio para em estados terminais distintos", () => {
   assertEquals(isTerminalTrackingStatus("cancelled"), true);
   assertEquals(isTerminalTrackingStatus("expired"), true);
   assertEquals(isTerminalTrackingStatus("assigned"), false);
+});
+
+Deno.test("provedores futuros não usam a API da Lalamove por engano", async () => {
+  let message = "";
+  try {
+    await getProviderTracking("uber", "", "", "order-test");
+  } catch (error) {
+    message = error instanceof Error ? error.message : String(error);
+  }
+  assertEquals(message, "PROVIDER_NOT_CONFIGURED");
 });
