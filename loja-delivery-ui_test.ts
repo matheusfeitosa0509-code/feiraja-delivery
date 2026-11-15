@@ -26,7 +26,7 @@ Deno.test("acesso à entrega: anônimo não chama RPC e conta comum não ganha a
   const anonymous = await loadDeliveryAccessState({ id: "anon", is_anonymous: true }, rpc);
   assertEquals(anonymous, { adminCheckComplete: false, isAdmin: false, deliveryActive: false });
   assertEquals(calls, 0);
-  const common = await loadDeliveryAccessState({ id: "common" }, async (name) => {
+  const common = await loadDeliveryAccessState({ id: "common" }, async (name: string) => {
     calls++;
     return name === "is_current_user_admin" ? { data: false, error: null } : { data: true, error: null };
   });
@@ -35,7 +35,7 @@ Deno.test("acesso à entrega: anônimo não chama RPC e conta comum não ganha a
 });
 
 Deno.test("falha da RPC administrativa mantém Em breve mesmo se a flag estiver ativa", async () => {
-  const access = await loadDeliveryAccessState({ id: "admin" }, async (name) => {
+  const access = await loadDeliveryAccessState({ id: "admin" }, async (name: string) => {
     if (name === "is_current_user_admin") throw new Error("network failure");
     return { data: true, error: null };
   });
@@ -44,11 +44,11 @@ Deno.test("falha da RPC administrativa mantém Em breve mesmo se a flag estiver 
 });
 
 Deno.test("admin confirmado pode testar; Consulte o valor depende da flag ativa", async () => {
-  const inactive = await loadDeliveryAccessState({ id: "admin" }, async (name) => ({
+  const inactive = await loadDeliveryAccessState({ id: "admin" }, async (name: string) => ({
     data: name === "is_current_user_admin" ? true : false, error: null,
   }));
   assertEquals(inactive, { adminCheckComplete: true, isAdmin: true, deliveryActive: false });
-  const active = await loadDeliveryAccessState({ id: "admin" }, async (name) => ({
+  const active = await loadDeliveryAccessState({ id: "admin" }, async (name: string) => ({
     data: true, error: null,
   }));
   assertEquals(active, { adminCheckComplete: true, isAdmin: true, deliveryActive: true });
