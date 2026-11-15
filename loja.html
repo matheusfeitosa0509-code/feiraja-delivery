@@ -1579,7 +1579,9 @@ async function fetchMyOrdersWithSeparationFallback(userId){
  ];
  let lastResult={data:null,error:null};
  for(const columns of candidates){
-  const result=await supabase.from('orders').select(columns).eq('user_id',userId).eq('is_test_order',false).order('created_at',{ascending:false}).limit(50);
+  const baseQuery=supabase.from('orders').select(columns).eq('user_id',userId);
+  const visibleQuery=currentUserIsAdmin?baseQuery:baseQuery.eq('is_test_order',false);
+  const result=await visibleQuery.order('created_at',{ascending:false}).limit(50);
   lastResult=result;
   if(!result.error)return result;
   const code=String(result.error.code||'');
