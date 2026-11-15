@@ -85,7 +85,7 @@ begin
  perform pg_advisory_xact_lock(hashtextextended(coalesce(p_order_id,''),0));
  select o.id,o.status,o.payment_method,o.is_test_order,o.delivery_type,o.delivery_fee
  into v_order from public.orders o where o.id=p_order_id for update;
- if not found or v_order.delivery_type <> 'delivery' then
+ if not found or v_order.delivery_type is distinct from 'delivery' then
   raise exception 'delivery order not found' using errcode='P0002';
  end if;
  if lower(btrim(coalesce(v_order.status,''))) not in ('pronto','pronto para retirada') then
@@ -168,7 +168,7 @@ begin
  update public.orders set lalamove_status=null,lalamove_status_updated_at=null where id=p_order_id
   and lalamove_status='pending';
 end;
-$;
+$$;
 
 create or replace function public.service_cancel_lalamove_dispatch(p_order_id text)
 returns jsonb language plpgsql security definer set search_path=''
@@ -234,7 +234,7 @@ $$;
 
 create or replace function public.service_get_lalamove_dispatch(p_order_id text)
 returns jsonb language plpgsql security definer set search_path=''
-as $
+as $$
 begin
  if current_setting('request.jwt.claim.role',true) is distinct from 'service_role' then
   raise exception 'service role required' using errcode='42501';
@@ -244,7 +244,7 @@ begin
   'tracking_url',d.tracking_url,'driver',d.driver
  ) from feira_cost_private.lalamove_dispatches d where d.order_id=p_order_id);
 end;
-$;
+$$;
 
 revoke all on function public.service_get_lalamove_dispatch(text) from public,anon,authenticated;
 revoke all on function public.service_store_lalamove_quotes(text,uuid,jsonb,jsonb,numeric,numeric,timestamptz,timestamptz) from public,anon,authenticated;
