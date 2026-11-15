@@ -27,7 +27,7 @@ export async function loadDeliveryAccessState(user, rpc) {
   return {
     adminCheckComplete,
     isAdmin,
-    deliveryActive: isAdmin && !enabledResult?.error && enabledResult?.data === true,
+    deliveryActive: !enabledResult?.error && enabledResult?.data === true,
   };
 }
 
