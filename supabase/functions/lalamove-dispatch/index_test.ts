@@ -1,6 +1,6 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
-  buildLalamoveOrderBody, canStartDispatch, cancelLalamoveOrder, createLalamoveOrder,
+  buildLalamoveOrderBody, canCancelLalamove, canStartDispatch, cancelLalamoveOrder, createLalamoveOrder,
   makeWebhookSignature, mapLalamoveStatus, priceDifference, quoteFee, verifyWebhookSignature,
 } from "../_shared/lalamove-dispatch.ts";
 
@@ -95,6 +95,15 @@ Deno.test("cancelamento MOCKADO: janela fechada retorna 409 sem fingir sucesso",
   const response = await cancelLalamoveOrder("pk_test_demo", "sk_test_demo", "LALA-123456789",
     async () => new Response(JSON.stringify({ message: "ERR_CANCELLATION_FORBIDDEN" }), { status: 409 }));
   assertEquals(response.status, 409);
+});
+
+Deno.test("janela de cancelamento: searching permitido; ON_GOING somente nos primeiros 5 minutos", () => {
+  const now = Date.parse("2026-11-15T12:00:00.000Z");
+  assertEquals(canCancelLalamove("searching", null, now), true);
+  assertEquals(canCancelLalamove("assigned", "2026-11-15T11:56:00.000Z", now), true);
+  assertEquals(canCancelLalamove("assigned", "2026-11-15T11:55:00.000Z", now), false);
+  assertEquals(canCancelLalamove("picked_up", "2026-11-15T11:59:00.000Z", now), false);
+  assertEquals(canCancelLalamove("assigned", null, now), false);
 });
 
 Deno.test("status e diferença de taxa são mapeados sem expor dados privados", () => {
