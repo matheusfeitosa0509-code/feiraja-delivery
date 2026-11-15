@@ -11,6 +11,7 @@ const styleEnd = storeHtml.indexOf('</style>', styleStart);
 if (styleStart < 0 || styleEnd < 0) throw new Error('checkout card CSS missing from loja.html');
 const checkoutCss = [
   '.checkout-choice-card.is-disabled{opacity:.52;filter:grayscale(.35);cursor:not-allowed;background:#f4f5f1!important;border-style:dashed!important}',
+  '.choice-radio{position:absolute;opacity:0;width:1px;height:1px}',
   storeHtml.slice(styleStart, styleEnd),
   'body{margin:0;padding:16px;background:#f4f7f2;font-family:Arial,sans-serif}',
   '.checkout-screen{max-width:520px;margin:0 auto}',
