@@ -1,7 +1,7 @@
 import { assertEquals, assertThrows } from "jsr:@std/assert@1.0.14";
 import {
   buildDeliveryQuoteItems, canShowDeliveryOption, checkoutGrandTotal,
-  deliveryPaymentOptions, deliveryQuoteErrorMessage, deliveryQuoteLabel, isDeliveryOutOfArea,
+  deliveryPaymentOptions, deliveryQuoteErrorMessage, deliveryQuoteLabel, isAdminRpcTrue, isDeliveryOutOfArea,
   normalizeDeliveryAddress,
 } from "./loja-delivery-ui.js";
 
@@ -60,4 +60,12 @@ Deno.test("erros da cotação diferenciam endereço, Manaus e cobertura Lalamove
   assertEquals(deliveryQuoteErrorMessage(422, "ADDRESS_OUTSIDE_MANAUS").includes("fora de Manaus"), true);
   assertEquals(deliveryQuoteErrorMessage(422, "LALAMOVE_OUT_OF_SERVICE_AREA").includes("Lalamove não atende"), true);
   assertEquals(deliveryQuoteErrorMessage(503, "GEOCODER_NOT_CONFIGURED").includes("GOOGLE_GEOCODING_API_KEY"), true);
+});
+
+Deno.test("resultado da RPC administrativa é normalizado sem falsos negativos", () => {
+  assertEquals(isAdminRpcTrue(true), true);
+  assertEquals(isAdminRpcTrue("true"), true);
+  assertEquals(isAdminRpcTrue(1), true);
+  assertEquals(isAdminRpcTrue(false), false);
+  assertEquals(isAdminRpcTrue(null), false);
 });
