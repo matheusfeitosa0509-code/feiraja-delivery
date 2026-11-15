@@ -118,6 +118,7 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
     const messages: Record<string, { message: string; status: number }> = {
+      PROVIDER_NOT_CONFIGURED: { message: "Rastreio deste entregador ainda não está disponível.", status: 503 },
       SANDBOX_CREDENTIALS_REQUIRED: { message: "Rastreio Lalamove temporariamente indisponível.", status: 503 },
       LALAMOVE_ORDER_DETAILS_FAILED: { message: "Não foi possível consultar a corrida na Lalamove.", status: 502 },
       LALAMOVE_STATUS_UNKNOWN: { message: "A Lalamove retornou um status ainda não reconhecido.", status: 502 },
