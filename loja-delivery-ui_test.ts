@@ -159,6 +159,8 @@ Deno.test("mapa usa função autenticada, rate limit e atualiza enquanto visíve
   assertEquals(migration.includes("revoke all on function public.consume_lalamove_tracking_rate_limit"), true);
   assertEquals(migration.includes("grant execute on function public.consume_lalamove_tracking_rate_limit"), true);
   assertEquals(migration.includes("service_update_lalamove_tracking_status"), true);
+  assertEquals(migration.includes("as $\\ndeclare v_order_id text;"), true, "tracking status RPC must use valid dollar quoting");
+  assertEquals(migration.includes("\\n$;\\n\\nrevoke all on function public.service_update_lalamove_tracking_status"), true, "tracking status RPC must close its SQL body");
   assertEquals(migration.includes("p_status in ('cancelled','rejected','expired')"), true);
   assertEquals(migration.includes("when p_status = 'delivered' then 'Entregue'"), true);
   assertEquals(migration.includes("delivery_fee"), false, "tracking migration must not change price fields");
