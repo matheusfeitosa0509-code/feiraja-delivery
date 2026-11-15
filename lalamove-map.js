@@ -113,7 +113,8 @@
    else if(value==='cancelled'||value==='rejected'){if(heading)heading.textContent='Entrega cancelada';if(subtitle)subtitle.textContent='A entrega foi cancelada.';if(detail)detail.textContent='A entrega foi cancelada. Fale com a loja se precisar de ajuda.';}
   }
   async function refresh(){
-   if(state.stopped||!container.isConnected)return;
+   if(state.stopped||!container.isConnected||state.inFlight)return;
+   state.inFlight=true;
    try{
     const data=await fetchTracking(orderId);
     syncOrderUI(data);
@@ -128,6 +129,8 @@
     await ensureMap(data);
    }catch(error){
     status.textContent='Não foi possível atualizar o mapa agora. Use “Abrir rastreio da Lalamove” como alternativa.';
+   }finally{
+    state.inFlight=false;
    }
   }
   function start(){if(state.stopped||state.timer||document.visibilityState==='hidden'||!container.getClientRects().length)return;void refresh();state.timer=setInterval(()=>void refresh(),Math.max(15000,Number(options.pollIntervalMs)||15000));}
