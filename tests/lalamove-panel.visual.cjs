@@ -21,12 +21,16 @@ const { chromium } = require("playwright");
   const orderSource = source.slice(orderStart, orderEnd);
   const flowSource = source.slice(flowStart, flowEnd);
   const confirmSource = source.slice(confirmStart, confirmEnd);
+  if (/\$\s*\(/.test(confirmSource)) throw new Error("appConfirm voltou a depender do helper $ do módulo Supabase");
   const settingsMarkup = source.slice(source.indexOf('<section class="card lalamove-settings"'), source.indexOf('</section>', source.indexOf('<section class="card lalamove-settings"')) + 10);
   const browser = await chromium.launch({ headless: true });
   fs.mkdirSync("artifacts", { recursive: true });
   try {
     for (const width of [360, 412]) {
       const page = await browser.newPage({ viewport: { width, height: 1000 }, deviceScaleFactor: 1 });
+      const runtimeErrors = [];
+      page.on("pageerror", error => runtimeErrors.push("pageerror: " + error.message));
+      page.on("console", message => { if (message.type() === "error") runtimeErrors.push("console.error: " + message.text()); });
       const order = {
         id: "TEST-LALAMOVE-" + width, is_test_order: true, status: "Preparando",
         delivery_type: "delivery", delivery_address: { street: "Rua Japiassu", number: "140", neighborhood: "Lago Azul" },
@@ -68,16 +72,16 @@ const { chromium } = require("playwright");
             };
           },
           functions: { invoke: async (name, options) => {
-            calls.push({ name, action: options.body.action });
+            calls.push({ name, action: options.body.action, environment: lalamoveEnvironment });
             if (options.body.action === "quote") return { error: null, data: {
-              environment: "producao", quote_session_id: "00000000-0000-4000-8000-000000000001",
+              environment: lalamoveEnvironment, quote_session_id: "00000000-0000-4000-8000-000000000001",
               selected_vehicle: "MOTO", moto: { fee: 12.05, difference: -2.95 }, car: { fee: 14.40, difference: -0.60 }
             }};
             if (options.body.action === "create") return { error: null, data: { created: true, vehicle: options.body.vehicle } };
             return { error: null, data: {} };
           }}
         };
-        const appConfirm = new Function("$", confirmSource + "; return appConfirm;")($);
+        const appConfirm = new Function(confirmSource + "; return appConfirm;")();
         const renderSource = orderSource;
         const renderOrder = new Function("order","currentStatus","lalamoveEnvironment","esc","money",renderSource+
           "\nreturn renderLalamoveDelivery(order,currentStatus);")(order,"Preparando",lalamoveEnvironment,esc,money);
@@ -121,17 +125,32 @@ const { chromium } = require("playwright");
       if (!confirmText.includes("R$ 14,40") || !confirmText.includes("Carro")) throw new Error("Confirmação não mostra preço real e veículo em " + width + "px");
       await productionDialog.getByRole("button", { name: "Criar corrida real" }).click();
       await page.waitForFunction(() => document.querySelector('[data-lalamove-feedback]')?.textContent.includes("Corrida criada") || document.querySelector('[data-lalamove-feedback]')?.textContent.includes("Corrida criada no Sandbox") || document.querySelector('[data-lalamove-feedback]')?.textContent.includes("Acompanhamento"));
-      const calls = await page.evaluate(() => window.testHooks.getCalls());
-      if (calls.filter(x => x.action === "quote").length !== 1 || calls.filter(x => x.action === "create").length !== 1) {
-        throw new Error("A API mockada não recebeu exatamente uma cotação e uma criação em " + width + "px");
-      }
       await page.locator("#lalamoveEnvironmentSelect").selectOption("sandbox");
       await page.waitForFunction(() => document.getElementById("lalamoveSettingsBadge").textContent === "SANDBOX");
+      await callButton.click();
+      await page.getByRole("dialog").getByRole("button", { name: "Continuar" }).click();
+      const sandboxQuote = page.locator('[data-lalamove-quote-box="' + order.id + '"]');
+      await sandboxQuote.waitFor({ state: "visible" });
+      const sandboxText = await sandboxQuote.textContent();
+      if (!sandboxText.includes("Sandbox")) throw new Error("Cotação não identificou Sandbox em " + width + "px");
+      await sandboxQuote.locator('[data-lalamove-vehicle="MOTO"]').click();
+      await sandboxQuote.locator("[data-lalamove-confirm]").click();
+      const sandboxFeedback = page.locator('[data-lalamove-feedback="' + order.id + '"]');
+      await sandboxFeedback.waitFor({ state: "visible" });
+      if (!(await sandboxFeedback.textContent()).includes("Corrida criada na Sandbox")) throw new Error("A criação mockada em Sandbox não foi confirmada.");
+      const calls = await page.evaluate(() => window.testHooks.getCalls());
+      if (calls.filter(x => x.action === "quote").length !== 2 || calls.filter(x => x.action === "create").length !== 2) {
+        throw new Error("A API mockada não recebeu duas cotações e duas criações em Produção/Sandbox em " + width + "px");
+      }
+      if (!calls.some(x => x.action === "create" && x.environment === "producao") || !calls.some(x => x.action === "create" && x.environment === "sandbox")) {
+        throw new Error("As duas criações não respeitaram os ambientes selecionados.");
+      }
       await page.evaluate(() => window.testHooks.setEnvironmentError("permission denied for table delivery_settings"));
       await page.locator('[data-lalamove-quote="' + readyOrder.id + '"]').click();
       await page.locator('[data-lalamove-feedback="' + readyOrder.id + '"]').waitFor({ state: "visible" });
       const environmentError = await page.locator('[data-lalamove-feedback="' + readyOrder.id + '"]').textContent();
       if (!environmentError.includes("permission denied")) throw new Error("Erro de ambiente não foi exibido no pedido em "+width+"px");
+      if (runtimeErrors.length) throw new Error("Erros JS/console no painel " + width + "px:\n" + runtimeErrors.join("\n"));
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
       if (overflow) throw new Error("Rolagem horizontal em " + width + "px");
       await page.screenshot({ path: "artifacts/lalamove-panel-" + width + ".png", fullPage: true });
@@ -140,5 +159,5 @@ const { chromium } = require("playwright");
   } finally {
     await browser.close();
   }
-  console.log("Playwright Lalamove: seletor, badge, modal de Produção, aviso Preparando, botão em Preparando/Pronto e API mockada aprovados em 360px e 412px.");
+  console.log("Playwright Lalamove: fluxo completo Produção/Sandbox, appConfirm sem helper injetado e zero pageerror/console.error aprovados em 360px e 412px.");
 })().catch(error => { console.error(error); process.exit(1); });

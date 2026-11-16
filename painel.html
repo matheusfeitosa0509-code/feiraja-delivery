@@ -1035,7 +1035,7 @@ function setLalamoveFeedback(orderId,message,isError=false){
  feedback.hidden=!message;
 }
 async function loadLalamoveEnvironment(){
- const select=$('lalamoveEnvironmentSelect'),message=$('lalamoveSettingsMessage');if(!select||!message)return;
+ const select=document.getElementById('lalamoveEnvironmentSelect'),message=document.getElementById('lalamoveSettingsMessage');if(!select||!message)return;
  lalamoveEnvironmentReady=false;lalamoveEnvironmentLoadError='';
  try{
   const {data,error}=await db.from('delivery_settings').select('lalamove_ambiente').eq('singleton',true).maybeSingle();
@@ -1051,7 +1051,7 @@ async function loadLalamoveEnvironment(){
  }
 }
 async function changeLalamoveEnvironment(nextValue){
- const select=$('lalamoveEnvironmentSelect'),message=$('lalamoveSettingsMessage');if(!select||!message)return;
+ const select=document.getElementById('lalamoveEnvironmentSelect'),message=document.getElementById('lalamoveSettingsMessage');if(!select||!message)return;
  const next=nextValue==='producao'?'producao':'sandbox',previous=lalamoveEnvironment;if(next===previous){select.value=previous;return;}
  if(next==='producao'&&!(await appConfirm('Produção = corridas REAIS, cobradas do saldo da Lalamove. Confirmar?',{title:'Ativar Produção da Lalamove',confirmText:'Confirmar Produção',danger:true}))){select.value=previous;return;}
  select.disabled=true;message.textContent='Salvando ambiente…';
@@ -1059,7 +1059,7 @@ async function changeLalamoveEnvironment(nextValue){
  catch(error){select.value=previous;message.textContent='Falha ao salvar ambiente Lalamove: '+String(error?.message||error||'Erro desconhecido');}
  finally{select.disabled=false;}
 }
-$('lalamoveEnvironmentSelect')?.addEventListener('change',event=>changeLalamoveEnvironment(event.target.value));
+document.getElementById('lalamoveEnvironmentSelect')?.addEventListener('change',event=>changeLalamoveEnvironment(event.target.value));
 async function handleLalamoveQuoteClick(orderId,button){
  if(!button)return;
  button.disabled=true;button.textContent='Carregando…';
@@ -1850,7 +1850,9 @@ selectMainTab(requestedTab);
 selectProductSection(requestedTab==='products'?requestedSection:'formBox');
 
 function appConfirm(message,options={}){
- const backdrop=$('appDialogBackdrop'),title=$('appDialogTitle'),body=$('appDialogMessage'),back=$('appDialogBack'),confirm=$('appDialogConfirm');
+ // Este script é clássico e não compartilha o escopo lexical do módulo Supabase.
+ const byId=id=>document.getElementById(id);
+ const backdrop=byId('appDialogBackdrop'),title=byId('appDialogTitle'),body=byId('appDialogMessage'),back=byId('appDialogBack'),confirm=byId('appDialogConfirm');
  if(!backdrop||!title||!body||!back||!confirm)return Promise.resolve(false);
  title.textContent=options.title||'Confirmar ação';body.textContent=String(message||'');
  back.textContent=options.cancelText||'Voltar';confirm.textContent=options.confirmText||'Confirmar';
