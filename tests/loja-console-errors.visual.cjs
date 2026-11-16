@@ -12,7 +12,7 @@ const { chromium } = require("playwright");
     "rpc:async()=>({data:false,error:null}),functions:{invoke:async()=>({data:{},error:null})}," +
     "storage:{from:()=>({upload:async()=>({data:{},error:null}),remove:async()=>({data:[],error:null}),getPublicUrl:()=>({data:{publicUrl:''}})})}," +
     "channel:()=>({on(){return this},subscribe(){return this}}),removeChannel:async()=>({})" +
-    "};window.FeiraTurnstile={create:()=>({init(){},getToken:()=>"",reset(){}})};" +
+    "};window.FeiraTurnstile={create:()=>({init(){},getToken:()=>'',reset(){}})};" +
     "window.FeiraLalamoveMap={mountAll(){}};" +
     "</script>";
   let html = htmlSource
