@@ -41,6 +41,11 @@ Deno.serve(async (req: Request) => {
     let serviceKey = "";
     try { serviceKey = requireSupabaseSecretKey(Deno.env.get("SUPABASE_SECRET_KEYS")); } catch { /* generic configuration error */ }
     if (!supabaseUrl || !serviceKey) return json({ error: "Webhook server configuration is incomplete." }, 503);
+    const db = createClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: secretKeyFetch(serviceKey) },
+    });
+    const configuredEnvironment = await readLalamoveEnvironment(db);
 
     const candidates: Array<{ environment: "sandbox" | "producao"; apiKey: string; apiSecret: string }> = [];
     for (const environment of ["sandbox", "producao"] as const) {
@@ -48,6 +53,9 @@ Deno.serve(async (req: Request) => {
         const credentials = readLalamoveCredentials(environment, (name) => Deno.env.get(name));
         candidates.push({ environment, apiKey: credentials.apiKey, apiSecret: credentials.apiSecret });
       } catch { /* One environment may be intentionally unconfigured. */ }
+    }
+    if (configuredEnvironment === "producao" && !candidates.some((candidate) => candidate.environment === "producao")) {
+      return json({ error: "Credenciais Lalamove de produção ausentes ou inválidas. Configure LALAMOVE_PROD_API_KEY e LALAMOVE_PROD_API_SECRET no Supabase.", code: "PRODUCTION_CREDENTIALS_REQUIRED" }, 503);
     }
     if (!candidates.length) return json({ error: "No Lalamove webhook credentials are configured." }, 503);
     const matched = (await Promise.all(candidates.map(async (candidate) => ({
@@ -73,13 +81,7 @@ Deno.serve(async (req: Request) => {
     const eventAt = eventDateRaw && Number.isFinite(Date.parse(String(eventDateRaw)))
       ? new Date(String(eventDateRaw)).toISOString()
       : new Date(Number(payload.timestamp) * 1000).toISOString();
-    const db = createClient(supabaseUrl, serviceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-      global: { fetch: secretKeyFetch(serviceKey) },
-    });
-    // Read the server setting, while using the signed key identity to validate events
-    // from either environment even if the operator has since switched the setting.
-    await readLalamoveEnvironment(db);
+    // The signed API key identifies the event environment; current setting may have changed.
     let driver = safeDriver(data.driver || order.driver);
     const driverId = String(data.driverId || order.driverId || data.driver?.driverId || order.driver?.driverId || "");
     if (!driver && driverId) {
