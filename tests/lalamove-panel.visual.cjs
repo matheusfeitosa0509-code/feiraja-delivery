@@ -93,7 +93,8 @@ const { chromium } = require("playwright");
       }
       await prepDialog.getByRole("button", { name: "Continuar" }).click();
       await page.locator('[data-lalamove-quote-box="' + order.id + '"]').waitFor({ state: "visible" });
-      if (!(await page.locator('[data-lalamove-quote-box="' + order.id + '"]').textContent()).includes("Produção")) throw new Error("Cotação não identificou Produção em " + width + "px");
+      const quoteBoxText = await page.locator('[data-lalamove-quote-box="' + order.id + '"]').textContent();
+      if (!quoteBoxText.includes("Produção")) throw new Error("Cotação não identificou Produção em " + width + "px: " + JSON.stringify({ quoteBoxText, environment: await page.evaluate(() => window.testHooks.getEnvironment()) }));
       await page.locator('[data-lalamove-quote-box="' + order.id + '"] [data-lalamove-vehicle="CAR"]').click();
       await page.locator('[data-lalamove-quote-box="' + order.id + '"] [data-lalamove-confirm]').click();
       const productionDialog = page.getByRole("dialog");
