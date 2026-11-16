@@ -76,7 +76,7 @@ const { chromium } = require("playwright");
             calls.push({ name, action: options.body.action, environment: lalamoveEnvironment });
             if (options.body.action === "quote") {
               // Simulate the RPC ON CONFLICT update: a prior Sandbox quote is replaced by the new environment.
-              storedQuote = { environment: lalamoveEnvironment, moto: { fee: 12.05 }, car: { fee: 14.40 } };
+              storedQuote.environment = lalamoveEnvironment; storedQuote.moto.fee = 12.05; storedQuote.car.fee = 14.40;
               return { error: null, data: {
                 environment: lalamoveEnvironment, quote_session_id: "00000000-0000-4000-8000-000000000001",
                 selected_vehicle: "MOTO", moto: { fee: 12.05, difference: -2.95 }, car: { fee: 14.40, difference: -0.60 }
