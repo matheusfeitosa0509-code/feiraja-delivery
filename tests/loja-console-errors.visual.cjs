@@ -36,6 +36,7 @@ const { chromium } = require("playwright");
       const runtimeErrors = [];
       page.on("pageerror", error => runtimeErrors.push("pageerror: " + error.message));
       page.on("console", message => { if (message.type() === "error") runtimeErrors.push("console.error: " + message.text()); });
+      await page.route("**/*", route => route.fulfill({ status: 200, body: "" }));
       await page.route("http://127.0.0.1/loja.html", route => route.fulfill({ status: 200, contentType: "text/html", body: html }));
       await page.goto("http://127.0.0.1/loja.html", { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(1200);
