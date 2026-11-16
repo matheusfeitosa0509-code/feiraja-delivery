@@ -142,6 +142,7 @@ async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "M
     if (/not ready/i.test(message)) throw new Error("ORDER_NOT_READY");
     if (/not paid/i.test(message)) throw new Error("ORDER_NOT_PAID");
     if (/expired|replaced/i.test(message)) throw new Error("QUOTE_EXPIRED");
+    if (/environment changed|environment mismatch/i.test(message)) throw new Error("QUOTE_ENVIRONMENT_MISMATCH");
     throw new Error("DISPATCH_START_FAILED");
   }
   if (!canStartDispatch(start?.state) || start?.started !== true) return { duplicate: true, state: start?.state || "creating" };
@@ -303,8 +304,7 @@ Deno.serve(async (req: Request) => {
       QUOTE_RATE_LIMIT_UNAVAILABLE: { message: "Limite de cotações temporariamente indisponível.", status: 503 },
       TOO_MANY_QUOTES: { message: "Muitas cotações. Aguarde um minuto.", status: 429 },
       QUOTE_EXPIRED: { message: "A cotação expirou. Faça uma nova cotação antes de confirmar.", status: 409 },
-      "environment changed; request a new quote": { message: "O ambiente Lalamove mudou. Faça uma nova cotação antes de confirmar.", status: 409 },
-      "quote environment mismatch; request a new quote": { message: "Esta cotação foi feita em outro ambiente. Faça uma nova cotação antes de confirmar.", status: 409 },
+      QUOTE_ENVIRONMENT_MISMATCH: { message: "Esta cotação foi feita em outro ambiente. Faça uma nova cotação antes de confirmar.", status: 409 },
       CUSTOMER_CONTACT_MISSING: { message: "O pedido não tem nome e telefone válidos para o motorista.", status: 400 },
       INVALID_PHONE: { message: "Telefone do cliente ou da loja inválido. Use DDD e número brasileiro.", status: 400 },
       MISSING_LALAMOVE_SENDER_NAME: { message: "Configure o Secret LALAMOVE_SENDER_NAME no Supabase.", status: 503 },
