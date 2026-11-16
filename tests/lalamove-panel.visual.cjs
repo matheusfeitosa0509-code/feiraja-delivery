@@ -60,7 +60,7 @@ const { chromium } = require("playwright");
           functions: { invoke: async (name, options) => {
             calls.push({ name, action: options.body.action });
             if (options.body.action === "quote") return { error: null, data: {
-              environment: lalamoveEnvironment, quote_session_id: "00000000-0000-4000-8000-000000000001",
+              environment: "producao", quote_session_id: "00000000-0000-4000-8000-000000000001",
               selected_vehicle: "MOTO", moto: { fee: 12.05, difference: -2.95 }, car: { fee: 14.40, difference: -0.60 }
             }};
             if (options.body.action === "create") return { error: null, data: { created: true, vehicle: options.body.vehicle } };
