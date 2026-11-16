@@ -10,7 +10,7 @@ const { chromium } = require("playwright");
     "auth:{getSession:async()=>({data:{session:null},error:null}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}}),signOut:async()=>({error:null})}," +
     "from:table=>{const q={select(){return q},eq(){return q},neq(){return q},in(){return q},order(){return q},limit(){return q},range(){return q},gte(){return q},lte(){return q},or(){return q},not(){return q},is(){return q},insert(){return q},update(){return q},delete(){return q},upsert(){return q},maybeSingle:async()=>({data:null,error:null}),single:async()=>({data:null,error:null}),then(ok,fail){return Promise.resolve({data:[],error:null}).then(ok,fail)}};return q;}," +
     "rpc:async()=>({data:false,error:null}),functions:{invoke:async()=>({data:{},error:null})}," +
-    "storage:{from:()=>({upload:async()=>({data:{},error:null}),remove:async()=>({data:[],error:null}),getPublicUrl:()=>({data:{publicUrl:\\"\\"}})})}," +
+    "storage:{from:()=>({upload:async()=>({data:{},error:null}),remove:async()=>({data:[],error:null}),getPublicUrl:()=>({data:{publicUrl:''}})})}," +
     "channel:()=>({on(){return this},subscribe(){return this}}),removeChannel:async()=>({})" +
     "};window.FeiraTurnstile={create:()=>({init(){},getToken:()=>"",reset(){}})};" +
     "window.FeiraLalamoveMap={mountAll(){}};" +
