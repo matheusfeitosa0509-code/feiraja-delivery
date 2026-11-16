@@ -11,6 +11,8 @@ on:
       - "supabase/functions/lalamove-dispatch/**"
       - "supabase/functions/lalamove-webhook/**"
       - "supabase/functions/_shared/lalamove-dispatch.ts"
+      - "supabase/functions/_shared/lalamove-environment.ts"
+      - "supabase/functions/_shared/lalamove-environment_test.ts"
       - "supabase/functions/lalamove-tracking/**"
       - "supabase/functions/_shared/lalamove-tracking.ts"
       - "supabase/migrations/*lalamove-tracking*.sql"
@@ -24,6 +26,8 @@ on:
       - ".github/workflows/pages.yml"
       - ".github/workflows/deploy-functions.yml"
       - "supabase/migrations/*lalamove-dispatch-and-webhook.sql"
+      - "supabase/migrations/*lalamove-production-environment.sql"
+      - "supabase/rollbacks/*lalamove-production-environment.sql"
       - "painel.html"
       - "tests/painel-compact.visual.cjs"
       - "loja.html"
@@ -72,7 +76,7 @@ jobs:
       - run: deno check --config supabase/functions/lalamove-dispatch/deno.json supabase/functions/lalamove-dispatch/index.ts
       - run: deno check --config supabase/functions/lalamove-webhook/deno.json supabase/functions/lalamove-webhook/index.ts
       - run: deno check --config supabase/functions/lalamove-tracking/deno.json supabase/functions/lalamove-tracking/index.ts
-      - run: deno test --allow-net --allow-read supabase/functions/delivery-quote/index_test.ts supabase/functions/_shared/geocoding_test.ts supabase/functions/delivery-address/index_test.ts supabase/functions/lalamove-dispatch/index_test.ts supabase/functions/lalamove-tracking/index_test.ts
+      - run: deno test --allow-net --allow-read supabase/functions/delivery-quote/index_test.ts supabase/functions/_shared/geocoding_test.ts supabase/functions/delivery-address/index_test.ts supabase/functions/lalamove-dispatch/index_test.ts supabase/functions/lalamove-tracking/index_test.ts supabase/functions/_shared/lalamove-environment_test.ts
       - run: deno test --allow-read loja-delivery-ui_test.ts
       - run: deno test --allow-read supabase/functions/super-worker/delivery-order_test.ts
       - uses: actions/setup-node@v4
