@@ -4,6 +4,9 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 
 const root = path.resolve(__dirname, '..');
+assert.equal(storeHtml.includes('id="payPixTestOption"'), false, 'Pix de teste não pode estar no HTML inicial');
+assert.equal(storeHtml.includes('id="payPixTest"'), false, 'radio de teste não pode existir antes da confirmação admin');
+assert.equal(storeHtml.includes('<option value="pix_test">'), false, 'opção do select não pode existir antes da confirmação admin');
 const storeHtml = fs.readFileSync(path.join(root, 'loja.html'), 'utf8');
 const helperSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8').replace(/^export\s+/gm, '');
 const styleStart = storeHtml.indexOf('/* Checkout option cards —');
@@ -30,10 +33,53 @@ const checkoutCss = [
         '<span class="checkout-choice-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H3V10Z"></path></svg></span>' +
         '<span class="checkout-choice-copy"><b>Entrega Feira On</b><span class="s" id="deliveryHomeDescription">Receba em casa sem precisar pedir Uber.</span></span>' +
         '<span class="checkout-choice-end" id="deliveryStartingPrice">Em breve</span><span class="r" aria-hidden="true"></span>' +
-        '</label></form></main></body></html>');
+        '</label><section class="checkout-card"><div class="checkout-choice-list" id="checkoutPaymentChoices">' +
+        '<label class="opt checkout-choice-card" for="payPix"><input class="choice-radio" id="payPix" type="radio" name="paymentChoice"><span class="checkout-choice-copy"><b>Pix</b></span><span class="r"></span></label>' +
+        '<label class="opt checkout-choice-card" for="payCash"><input class="choice-radio" id="payCash" type="radio" name="paymentChoice"><span class="checkout-choice-copy"><b>Dinheiro na retirada</b></span><span class="r"></span></label>' +
+        '</div><select id="payment"><option value="pix">Pix</option><option value="cash">Dinheiro</option></select></section></form></main></body></html>');
       await page.addStyleTag({ content: checkoutCss });
       await page.addScriptTag({ content: helperSource +
-        '\nwindow.FeiraDeliveryAccess = { loadDeliveryAccessState, renderDeliveryOption };' });
+        '\nwindow.FeiraDeliveryAccess = { loadDeliveryAccessState, renderDeliveryOption, syncAdminTestPaymentOption };' });
+
+      const syncTestPayment = state => page.evaluate(value => window.FeiraDeliveryAccess.syncAdminTestPaymentOption({
+        container: document.querySelector('#checkoutPaymentChoices'),
+        paymentSelect: document.querySelector('#payment'),
+        ...value,
+        onSelect: () => { window.__testPaymentSelected = true; document.querySelector('#payment').value = 'pix_test'; },
+      }), state);
+      const testPaymentSnapshot = () => page.evaluate(() => ({
+        label: document.querySelector('#payPixTestOption')?.textContent || null,
+        radio: !!document.querySelector('#payPixTest'),
+        option: !!document.querySelector('#payment option[value="pix_test"]'),
+        hidden: document.querySelector('#payPixTestOption')?.hidden ?? null,
+        textPresent: document.querySelector('#checkoutPaymentChoices').textContent.includes('Pix de teste (admin)'),
+      }));
+
+      // Visitor, common account and pending admin check: no test-payment DOM at all.
+      for (const state of [
+        { isAdminConfirmed: false, deliveryType: 'delivery' },
+        { isAdminConfirmed: false, deliveryType: 'delivery' },
+        { isAdminConfirmed: false, deliveryType: 'delivery' },
+        { isAdminConfirmed: true, deliveryType: 'pickup_store' },
+      ]) {
+        assert.equal(await syncTestPayment(state), false);
+        assert.deepEqual(await testPaymentSnapshot(), { label: null, radio: false, option: false, hidden: null, textPresent: false });
+      }
+      // Only a server-confirmed admin in the delivery checkout gets a real DOM option.
+      assert.equal(await syncTestPayment({ isAdminConfirmed: true, deliveryType: 'delivery' }), true);
+      let testPayment = await testPaymentSnapshot();
+      assert.equal(testPayment.radio, true);
+      assert.equal(testPayment.option, true);
+      assert.equal(testPayment.hidden, false);
+      assert.equal(testPayment.textPresent, true);
+      await page.locator('#payPixTest').check();
+      await page.locator('#payPixTest').dispatchEvent('change');
+      assert.equal(await page.evaluate(() => window.__testPaymentSelected === true), true);
+      assert.equal(await page.locator('#payment').inputValue(), 'pix_test');
+      // Sign-out, RPC failure, or any loss of confirmed admin status removes both nodes.
+      assert.equal(await syncTestPayment({ isAdminConfirmed: false, deliveryType: 'delivery' }), false);
+      testPayment = await testPaymentSnapshot();
+      assert.deepEqual(testPayment, { label: null, radio: false, option: false, hidden: null, textPresent: false });
 
       const render = state => page.evaluate(value => {
         return window.FeiraDeliveryAccess.renderDeliveryOption({
