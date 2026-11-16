@@ -18,6 +18,7 @@ on:
       - "lalamove-map.js"
       - "tests/order-tracking.visual.cjs"
       - "tests/checkout-delivery-access.visual.cjs"
+      - "tests/legal-identity.visual.cjs"
       - ".github/workflows/pages.yml"
       - ".github/workflows/deploy-functions.yml"
       - "supabase/migrations/*lalamove-dispatch-and-webhook.sql"
@@ -80,6 +81,7 @@ jobs:
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-compact.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/order-tracking.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/checkout-delivery-access.visual.cjs
+      - run: NODE_PATH=/tmp/playwright/node_modules node tests/legal-identity.visual.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
