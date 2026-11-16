@@ -160,7 +160,7 @@ Deno.test("cotação pode ocorrer antes de Pronto, mas corrida só após Pronto 
 });
 
 Deno.test("RPC interno recebe JWT com claim service_role; rejeita chave secreta opaca", () => {
-  const payload = btoa(JSON.stringify({ role: "service_role" })).replace(/=/g, "").replace(/\\+/g, "-").replace(/\\//g, "_");
+  const payload = btoa(JSON.stringify({ role: "service_role" })).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
   const token = "eyJhbGciOiJIUzI1NiJ9." + payload + ".signature";
   assertEquals(requireSupabaseServiceRoleJwt(token), token);
   let rejected = false;
