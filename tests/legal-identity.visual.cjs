@@ -8,6 +8,16 @@ const legalName = '68.329.968 Raimundo Matheus Ferreira Feitosa';
 const cnpj = '68.329.968/0001-08';
 const footerText = 'Feira On Delivery — ' + legalName + ' — CNPJ ' + cnpj;
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const identityFiles = ['loja.html', 'loja-novo.html', 'previa/loja.html', 'termos.html', 'politica-privacidade.html', 'previa/termos.html', 'previa/politica-privacidade.html'];
+for (const file of identityFiles) {
+  const source = read(file);
+  assert.equal(source.includes('65.414.756/0001-22'), false, file + ': CNPJ antigo pontuado não pode permanecer');
+  assert.equal(source.includes('65414756000122'), false, file + ': CNPJ antigo sem pontuação não pode permanecer');
+  assert.equal(source.includes('Dr Alimentos'), false, file + ': razão social antiga não pode permanecer');
+}
+assert.ok(read('sw.js').includes('2026-11-16-legal-identity'), 'service worker deve ter versão nova');
+assert.ok(read('loja.html').includes('sw.js?v=20261116-legal-identity'), 'loja deve solicitar service worker novo');
+assert.ok(read('painel.html').includes('sw.js?v=20261116-legal-identity'), 'painel deve solicitar service worker novo');
 const cleanHtml = html => html
   .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
   .replace(/<link\b[^>]*rel=["']stylesheet["'][^>]*>/gi, '');
