@@ -127,7 +127,7 @@ const { chromium } = require("playwright");
       }
       await page.locator("#lalamoveEnvironmentSelect").selectOption("sandbox");
       await page.waitForFunction(() => document.getElementById("lalamoveSettingsBadge").textContent === "SANDBOX");
-      flow.setEnvironmentError("permission denied for table delivery_settings");
+      await page.evaluate(() => window.testHooks.setEnvironmentError("permission denied for table delivery_settings"));
       await page.locator('[data-lalamove-quote="' + readyOrder.id + '"]').click();
       await page.locator('[data-lalamove-feedback="' + readyOrder.id + '"]').waitFor({ state: "visible" });
       const environmentError = await page.locator('[data-lalamove-feedback="' + readyOrder.id + '"]').textContent();
