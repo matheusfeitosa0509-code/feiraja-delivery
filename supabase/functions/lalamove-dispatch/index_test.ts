@@ -240,3 +240,15 @@ Deno.test("webhook produção: HMAC live válido e assinatura sandbox não subst
     apiKey: "pk_test_demo", apiSecret: "sk_test_demo", path, payload,
   }), false);
 });
+
+
+Deno.test("consulta de tracking MOCKADA usa host de produção quando dispatch foi criado em live", async () => {
+  const result = await getLalamoveOrderDetails("pk_live_demo", "sk_live_demo", "LIVE123456",
+    async (input, init) => {
+      assertEquals(String(input), "https://rest.lalamove.com/v3/orders/LIVE123456");
+      assertEquals(init?.method, "GET");
+      return new Response(JSON.stringify({ data: { orderId: "LIVE123456", status: "ON_GOING" } }), { status: 200 });
+    }, "producao");
+  assertEquals(result.response.status, 200);
+  assertEquals(result.payload.status, "ON_GOING");
+});
