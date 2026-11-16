@@ -51,7 +51,7 @@ export function renderDeliveryOption({ option, radio, starting, description, isA
 }
 
 export function syncAdminTestPaymentOption({ container, paymentSelect, isAdminConfirmed, deliveryType, onSelect }) {
-  const shouldRender = isAdminConfirmed === true && deliveryType === "delivery";
+  const shouldRender = isAdminConfirmed === true && (deliveryType === "delivery" || deliveryType === "pickup_store");
   const existing = container?.querySelector("#payPixTestOption");
   const selectOption = paymentSelect?.querySelector('option[value="pix_test"]');
   if (!container || !paymentSelect || !shouldRender) {
