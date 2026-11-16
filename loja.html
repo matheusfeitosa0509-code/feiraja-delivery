@@ -1483,9 +1483,9 @@ function formatOrderQuantity(quantity){return Number(quantity).toLocaleString('p
 function formatOrderItemDescription(item){
  const quantity=item.quantity??item.qty??1;
  const rawName=String(item.name||item.product_name||item.id||'Produto');
- const suffix=rawName.match(/\\s*\\((kg|un|unidade|maço|maco|pacote)\\)\\s*$/i);
- const name=rawName.replace(/\\s*\\((?:kg|un|unidade|maço|maco|pacote)\\)\\s*$/i,'').trim();
- const normalizeUnit=value=>String(value||'').trim().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');
+ const suffix=rawName.match(/\s*\((kg|un|unidade|maço|maco|pacote)\)\s*$/i);
+ const name=rawName.replace(/\s*\((?:kg|un|unidade|maço|maco|pacote)\)\s*$/i,'').trim();
+ const normalizeUnit=value=>String(value||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
  const declared=normalizeUnit(item.sale_unit??item.saleUnit);
  const stored=normalizeUnit(item.unit??item.unit_name);
  const mode=normalizeUnit(item.sale_mode);
