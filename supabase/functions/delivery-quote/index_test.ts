@@ -104,21 +104,25 @@ Deno.test("melancia M e G forçam CAR pela regra de produto volumoso", async () 
 });
 
 
-Deno.test("Lalamove MOCKADA: cotação de produção usa host live e credenciais live", async () => {
-  let called = "";
+Deno.test("Lalamove MOCKADA: cotação moto e carro de produção usa host live e credenciais live", async () => {
+  const services: string[] = [];
   const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
-    called = String(input);
+    assertEquals(String(input), "https://rest.lalamove.com/v3/quotations");
     assertEquals(init?.method, "POST");
     assertEquals(new Headers(init?.headers).get("Authorization")?.startsWith("hmac pk_live_mock:"), true);
+    services.push(JSON.parse(String(init?.body)).data.serviceType);
     return new Response(JSON.stringify({ data: {
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
       priceBreakdown: { total: "10.25", currency: "BRL" },
     } }), { status: 200 });
   };
-  const response = await requestSandboxQuotation("pk_live_mock", "sk_live_mock", "LALAGO",
+  const moto = await requestSandboxQuotation("pk_live_mock", "sk_live_mock", "LALAGO",
     dropoff, coordinates, fetcher, "producao");
-  assertEquals(called, "https://rest.lalamove.com/v3/quotations");
-  assertEquals(parseQuotation((await response.json()).data, "MOTO", 2).fee, 11);
+  const car = await requestSandboxQuotation("pk_live_mock", "sk_live_mock", "CAR",
+    dropoff, coordinates, fetcher, "producao");
+  assertEquals(services, ["LALAGO", "CAR"]);
+  assertEquals(parseQuotation((await moto.json()).data, "MOTO", 2).fee, 11);
+  assertEquals(parseQuotation((await car.json()).data, "CAR", 3).fee, 11);
 });
 
 Deno.test("credenciais de produção ausentes falham sem fallback ao Sandbox", async () => {
