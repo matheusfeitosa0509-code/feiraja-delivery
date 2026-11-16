@@ -1434,7 +1434,7 @@ const LEGAL_PAGES={termos:{title:'Termos de uso',sections:TERMOS_TEXTO},privacid
 function renderLegalPage(key){const page=LEGAL_PAGES[key];if(!page)return;$('#legalTitle').textContent=page.title;const content=$('#legalContent');content.replaceChildren();page.sections.forEach(section=>{const article=document.createElement('section');article.className='legal-section';if(section.heading==='Última atualização'){const updated=document.createElement('p');updated.className='legal-updated';updated.textContent=section.heading+': '+section.body;article.append(updated);}else{const heading=document.createElement('h3');heading.textContent=section.heading;const body=document.createElement('p');body.textContent=section.body;article.append(heading,body);}content.append(article);});$('#legalModal').classList.add('open');$('#legalModal').setAttribute('aria-hidden','false');$('#legalContent').scrollTop=0;$('#legalBack').focus();}
 document.addEventListener('click',event=>{const link=event.target.closest('[data-legal-page]');if(link){event.preventDefault();renderLegalPage(link.dataset.legalPage);}});
 $('#legalBack').addEventListener('click',()=>{$('#legalModal').classList.remove('open');$('#legalModal').setAttribute('aria-hidden','true');});
-if(!LEGAL_DATA.documento){$('#legalDocumentLine').hidden=true;}else $('#legalDocumentValue').textContent=LEGAL_DATA.documento;
+
 
 
 // Proteção complementar no navegador: consulta k-anonymity (somente prefixo SHA-1) ao serviço Pwned Passwords.
