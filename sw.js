@@ -1,4 +1,4 @@
-/* Service worker mínimo para habilitar instalação; sem cache nem interceptação. */
+/* Build 2026-11-16: força atualização dos apps instalados; sem cache nem interceptação. */
 self.addEventListener('install', function (event) {
   event.waitUntil(self.skipWaiting());
 });

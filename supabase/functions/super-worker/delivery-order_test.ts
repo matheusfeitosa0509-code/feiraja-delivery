@@ -49,6 +49,14 @@ Deno.test("entrega admin com Pix de teste: autoriza, calcula cotação Sandbox e
   assertEquals(quote.fee, 9);
 });
 
+Deno.test("servidor recusa Pix de teste para não-admin em qualquer modalidade", () => {
+  for (const deliveryType of ["pickup_store", "pickup_uber", "delivery"]) {
+    assertEquals(validateCheckoutDelivery({
+      deliveryType, paymentMethod: "pix_test", isAdmin: false, deliveryActive: true,
+    }), { ok: false, status: 403, error: "Pix de teste disponível somente para administradores." });
+  }
+});
+
 Deno.test("não-admin bloqueado quando entrega está desligada", () => {
   assertEquals(validateCheckoutDelivery({
     deliveryType: "delivery", paymentMethod: "pix", isAdmin: false, deliveryActive: false,

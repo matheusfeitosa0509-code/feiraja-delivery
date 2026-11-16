@@ -101,9 +101,13 @@ Deno.test("loja.html conecta a opção, cotação, endereço salvo e acompanhame
     'id="deliveryComplement"', 'id="deliveryReference"',
     "loadDeliveryAccessState(user", "hasConfirmedDeliveryAdmin()", "functions.invoke('delivery-quote'",
     "address_street", "address_reference", "delivery_vehicle", "delivery_fee",
-    "Pix de teste (admin)", "Sai quando o pedido estiver pronto",
+    "syncAdminTestPaymentOption", "Sai quando o pedido estiver pronto",
     "await loadDeliveryAccess(currentUser)", "async function openCheckoutModal()", "delivery-address", "session_token", "deliveryMapCoordinates", "deliveryPlacesSessionToken=null;$('#deliveryMapFallback').hidden=false",
   ]) assertEquals(html.includes(required), true, "missing UI wiring: " + required);
+  assertEquals(html.includes('id="payPixTestOption"'), false, "Pix de teste não pode existir no HTML inicial");
+  assertEquals(html.includes('id="payPixTest"'), false, "radio Pix de teste só pode ser criado após confirmação admin");
+  assertEquals(html.includes('<option value="pix_test">'), false, "select Pix de teste só pode ser criado após confirmação admin");
+  assertEquals(deliveryUi.includes("export function syncAdminTestPaymentOption"), true);
   for (const required of ['rpc("is_current_user_admin")', 'rpc("get_delivery_enabled")', 'adminCheckComplete !== true || isAdmin !== true']) {
     assertEquals(deliveryUi.includes(required), true, "missing delivery access rule: " + required);
   }
@@ -139,7 +143,7 @@ Deno.test("checkout novo mantém a ordem visual dos cards e os campos funcionais
     'id="deliveryMapAdjust"', '+ Adicionar complemento ou referência',
     'id="checkoutProductsTotal"', 'id="checkoutDeliveryTotal"',
     'id="checkoutSummaryTotal"', 'id="deliveryStartingPrice"',
-    'id="payPixTestOption"', 'checkout-test-badge">TESTE',
+    "syncAdminTestPaymentOption",
     'id="submitOrder"', 'id="modalTotal"', 'id="cpf"', 'id="phone"', 'id="email"', 'id="deliveryUberOption"', 'canShowUberPickupOption(deliveryActive)', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga o Uber pelo app. Nós levamos o pedido até o carro.', "const uberAction=o.delivery_type==='pickup_uber'", 'id="deliveryUberOption"', 'canShowUberPickupOption(deliveryActive)', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga o Uber pelo app. Nós levamos o pedido até o carro.',
     'position:fixed!important', 'min-height:64px', '#delivery,#payment{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}',
     "function updateCheckoutSummary()", "value.textContent=money(deliveryQuote.fee)",

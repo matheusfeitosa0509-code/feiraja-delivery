@@ -50,6 +50,38 @@ export function renderDeliveryOption({ option, radio, starting, description, isA
   return disabled;
 }
 
+export function syncAdminTestPaymentOption({ container, paymentSelect, isAdminConfirmed, deliveryType, onSelect }) {
+  const shouldRender = isAdminConfirmed === true && deliveryType === "delivery";
+  const existing = container?.querySelector("#payPixTestOption");
+  const selectOption = paymentSelect?.querySelector('option[value="pix_test"]');
+  if (!container || !paymentSelect || !shouldRender) {
+    existing?.remove(); selectOption?.remove(); return false;
+  }
+  if (!existing) {
+    const label = document.createElement("label");
+    label.className = "opt checkout-choice-card checkout-test-payment";
+    label.id = "payPixTestOption"; label.htmlFor = "payPixTest";
+    const radio = document.createElement("input");
+    radio.className = "choice-radio"; radio.id = "payPixTest"; radio.type = "radio"; radio.name = "paymentChoice";
+    radio.addEventListener("change", () => { if (radio.checked) onSelect?.(); });
+    const icon = document.createElement("span"); icon.className = "checkout-choice-icon"; icon.setAttribute("aria-hidden", "true"); icon.textContent = "🧪";
+    const copy = document.createElement("span"); copy.className = "checkout-choice-copy";
+    const title = document.createElement("b"); title.textContent = "Pix de teste (admin)";
+    const description = document.createElement("span"); description.className = "s"; description.textContent = "Confirmação de teste, sem cobrança real.";
+    copy.append(title, description);
+    const badge = document.createElement("span"); badge.className = "checkout-test-badge"; badge.textContent = "TESTE";
+    const marker = document.createElement("span"); marker.className = "r"; marker.setAttribute("aria-hidden", "true");
+    label.append(radio, icon, copy, badge, marker);
+    const pixCard = container.querySelector('label[for="payPix"]');
+    if (pixCard?.nextSibling) container.insertBefore(label, pixCard.nextSibling); else container.append(label);
+  }
+  if (!selectOption) {
+    const option = document.createElement("option"); option.value = "pix_test"; option.textContent = "Pix de teste (admin)";
+    const pixOption = paymentSelect.querySelector('option[value="pix"]');
+    if (pixOption?.nextSibling) paymentSelect.insertBefore(option, pixOption.nextSibling); else paymentSelect.append(option);
+  }
+  return true;
+}
 export function deliveryUnavailableMessage() {
   return "A Entrega Feira On chega em breve. Por enquanto, retire na loja ou receba com seu Uber.";
 }
