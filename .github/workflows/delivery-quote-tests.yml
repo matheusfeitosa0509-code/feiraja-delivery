@@ -89,6 +89,7 @@ jobs:
       - run: /tmp/playwright/node_modules/.bin/playwright install --with-deps chromium
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-compact.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/lalamove-panel.visual.cjs
+      - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-full-html-lalamove.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/loja-console-errors.visual.cjs
       - run: node supabase/tests/panel-order-value-display.test.mjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/order-tracking.visual.cjs
