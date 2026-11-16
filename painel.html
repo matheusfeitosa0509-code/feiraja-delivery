@@ -1002,6 +1002,7 @@ async function lalamoveErrorMessage(error,fallback){
  const response=error?.context;
  if(response&&typeof response.clone==='function'){
   const payload=await response.clone().json().catch(()=>null);
+  if(payload?.code==='QUOTE_ENVIRONMENT_MISMATCH')return 'QUOTE_ENVIRONMENT_MISMATCH';
   if(payload?.error)return String(payload.error);
  }
  return String(error?.message||fallback);
@@ -1084,7 +1085,7 @@ async function refreshLalamoveStatus(orderId,button){
  finally{if(document.contains(button)){button.disabled=false;button.textContent='Atualizar status';}}
 }
 async function cancelLalamoveDelivery(orderId,button){
- if(!(await appConfirm('Cancelar esta corrida na Lalamove Sandbox? A loja continuará responsável pelo pedido.',{title:'Cancelar corrida?',confirmText:'Cancelar corrida',danger:true})))return;
+ if(!(await appConfirm('Cancelar esta corrida na Lalamove '+(lalamoveEnvironment==='producao'?'Produção':'Sandbox')+'? A loja continuará responsável pelo pedido.',{title:'Cancelar corrida?',confirmText:'Cancelar corrida',danger:true})))return;
  button.disabled=true;button.textContent='Cancelando…';
  try{
   const {data,error}=await db.functions.invoke('lalamove-dispatch',{body:{action:'cancel',order_id:orderId}});
