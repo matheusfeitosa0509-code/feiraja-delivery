@@ -8,8 +8,8 @@ const oldCnpj = '65.414.756/0001-22';
 const oldName = 'Dr Alimentos';
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const cleanHtml = html => html
-  .replace(/<script\\b[^>]*>[\\s\\S]*?<\\/script>/gi, '')
-  .replace(/<link\\b[^>]*rel=["']stylesheet["'][^>]*>/gi, '');
+  .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+  .replace(/<link\b[^>]*rel=["']stylesheet["'][^>]*>/gi, '');
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
