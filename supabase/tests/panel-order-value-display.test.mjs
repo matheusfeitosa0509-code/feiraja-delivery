@@ -71,6 +71,7 @@ const displayCases=[
   [{name:'Abacate (kg)',price:11.99,qty:1.251,sale_mode:'value',amount_cents:1500,line_total_cents:1500},'Abacate — R$ 15,00 (~1,25 kg)'],
   [{name:'Coco (un)',price:8,qty:2},'Coco — 2 un'],
   [{name:'Coco (un)',price:8,qty:4,unit:'kg'},'Coco — 4 un'],
+  [{name:'Coco (un)',price:9.99,qty:4,sale_mode:'kg'},'Coco — 4 un'],
   [{name:'Cheiro-verde (maço)',price:3,qty:2},'Cheiro-verde — 2 maço'],
   [{name:'Farinha (pacote)',price:7,qty:3},'Farinha — 3 pacote'],
   [{name:'Laranja',price:2,qty:4,sale_mode:'unit',unit:'kg'},'Laranja — 4 un']
