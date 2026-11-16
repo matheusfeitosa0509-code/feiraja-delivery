@@ -71,7 +71,7 @@ Deno.serve(async (req: Request) => {
       id: p.id, delivery_unit_weight_kg: p.delivery_unit_weight_kg == null ? null : Number(p.delivery_unit_weight_kg),
       delivery_bulky: p.delivery_bulky === true, sale_unit: saleUnits.get(p.id) || null,
     })));
-    const vehicle = chooseVehicle(load.weightKg, load.bulky, Number(settings?.moto_limite_kg || 8));
+    const vehicle = chooseVehicle(load.weightKg, load.bulky, Number(settings?.moto_limite_kg || 12));
     const environment = await readLalamoveEnvironment(db);
     const credentials = readLalamoveCredentials(environment, (name) => Deno.env.get(name));
     const { apiKey, apiSecret } = credentials;
