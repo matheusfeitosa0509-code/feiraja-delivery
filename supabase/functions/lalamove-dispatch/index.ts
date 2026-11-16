@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.117.1";
+import { readLalamoveCredentials, readLalamoveEnvironment, normalizeLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
 import { formatDropoff, requestSandboxQuotation } from "../_shared/delivery-quote.ts";
 import { geocodeManausAddress } from "../_shared/geocoding.ts";
 import {
@@ -21,11 +22,9 @@ function requiredEnv(name: string) {
   if (!value) throw new Error("MISSING_" + name);
   return value;
 }
-function sandboxCredentials() {
-  const key = requiredEnv("LALAMOVE_SANDBOX_API_KEY");
-  const secret = requiredEnv("LALAMOVE_SANDBOX_API_SECRET");
-  if (!key.startsWith("pk_test") || !secret.startsWith("sk_test")) throw new Error("SANDBOX_CREDENTIALS_REQUIRED");
-  return { key, secret };
+function environmentCredentials(environment: "sandbox" | "producao") {
+  const credentials = readLalamoveCredentials(environment, (name) => Deno.env.get(name));
+  return { key: credentials.apiKey, secret: credentials.apiSecret };
 }
 async function adminContext(req: Request): Promise<{ db: any; user: any; error?: undefined } | { error: Response; db?: undefined; user?: undefined }> {
   const url = requiredEnv("SUPABASE_URL");
@@ -70,8 +69,9 @@ async function getOrder(db: any, orderId: string, requireReady = false) {
   return data;
 }
 async function fetchQuote(apiKey: string, apiSecret: string, serviceType: "LALAGO" | "CAR",
-  dropoff: string, coordinates: { origin: { lat: string; lng: string }; dropoff: { lat: string; lng: string } }) {
-  const response = await requestSandboxQuotation(apiKey, apiSecret, serviceType, dropoff, coordinates);
+  dropoff: string, coordinates: { origin: { lat: string; lng: string }; dropoff: { lat: string; lng: string } },
+  environment: "sandbox" | "producao") {
+  const response = await requestSandboxQuotation(apiKey, apiSecret, serviceType, dropoff, coordinates, fetch, environment);
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     const code = String(payload?.message || "");
@@ -84,7 +84,8 @@ async function quoteBoth(db: any, order: any, userId: string) {
   const { data: allowed, error: rateError } = await db.rpc("consume_delivery_quote_rate_limit", { p_user_id: userId, p_max_requests: 5, p_window_seconds: 60 });
   if (rateError) throw new Error("QUOTE_RATE_LIMIT_UNAVAILABLE");
   if (allowed !== true) throw new Error("TOO_MANY_QUOTES");
-  const { key, secret } = sandboxCredentials();
+  const environment = await readLalamoveEnvironment(db);
+  const { key, secret } = environmentCredentials(environment);
   const address = order.delivery_address;
   const dropoff = formatDropoff(address);
   const geocodingKey = requiredEnv("GOOGLE_GEOCODING_API_KEY");
@@ -94,8 +95,8 @@ async function quoteBoth(db: any, order: any, userId: string) {
   ]);
   const coordinates = { origin, dropoff: destination };
   const [moto, car] = await Promise.all([
-    fetchQuote(key, secret, "LALAGO", dropoff, coordinates),
-    fetchQuote(key, secret, "CAR", dropoff, coordinates),
+    fetchQuote(key, secret, "LALAGO", dropoff, coordinates, environment),
+    fetchQuote(key, secret, "CAR", dropoff, coordinates, environment),
   ]);
   const motoParsed = quoteFee(moto);
   const carParsed = quoteFee(car);
@@ -105,6 +106,7 @@ async function quoteBoth(db: any, order: any, userId: string) {
     p_moto_quote: moto, p_car_quote: car,
     p_moto_fee: motoParsed.fee, p_car_fee: carParsed.fee,
     p_moto_expires_at: motoParsed.expiresAt, p_car_expires_at: carParsed.expiresAt,
+    p_ambiente: environment,
   });
   if (error) {
     console.error("lalamove quote persistence failed", {
@@ -124,8 +126,8 @@ async function quoteBoth(db: any, order: any, userId: string) {
     car: { fee: carParsed.fee, difference: priceDifference(carParsed.fee, charged) },
   };
 }
-async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "MOTO" | "CAR") {
-  const { key, secret } = sandboxCredentials();
+async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "MOTO" | "CAR", environment: "sandbox" | "producao") {
+  const { key, secret } = environmentCredentials(environment);
   const senderName = Deno.env.get("LALAMOVE_SENDER_NAME") || "Feira On Delivery";
   const senderPhone = normalizeBrazilPhone(requiredEnv("LALAMOVE_SENDER_PHONE"));
   if (!String(order.customer_name || "").trim() || !String(order.customer_phone || "").trim()) {
@@ -133,7 +135,7 @@ async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "M
   }
   const recipientPhone = normalizeBrazilPhone(order.customer_phone);
   const { data: start, error: startError } = await db.rpc("service_begin_lalamove_dispatch", {
-    p_order_id: order.id, p_session_id: sessionId, p_vehicle: vehicle,
+    p_order_id: order.id, p_session_id: sessionId, p_vehicle: vehicle, p_ambiente: environment,
   });
   if (startError) {
     const message = String(startError.message || "");
@@ -151,7 +153,7 @@ async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "M
   });
   let result: { response: Response; payload: any };
   try {
-    result = await createLalamoveOrder(key, secret, body);
+    result = await createLalamoveOrder(key, secret, body, fetch, environment);
   } catch {
     // Timeout is ambiguous: keep "creating" so a second tap cannot create another ride.
     return { pending_confirmation: true };
@@ -187,10 +189,12 @@ async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "M
   return { created: true, status: mapped, tracking_url: String(data?.shareLink || ""), vehicle };
 }
 async function refreshOrderStatus(db: any, orderId: string) {
+  const selectedEnvironment = await readLalamoveEnvironment(db);
   const { data: current, error } = await db.rpc("service_get_lalamove_dispatch", { p_order_id: orderId });
   if (error || !current?.lalamove_order_id) throw new Error("DISPATCH_NOT_FOUND");
-  const { key, secret } = sandboxCredentials();
-  const result = await getLalamoveOrderDetails(key, secret, String(current.lalamove_order_id));
+  const environment = normalizeLalamoveEnvironment(current.ambiente || selectedEnvironment);
+  const { key, secret } = environmentCredentials(environment);
+  const result = await getLalamoveOrderDetails(key, secret, String(current.lalamove_order_id), fetch, environment);
   if (!result.response.ok) throw new Error("LALAMOVE_STATUS_FAILED");
   const data = result.payload || {};
   const status = mapLalamoveStatus("ORDER_STATUS_CHANGED", String(data.status || ""));
@@ -203,7 +207,7 @@ async function refreshOrderStatus(db: any, orderId: string) {
   const driverId = String(data.driverId || data.driver?.driverId || "");
   if (!Object.values(driver).some(Boolean) && driverId) {
     try {
-      const lookup = await getLalamoveDriverDetails(key, secret, String(current.lalamove_order_id), driverId);
+      const lookup = await getLalamoveDriverDetails(key, secret, String(current.lalamove_order_id), driverId, fetch, environment);
       if (lookup.response.ok) driver = {
         name: String(lookup.payload?.name || "").slice(0, 100),
         phone: String(lookup.payload?.phone || "").slice(0, 40),
@@ -226,13 +230,15 @@ async function refreshOrderStatus(db: any, orderId: string) {
   return { refreshed: true, status, tracking_url: String(data.shareLink || ""), driver };
 }
 async function cancelOrder(db: any, orderId: string) {
-  const { key, secret } = sandboxCredentials();
+  const selectedEnvironment = await readLalamoveEnvironment(db);
   const { data: current, error } = await db.rpc("service_get_lalamove_dispatch", { p_order_id: orderId });
   if (error || !current?.lalamove_order_id) throw new Error("DISPATCH_NOT_FOUND");
+  const environment = normalizeLalamoveEnvironment(current.ambiente || selectedEnvironment);
+  const { key, secret } = environmentCredentials(environment);
   if (!canCancelLalamove(current.lalamove_status, current.event_updated_at)) {
     throw new Error("CANCELLATION_WINDOW_CLOSED");
   }
-  const response = await cancelLalamoveOrder(key, secret, String(current.lalamove_order_id));
+  const response = await cancelLalamoveOrder(key, secret, String(current.lalamove_order_id), fetch, environment);
   if (response.status === 409) throw new Error("CANCELLATION_FORBIDDEN");
   if (!response.ok && response.status !== 204) throw new Error("LALAMOVE_CANCEL_FAILED");
   const { error: updateError } = await db.rpc("service_cancel_lalamove_dispatch", { p_order_id: orderId });
@@ -264,7 +270,8 @@ Deno.serve(async (req: Request) => {
     if (!/^[0-9a-f-]{36}$/i.test(sessionId) || !["MOTO", "CAR"].includes(vehicle)) {
       return json({ error: "Confirme uma cotação válida e escolha moto ou carro." }, 400);
     }
-    const result = await dispatchOrder(context.db, readyOrder, sessionId, vehicle);
+    const environment = await readLalamoveEnvironment(context.db);
+    const result = await dispatchOrder(context.db, readyOrder, sessionId, vehicle, environment);
     if (result.duplicate) return json({ error: "Este pedido já está sendo enviado ou já possui uma corrida.", ...result }, 409);
     if (result.pending_confirmation) return json({
       pending_confirmation: true,
@@ -276,7 +283,7 @@ Deno.serve(async (req: Request) => {
     const messages: Record<string, { message: string; status: number }> = {
       ORDER_NOT_FOUND: { message: "Pedido não encontrado.", status: 404 },
       NOT_HOME_DELIVERY: { message: "Este pedido não é uma entrega em casa.", status: 400 },
-      ORDER_NOT_READY: { message: "Para confirmar e criar a corrida, o pedido precisa estar com status Pronto para Retirada.", status: 409 },
+      ORDER_NOT_READY: { message: "Para confirmar e criar a corrida, o pedido precisa estar com status Preparando ou Pronto para Retirada.", status: 409 },
       ORDER_NOT_QUOTABLE: { message: "Não é possível cotar uma entrega cancelada, recusada ou reembolsada.", status: 409 },
       ORDER_NOT_PAID: { message: "Somente pedido pago ou Pix de teste pode ser despachado.", status: 409 },
       OUT_OF_SERVICE_AREA: { message: "Endereço fora da área atendida pela Lalamove.", status: 422 },
@@ -286,6 +293,9 @@ Deno.serve(async (req: Request) => {
       GEOCODER_NOT_CONFIGURED: { message: "Geocodificação não configurada no servidor.", status: 503 },
       GEOCODER_UNAVAILABLE: { message: "Serviço de localização temporariamente indisponível.", status: 503 },
       SANDBOX_CREDENTIALS_REQUIRED: { message: "Credenciais de Sandbox ausentes ou inválidas no servidor.", status: 503 },
+      PRODUCTION_CREDENTIALS_REQUIRED: { message: "Credenciais Lalamove de produção ausentes ou inválidas. Configure LALAMOVE_PROD_API_KEY e LALAMOVE_PROD_API_SECRET no Supabase. Nenhuma corrida foi criada.", status: 503 },
+      LALAMOVE_ENVIRONMENT_UNAVAILABLE: { message: "Não foi possível ler o ambiente Lalamove configurado no servidor.", status: 503 },
+      INVALID_LALAMOVE_ENVIRONMENT: { message: "Ambiente Lalamove inválido no servidor.", status: 503 },
       MISSING_SUPABASE_SECRET_KEY: { message: "A chave secreta moderna do banco não está configurada no servidor.", status: 503 },
       INVALID_QUOTE_RESPONSE: { message: "A Lalamove retornou uma cotação inválida.", status: 502 },
       QUOTE_STORE_FAILED: { message: "As cotações foram recebidas, mas não foi possível salvá-las. Tente novamente.", status: 503 },
@@ -293,6 +303,8 @@ Deno.serve(async (req: Request) => {
       QUOTE_RATE_LIMIT_UNAVAILABLE: { message: "Limite de cotações temporariamente indisponível.", status: 503 },
       TOO_MANY_QUOTES: { message: "Muitas cotações. Aguarde um minuto.", status: 429 },
       QUOTE_EXPIRED: { message: "A cotação expirou. Faça uma nova cotação antes de confirmar.", status: 409 },
+      "environment changed; request a new quote": { message: "O ambiente Lalamove mudou. Faça uma nova cotação antes de confirmar.", status: 409 },
+      "quote environment mismatch; request a new quote": { message: "Esta cotação foi feita em outro ambiente. Faça uma nova cotação antes de confirmar.", status: 409 },
       CUSTOMER_CONTACT_MISSING: { message: "O pedido não tem nome e telefone válidos para o motorista.", status: 400 },
       INVALID_PHONE: { message: "Telefone do cliente ou da loja inválido. Use DDD e número brasileiro.", status: 400 },
       MISSING_LALAMOVE_SENDER_NAME: { message: "Configure o Secret LALAMOVE_SENDER_NAME no Supabase.", status: 503 },
@@ -312,6 +324,6 @@ Deno.serve(async (req: Request) => {
     const mapped = messages[code];
     if (mapped) return json({ error: mapped.message, code }, mapped.status);
     console.error("lalamove-dispatch", { code });
-    return json({ error: "Não foi possível concluir a operação de entrega no Sandbox.", code: "INTERNAL_ERROR" }, 500);
+    return json({ error: "Não foi possível concluir a operação de entrega na Lalamove.", code: "INTERNAL_ERROR" }, 500);
   }
 });
