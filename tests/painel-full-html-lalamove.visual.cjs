@@ -46,7 +46,7 @@ function prepareHtml(source) {
       await page.waitForFunction(()=>document.getElementById("lalamoveSettingsMessage")?.textContent.includes("Ambiente atual"),{timeout:15000});
       await page.waitForFunction(()=>document.getElementById("costReportStats")?.textContent.includes("Lucro estimado"),{timeout:15000});
       const costStats=await page.locator("#costReportStats").textContent();
-      if(!costStats.includes("R$ 40,00"))throw new Error("O painel deixou de exibir o lucro estimado via RPC admin: "+costStats);
+      if(!costStats.replace(/\\s/g,"").includes("R$40,00"))throw new Error("O painel deixou de exibir o lucro estimado via RPC admin: "+costStats);
       const costProducts=await page.locator("#costProductStatusList").textContent();
       if(!costProducts.includes("Banana Prata"))throw new Error("O painel deixou de exibir os custos dos produtos via RPC admin: "+costProducts);
       await page.waitForSelector("[data-order-toggle]");
