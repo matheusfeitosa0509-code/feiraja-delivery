@@ -897,7 +897,7 @@ function lalamoveStatusLabel(status){
  const labels={pending:'Confirmando criação',searching:'Procurando motorista',assigned:'A caminho',enroute_pickup:'A caminho',picked_up:'Coletado',delivered:'Entregue',cancelled:'Entrega cancelada',rejected:'Entrega recusada',expired:'Nenhum motorista aceitou — chame de novo'};
  return labels[String(status||'')]||'Aguardando chamada do entregador';
 }
-function lalamoveEnvironmentBadge(environment=lalamoveEnvironment){const value=environment==='producao'?'producao':'sandbox';return '<span class="lalamove-env-badge '+value+'" data-lalamove-env-badge="'+value+'">'+(value==='producao'?'PRODUÇÃO':'SANDBOX')+'</span>';}
+function lalamoveEnvironmentBadge(environment){const selected=environment||(typeof lalamoveEnvironment!=='undefined'?lalamoveEnvironment:'sandbox');const value=selected==='producao'?'producao':'sandbox';return '<span class="lalamove-env-badge '+value+'" data-lalamove-env-badge="'+value+'">'+(value==='producao'?'PRODUÇÃO':'SANDBOX')+'</span>';}
 function renderLalamoveDelivery(order,currentStatus){
  if(order.delivery_type!=='delivery')return '';
  const address=order.delivery_address&&typeof order.delivery_address==='object'?order.delivery_address:{};
