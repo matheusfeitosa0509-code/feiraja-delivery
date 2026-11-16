@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.117.1";
 import { requireSupabaseSecretKey, secretKeyFetch } from "../_shared/lalamove-dispatch.ts";
+import { normalizeLalamoveEnvironment, readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
 import { isTerminalTrackingStatus } from "../_shared/lalamove-tracking.ts";
 import { getProviderTracking } from "./providers/index.ts";
 
@@ -16,12 +17,7 @@ function requiredEnv(name: string) {
   if (!value) throw new Error("MISSING_" + name);
   return value;
 }
-function sandboxCredentials() {
-  const key = requiredEnv("LALAMOVE_SANDBOX_API_KEY");
-  const secret = requiredEnv("LALAMOVE_SANDBOX_API_SECRET");
-  if (!key.startsWith("pk_test") || !secret.startsWith("sk_test")) throw new Error("SANDBOX_CREDENTIALS_REQUIRED");
-  return { key, secret };
-}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Método não permitido." }, 405);
@@ -43,6 +39,7 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false, autoRefreshToken: false },
       global: { fetch: secretKeyFetch(service) },
     });
+    const configuredEnvironment = await readLalamoveEnvironment(db);
     const { data: order, error: orderError } = await db.from("orders")
       .select("id,user_id,status,delivery_type,delivery_vehicle")
       .eq("id", orderId).maybeSingle();
@@ -71,8 +68,9 @@ Deno.serve(async (req: Request) => {
       return json({ active: false, status: "cancelled" });
     }
     if (isTerminalTrackingStatus(storedStatus)) return json({ active: false, status: storedStatus });
-    const { key, secret } = sandboxCredentials();
-    const tracking = await getProviderTracking("lalamove", key, secret, String(dispatch.lalamove_order_id));
+    const environment = normalizeLalamoveEnvironment(dispatch.ambiente || configuredEnvironment);
+    const credentials = readLalamoveCredentials(environment, (name) => Deno.env.get(name));
+    const tracking = await getProviderTracking("lalamove", credentials.apiKey, credentials.apiSecret, String(dispatch.lalamove_order_id), environment);
     const status = tracking.status;
     const driverSummary = tracking.driver ? {
       ...(tracking.driver.name ? { name: tracking.driver.name } : {}),
@@ -120,6 +118,8 @@ Deno.serve(async (req: Request) => {
     const messages: Record<string, { message: string; status: number }> = {
       PROVIDER_NOT_CONFIGURED: { message: "Rastreio deste entregador ainda não está disponível.", status: 503 },
       SANDBOX_CREDENTIALS_REQUIRED: { message: "Rastreio Lalamove temporariamente indisponível.", status: 503 },
+      PRODUCTION_CREDENTIALS_REQUIRED: { message: "Credenciais Lalamove de produção ausentes ou inválidas no servidor.", status: 503 },
+      LALAMOVE_ENVIRONMENT_UNAVAILABLE: { message: "Não foi possível ler o ambiente Lalamove configurado.", status: 503 },
       LALAMOVE_ORDER_DETAILS_FAILED: { message: "Não foi possível consultar a corrida na Lalamove.", status: 502 },
       LALAMOVE_STATUS_UNKNOWN: { message: "A Lalamove retornou um status ainda não reconhecido.", status: 502 },
     };
