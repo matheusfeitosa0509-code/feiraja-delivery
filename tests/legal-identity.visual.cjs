@@ -31,8 +31,9 @@ const cleanHtml = html => html
         await page.setContent(cleanHtml(read(file)), { waitUntil: 'domcontentloaded' });
         const bodyText = await page.locator('body').innerText();
         assert.ok(bodyText.includes(label), file + ': título visível');
-        if (file === 'termos.html') assert.ok(bodyText.includes(oldName), file + ': responsável anterior restaurado');
-        if (file === 'politica-privacidade.html') {
+        if (file === 'termos.html' || file === 'politica-privacidade.html') {
+          assert.ok(bodyText.includes(oldName), file + ': responsável anterior restaurado');
+          assert.ok(bodyText.includes(oldCnpj), file + ': CNPJ anterior restaurado');
           assert.equal(bodyText.includes(newName), false, file + ': razão social da PR #278 removida');
           assert.equal(bodyText.includes(newCnpj), false, file + ': CNPJ da PR #278 removido');
         }
