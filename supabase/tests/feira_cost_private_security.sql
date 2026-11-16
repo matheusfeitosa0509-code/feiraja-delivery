@@ -6,6 +6,7 @@ declare
   v_count integer;
   v_def text;
   v_body text;
+  v_is_definer boolean;
 begin
   select count(*) into v_count
   from pg_class c join pg_namespace n on n.oid=c.relnamespace
@@ -71,7 +72,8 @@ begin
     if has_function_privilege('anon',v_def,'EXECUTE') then
       raise exception 'RPC administrativa executável por anon: %',v_def;
     end if;
-    select pg_get_functiondef(v_def::regprocedure) into v_body;
+    select pg_get_functiondef(v_def::regprocedure),p.prosecdef into v_body,v_is_definer from pg_proc p where p.oid=v_def::regprocedure;
+    if not v_is_definer then raise exception 'RPC administrativa não é SECURITY DEFINER: %',v_def; end if;
     if position('is_current_user_admin' in lower(v_body))=0 then
       raise exception 'RPC sem verificação de administrador: %',v_def;
     end if;
@@ -87,6 +89,8 @@ begin
     if not has_function_privilege('service_role',v_def,'EXECUTE') then
       raise exception 'RPC interna sem EXECUTE para service_role: %',v_def;
     end if;
+    select p.prosecdef into v_is_definer from pg_proc p where p.oid=v_def::regprocedure;
+    if not v_is_definer then raise exception 'RPC interna não é SECURITY DEFINER: %',v_def; end if;
     if has_function_privilege('anon',v_def,'EXECUTE')
        or has_function_privilege('authenticated',v_def,'EXECUTE') then
       raise exception 'RPC interna acessível a anon/authenticated: %',v_def;
