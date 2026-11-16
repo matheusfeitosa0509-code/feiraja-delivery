@@ -442,7 +442,7 @@ document.getElementById('pushToggle').addEventListener('click',async()=>{const b
 const $=id=>document.getElementById(id);
 const statuses=['Pedido Recebido','Pagamento Pendente','Pagamento Confirmado','Preparando','Pronto para Retirada','Entregue','Cancelada'];
 function normalizeOrderStatus(status){const s=String(status||'').trim().toLowerCase();if(s==='pagamento reembolsado')return 'Reembolsado';if(s==='pagamento contestado')return 'Contestado';if(['cancelada','cancelado'].includes(s))return 'Cancelada';if(s==='pagamento cancelado')return 'Pagamento cancelado';if(s==='pagamento recusado')return 'Pagamento recusado';if(['entregue','concluído','concluido'].includes(s))return 'Entregue';if(['pronto para retirada','pronto'].includes(s))return 'Pronto para Retirada';if(['preparando','preparando pedido'].includes(s))return 'Preparando';if(['saiu para entrega'].includes(s))return 'Saiu para Entrega';if(['pedido recebido','recebido'].includes(s))return 'Pedido Recebido';if(['pagamento confirmado','pago'].includes(s))return 'Pagamento Confirmado';return 'Pagamento Pendente';}
-let allOrders=[],seenOrderIds=new Set(),firstLoadDone=false,hasMoreOrders=true,nextOffset=0;const PAGE_SIZE=200;let adminProducts=[];let lalamoveEnvironment='sandbox';
+let allOrders=[],seenOrderIds=new Set(),firstLoadDone=false,hasMoreOrders=true,nextOffset=0;const PAGE_SIZE=200;let adminProducts=[];let lalamoveEnvironment='sandbox',lalamoveEnvironmentReady=false,lalamoveEnvironmentLoadError='';
  let separatedColumnAvailable=true,separationStartedColumnAvailable=true,separationLegacyColumnAvailable=true;const separatedMemory=new Map(),separatedPending=new Map();
  function orderSelectColumns(){let columns='id,created_at,customer_name,customer_phone,customer_address,customer_email,delivery_type,delivery_address,delivery_vehicle,delivery_weight_kg,delivery_fee,lalamove_status,lalamove_status_updated_at,lalamove_tracking_url,lalamove_driver,is_test_order,pickup_code,payment_method,items,subtotal,total,status,market_checklist';if(separatedColumnAvailable)columns+=',separated_items';if(separationStartedColumnAvailable)columns+=',separation_started_at';if(separationLegacyColumnAvailable)columns+=',separation_started_legacy';return columns+',refund_pending,cancelled_by,cancelled_at';}
  function isMissingSeparationSchema(error){const code=String(error?.code||'');const message=String(error?.message||'');return ['42703','PGRST204','PGRST202','42883'].includes(code)||/separated_items|separation_started_at|separation_started_legacy|set_order_separated_items|schema cache|does not exist/i.test(message);}
@@ -891,7 +891,27 @@ async function loadMore(){
  }
 }
 function formatOrderQuantity(quantity){return Number(quantity).toLocaleString('pt-BR',{maximumFractionDigits:2});}
-function formatOrderItemDescription(item){const quantity=item.quantity??item.qty??1;const rawName=String(item.name||item.product_name||item.id||'Produto');const suffix=rawName.match(/\s*\((kg|un|unidade|maço|maco|pacote)\)\s*$/i);const name=rawName.replace(/\s*\((?:kg|un|unidade|maço|maco|pacote)\)\s*$/i,'').trim();const normalizeUnit=value=>String(value||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');const declared=normalizeUnit(item.sale_unit??item.saleUnit);const stored=normalizeUnit(item.unit??item.unit_name);const unit=normalizeUnit(suffix?.[1])||declared||(item.sale_mode==='unit'||item.sale_mode==='un'?'un':stored);if(item.sale_mode==='value'){const cents=Number(item.line_total_cents??item.amount_cents);const amount=Number.isSafeInteger(cents)&&cents>0?money(cents/100):money(Number(item.price||0)*Number(quantity||1));return name+' — '+amount+' (~'+formatOrderQuantity(quantity)+' kg)';}if(item.sale_mode==='kg'||unit==='kg')return name+' — '+formatOrderQuantity(quantity)+' kg';if(['un','unidade','maco','pacote'].includes(unit))return name+' — '+formatOrderQuantity(quantity)+' '+(unit==='unidade'?'un':unit==='maco'?'maço':unit);return name+' × '+formatOrderQuantity(quantity)+(item.unit?' '+String(item.unit):'');}
+function formatOrderItemDescription(item){
+ const quantity=item.quantity??item.qty??1;
+ const rawName=String(item.name||item.product_name||item.id||'Produto');
+ const suffix=rawName.match(/\\s*\\((kg|un|unidade|maço|maco|pacote)\\)\\s*$/i);
+ const name=rawName.replace(/\\s*\\((?:kg|un|unidade|maço|maco|pacote)\\)\\s*$/i,'').trim();
+ const normalizeUnit=value=>String(value||'').trim().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');
+ const declared=normalizeUnit(item.sale_unit??item.saleUnit);
+ const stored=normalizeUnit(item.unit??item.unit_name);
+ const mode=normalizeUnit(item.sale_mode);
+ const modeUnit=mode==='unit'?'un':mode;
+ // A unidade explícita no nome/catálogo prevalece sobre snapshots antigos de sale_mode.
+ const unit=normalizeUnit(suffix?.[1])||declared||(['un','unidade'].includes(modeUnit)?'un':stored||modeUnit);
+ if(mode==='value'){
+  const cents=Number(item.line_total_cents??item.amount_cents);
+  const amount=Number.isSafeInteger(cents)&&cents>0?money(cents/100):money(Number(item.price||0)*Number(quantity||1));
+  return name+' — '+amount+' (~'+formatOrderQuantity(quantity)+' kg)';
+ }
+ if(unit==='kg')return name+' — '+formatOrderQuantity(quantity)+' kg';
+ if(['un','unidade','maco','pacote'].includes(unit))return name+' — '+formatOrderQuantity(quantity)+' '+(unit==='unidade'?'un':unit==='maco'?'maço':unit);
+ return name+' × '+formatOrderQuantity(quantity)+(item.unit?' '+String(item.unit):'');
+}
 function orderItemTotal(price,quantity,item=null){if(item?.sale_mode==='value'){const cents=Number(item.line_total_cents??item.amount_cents);if(Number.isSafeInteger(cents)&&cents>0)return money(cents/100);}const unitPriceCents=Math.round(Number(price||0)*100);return money(Math.round(unitPriceCents*Number(quantity||1))/100);}
 function lalamoveStatusLabel(status){
  const labels={pending:'Confirmando criação',searching:'Procurando motorista',assigned:'A caminho',enroute_pickup:'A caminho',picked_up:'Coletado',delivered:'Entregue',cancelled:'Entrega cancelada',rejected:'Entrega recusada',expired:'Nenhum motorista aceitou — chame de novo'};
@@ -993,7 +1013,7 @@ function render(){
  document.querySelectorAll('[data-save]').forEach(b=>b.addEventListener('click',()=>saveStatus(b.dataset.save,b)));
  document.querySelectorAll('[data-refund-done]').forEach(b=>b.addEventListener('click',()=>markRefundDone(b.dataset.refundDone,b)));
  document.querySelectorAll('[data-separate-order]').forEach(b=>b.addEventListener('click',()=>toggleSeparatedItem(b.dataset.separateOrder,b.dataset.separateKey)));
- document.querySelectorAll('[data-lalamove-quote]').forEach(b=>b.addEventListener('click',()=>handleLalamoveQuoteClick(b.dataset.lalamoveQuote,b)));
+
  document.querySelectorAll('[data-lalamove-cancel]').forEach(b=>b.addEventListener('click',()=>cancelLalamoveDelivery(b.dataset.lalamoveCancel,b)));
  document.querySelectorAll('[data-lalamove-refresh]').forEach(b=>b.addEventListener('click',()=>refreshLalamoveStatus(b.dataset.lalamoveRefresh,b)));
  if(window.FeiraLalamoveMap)window.FeiraLalamoveMap.mountAll('[data-lalamove-map]',async orderId=>{const {data,error}=await db.functions.invoke('lalamove-tracking',{body:{order_id:orderId}});if(error)throw error;return data;},{admin:true});
@@ -1016,8 +1036,19 @@ function setLalamoveFeedback(orderId,message,isError=false){
 }
 async function loadLalamoveEnvironment(){
  const select=$('lalamoveEnvironmentSelect'),message=$('lalamoveSettingsMessage');if(!select||!message)return;
- try{const {data,error}=await db.from('delivery_settings').select('lalamove_ambiente').eq('singleton',true).maybeSingle();if(error)throw error;if(!data)throw new Error('Configuração não encontrada.');lalamoveEnvironment=data.lalamove_ambiente==='producao'?'producao':'sandbox';select.value=lalamoveEnvironment;message.textContent='Ambiente atual: '+(lalamoveEnvironment==='producao'?'Produção':'Sandbox')+'.';render();}
- catch(error){message.textContent='Não foi possível carregar o ambiente Lalamove. Confira a permissão administrativa.';select.disabled=true;}
+ lalamoveEnvironmentReady=false;lalamoveEnvironmentLoadError='';
+ try{
+  const {data,error}=await db.from('delivery_settings').select('lalamove_ambiente').eq('singleton',true).maybeSingle();
+  if(error)throw error;if(!data)throw new Error('Configuração não encontrada.');
+  lalamoveEnvironment=data.lalamove_ambiente==='producao'?'producao':'sandbox';
+  lalamoveEnvironmentReady=true;lalamoveEnvironmentLoadError='';
+  select.disabled=false;select.value=lalamoveEnvironment;
+  message.textContent='Ambiente atual: '+(lalamoveEnvironment==='producao'?'Produção':'Sandbox')+'.';render();
+ }catch(error){
+  lalamoveEnvironmentLoadError=String(error?.message||error||'Erro desconhecido');
+  message.textContent='Falha ao carregar ambiente Lalamove: '+lalamoveEnvironmentLoadError;
+  select.disabled=true;
+ }
 }
 async function changeLalamoveEnvironment(nextValue){
  const select=$('lalamoveEnvironmentSelect'),message=$('lalamoveSettingsMessage');if(!select||!message)return;
@@ -1025,17 +1056,41 @@ async function changeLalamoveEnvironment(nextValue){
  if(next==='producao'&&!(await appConfirm('Produção = corridas REAIS, cobradas do saldo da Lalamove. Confirmar?',{title:'Ativar Produção da Lalamove',confirmText:'Confirmar Produção',danger:true}))){select.value=previous;return;}
  select.disabled=true;message.textContent='Salvando ambiente…';
  try{const {data,error}=await db.from('delivery_settings').update({lalamove_ambiente:next}).eq('singleton',true).select('lalamove_ambiente').maybeSingle();if(error)throw error;if(!data)throw new Error('Sem permissão para alterar o ambiente.');lalamoveEnvironment=data.lalamove_ambiente;select.value=lalamoveEnvironment;message.textContent='Ambiente atualizado: '+(lalamoveEnvironment==='producao'?'Produção':'Sandbox')+'.';render();}
- catch(error){select.value=previous;message.textContent='Não foi possível alterar o ambiente. O valor anterior foi mantido.';}
+ catch(error){select.value=previous;message.textContent='Falha ao salvar ambiente Lalamove: '+String(error?.message||error||'Erro desconhecido');}
  finally{select.disabled=false;}
 }
 $('lalamoveEnvironmentSelect')?.addEventListener('change',event=>changeLalamoveEnvironment(event.target.value));
 async function handleLalamoveQuoteClick(orderId,button){
- const order=allOrders.find(o=>String(o.id)===String(orderId));
- if(normalizeOrderStatus(order?.status)==='Preparando'&&!(await appConfirm('O entregador costuma chegar em ~10 min. Chame quando o pedido estiver quase pronto.',{title:'Pedido em preparação',confirmText:'Continuar'})))return;
- await startLalamoveQuote(orderId,button);
+ if(!button)return;
+ button.disabled=true;button.textContent='Carregando…';
+ try{
+  if(!lalamoveEnvironmentReady){
+   const reason=lalamoveEnvironmentLoadError?' '+lalamoveEnvironmentLoadError:' Aguarde o carregamento e tente novamente.';
+   throw new Error('Não foi possível iniciar: ambiente Lalamove indisponível.'+reason);
+  }
+  const order=allOrders.find(o=>String(o.id)===String(orderId));
+  if(normalizeOrderStatus(order?.status)==='Preparando'&&!(await appConfirm('O entregador costuma chegar em ~10 min. Chame quando o pedido estiver quase pronto.',{title:'Pedido em preparação',confirmText:'Continuar'})))return;
+  await startLalamoveQuote(orderId,button);
+ }catch(error){
+  setLalamoveFeedback(orderId,'Não foi possível chamar o entregador: '+String(error?.message||error||'Erro desconhecido'),true);
+ }finally{
+  button.disabled=false;button.textContent='Chamar entregador';
+ }
 }
+function bindLalamoveQuoteEvents(){
+ const root=document.documentElement;
+ if(root.dataset.lalamoveQuoteEventsBound==='true')return;
+ root.dataset.lalamoveQuoteEventsBound='true';
+ document.addEventListener('click',event=>{
+  const button=event.target?.closest?.('[data-lalamove-quote]');
+  if(!button||button.dataset.lalamoveBusy==='true')return;
+  event.preventDefault();button.dataset.lalamoveBusy='true';
+  void handleLalamoveQuoteClick(button.dataset.lalamoveQuote,button).finally(()=>{button.dataset.lalamoveBusy='false';});
+ });
+}
+bindLalamoveQuoteEvents();
 async function startLalamoveQuote(orderId,button){
- button.disabled=true;button.textContent='Cotando moto e carro…';
+ button.disabled=true;button.textContent='Carregando…';
  const box=document.querySelector('[data-lalamove-quote-box="'+CSS.escape(orderId)+'"]');
  try{
   const {data,error}=await db.functions.invoke('lalamove-dispatch',{body:{action:'quote',order_id:orderId}});
