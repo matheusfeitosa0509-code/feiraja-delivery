@@ -16,7 +16,7 @@ on:
       - "supabase/functions/lalamove-tracking/**"
       - "supabase/functions/_shared/lalamove-tracking.ts"
       - "supabase/migrations/*lalamove-tracking*.sql"
-      - "supabase/migrations/*lalamove-admin-access*.sql"
+      - "supabase/migrations/*grant_lalamove_environment_admin_access.sql"
       - "supabase/tests/panel-order-value-display.test.mjs"
       - "supabase/rollback/*lalamove-tracking*.sql"
       - "lalamove-map.js"
