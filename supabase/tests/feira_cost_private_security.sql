@@ -5,6 +5,7 @@ declare
   seq record;
   v_count integer;
   v_def text;
+  v_body text;
 begin
   select count(*) into v_count
   from pg_class c join pg_namespace n on n.oid=c.relnamespace
@@ -70,8 +71,8 @@ begin
     if has_function_privilege('anon',v_def,'EXECUTE') then
       raise exception 'RPC administrativa executável por anon: %',v_def;
     end if;
-    select pg_get_functiondef(v_def::regprocedure) into t;
-    if position('is_current_user_admin' in lower(t))=0 then
+    select pg_get_functiondef(v_def::regprocedure) into v_body;
+    if position('is_current_user_admin' in lower(v_body))=0 then
       raise exception 'RPC sem verificação de administrador: %',v_def;
     end if;
   end loop;
