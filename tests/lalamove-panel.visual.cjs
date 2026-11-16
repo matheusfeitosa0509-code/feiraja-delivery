@@ -135,7 +135,9 @@ const { chromium } = require("playwright");
       if (!sandboxText.includes("Sandbox")) throw new Error("Cotação não identificou Sandbox em " + width + "px");
       await sandboxQuote.locator('[data-lalamove-vehicle="MOTO"]').click();
       await sandboxQuote.locator("[data-lalamove-confirm]").click();
-      await page.waitForFunction(() => document.querySelector('[data-lalamove-feedback="' + order.id + '"]')?.textContent.includes("Corrida criada na Sandbox"));
+      const sandboxFeedback = page.locator('[data-lalamove-feedback="' + order.id + '"]');
+      await sandboxFeedback.waitFor({ state: "visible" });
+      if (!(await sandboxFeedback.textContent()).includes("Corrida criada na Sandbox")) throw new Error("A criação mockada em Sandbox não foi confirmada.");
       const calls = await page.evaluate(() => window.testHooks.getCalls());
       if (calls.filter(x => x.action === "quote").length !== 2 || calls.filter(x => x.action === "create").length !== 2) {
         throw new Error("A API mockada não recebeu duas cotações e duas criações em Produção/Sandbox em " + width + "px");
