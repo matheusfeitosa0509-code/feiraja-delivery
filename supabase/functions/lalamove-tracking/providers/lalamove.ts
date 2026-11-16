@@ -1,8 +1,9 @@
 import { getLalamoveDriverDetails, getLalamoveOrderDetails, mapLalamoveStatus } from "../../_shared/lalamove-dispatch.ts";
+import type { LalamoveEnvironment } from "../../_shared/lalamove-environment.ts";
 import { publicDriverDetails, normalizeTrackingCoordinates } from "../../_shared/lalamove-tracking.ts";
 
-export async function getLalamoveTracking(apiKey: string, apiSecret: string, lalamoveOrderId: string) {
-  const orderResult = await getLalamoveOrderDetails(apiKey, apiSecret, lalamoveOrderId);
+export async function getLalamoveTracking(apiKey: string, apiSecret: string, lalamoveOrderId: string, environment: LalamoveEnvironment = "sandbox") {
+  const orderResult = await getLalamoveOrderDetails(apiKey, apiSecret, lalamoveOrderId, fetch, environment);
   if (!orderResult.response.ok) throw new Error("LALAMOVE_ORDER_DETAILS_FAILED");
   const order = orderResult.payload || {};
   const status = mapLalamoveStatus("ORDER_STATUS_CHANGED", String(order.status || ""));
@@ -14,7 +15,7 @@ export async function getLalamoveTracking(apiKey: string, apiSecret: string, lal
   let driver = publicDriverDetails(order.driver);
   if (driverId && !["delivered", "cancelled", "rejected", "expired"].includes(status)) {
     try {
-      const driverResult = await getLalamoveDriverDetails(apiKey, apiSecret, lalamoveOrderId, driverId);
+      const driverResult = await getLalamoveDriverDetails(apiKey, apiSecret, lalamoveOrderId, driverId, fetch, environment);
       if (driverResult.response.ok) driver = publicDriverDetails(driverResult.payload) || driver;
     } catch {
       // Lalamove may return 403 until the driver reaches the pickup point.

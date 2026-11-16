@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
 import { chooseVehicle, estimateLoad, formatDropoff, isQuoteAllowed, parseQuotation, requestSandboxQuotation } from "../_shared/delivery-quote.ts";
 import { geocodeManausAddress, geocodeManausCoordinates } from "../_shared/geocoding.ts";
 
@@ -10,7 +11,6 @@ const cors = {
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { ...cors, "Content-Type": "application/json" },
 });
-const SANDBOX_URL = "https://rest.sandbox.lalamove.com";
 const PATH = "/v3/quotations";
 const ORIGIN = "Av. Lourenço da Silva Braga, 700 - Centro, Manaus - AM, Brasil";
 
@@ -43,7 +43,7 @@ Deno.serve(async (req: Request) => {
     const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const [{ data: adminRow, error: adminError }, { data: settings, error: settingsError }] = await Promise.all([
       db.from("admin_users").select("user_id").eq("user_id", authData.user.id).maybeSingle(),
-      db.from("delivery_settings").select("delivery_ativa,moto_limite_kg").eq("singleton", true).maybeSingle(),
+      db.from("delivery_settings").select("delivery_ativa,moto_limite_kg,lalamove_ambiente").eq("singleton", true).maybeSingle(),
     ]);
     if (adminError || settingsError) return json({ error: "Não foi possível validar a configuração de entrega." }, 500);
     const isAdmin = !!adminRow;
@@ -71,12 +71,10 @@ Deno.serve(async (req: Request) => {
       id: p.id, delivery_unit_weight_kg: p.delivery_unit_weight_kg == null ? null : Number(p.delivery_unit_weight_kg),
       delivery_bulky: p.delivery_bulky === true, sale_unit: saleUnits.get(p.id) || null,
     })));
-    const vehicle = chooseVehicle(load.weightKg, load.bulky, Number(settings?.moto_limite_kg || 8));
-    const apiKey = Deno.env.get("LALAMOVE_SANDBOX_API_KEY") || "";
-    const apiSecret = Deno.env.get("LALAMOVE_SANDBOX_API_SECRET") || "";
-    if (!apiKey.startsWith("pk_test") || !apiSecret.startsWith("sk_test")) {
-      return json({ error: "Credenciais Lalamove Sandbox ausentes ou inválidas." }, 503);
-    }
+    const vehicle = chooseVehicle(load.weightKg, load.bulky, Number(settings?.moto_limite_kg || 12));
+    const environment = await readLalamoveEnvironment(db);
+    const credentials = readLalamoveCredentials(environment, (name) => Deno.env.get(name));
+    const { apiKey, apiSecret } = credentials;
     const serviceType = vehicle === "MOTO" ? "LALAGO" : "CAR";
     const geocodingKey = Deno.env.get("GOOGLE_GEOCODING_API_KEY") || "";
     const pinnedAddress = body.coordinates && typeof body.coordinates === "object"
@@ -90,7 +88,7 @@ Deno.serve(async (req: Request) => {
     const lalamoveDropoff = pinnedAddress?.formattedAddress || dropoff;
     const response = await requestSandboxQuotation(apiKey, apiSecret, serviceType, lalamoveDropoff, {
       origin: originCoordinates, dropoff: dropoffCoordinates,
-    });
+    }, fetch, environment);
     const result = await response.json().catch(() => ({}));
     const upstreamCode = String(result?.message || "");
     if (upstreamCode === "ERR_OUT_OF_SERVICE_AREA") {
@@ -106,12 +104,14 @@ Deno.serve(async (req: Request) => {
       return json({ error: "A localização foi encontrada, mas a Lalamove não concluiu a cotação. Tente novamente.", code }, response.status === 429 ? 429 : 502);
     }
     const quote = parseQuotation(result?.data, vehicle, load.weightKg);
-    return json({ vehicle: quote.vehicle, estimated_weight_kg: quote.weightKg, fee: quote.fee, valid_until: quote.validUntil });
+    return json({ vehicle: quote.vehicle, estimated_weight_kg: quote.weightKg, fee: quote.fee, valid_until: quote.validUntil, ambiente: environment });
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
     if (code === "INVALID_ADDRESS") return json({ error: "Informe rua, número e bairro.", code }, 400);
     if (code === "ADDRESS_NOT_FOUND") return json({ error: "Endereço não encontrado. Confira a rua, o número e o bairro.", code }, 400);
     if (code === "ADDRESS_OUTSIDE_MANAUS") return json({ error: "Este endereço fica fora de Manaus - AM. Informe um endereço dentro de Manaus.", code }, 422);
+    if (code === "PRODUCTION_CREDENTIALS_REQUIRED") return json({ error: "Credenciais Lalamove de produção ausentes ou inválidas. Configure LALAMOVE_PROD_API_KEY e LALAMOVE_PROD_API_SECRET no Supabase; nenhuma cobrança foi criada.", code }, 503);
+    if (code === "LALAMOVE_ENVIRONMENT_UNAVAILABLE") return json({ error: "Não foi possível ler o ambiente Lalamove configurado. Tente novamente.", code }, 503);
     if (code === "GEOCODER_NOT_CONFIGURED") return json({ error: "Serviço de localização não configurado. Falta o Secret GOOGLE_GEOCODING_API_KEY no Supabase.", code }, 503);
     if (code === "GEOCODER_UNAVAILABLE") return json({ error: "Não foi possível localizar o endereço agora. Tente novamente em instantes.", code }, 503);
     if (code === "INVALID_ITEMS") return json({ error: "Itens ou quantidades inválidos.", code }, 400);

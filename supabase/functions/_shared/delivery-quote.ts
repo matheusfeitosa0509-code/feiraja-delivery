@@ -1,3 +1,5 @@
+import { lalamoveBaseUrl, type LalamoveEnvironment } from "./lalamove-environment.ts";
+
 export type DeliveryCoordinates = { lat: string; lng: string };
 export type DeliveryAddress = {
   street: string; number: string; neighborhood: string;
@@ -81,10 +83,15 @@ export async function requestSandboxQuotation(
   apiKey: string, apiSecret: string, serviceType: "LALAGO" | "CAR", dropoff: string,
   coordinates: { origin: DeliveryCoordinates; dropoff: DeliveryCoordinates },
   fetcher: typeof fetch = fetch,
+  environment: LalamoveEnvironment = "sandbox",
 ): Promise<Response> {
-  if (!apiKey.startsWith("pk_test") || !apiSecret.startsWith("sk_test")) throw new Error("SANDBOX_CREDENTIALS_REQUIRED");
+  const keyPrefix = environment === "producao" ? "pk_live" : "pk_test";
+  const secretPrefix = environment === "producao" ? "sk_live" : "sk_test";
+  if (!apiKey.startsWith(keyPrefix) || !apiSecret.startsWith(secretPrefix)) {
+    throw new Error(environment === "producao" ? "PRODUCTION_CREDENTIALS_REQUIRED" : "SANDBOX_CREDENTIALS_REQUIRED");
+  }
   const path = "/v3/quotations";
-  const url = "https://rest.sandbox.lalamove.com" + path;
+  const url = lalamoveBaseUrl(environment) + path;
   const body = JSON.stringify(buildQuotationBody(serviceType, dropoff, coordinates));
   const timestamp = String(Date.now());
   const raw = timestamp + "\r\nPOST\r\n" + path + "\r\n\r\n" + body;

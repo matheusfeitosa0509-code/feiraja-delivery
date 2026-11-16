@@ -102,3 +102,43 @@ Deno.test("melancia M e G forçam CAR pela regra de produto volumoso", async () 
     assertEquals(parseQuotation((await response.json()).data, "CAR", load.weightKg).fee, 14);
   }
 });
+
+
+Deno.test("Lalamove MOCKADA: cotação moto e carro de produção usa host live e credenciais live", async () => {
+  const services: string[] = [];
+  const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
+    assertEquals(String(input), "https://rest.lalamove.com/v3/quotations");
+    assertEquals(init?.method, "POST");
+    assertEquals(new Headers(init?.headers).get("Authorization")?.startsWith("hmac pk_live_mock:"), true);
+    services.push(JSON.parse(String(init?.body)).data.serviceType);
+    return new Response(JSON.stringify({ data: {
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      priceBreakdown: { total: "10.25", currency: "BRL" },
+    } }), { status: 200 });
+  };
+  const moto = await requestSandboxQuotation("pk_live_mock", "sk_live_mock", "LALAGO",
+    dropoff, coordinates, fetcher, "producao");
+  const car = await requestSandboxQuotation("pk_live_mock", "sk_live_mock", "CAR",
+    dropoff, coordinates, fetcher, "producao");
+  assertEquals(services, ["LALAGO", "CAR"]);
+  assertEquals(parseQuotation((await moto.json()).data, "MOTO", 2).fee, 11);
+  assertEquals(parseQuotation((await car.json()).data, "CAR", 3).fee, 11);
+});
+
+Deno.test("credenciais de produção ausentes falham sem fallback ao Sandbox", async () => {
+  let code = "";
+  try {
+    await requestSandboxQuotation("pk_test_mock", "sk_test_mock", "LALAGO",
+      dropoff, coordinates, mockQuote(), "producao");
+  } catch (error) {
+    code = error instanceof Error ? error.message : "";
+  }
+  assertEquals(code, "PRODUCTION_CREDENTIALS_REQUIRED");
+});
+
+
+Deno.test("limite de moto de 12 kg: 12 kg aceita moto e acima direciona para carro", () => {
+  assertEquals(chooseVehicle(12, false, 12), "MOTO");
+  assertEquals(chooseVehicle(12.001, false, 12), "CAR");
+  assertEquals(chooseVehicle(3, true, 12), "CAR");
+});

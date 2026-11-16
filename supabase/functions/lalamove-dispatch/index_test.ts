@@ -154,6 +154,7 @@ Deno.test("cotação pode ocorrer antes de Pronto, mas corrida só após Pronto 
   assertEquals(canQuoteLalamove("Pedido Recebido", "Dinheiro", false), false);
   assertEquals(canQuoteLalamove("Cancelada", "Pix", true), false);
   assertEquals(isLalamoveDispatchReady("Pagamento Confirmado"), false);
+  assertEquals(isLalamoveDispatchReady("Preparando"), true);
   assertEquals(isLalamoveDispatchReady("Pronto para Retirada"), true);
   assertEquals(isLalamoveDispatchReady("Pronto"), true);
 });
@@ -211,4 +212,43 @@ Deno.test("webhook signed V3 can use signature as stable fallback event identifi
   const payload = { signature: "a".repeat(64), data: { order: { orderId: "ORDER123456" } } };
   const eventId = String(payload.signature || "");
   assertEquals(eventId.length, 64);
+});
+
+
+Deno.test("criação Lalamove MOCKADA: ambiente produção usa endpoint live", async () => {
+  const result = await createLalamoveOrder("pk_live_demo", "sk_live_demo", {
+    data: { quotationId: "quote-live", sender: { stopId: "pickup" }, recipients: [{ stopId: "dropoff" }] },
+  }, async (input, init) => {
+    assertEquals(String(input), "https://rest.lalamove.com/v3/orders");
+    assertEquals(init?.method, "POST");
+    return new Response(JSON.stringify({ data: { orderId: "LIVE123456", status: "ASSIGNING_DRIVER" } }), { status: 201 });
+  }, "producao");
+  assertEquals(result.response.status, 201);
+  assertEquals(result.payload.data.orderId, "LIVE123456");
+});
+
+Deno.test("webhook produção: HMAC live válido e assinatura sandbox não substitui segredo live", async () => {
+  const path = "/functions/v1/lalamove-webhook";
+  const data = { order: { orderId: "LIVE123456", status: "ON_GOING" } };
+  const timestamp = "1794763200";
+  const signature = await makeWebhookSignature("sk_live_demo", timestamp, path, data);
+  const payload = { apiKey: "pk_live_demo", timestamp, signature, data };
+  assertEquals(await verifyWebhookSignature({
+    apiKey: "pk_live_demo", apiSecret: "sk_live_demo", path, payload,
+  }), true);
+  assertEquals(await verifyWebhookSignature({
+    apiKey: "pk_test_demo", apiSecret: "sk_test_demo", path, payload,
+  }), false);
+});
+
+
+Deno.test("consulta de tracking MOCKADA usa host de produção quando dispatch foi criado em live", async () => {
+  const result = await getLalamoveOrderDetails("pk_live_demo", "sk_live_demo", "LIVE123456",
+    async (input, init) => {
+      assertEquals(String(input), "https://rest.lalamove.com/v3/orders/LIVE123456");
+      assertEquals(init?.method, "GET");
+      return new Response(JSON.stringify({ data: { orderId: "LIVE123456", status: "ON_GOING" } }), { status: 200 });
+    }, "producao");
+  assertEquals(result.response.status, 200);
+  assertEquals(result.payload.status, "ON_GOING");
 });
