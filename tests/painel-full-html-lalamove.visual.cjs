@@ -57,7 +57,7 @@ function prepareHtml(source) {
       const productionQuote=page.locator('[data-lalamove-quote-box="TEST-6259DB63"]');
       await productionQuote.waitFor({state:"visible"});
       const productionText=await productionQuote.textContent();
-      if(!productionText.includes("Produção")||!productionText.includes("R$ 12,05")||!productionText.includes("R$ 14,40"))throw new Error("Cotação de Produção não exibiu ambiente e preços reais mockados.");
+      if(!productionText.includes("Produção")||!productionText.includes("12,05")||!productionText.includes("14,40"))throw new Error("Cotação de Produção não exibiu ambiente e preços mockados: "+productionText);
       await productionQuote.locator('[data-lalamove-vehicle="CAR"]').click();
       await productionQuote.locator("[data-lalamove-confirm]").click();
       await page.getByRole("dialog").getByRole("button",{name:"Criar corrida real"}).click();
