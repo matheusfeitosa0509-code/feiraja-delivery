@@ -29,8 +29,6 @@ on:
       - ".github/workflows/deploy-functions.yml"
       - "supabase/migrations/*lalamove-dispatch-and-webhook.sql"
       - "supabase/migrations/*lalamove-production-environment.sql"
-      - "supabase/migrations/*lalamove-admin-access*.sql"
-      - "supabase/tests/panel-order-value-display.test.mjs"
       - "supabase/rollback/*lalamove-production-environment.sql"
       - "painel.html"
       - "tests/painel-compact.visual.cjs"
