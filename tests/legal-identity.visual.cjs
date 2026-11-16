@@ -6,6 +6,8 @@ const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
 const oldCnpj = '65.414.756/0001-22';
 const oldName = 'Dr Alimentos';
+const newCnpj = '68.329.968/0001-08';
+const newName = '68.329.968 Raimundo Matheus Ferreira Feitosa';
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const cleanHtml = html => html
   .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
@@ -29,8 +31,11 @@ const cleanHtml = html => html
         await page.setContent(cleanHtml(read(file)), { waitUntil: 'domcontentloaded' });
         const bodyText = await page.locator('body').innerText();
         assert.ok(bodyText.includes(label), file + ': título visível');
-        assert.ok(bodyText.includes(oldName), file + ': razão social anterior restaurada');
-        if (file === 'politica-privacidade.html') assert.ok(bodyText.includes(oldCnpj), file + ': CNPJ anterior restaurado');
+        if (file === 'termos.html') assert.ok(bodyText.includes(oldName), file + ': responsável anterior restaurado');
+        if (file === 'politica-privacidade.html') {
+          assert.equal(bodyText.includes(newName), false, file + ': razão social da PR #278 removida');
+          assert.equal(bodyText.includes(newCnpj), false, file + ': CNPJ da PR #278 removido');
+        }
         metrics = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, document: document.documentElement.scrollWidth }));
         assert.ok(metrics.document <= width, file + ' sem overflow horizontal: ' + JSON.stringify(metrics));
         await page.screenshot({ path: path.join(root, 'artifacts', (file === 'termos.html' ? 'legal-terms-' : 'legal-privacy-') + width + '.png'), fullPage: true });
