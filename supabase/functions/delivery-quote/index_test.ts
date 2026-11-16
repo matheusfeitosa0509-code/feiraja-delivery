@@ -102,3 +102,32 @@ Deno.test("melancia M e G forçam CAR pela regra de produto volumoso", async () 
     assertEquals(parseQuotation((await response.json()).data, "CAR", load.weightKg).fee, 14);
   }
 });
+
+
+Deno.test("Lalamove MOCKADA: cotação de produção usa host live e credenciais live", async () => {
+  let called = "";
+  const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
+    called = String(input);
+    assertEquals(init?.method, "POST");
+    assertEquals(new Headers(init?.headers).get("Authorization")?.startsWith("hmac pk_live_mock:"), true);
+    return new Response(JSON.stringify({ data: {
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      priceBreakdown: { total: "10.25", currency: "BRL" },
+    } }), { status: 200 });
+  };
+  const response = await requestSandboxQuotation("pk_live_mock", "sk_live_mock", "LALAGO",
+    dropoff, coordinates, fetcher, "producao");
+  assertEquals(called, "https://rest.lalamove.com/v3/quotations");
+  assertEquals(parseQuotation((await response.json()).data, "MOTO", 2).fee, 11);
+});
+
+Deno.test("credenciais de produção ausentes falham sem fallback ao Sandbox", async () => {
+  let code = "";
+  try {
+    await requestSandboxQuotation("pk_test_mock", "sk_test_mock", "LALAGO",
+      dropoff, coordinates, mockQuote(), "producao");
+  } catch (error) {
+    code = error instanceof Error ? error.message : "";
+  }
+  assertEquals(code, "PRODUCTION_CREDENTIALS_REQUIRED");
+});
