@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
       delivery_bulky: p.delivery_bulky === true, sale_unit: saleUnits.get(p.id) || null,
     })));
     const vehicle = chooseVehicle(load.weightKg, load.bulky, Number(settings?.moto_limite_kg || 8));
-    const environment = readLalamoveEnvironment ? await readLalamoveEnvironment(db) : settings?.lalamove_ambiente;
+    const environment = await readLalamoveEnvironment(db);
     const credentials = readLalamoveCredentials(environment, (name) => Deno.env.get(name));
     const { apiKey, apiSecret } = credentials;
     const serviceType = vehicle === "MOTO" ? "LALAGO" : "CAR";
@@ -88,7 +88,7 @@ Deno.serve(async (req: Request) => {
     const lalamoveDropoff = pinnedAddress?.formattedAddress || dropoff;
     const response = await requestSandboxQuotation(apiKey, apiSecret, serviceType, lalamoveDropoff, {
       origin: originCoordinates, dropoff: dropoffCoordinates,
-    });
+    }, fetch, environment);
     const result = await response.json().catch(() => ({}));
     const upstreamCode = String(result?.message || "");
     if (upstreamCode === "ERR_OUT_OF_SERVICE_AREA") {
