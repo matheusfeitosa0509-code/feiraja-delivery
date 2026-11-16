@@ -1,3 +1,5 @@
+import { lalamoveBaseUrl, type LalamoveEnvironment } from "./lalamove-environment.ts";
+
 export type Vehicle = "MOTO" | "CAR";
 export type LalamoveStatus = "searching" | "assigned" | "enroute_pickup" | "picked_up" | "delivered" | "cancelled" | "rejected" | "expired";
 
@@ -113,11 +115,12 @@ export async function signApiRequest(apiKey: string, apiSecret: string, method: 
 
 export async function createLalamoveOrder(
   apiKey: string, apiSecret: string, body: unknown, fetcher: typeof fetch = fetch,
+  environment: LalamoveEnvironment = "sandbox",
 ): Promise<{ response: Response; payload: any }> {
   const path = "/v3/orders";
   const serialized = JSON.stringify(body);
   const signed = await signApiRequest(apiKey, apiSecret, "POST", path, serialized);
-  const response = await fetcher("https://rest.sandbox.lalamove.com" + path, {
+  const response = await fetcher(lalamoveBaseUrl(environment) + path, {
     method: "POST", headers: signed.headers, body: serialized, signal: AbortSignal.timeout(12000),
   });
   const payload = await response.json().catch(() => ({}));
@@ -126,11 +129,12 @@ export async function createLalamoveOrder(
 
 export async function getLalamoveOrderDetails(
   apiKey: string, apiSecret: string, orderId: string, fetcher: typeof fetch = fetch,
+  environment: LalamoveEnvironment = "sandbox",
 ): Promise<{ response: Response; payload: any }> {
   if (!/^[A-Za-z0-9_-]{6,80}$/.test(orderId)) throw new Error("INVALID_LALAMOVE_ORDER_ID");
   const path = "/v3/orders/" + encodeURIComponent(orderId);
   const signed = await signApiRequest(apiKey, apiSecret, "GET", path);
-  const response = await fetcher("https://rest.sandbox.lalamove.com" + path, {
+  const response = await fetcher(lalamoveBaseUrl(environment) + path, {
     method: "GET", headers: signed.headers, signal: AbortSignal.timeout(10000),
   });
   const payload = await response.json().catch(() => ({}));
@@ -139,13 +143,14 @@ export async function getLalamoveOrderDetails(
 
 export async function getLalamoveDriverDetails(
   apiKey: string, apiSecret: string, orderId: string, driverId: string, fetcher: typeof fetch = fetch,
+  environment: LalamoveEnvironment = "sandbox",
 ): Promise<{ response: Response; payload: any }> {
   if (!/^[A-Za-z0-9_-]{6,80}$/.test(orderId) || !/^[A-Za-z0-9_-]{1,80}$/.test(driverId)) {
     throw new Error("INVALID_DRIVER_LOOKUP");
   }
   const path = "/v3/orders/" + encodeURIComponent(orderId) + "/drivers/" + encodeURIComponent(driverId);
   const signed = await signApiRequest(apiKey, apiSecret, "GET", path);
-  const response = await fetcher("https://rest.sandbox.lalamove.com" + path, {
+  const response = await fetcher(lalamoveBaseUrl(environment) + path, {
     method: "GET", headers: signed.headers, signal: AbortSignal.timeout(10000),
   });
   const payload = await response.json().catch(() => ({}));
@@ -154,11 +159,12 @@ export async function getLalamoveDriverDetails(
 
 export async function cancelLalamoveOrder(
   apiKey: string, apiSecret: string, orderId: string, fetcher: typeof fetch = fetch,
+  environment: LalamoveEnvironment = "sandbox",
 ): Promise<Response> {
   if (!/^[A-Za-z0-9_-]{6,80}$/.test(orderId)) throw new Error("INVALID_LALAMOVE_ORDER_ID");
   const path = "/v3/orders/" + encodeURIComponent(orderId);
   const signed = await signApiRequest(apiKey, apiSecret, "DELETE", path);
-  return await fetcher("https://rest.sandbox.lalamove.com" + path, {
+  return await fetcher(lalamoveBaseUrl(environment) + path, {
     method: "DELETE", headers: signed.headers, signal: AbortSignal.timeout(12000),
   });
 }
@@ -204,7 +210,7 @@ export function canQuoteLalamove(status: unknown, paymentMethod: unknown, isTest
 }
 
 export function isLalamoveDispatchReady(status: unknown): boolean {
-  return ["pronto", "pronto para retirada"].includes(String(status || "").trim().toLowerCase());
+  return ["preparando", "pronto", "pronto para retirada"].includes(String(status || "").trim().toLowerCase());
 }
 
 
