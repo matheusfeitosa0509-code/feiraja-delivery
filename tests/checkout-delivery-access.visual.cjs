@@ -72,8 +72,7 @@ const checkoutCss = [
       assert.equal(testPayment.option, true);
       assert.equal(testPayment.hidden, false);
       assert.equal(testPayment.textPresent, true);
-      await page.locator('#payPixTest').check();
-      await page.locator('#payPixTest').dispatchEvent('change');
+      await page.locator('#payPixTestOption').click();
       assert.equal(await page.evaluate(() => window.__testPaymentSelected === true), true);
       assert.equal(await page.locator('#payment').inputValue(), 'pix_test');
       // Sign-out, RPC failure, or any loss of confirmed admin status removes both nodes.
