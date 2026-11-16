@@ -1850,7 +1850,9 @@ selectMainTab(requestedTab);
 selectProductSection(requestedTab==='products'?requestedSection:'formBox');
 
 function appConfirm(message,options={}){
- const backdrop=$('appDialogBackdrop'),title=$('appDialogTitle'),body=$('appDialogMessage'),back=$('appDialogBack'),confirm=$('appDialogConfirm');
+ // Este script é clássico e não compartilha o escopo lexical do módulo Supabase.
+ const byId=id=>document.getElementById(id);
+ const backdrop=byId('appDialogBackdrop'),title=byId('appDialogTitle'),body=byId('appDialogMessage'),back=byId('appDialogBack'),confirm=byId('appDialogConfirm');
  if(!backdrop||!title||!body||!back||!confirm)return Promise.resolve(false);
  title.textContent=options.title||'Confirmar ação';body.textContent=String(message||'');
  back.textContent=options.cancelText||'Voltar';confirm.textContent=options.confirmText||'Confirmar';
