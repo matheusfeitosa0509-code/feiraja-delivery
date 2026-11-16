@@ -56,6 +56,7 @@ const { chromium } = require("playwright");
         let lalamoveEnvironment = "sandbox";
         let allOrders = [order, readyOrder];
         const calls = [];
+      let storedQuote = { environment: "sandbox", moto: { fee: 8.32 }, car: { fee: 10.10 } };
         const adminUserId = "admin-test-session-282";
         const db = {
           auth: { getSession: async () => ({ data: { session: { user: { id: adminUserId, is_anonymous: false } } }, error: null }) },
@@ -73,10 +74,14 @@ const { chromium } = require("playwright");
           },
           functions: { invoke: async (name, options) => {
             calls.push({ name, action: options.body.action, environment: lalamoveEnvironment });
-            if (options.body.action === "quote") return { error: null, data: {
-              environment: lalamoveEnvironment, quote_session_id: "00000000-0000-4000-8000-000000000001",
-              selected_vehicle: "MOTO", moto: { fee: 12.05, difference: -2.95 }, car: { fee: 14.40, difference: -0.60 }
-            }};
+            if (options.body.action === "quote") {
+              // Simulate the RPC ON CONFLICT update: a prior Sandbox quote is replaced by the new environment.
+              storedQuote = { environment: lalamoveEnvironment, moto: { fee: 12.05 }, car: { fee: 14.40 } };
+              return { error: null, data: {
+                environment: lalamoveEnvironment, quote_session_id: "00000000-0000-4000-8000-000000000001",
+                selected_vehicle: "MOTO", moto: { fee: 12.05, difference: -2.95 }, car: { fee: 14.40, difference: -0.60 }
+              }};
+            }
             if (options.body.action === "create") return { error: null, data: { created: true, vehicle: options.body.vehicle } };
             return { error: null, data: {} };
           }}
@@ -91,7 +96,7 @@ const { chromium } = require("playwright");
         let loggedIn = false;
         const flow = new Function("db","$","esc","money","appConfirm","normalizeOrderStatus","allOrders","load","CSS","document","lalamoveEnvironment","orderSource","flowSource","calls",
           "let lalamoveEnvironmentReady=false,lalamoveEnvironmentLoadError='';const render=()=>{const badge=$('lalamoveSettingsBadge');badge.className='lalamove-env-badge '+lalamoveEnvironment;badge.textContent=lalamoveEnvironment==='producao'?'PRODUÇÃO':'SANDBOX';$('orders').innerHTML=new Function('order','currentStatus','lalamoveEnvironment','esc','money',orderSource+';return renderLalamoveDelivery(order,currentStatus);')(allOrders[0],'Preparando',lalamoveEnvironment,esc,money)+new Function('order','currentStatus','lalamoveEnvironment','esc','money',orderSource+';return renderLalamoveDelivery(order,currentStatus);')(allOrders[1],'Pronto para Retirada',lalamoveEnvironment,esc,money);};"+orderSource+"\n"+confirmSource+"\n"+flowSource+
-          "\nreturn {changeLalamoveEnvironment,handleLalamoveQuoteClick,loadLalamoveEnvironment,renderOrder: (o,s)=>new Function('order','currentStatus','lalamoveEnvironment','esc','money',orderSource+';return renderLalamoveDelivery(order,currentStatus);')(o,s,lalamoveEnvironment,esc,money),getCalls:()=>calls,getEnvironment:()=>lalamoveEnvironment,setEnvironmentError:(msg)=>{lalamoveEnvironmentReady=false;lalamoveEnvironmentLoadError=msg;}};"
+          "\nreturn {changeLalamoveEnvironment,handleLalamoveQuoteClick,loadLalamoveEnvironment,renderOrder: (o,s)=>new Function('order','currentStatus','lalamoveEnvironment','esc','money',orderSource+';return renderLalamoveDelivery(order,currentStatus);')(o,s,lalamoveEnvironment,esc,money),getCalls:()=>calls,getEnvironment:()=>lalamoveEnvironment,getStoredQuote:()=>storedQuote,setEnvironmentError:(msg)=>{lalamoveEnvironmentReady=false;lalamoveEnvironmentLoadError=msg;}};"
         )(db,$,esc,money,appConfirm,normalizeOrderStatus,allOrders,async()=>{},CSS,document,lalamoveEnvironment,orderSource,flowSource,calls);
         const showAdmin = new Function("db","$","setLoggedIn","initPanelPush","loadLalamoveEnvironment","load","loadAdminProducts","loadProductRequests","loadCostReport","cleanupPanelPushAndSignOut","showSource",
           "let panelCurrentUser=null;"+showSource+";return show;"
@@ -118,6 +123,10 @@ const { chromium } = require("playwright");
       await page.locator('[data-lalamove-quote-box="' + order.id + '"]').waitFor({ state: "visible" });
       const quoteBoxText = await page.locator('[data-lalamove-quote-box="' + order.id + '"]').textContent();
       if (!quoteBoxText.includes("Produção")) throw new Error("Cotação não identificou Produção em " + width + "px: " + JSON.stringify({ quoteBoxText, environment: await page.evaluate(() => window.testHooks.getEnvironment()) }));
+      const replacedQuote = await page.evaluate(() => window.testHooks.getStoredQuote());
+      if (replacedQuote.environment !== "producao" || replacedQuote.moto.fee !== 12.05 || replacedQuote.car.fee !== 14.40) {
+        throw new Error("Cotação Sandbox antiga não foi substituída pela cotação Produção real: " + JSON.stringify(replacedQuote));
+      }
       await page.locator('[data-lalamove-quote-box="' + order.id + '"] [data-lalamove-vehicle="CAR"]').click();
       await page.locator('[data-lalamove-quote-box="' + order.id + '"] [data-lalamove-confirm]').click();
       const productionDialog = page.getByRole("dialog");
