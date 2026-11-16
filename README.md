@@ -37,4 +37,4 @@ A URL de notificação usada pelo checkout é `https://juhwdevvwstmyxyyagzh.supa
 - Termos de Uso: https://www.feiraondelivery.com.br/termos.html
 - Política de Privacidade: https://www.feiraondelivery.com.br/politica-privacidade.html
 
-As páginas já estão publicadas. A Política de Privacidade ainda precisa ser completada com a identificação legal do responsável (nome civil/empresarial e CPF/CNPJ).
+As páginas publicadas incluem a identificação legal do responsável pelo tratamento (razão social e CNPJ).
