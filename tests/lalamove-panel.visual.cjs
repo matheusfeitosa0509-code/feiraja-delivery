@@ -21,6 +21,7 @@ const { chromium } = require("playwright");
   const orderSource = source.slice(orderStart, orderEnd);
   const flowSource = source.slice(flowStart, flowEnd);
   const confirmSource = source.slice(confirmStart, confirmEnd);
+  if (/\$\s*\(/.test(confirmSource)) throw new Error("appConfirm voltou a depender do helper $ do módulo Supabase");
   const settingsMarkup = source.slice(source.indexOf('<section class="card lalamove-settings"'), source.indexOf('</section>', source.indexOf('<section class="card lalamove-settings"')) + 10);
   const browser = await chromium.launch({ headless: true });
   fs.mkdirSync("artifacts", { recursive: true });
