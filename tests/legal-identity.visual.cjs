@@ -4,20 +4,11 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 
 const root = path.resolve(__dirname, '..');
-const legalName = '68.329.968 Raimundo Matheus Ferreira Feitosa';
-const cnpj = '68.329.968/0001-08';
-const footerText = 'Feira On Delivery — ' + legalName + ' — CNPJ ' + cnpj;
+const oldCnpj = '65.414.756/0001-22';
+const oldName = 'Dr Alimentos';
+const newCnpj = '68.329.968/0001-08';
+const newName = '68.329.968 Raimundo Matheus Ferreira Feitosa';
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
-const identityFiles = ['loja.html', 'loja-novo.html', 'previa/loja.html', 'termos.html', 'politica-privacidade.html', 'previa/termos.html', 'previa/politica-privacidade.html'];
-for (const file of identityFiles) {
-  const source = read(file);
-  assert.equal(source.includes('65.414.756/0001-22'), false, file + ': CNPJ antigo pontuado não pode permanecer');
-  assert.equal(source.includes('65414756000122'), false, file + ': CNPJ antigo sem pontuação não pode permanecer');
-  assert.equal(source.includes('Dr Alimentos'), false, file + ': razão social antiga não pode permanecer');
-}
-assert.ok(read('sw.js').includes('2026-11-16-legal-identity'), 'service worker deve ter versão nova');
-assert.ok(read('loja.html').includes('sw.js?v=20261116-legal-identity'), 'loja deve solicitar service worker novo');
-assert.ok(read('painel.html').includes('sw.js?v=20261116-legal-identity'), 'painel deve solicitar service worker novo');
 const cleanHtml = html => html
   .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
   .replace(/<link\b[^>]*rel=["']stylesheet["'][^>]*>/gi, '');
@@ -28,41 +19,32 @@ const cleanHtml = html => html
     fs.mkdirSync(path.join(root, 'artifacts'), { recursive: true });
     for (const width of [360, 412]) {
       const page = await browser.newPage({ viewport: { width, height: 900 }, deviceScaleFactor: 1 });
-      const store = cleanHtml(read('loja.html'));
-      await page.setContent(store, { waitUntil: 'domcontentloaded' });
-      const footer = page.locator('.legal-footer');
-      await footer.waitFor({ state: 'visible' });
-      const brand = page.locator('.legal-footer .legal-brand');
-      assert.equal((await brand.innerText()).trim(), footerText, 'rodapé deve mostrar exatamente o nome fantasia, razão social e CNPJ');
-      assert.equal(await page.locator('#legalDocumentLine').count(), 0, 'não deve haver linha antiga/duplicada de CNPJ');
-      const storeMetrics = await page.evaluate(() => ({
-        viewport: document.documentElement.clientWidth,
-        document: document.documentElement.scrollWidth,
-        footer: document.querySelector('.legal-footer').getBoundingClientRect().width,
-        brand: document.querySelector('.legal-brand').getBoundingClientRect().width,
-        brandScroll: document.querySelector('.legal-brand').scrollWidth,
-      }));
-      assert.ok(storeMetrics.document <= width, 'loja sem rolagem horizontal: ' + JSON.stringify(storeMetrics));
-      assert.ok(storeMetrics.brandScroll <= storeMetrics.brand + 1, 'texto do rodapé não pode cortar horizontalmente: ' + JSON.stringify(storeMetrics));
+      await page.setContent(cleanHtml(read('loja.html')), { waitUntil: 'domcontentloaded' });
+      await page.locator('.legal-footer').waitFor({ state: 'visible' });
+      assert.ok((await page.locator('.legal-brand').innerText()).includes('Feira On Delivery'), 'loja: marca visível');
+      assert.equal((await page.locator('#legalDocumentValue').innerText()).trim(), oldCnpj, 'loja: CNPJ anterior restaurado');
+      let metrics = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, document: document.documentElement.scrollWidth }));
+      assert.ok(metrics.document <= width, 'loja sem overflow horizontal: ' + JSON.stringify(metrics));
       await page.screenshot({ path: path.join(root, 'artifacts', 'legal-store-' + width + '.png'), fullPage: true });
 
       for (const [file, label] of [['termos.html', 'Termos de Uso'], ['politica-privacidade.html', 'Política de Privacidade']]) {
         await page.setContent(cleanHtml(read(file)), { waitUntil: 'domcontentloaded' });
         const bodyText = await page.locator('body').innerText();
-        assert.ok(bodyText.includes(label), file + ': título deve estar visível');
-        assert.ok(bodyText.includes(legalName), file + ': razão social deve estar visível');
-        assert.ok(bodyText.includes(cnpj), file + ': CNPJ deve estar visível');
-        const metrics = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, document: document.documentElement.scrollWidth }));
-        assert.ok(metrics.document <= width, file + ': sem rolagem horizontal: ' + JSON.stringify(metrics));
+        assert.ok(bodyText.includes(label), file + ': título visível');
+        if (file === 'termos.html' || file === 'politica-privacidade.html') {
+          assert.ok(bodyText.includes(oldName), file + ': responsável anterior restaurado');
+          assert.ok(bodyText.includes(oldCnpj), file + ': CNPJ anterior restaurado');
+          assert.equal(bodyText.includes(newName), false, file + ': razão social da PR #278 removida');
+          assert.equal(bodyText.includes(newCnpj), false, file + ': CNPJ da PR #278 removido');
+        }
+        metrics = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, document: document.documentElement.scrollWidth }));
+        assert.ok(metrics.document <= width, file + ' sem overflow horizontal: ' + JSON.stringify(metrics));
         await page.screenshot({ path: path.join(root, 'artifacts', (file === 'termos.html' ? 'legal-terms-' : 'legal-privacy-') + width + '.png'), fullPage: true });
       }
       await page.close();
     }
-    console.log('OK: rodapé, termos e privacidade em 360px e 412px; razão social/CNPJ visíveis e sem overflow horizontal.');
+    console.log('OK: loja, termos e privacidade em 360px e 412px; identidade anterior restaurada e sem overflow horizontal.');
   } finally {
     await browser.close();
   }
-})().catch(error => {
-  console.error(error);
-  process.exitCode = 1;
-});
+})().catch(error => { console.error(error); process.exitCode = 1; });

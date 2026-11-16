@@ -19,6 +19,8 @@ on:
       - "tests/order-tracking.visual.cjs"
       - "tests/checkout-delivery-access.visual.cjs"
       - "tests/legal-identity.visual.cjs"
+      - "termos.html"
+      - "politica-privacidade.html"
       - ".github/workflows/pages.yml"
       - ".github/workflows/deploy-functions.yml"
       - "supabase/migrations/*lalamove-dispatch-and-webhook.sql"
