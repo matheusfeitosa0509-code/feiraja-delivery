@@ -44,7 +44,7 @@ grant execute on function public.admin_get_delivery_settings() to authenticated;
 create function public.admin_update_delivery_settings(
  p_delivery_ativa boolean,
  p_moto_limite_kg numeric,
- p_lalamove_ambiente text default 'sandbox'
+ p_lalamove_ambiente text default null
 ) returns jsonb language plpgsql security definer set search_path=''
 as $$
 begin
@@ -53,13 +53,13 @@ begin
  end if;
  if p_delivery_ativa is null or p_moto_limite_kg is null
    or p_moto_limite_kg<=0 or p_moto_limite_kg>100
-   or p_lalamove_ambiente not in ('sandbox','producao') then
+   or (p_lalamove_ambiente is not null and p_lalamove_ambiente not in ('sandbox','producao')) then
   raise exception 'Configuracao de entrega invalida.' using errcode='22023';
  end if;
  update public.delivery_settings
  set delivery_ativa=p_delivery_ativa,
      moto_limite_kg=p_moto_limite_kg,
-     lalamove_ambiente=p_lalamove_ambiente,
+     lalamove_ambiente=coalesce(p_lalamove_ambiente,lalamove_ambiente),
      updated_at=now(),updated_by=auth.uid()
  where singleton=true;
  return public.admin_get_delivery_settings();
@@ -80,7 +80,7 @@ begin
  if current_setting('request.jwt.claim.role',true) is distinct from 'service_role' then
   raise exception 'service role required' using errcode='42501';
  end if;
- if p_ambiente not in ('sandbox','producao') or p_order_id is null or p_session_id is null
+ if p_ambiente is null or p_ambiente not in ('sandbox','producao') or p_order_id is null or p_session_id is null
   or p_moto_quote is null or p_car_quote is null or p_moto_fee is null or p_car_fee is null
   or p_moto_fee<0 or p_car_fee<0 or p_moto_expires_at<=now() or p_car_expires_at<=now() then
   raise exception 'invalid quote payload' using errcode='22023';
@@ -116,7 +116,7 @@ begin
  if current_setting('request.jwt.claim.role',true) is distinct from 'service_role' then
   raise exception 'service role required' using errcode='42501';
  end if;
- if p_ambiente not in ('sandbox','producao') or p_vehicle not in ('MOTO','CAR') then
+ if p_ambiente is null or p_ambiente not in ('sandbox','producao') or p_vehicle not in ('MOTO','CAR') then
   raise exception 'invalid dispatch parameters' using errcode='22023';
  end if;
  select ds.lalamove_ambiente into v_current from public.delivery_settings ds where ds.singleton=true;
@@ -176,7 +176,7 @@ begin
  if current_setting('request.jwt.claim.role',true) is distinct from 'service_role' then
   raise exception 'service role required' using errcode='42501';
  end if;
- if p_ambiente not in ('sandbox','producao') or coalesce(p_event_id,'')='' or
+ if p_ambiente is null or p_ambiente not in ('sandbox','producao') or coalesce(p_event_id,'')='' or
   coalesce(p_lalamove_order_id,'')='' or p_event_at is null then
   raise exception 'invalid webhook event' using errcode='22023';
  end if;
