@@ -127,6 +127,13 @@ async function quoteBoth(db: any, order: any, userId: string) {
   };
 }
 async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "MOTO" | "CAR", environment: "sandbox" | "producao") {
+  const { data: settings, error: settingsError } = await db.from("delivery_settings")
+    .select("moto_limite_kg").eq("singleton", true).maybeSingle();
+  if (settingsError || !settings) throw new Error("DELIVERY_SETTINGS_UNAVAILABLE");
+  const motoLimit = Number(settings.moto_limite_kg || 12);
+  if (vehicle === "MOTO" && (order.delivery_weight_kg == null || Number(order.delivery_weight_kg) > motoLimit)) {
+    throw new Error("MOTO_WEIGHT_LIMIT_EXCEEDED");
+  }
   const { key, secret } = environmentCredentials(environment);
   const senderName = Deno.env.get("LALAMOVE_SENDER_NAME") || "Feira On Delivery";
   const senderPhone = normalizeBrazilPhone(requiredEnv("LALAMOVE_SENDER_PHONE"));
@@ -295,6 +302,8 @@ Deno.serve(async (req: Request) => {
       GEOCODER_UNAVAILABLE: { message: "Serviço de localização temporariamente indisponível.", status: 503 },
       SANDBOX_CREDENTIALS_REQUIRED: { message: "Credenciais de Sandbox ausentes ou inválidas no servidor.", status: 503 },
       PRODUCTION_CREDENTIALS_REQUIRED: { message: "Credenciais Lalamove de produção ausentes ou inválidas. Configure LALAMOVE_PROD_API_KEY e LALAMOVE_PROD_API_SECRET no Supabase. Nenhuma corrida foi criada.", status: 503 },
+      MOTO_WEIGHT_LIMIT_EXCEEDED: { message: "A moto atende até 12 kg. Selecione carro ou revise o peso do pedido.", status: 422 },
+      DELIVERY_SETTINGS_UNAVAILABLE: { message: "Não foi possível validar o limite de peso da entrega.", status: 503 },
       LALAMOVE_ENVIRONMENT_UNAVAILABLE: { message: "Não foi possível ler o ambiente Lalamove configurado no servidor.", status: 503 },
       INVALID_LALAMOVE_ENVIRONMENT: { message: "Ambiente Lalamove inválido no servidor.", status: 503 },
       MISSING_SUPABASE_SECRET_KEY: { message: "A chave secreta moderna do banco não está configurada no servidor.", status: 503 },
