@@ -235,3 +235,30 @@ export function requireSupabaseServiceRoleJwt(value: unknown): string {
 export async function storeLalamoveQuotes(db: any, payload: Record<string, unknown>) {
   return await db.rpc("service_store_lalamove_quotes", payload);
 }
+
+/** Reads Supabase's modern secret-key collection for webhook clients that authenticate via apikey. */
+export function requireSupabaseSecretKey(value: unknown): string {
+  const raw = String(value || "").trim();
+  let key = raw;
+  if (raw.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(raw);
+      key = String(parsed?.default || "").trim();
+    } catch {
+      key = "";
+    }
+  }
+  if (!key.startsWith("sb_secret_")) throw new Error("MISSING_SUPABASE_SECRET_KEY");
+  return key;
+}
+
+/** New secret keys authenticate through apikey; never forward them as Bearer JWTs. */
+export function secretKeyFetch(secretKey: string, fetcher: typeof fetch = fetch): typeof fetch {
+  return (input: RequestInfo | URL, init?: RequestInit) => {
+    const headers = new Headers(input instanceof Request ? input.headers : undefined);
+    new Headers(init?.headers).forEach((value, name) => headers.set(name, value));
+    headers.set("apikey", secretKey);
+    headers.delete("Authorization");
+    return fetcher(input, { ...init, headers });
+  };
+}
