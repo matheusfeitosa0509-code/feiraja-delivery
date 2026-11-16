@@ -1,7 +1,7 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   buildLalamoveOrderBody, canCancelLalamove, canQuoteLalamove, canStartDispatch, isLalamoveDispatchReady, cancelLalamoveOrder, createLalamoveOrder, getLalamoveDriverDetails,
-  isWebhookVerificationProbe, makeWebhookSignature, mapLalamoveStatus, normalizeBrazilPhone, priceDifference, quoteFee, verifyWebhookSignature, requireSupabaseSecretKey, secretKeyFetch, getLalamoveOrderDetails,
+  isWebhookVerificationProbe, makeWebhookSignature, mapLalamoveStatus, normalizeBrazilPhone, priceDifference, quoteFee, verifyWebhookSignature, requireSupabaseServiceRoleJwt, storeLalamoveQuotes, getLalamoveOrderDetails,
 } from "../_shared/lalamove-dispatch.ts";
 
 const quote = {
@@ -159,31 +159,50 @@ Deno.test("cotação pode ocorrer antes de Pronto, mas corrida só após Pronto 
   assertEquals(isLalamoveDispatchReady("Pronto"), true);
 });
 
-Deno.test("RPC interno usa chave secreta moderna sem depender do JWT legado", () => {
-  const key = "sb_secret_test_example";
-  assertEquals(requireSupabaseSecretKey(JSON.stringify({ default: key })), key);
-  assertEquals(requireSupabaseSecretKey(key), key);
+Deno.test("RPC interno recebe JWT com claim service_role; rejeita chave secreta opaca", () => {
+  const payload = btoa(JSON.stringify({ role: "service_role" })).replace(/=/g, "").replace(/\\+/g, "-").replace(/\\//g, "_");
+  const token = "eyJhbGciOiJIUzI1NiJ9." + payload + ".signature";
+  assertEquals(requireSupabaseServiceRoleJwt(token), token);
   let rejected = false;
-  try { requireSupabaseSecretKey("header.payload.signature"); } catch (error) {
-    rejected = error instanceof Error && error.message === "MISSING_SUPABASE_SECRET_KEY";
+  try { requireSupabaseServiceRoleJwt("sb_secret_test_example"); } catch (error) {
+    rejected = error instanceof Error && error.message === "MISSING_SUPABASE_SERVICE_ROLE_KEY";
   }
-  assertEquals(rejected, true);
-  rejected = false;
-  try { requireSupabaseSecretKey(""); } catch { rejected = true; }
   assertEquals(rejected, true);
 });
 
-Deno.test("cliente PostgREST envia chave secreta somente em apikey, sem Authorization Bearer", async () => {
-  const fetcher = secretKeyFetch("sb_secret_test_example", async (_input, init) => {
-    const headers = new Headers(init?.headers);
-    assertEquals(headers.get("apikey"), "sb_secret_test_example");
-    assertEquals(headers.has("Authorization"), false);
-    return new Response("ok");
-  });
-  const response = await fetcher(new Request("https://example.supabase.co/rest/v1/rpc/test", {
-    headers: { Authorization: "Bearer sb_secret_test_example" },
-  }));
-  assertEquals(response.status, 200);
+Deno.test("cotação Produção substitui cotação Sandbox antiga e preserva taxa real", async () => {
+  let stored = {
+    state: "quoted", ambiente: "sandbox", quote_moto_fee: 8.32, quote_car_fee: 10.10,
+    lalamove_order_id: null, quote_session_id: "old-sandbox-session",
+  };
+  const motoQuote = { quotationId: "prod-moto-123456", expiresAt: new Date(Date.now() + 60000).toISOString(),
+    priceBreakdown: { total: "12.05", currency: "BRL" }, stops: [{ stopId: "pickup-moto" }, { stopId: "drop-moto" }] };
+  const carQuote = { quotationId: "prod-car-123456", expiresAt: new Date(Date.now() + 60000).toISOString(),
+    priceBreakdown: { total: "14.40", currency: "BRL" }, stops: [{ stopId: "pickup-car" }, { stopId: "drop-car" }] };
+  const moto = quoteFee(motoQuote), car = quoteFee(carQuote);
+  const payload = {
+    p_order_id: "FEIRA-TEST-6259DB63", p_session_id: "00000000-0000-4000-8000-000000000002",
+    p_moto_quote: motoQuote, p_car_quote: carQuote, p_moto_fee: moto.fee, p_car_fee: car.fee,
+    p_moto_expires_at: moto.expiresAt, p_car_expires_at: car.expiresAt, p_ambiente: "producao",
+  };
+  const db = { rpc: async (name: string, args: Record<string, unknown>) => {
+    assertEquals(name, "service_store_lalamove_quotes");
+    assertEquals(args.p_ambiente, "producao");
+    if (stored.state === "quoted" && stored.lalamove_order_id === null) {
+      stored = { state: "quoted", ambiente: String(args.p_ambiente),
+        quote_moto_fee: Number(args.p_moto_fee), quote_car_fee: Number(args.p_car_fee),
+        lalamove_order_id: null, quote_session_id: String(args.p_session_id) };
+      return { data: { stored: true, ambiente: stored.ambiente }, error: null };
+    }
+    return { data: null, error: { code: "55000", message: "dispatch already started" } };
+  }};
+  const result = await storeLalamoveQuotes(db, payload);
+  assertEquals(result.error, null);
+  assertEquals(stored.ambiente, "producao");
+  assertEquals(stored.quote_moto_fee, 12.05);
+  assertEquals(stored.quote_car_fee, 14.40);
+  assertEquals(stored.quote_session_id, payload.p_session_id);
+  assertEquals(stored.state, "quoted");
 });
 
 Deno.test("consulta de status Lalamove usa GET assinado em /v3/orders/{id}", async () => {
