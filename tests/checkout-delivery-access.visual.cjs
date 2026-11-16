@@ -57,15 +57,24 @@ const checkoutCss = [
 
       // Visitor, common account and pending admin check: no test-payment DOM at all.
       for (const state of [
-        { isAdminConfirmed: false, deliveryType: 'delivery' },
-        { isAdminConfirmed: false, deliveryType: 'delivery' },
-        { isAdminConfirmed: false, deliveryType: 'delivery' },
-        { isAdminConfirmed: true, deliveryType: 'pickup_store' },
+        { isAdminConfirmed: false, deliveryType: 'delivery' }, // visitante
+        { isAdminConfirmed: false, deliveryType: 'delivery' }, // cliente comum
+        { isAdminConfirmed: false, deliveryType: 'delivery' }, // admin ainda pendente/erro
       ]) {
         assert.equal(await syncTestPayment(state), false);
         assert.deepEqual(await testPaymentSnapshot(), { label: null, radio: false, option: false, hidden: null, textPresent: false });
       }
-      // Only a server-confirmed admin in the delivery checkout gets a real DOM option.
+      // Admin confirmado pode testar Entrega Feira On e Retirar na loja.
+      for (const deliveryType of ['delivery', 'pickup_store']) {
+        assert.equal(await syncTestPayment({ isAdminConfirmed: true, deliveryType }), true);
+        const adminOption = await testPaymentSnapshot();
+        assert.equal(adminOption.radio, true);
+        assert.equal(adminOption.option, true);
+        assert.equal(adminOption.hidden, false);
+        assert.equal(adminOption.textPresent, true);
+        assert.equal(await syncTestPayment({ isAdminConfirmed: false, deliveryType }), false);
+        assert.deepEqual(await testPaymentSnapshot(), { label: null, radio: false, option: false, hidden: null, textPresent: false });
+      }
       assert.equal(await syncTestPayment({ isAdminConfirmed: true, deliveryType: 'delivery' }), true);
       let testPayment = await testPaymentSnapshot();
       assert.equal(testPayment.radio, true);
