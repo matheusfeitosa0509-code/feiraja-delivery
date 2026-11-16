@@ -216,7 +216,7 @@ Deno.test("webhook signed V3 can use signature as stable fallback event identifi
 
 
 Deno.test("criação Lalamove MOCKADA: ambiente produção usa endpoint live", async () => {
-  const result = await createLalamoveOrder("pk_live_demo", "sk_live_demo", {
+  const result = await createLalamoveOrder("pk_prod_demo", "sk_prod_demo", {
     data: { quotationId: "quote-live", sender: { stopId: "pickup" }, recipients: [{ stopId: "dropoff" }] },
   }, async (input, init) => {
     assertEquals(String(input), "https://rest.lalamove.com/v3/orders");
@@ -231,10 +231,10 @@ Deno.test("webhook produção: HMAC live válido e assinatura sandbox não subst
   const path = "/functions/v1/lalamove-webhook";
   const data = { order: { orderId: "LIVE123456", status: "ON_GOING" } };
   const timestamp = "1794763200";
-  const signature = await makeWebhookSignature("sk_live_demo", timestamp, path, data);
-  const payload = { apiKey: "pk_live_demo", timestamp, signature, data };
+  const signature = await makeWebhookSignature("sk_prod_demo", timestamp, path, data);
+  const payload = { apiKey: "pk_prod_demo", timestamp, signature, data };
   assertEquals(await verifyWebhookSignature({
-    apiKey: "pk_live_demo", apiSecret: "sk_live_demo", path, payload,
+    apiKey: "pk_prod_demo", apiSecret: "sk_prod_demo", path, payload,
   }), true);
   assertEquals(await verifyWebhookSignature({
     apiKey: "pk_test_demo", apiSecret: "sk_test_demo", path, payload,
@@ -243,7 +243,7 @@ Deno.test("webhook produção: HMAC live válido e assinatura sandbox não subst
 
 
 Deno.test("consulta de tracking MOCKADA usa host de produção quando dispatch foi criado em live", async () => {
-  const result = await getLalamoveOrderDetails("pk_live_demo", "sk_live_demo", "LIVE123456",
+  const result = await getLalamoveOrderDetails("pk_prod_demo", "sk_prod_demo", "LIVE123456",
     async (input, init) => {
       assertEquals(String(input), "https://rest.lalamove.com/v3/orders/LIVE123456");
       assertEquals(init?.method, "GET");
