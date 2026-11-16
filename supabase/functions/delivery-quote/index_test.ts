@@ -131,3 +131,10 @@ Deno.test("credenciais de produção ausentes falham sem fallback ao Sandbox", a
   }
   assertEquals(code, "PRODUCTION_CREDENTIALS_REQUIRED");
 });
+
+
+Deno.test("limite de moto de 12 kg: 12 kg aceita moto e acima direciona para carro", () => {
+  assertEquals(chooseVehicle(12, false, 12), "MOTO");
+  assertEquals(chooseVehicle(12.001, false, 12), "CAR");
+  assertEquals(chooseVehicle(3, true, 12), "CAR");
+});
