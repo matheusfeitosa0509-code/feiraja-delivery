@@ -109,16 +109,16 @@ Deno.test("Lalamove MOCKADA: cotação moto e carro de produção usa host live 
   const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
     assertEquals(String(input), "https://rest.lalamove.com/v3/quotations");
     assertEquals(init?.method, "POST");
-    assertEquals(new Headers(init?.headers).get("Authorization")?.startsWith("hmac pk_live_mock:"), true);
+    assertEquals(new Headers(init?.headers).get("Authorization")?.startsWith("hmac pk_prod_mock:"), true);
     services.push(JSON.parse(String(init?.body)).data.serviceType);
     return new Response(JSON.stringify({ data: {
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
       priceBreakdown: { total: "10.25", currency: "BRL" },
     } }), { status: 200 });
   };
-  const moto = await requestSandboxQuotation("pk_live_mock", "sk_live_mock", "LALAGO",
+  const moto = await requestSandboxQuotation("pk_prod_mock", "sk_prod_mock", "LALAGO",
     dropoff, coordinates, fetcher, "producao");
-  const car = await requestSandboxQuotation("pk_live_mock", "sk_live_mock", "CAR",
+  const car = await requestSandboxQuotation("pk_prod_mock", "sk_prod_mock", "CAR",
     dropoff, coordinates, fetcher, "producao");
   assertEquals(services, ["LALAGO", "CAR"]);
   assertEquals(parseQuotation((await moto.json()).data, "MOTO", 2).fee, 11);

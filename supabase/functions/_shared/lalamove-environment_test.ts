@@ -21,8 +21,8 @@ Deno.test("ambiente producao seleciona endpoint e secrets live", () => {
     key: "LALAMOVE_PROD_API_KEY", secret: "LALAMOVE_PROD_API_SECRET",
   });
   assertEquals(readLalamoveCredentials("producao", (name) => ({
-    LALAMOVE_PROD_API_KEY: "pk_live_mock",
-    LALAMOVE_PROD_API_SECRET: "sk_live_mock",
+    LALAMOVE_PROD_API_KEY: "pk_prod_mock",
+    LALAMOVE_PROD_API_SECRET: "sk_prod_mock",
   } as Record<string, string>)[name]).baseUrl, "https://rest.lalamove.com");
 });
 

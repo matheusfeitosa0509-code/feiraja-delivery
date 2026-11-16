@@ -25,8 +25,8 @@ export function readLalamoveCredentials(
   const names = lalamoveCredentialNames(environment);
   const apiKey = readEnv(names.key) || "";
   const apiSecret = readEnv(names.secret) || "";
-  const prefix = environment === "producao" ? "pk_live" : "pk_test";
-  const secretPrefix = environment === "producao" ? "sk_live" : "sk_test";
+  const prefix = environment === "producao" ? "pk_prod" : "pk_test";
+  const secretPrefix = environment === "producao" ? "sk_prod" : "sk_test";
   if (!apiKey.startsWith(prefix) || !apiSecret.startsWith(secretPrefix)) {
     throw new Error(environment === "producao"
       ? "PRODUCTION_CREDENTIALS_REQUIRED"
