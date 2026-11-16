@@ -44,6 +44,8 @@ function prepareHtml(source) {
       page.on("console",m=>{if(m.type()==="error")errors.push("console.error: "+m.text());});
       await page.setContent(prepareHtml(source),{waitUntil:"domcontentloaded"});
       await page.waitForFunction(()=>document.getElementById("lalamoveSettingsMessage")?.textContent.includes("Ambiente atual"),{timeout:15000});
+      await page.waitForSelector("[data-order-toggle]");
+      await page.locator("[data-order-toggle]").click();
       await page.waitForSelector('[data-lalamove-quote="TEST-6259DB63"]');
 
       await page.locator("#lalamoveEnvironmentSelect").selectOption("producao");
@@ -63,6 +65,8 @@ function prepareHtml(source) {
 
       await page.evaluate(()=>window.__testDb.resetOrder());
       await page.locator("#refresh").click();
+      await page.waitForSelector("[data-order-toggle]");
+      await page.locator("[data-order-toggle]").click();
       await page.waitForSelector('[data-lalamove-quote="TEST-6259DB63"]');
       await page.locator("#lalamoveEnvironmentSelect").selectOption("sandbox");
       await page.waitForFunction(()=>document.getElementById("lalamoveSettingsBadge")?.textContent==="SANDBOX");
