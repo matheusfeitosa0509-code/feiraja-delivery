@@ -1480,7 +1480,27 @@ function pickupEstimate(date=new Date()){
 }
 function checkoutScheduleMessage(now=new Date()){const estimate=pickupEstimate(now);return estimate.within?'Pedidos ficam prontos ainda hoje, até 13h.':'Estamos fechados agora. Seu pedido fica pronto para retirada na '+estimate.label+' a partir das 6h.';}
 function formatOrderQuantity(quantity){return Number(quantity).toLocaleString('pt-BR',{maximumFractionDigits:2});}
-function formatOrderItemDescription(item){const quantity=item.quantity??item.qty??1;const rawName=String(item.name||item.product_name||item.id||'Produto');const suffix=rawName.match(/\s*\((kg|un|unidade|maço|maco|pacote)\)\s*$/i);const name=rawName.replace(/\s*\((?:kg|un|unidade|maço|maco|pacote)\)\s*$/i,'').trim();const normalizeUnit=value=>String(value||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');const declared=normalizeUnit(item.sale_unit??item.saleUnit);const stored=normalizeUnit(item.unit??item.unit_name);const unit=normalizeUnit(suffix?.[1])||declared||(item.sale_mode==='unit'||item.sale_mode==='un'?'un':stored);if(item.sale_mode==='value'){const cents=Number(item.line_total_cents??item.amount_cents);const amount=Number.isSafeInteger(cents)&&cents>0?money(cents/100):money(Number(item.price||0)*Number(quantity||1));return name+' — '+amount+' (~'+formatOrderQuantity(quantity)+' kg)';}if(item.sale_mode==='kg'||unit==='kg')return name+' — '+formatOrderQuantity(quantity)+' kg';if(['un','unidade','maco','pacote'].includes(unit))return name+' — '+formatOrderQuantity(quantity)+' '+(unit==='unidade'?'un':unit==='maco'?'maço':unit);return name+' × '+formatOrderQuantity(quantity)+(item.unit?' '+String(item.unit):'');}
+function formatOrderItemDescription(item){
+ const quantity=item.quantity??item.qty??1;
+ const rawName=String(item.name||item.product_name||item.id||'Produto');
+ const suffix=rawName.match(/\s*\((kg|un|unidade|maço|maco|pacote)\)\s*$/i);
+ const name=rawName.replace(/\s*\((?:kg|un|unidade|maço|maco|pacote)\)\s*$/i,'').trim();
+ const normalizeUnit=value=>String(value||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+ const declared=normalizeUnit(item.sale_unit??item.saleUnit);
+ const stored=normalizeUnit(item.unit??item.unit_name);
+ const mode=normalizeUnit(item.sale_mode);
+ const modeUnit=mode==='unit'?'un':mode;
+ // A unidade explícita no nome/catálogo prevalece sobre snapshots antigos de sale_mode.
+ const unit=normalizeUnit(suffix?.[1])||declared||(['un','unidade'].includes(modeUnit)?'un':stored||modeUnit);
+ if(mode==='value'){
+  const cents=Number(item.line_total_cents??item.amount_cents);
+  const amount=Number.isSafeInteger(cents)&&cents>0?money(cents/100):money(Number(item.price||0)*Number(quantity||1));
+  return name+' — '+amount+' (~'+formatOrderQuantity(quantity)+' kg)';
+ }
+ if(unit==='kg')return name+' — '+formatOrderQuantity(quantity)+' kg';
+ if(['un','unidade','maco','pacote'].includes(unit))return name+' — '+formatOrderQuantity(quantity)+' '+(unit==='unidade'?'un':unit==='maco'?'maço':unit);
+ return name+' × '+formatOrderQuantity(quantity)+(item.unit?' '+String(item.unit):'');
+}
 $('#refreshOrders').addEventListener('click',loadMyOrders);$('#refreshMyOrders').addEventListener('click',loadMyOrders);
 function showRequiredProfileStep(message=''){
  const section=$('#requiredProfileStep');
