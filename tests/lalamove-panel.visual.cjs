@@ -39,7 +39,7 @@ const { chromium } = require("playwright");
         style[1] + '</style></head><body><main class="wrap">' + settingsMarkup +
         '<div id="orders" class="orders"></div><div id="priceEditor" class="hide"></div><div id="resaleEditor" class="hide"></div><div id="productEdit" class="hide"></div><div id="message"></div></main><div id="appDialogBackdrop" class="app-dialog-backdrop" hidden><section class="app-dialog" role="dialog" aria-modal="true" aria-labelledby="appDialogTitle" aria-describedby="appDialogMessage"><h2 id="appDialogTitle">Confirmar ação</h2><p id="appDialogMessage"></p><div class="app-dialog-actions"><button id="appDialogBack" type="button" class="app-dialog-back">Voltar</button><button id="appDialogConfirm" type="button" class="app-dialog-confirm">Confirmar</button></div></section></div></body></html>';
       await page.setContent(html, { waitUntil: "domcontentloaded" });
-      await page.evaluate(({ order, readyOrder, orderSource, flowSource, confirmSource, showSource }) => {
+      await page.evaluate(async ({ order, readyOrder, orderSource, flowSource, confirmSource, showSource }) => {
         const $ = id => document.getElementById(id);
         const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" })[c]);
         const money = value => "R$ " + Number(value || 0).toFixed(2).replace(".", ",");
