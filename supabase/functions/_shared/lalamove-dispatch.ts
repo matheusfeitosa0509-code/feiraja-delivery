@@ -214,29 +214,24 @@ export function isLalamoveDispatchReady(status: unknown): boolean {
 }
 
 
-/** Reads Supabase's modern secret-key collection; legacy JWT keys are not required. */
-export function requireSupabaseSecretKey(value: unknown): string {
-  const raw = String(value || "").trim();
-  let key = raw;
-  if (raw.startsWith("{")) {
-    try {
-      const parsed = JSON.parse(raw);
-      key = String(parsed?.default || "").trim();
-    } catch {
-      key = "";
-    }
+/** Accept only the legacy service_role JWT for RPCs that validate request.jwt.claim.role. */
+export function requireSupabaseServiceRoleJwt(value: unknown): string {
+  const token = String(value || "").trim();
+  const parts = token.split(".");
+  if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) {
+    throw new Error("MISSING_SUPABASE_SERVICE_ROLE_KEY");
   }
-  if (!key.startsWith("sb_secret_")) throw new Error("MISSING_SUPABASE_SECRET_KEY");
-  return key;
+  try {
+    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const claims = JSON.parse(atob(payload + "=".repeat((4 - payload.length % 4) % 4)));
+    if (claims?.role !== "service_role") throw new Error("wrong role");
+  } catch {
+    throw new Error("MISSING_SUPABASE_SERVICE_ROLE_KEY");
+  }
+  return token;
 }
 
-/** New secret keys authenticate through apikey; never forward them as Bearer JWTs. */
-export function secretKeyFetch(secretKey: string, fetcher: typeof fetch = fetch): typeof fetch {
-  return (input: RequestInfo | URL, init?: RequestInit) => {
-    const headers = new Headers(input instanceof Request ? input.headers : undefined);
-    new Headers(init?.headers).forEach((value, name) => headers.set(name, value));
-    headers.set("apikey", secretKey);
-    headers.delete("Authorization");
-    return fetcher(input, { ...init, headers });
-  };
+/** Keep the quote RPC call contract centralized and testable without contacting Lalamove. */
+export async function storeLalamoveQuotes(db: any, payload: Record<string, unknown>) {
+  return await db.rpc("service_store_lalamove_quotes", payload);
 }
