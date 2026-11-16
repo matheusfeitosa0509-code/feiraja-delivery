@@ -4,7 +4,7 @@ import { formatDropoff, requestSandboxQuotation } from "../_shared/delivery-quot
 import { geocodeManausAddress } from "../_shared/geocoding.ts";
 import {
   buildLalamoveOrderBody, canCancelLalamove, canQuoteLalamove, canStartDispatch, isLalamoveDispatchReady, cancelLalamoveOrder, createLalamoveOrder, normalizeBrazilPhone,
-  getLalamoveDriverDetails, getLalamoveOrderDetails, mapLalamoveStatus, priceDifference, quoteFee, requireSupabaseSecretKey, secretKeyFetch,
+  getLalamoveDriverDetails, getLalamoveOrderDetails, mapLalamoveStatus, priceDifference, quoteFee, requireSupabaseServiceRoleJwt, storeLalamoveQuotes,
 } from "../_shared/lalamove-dispatch.ts";
 
 const cors = {
@@ -29,9 +29,9 @@ function environmentCredentials(environment: "sandbox" | "producao") {
 async function adminContext(req: Request): Promise<{ db: any; user: any; error?: undefined } | { error: Response; db?: undefined; user?: undefined }> {
   const url = requiredEnv("SUPABASE_URL");
   const anon = requiredEnv("SUPABASE_ANON_KEY");
-  // Secret API keys map to Postgres service_role. Keep the secret in apikey only:
-  // the new sb_secret_* key is opaque and must not be sent as Authorization: Bearer.
-  const service = requireSupabaseSecretKey(Deno.env.get("SUPABASE_SECRET_KEYS"));
+  // The quote RPC checks request.jwt.claim.role, so it must receive the service_role JWT.
+  // An opaque sb_secret_* key authenticates via apikey but does not populate that JWT claim.
+  const service = requireSupabaseServiceRoleJwt(requiredEnv("SUPABASE_SERVICE_ROLE_KEY"));
   const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token || token === (req.headers.get("Authorization") || "")) return { error: json({ error: "Sessão necessária." }, 401) };
   const auth = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -39,7 +39,6 @@ async function adminContext(req: Request): Promise<{ db: any; user: any; error?:
   if (error || !data?.user || data.user.is_anonymous) return { error: json({ error: "Sessão válida necessária." }, 401) };
   const db = createClient(url, service, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: { fetch: secretKeyFetch(service) },
   });
   const { data: member, error: memberError } = await db.from("admin_users").select("user_id")
     .eq("user_id", data.user.id).maybeSingle();
@@ -101,7 +100,7 @@ async function quoteBoth(db: any, order: any, userId: string) {
   const motoParsed = quoteFee(moto);
   const carParsed = quoteFee(car);
   const sessionId = crypto.randomUUID();
-  const { error } = await db.rpc("service_store_lalamove_quotes", {
+  const { error } = await storeLalamoveQuotes(db, {
     p_order_id: order.id, p_session_id: sessionId,
     p_moto_quote: moto, p_car_quote: car,
     p_moto_fee: motoParsed.fee, p_car_fee: carParsed.fee,
@@ -307,7 +306,7 @@ Deno.serve(async (req: Request) => {
       DELIVERY_SETTINGS_UNAVAILABLE: { message: "Não foi possível validar o limite de peso da entrega.", status: 503 },
       LALAMOVE_ENVIRONMENT_UNAVAILABLE: { message: "Não foi possível ler o ambiente Lalamove configurado no servidor.", status: 503 },
       INVALID_LALAMOVE_ENVIRONMENT: { message: "Ambiente Lalamove inválido no servidor.", status: 503 },
-      MISSING_SUPABASE_SECRET_KEY: { message: "A chave secreta moderna do banco não está configurada no servidor.", status: 503 },
+      MISSING_SUPABASE_SERVICE_ROLE_KEY: { message: "A chave service_role do banco não está configurada corretamente no servidor.", status: 503 },
       INVALID_QUOTE_RESPONSE: { message: "A Lalamove retornou uma cotação inválida.", status: 502 },
       QUOTE_STORE_FAILED: { message: "As cotações foram recebidas, mas não foi possível salvá-las. Tente novamente.", status: 503 },
       LALAMOVE_QUOTE_FAILED: { message: "A Lalamove não conseguiu calcular o preço agora. Confira o endereço e tente novamente.", status: 502 },
