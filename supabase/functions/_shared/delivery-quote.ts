@@ -85,8 +85,8 @@ export async function requestSandboxQuotation(
   fetcher: typeof fetch = fetch,
   environment: LalamoveEnvironment = "sandbox",
 ): Promise<Response> {
-  const keyPrefix = environment === "producao" ? "pk_live" : "pk_test";
-  const secretPrefix = environment === "producao" ? "sk_live" : "sk_test";
+  const keyPrefix = environment === "producao" ? "pk_prod" : "pk_test";
+  const secretPrefix = environment === "producao" ? "sk_prod" : "sk_test";
   if (!apiKey.startsWith(keyPrefix) || !apiSecret.startsWith(secretPrefix)) {
     throw new Error(environment === "producao" ? "PRODUCTION_CREDENTIALS_REQUIRED" : "SANDBOX_CREDENTIALS_REQUIRED");
   }
