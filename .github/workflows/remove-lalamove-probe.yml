@@ -1,0 +1,36 @@
+name: Remove temporary Lalamove production quote probe
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/cleanup/remove-lalamove-production-quote-probe.txt"
+
+permissions:
+  contents: read
+
+jobs:
+  remove-probe:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: juhwdevvwstmyxyyagzh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
+        with:
+          version: 2.84.2
+      - name: Remover função temporária do projeto
+        run: supabase functions delete lalamove-production-quote-probe --project-ref "$SUPABASE_PROJECT_REF" --yes
+      - name: Confirmar que o endpoint não responde mais
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -o /tmp/lalamove-probe-response.txt -w '%{http_code}' --max-time 20 "https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/lalamove-production-quote-probe")"
+          if [[ "$code" != "404" && "$code" != "410" ]]; then
+            echo "::error::Endpoint temporário ainda responde (HTTP $code)."
+            cat /tmp/lalamove-probe-response.txt
+            exit 1
+          fi
+          echo "Endpoint removido e não responde: HTTP $code."

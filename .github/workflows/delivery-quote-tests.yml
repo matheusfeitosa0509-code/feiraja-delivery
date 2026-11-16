@@ -30,6 +30,7 @@ on:
       - "supabase/rollback/*lalamove-production-environment.sql"
       - "painel.html"
       - "tests/painel-compact.visual.cjs"
+      - "tests/lalamove-panel.visual.cjs"
       - "loja.html"
       - "loja-delivery-ui.js"
       - "loja-delivery-ui_test.ts"
@@ -85,6 +86,7 @@ jobs:
       - run: npm install --prefix /tmp/playwright playwright@1.58.2
       - run: /tmp/playwright/node_modules/.bin/playwright install --with-deps chromium
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-compact.visual.cjs
+      - run: NODE_PATH=/tmp/playwright/node_modules node tests/lalamove-panel.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/order-tracking.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/checkout-delivery-access.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/legal-identity.visual.cjs

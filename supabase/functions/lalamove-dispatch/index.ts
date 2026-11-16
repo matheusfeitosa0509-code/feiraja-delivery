@@ -120,6 +120,7 @@ async function quoteBoth(db: any, order: any, userId: string) {
   const charged = Number(order.delivery_fee || 0);
   return {
     quote_session_id: sessionId,
+    environment,
     delivery_fee_charged: charged,
     selected_vehicle: order.delivery_vehicle === "CAR" ? "CAR" : "MOTO",
     moto: { fee: motoParsed.fee, difference: priceDifference(motoParsed.fee, charged) },
