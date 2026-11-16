@@ -1065,7 +1065,7 @@ async function confirmLalamoveDispatch(orderId,sessionId,vehicle,quoteEnvironmen
   const {data,error}=await db.functions.invoke('lalamove-dispatch',{body:{action:'create',order_id:orderId,quote_session_id:sessionId,vehicle}});
   if(error)throw error;
   if(data?.pending_confirmation){setLalamoveFeedback(orderId,data.message||'A Lalamove ainda está confirmando a criação. Não toque novamente.',true);return;}
-  if(data?.created){const quoteBox=document.querySelector('[data-lalamove-quote-box="'+CSS.escape(orderId)+'"]');if(quoteBox)quoteBox.hidden=true;await load();setLalamoveFeedback(orderId,'Corrida criada no Sandbox. O acompanhamento já está disponível abaixo.',false);return;}
+  if(data?.created){const quoteBox=document.querySelector('[data-lalamove-quote-box="'+CSS.escape(orderId)+'"]');if(quoteBox)quoteBox.hidden=true;await load();setLalamoveFeedback(orderId,'Corrida criada na '+(quoteEnvironment==='producao'?'Produção':'Sandbox')+'. O acompanhamento já está disponível abaixo.',false);return;}
   setLalamoveFeedback(orderId,'A Lalamove não confirmou a criação. Atualize o painel antes de tentar novamente.',true);
  }catch(error){
   const detail=await lalamoveErrorMessage(error,'Não foi possível criar a corrida. Confira os dados e tente novamente.');
