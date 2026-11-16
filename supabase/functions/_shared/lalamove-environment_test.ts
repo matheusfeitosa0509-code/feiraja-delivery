@@ -1,4 +1,4 @@
-import { assertEquals, assertThrows } from "jsr:@std/assert@1.0.14";
+import { assertEquals } from "jsr:@std/assert@1.0.14";
 import {
   lalamoveBaseUrl, lalamoveCredentialNames, normalizeLalamoveEnvironment,
   readLalamoveCredentials,
