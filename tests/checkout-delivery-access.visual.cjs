@@ -230,10 +230,10 @@ const checkoutCss = [
       ));
       await render(networkError);
       view = await snapshot();
-      assert.equal(view.disabled, true);
-      assert.equal(view.label, 'Em breve');
+      assert.equal(view.disabled, false);
+      assert.equal(view.label, 'Calcular taxa');
       assert.equal(view.badgeCount, 0);
-      assert.equal(view.description.includes('Consulte o valor'), false);
+      assert.equal(view.description.includes('Taxa por distância'), true);
 
       // A prévia TESTE desligada permanece em uma linha no celular; opção ativa não tem selo.
       await render(adminInactive);
