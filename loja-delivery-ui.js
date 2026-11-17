@@ -179,15 +179,9 @@ export function deliveryQuoteErrorMessage(status, code = "") {
   const known = {
     ADDRESS_NOT_FOUND: "Não encontramos esse endereço.",
     ADDRESS_OUTSIDE_MANAUS: "Endereço fora da área de entrega.",
-    GEOCODER_NOT_CONFIGURED: "Serviço de localização não configurado. Falta o Secret GOOGLE_GEOCODING_API_KEY no Supabase.",
-    GOOGLE_PLACES_NOT_CONFIGURED: "Autocomplete não configurado. Ative Places API (New) na chave Google salva no Supabase.",
-    PLACES_UNAVAILABLE: "Não foi possível consultar sugestões do Google agora. Tente novamente ou marque no mapa.",
-    GEOCODER_UNAVAILABLE: "Não foi possível localizar o endereço agora. Tente novamente em instantes.",
     LALAMOVE_OUT_OF_SERVICE_AREA: "Endereço fora da área de entrega.",
-    LALAMOVE_REVERSE_GEOCODE_FAILURE: "A Lalamove não conseguiu validar a rota mesmo com as coordenadas. Tente novamente.",
     LALAMOVE_RATE_LIMIT: "Muitas consultas agora, tente em alguns segundos.",
     QUOTE_RATE_LIMIT: "Muitas consultas agora, tente em alguns segundos.",
-    LALAMOVE_QUOTE_FAILED: "Entrega indisponível no momento.",
     STORE_CLOSED: "Entrega disponível no horário de funcionamento.",
   };
   return known[String(code)] || (Number(status) === 422
