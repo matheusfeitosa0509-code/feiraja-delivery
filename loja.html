@@ -879,7 +879,7 @@ try {
 #deliveryQuoteStatus{margin:8px 0;padding:10px 12px;border-radius:12px;background:#eef6e8;color:#245b22;font-weight:700}
 #deliveryQuoteStatus[hidden]{display:none!important}
 #deliveryQuoteStatus.delivery-error{background:#fff0ed;color:#a33b2b}
-#deliveryHomeOption[hidden],#deliveryUberOption[hidden]{display:none!important}
+#deliveryHomeOption[hidden]{display:none!important}
 .checkout-choice-card.is-disabled{opacity:.52;filter:grayscale(.35);cursor:not-allowed;background:#f4f5f1!important;border-style:dashed!important}.checkout-choice-card.is-disabled .checkout-choice-end{color:#7b847b;font-weight:900}
 .delivery-order-details{margin:10px 0;padding:10px;border-radius:12px;background:#f5f8ef;line-height:1.7}
 .delivery-suggestions{position:relative;z-index:80;margin-top:4px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.12);overflow:hidden}
@@ -1249,7 +1249,7 @@ try {
 <script src="./lalamove-map.js"></script>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.1';
-import { canShowUberPickupOption, buildDeliveryQuoteItems, checkoutGrandTotal, deliveryQuoteErrorMessage, deliveryQuoteLabel, isDeliveryOutOfArea, normalizeDeliveryAddress, deliveryUnavailableMessage, loadDeliveryAccessState, renderDeliveryOption, syncAdminTestPaymentOption } from './loja-delivery-ui.js?v=20261117-entrega-agendada';
+import { canShowUberPickupOption, syncUberPickupOption, buildDeliveryQuoteItems, checkoutGrandTotal, deliveryQuoteErrorMessage, deliveryQuoteLabel, isDeliveryOutOfArea, normalizeDeliveryAddress, deliveryUnavailableMessage, loadDeliveryAccessState, renderDeliveryOption, syncAdminTestPaymentOption } from './loja-delivery-ui.js?v=20261117-hide-uber-dom';
 import { getStoreSchedule } from './supabase/functions/_shared/store-schedule.js?v=20261117-entrega-agendada';
 const supabase=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW');
 
@@ -1462,6 +1462,7 @@ let minValueSaleCents=500,salesSettingsReady=false;
 function readStoredCart(){try{const raw=localStorage.getItem('feiraja_cart_v1');if(raw===null)return {};const parsed=JSON.parse(raw);if(!parsed||typeof parsed!=='object'||Array.isArray(parsed)||Object.entries(parsed).some(([id,qty])=>!id.trim()||typeof qty!=='number'||!Number.isFinite(qty)||qty<=0||qty>100||(cartModes[id]==='value'?Math.abs(qty*1000-Math.round(qty*1000))>1e-7:(qty<0.5||Math.abs(qty*2-Math.round(qty*2))>1e-9)))){cartStorageWarning=true;return {};}return parsed;}catch{cartStorageWarning=true;return {};}}
 let products=[],cart=readStoredCart(),category='Todos',authMode='login',currentUser=null,pendingCheckout=false,customerPhoneReady=false;
 let currentUserIsAdmin=false,deliveryAdminCheckComplete=false,deliveryActive=false,deliveryAccessRequest=0,deliveryQuote=null,deliveryQuoteTimer=null,deliveryQuoteSequence=0;
+let uberOptionCard=null,uberSelectOption=null;
 function hasConfirmedDeliveryAdmin(){return deliveryAdminCheckComplete===true&&currentUserIsAdmin===true;}
 function persistCart(){try{localStorage.setItem('feiraja_cart_v1',JSON.stringify(cart));localStorage.setItem('feiraja_cart_modes_v1',JSON.stringify(cartModes));localStorage.setItem('feiraja_cart_value_cents_v1',JSON.stringify(cartValueCents));localStorage.setItem('feiraja_cart_preferences_v1',JSON.stringify(cartPreferences));cartStorageWarning=false;}catch(error){cartStorageWriteWarning=true;console.error('Não foi possível salvar o carrinho local:',error);}}
 const orderStatuses=['Pedido Recebido','Pagamento Pendente','Pagamento Confirmado','Preparando','Pronto para Retirada','Pedido Concluído','Cancelada'];
@@ -1532,8 +1533,12 @@ async function loadDeliveryAccess(user){
  syncDeliveryOptionVisibility();
 }
 function syncUberPickupVisibility(){
-  const option=$('#deliveryUberOption'),radio=$('#deliveryUber');if(!option||!radio)return;
-  const visible=canShowUberPickupOption(deliveryActive);option.hidden=!visible;radio.disabled=!visible;
+  if(!uberOptionCard)uberOptionCard=$('#deliveryUberOption');
+  if(!uberSelectOption)uberSelectOption=$('#delivery option[value="pickup_uber"]');
+  if(!uberOptionCard||!uberSelectOption)return;
+  const visible=syncUberPickupOption({option:uberOptionCard,selectOption:uberSelectOption,select:$('#delivery'),beforeOption:$('#deliveryHomeOption'),deliveryActive});
+  const radio=uberOptionCard.querySelector('#deliveryUber');
+  if(radio)radio.disabled=!visible;
   if(!visible&&$('#delivery')?.value==='pickup_uber'){$('#delivery').value='pickup_store';deliveryQuote=null;}
 }
 function syncDeliveryOptionVisibility(){

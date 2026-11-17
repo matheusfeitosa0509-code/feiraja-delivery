@@ -95,6 +95,25 @@ export function canShowUberPickupOption(deliveryActive) {
   return deliveryActive !== true;
 }
 
+export function syncUberPickupOption({ option, selectOption, select, beforeOption, deliveryActive }) {
+  const visible = canShowUberPickupOption(deliveryActive);
+  if (!visible) {
+    option?.remove();
+    selectOption?.remove();
+    return false;
+  }
+  if (option && !option.isConnected) {
+    const parent = beforeOption?.parentElement;
+    if (parent) parent.insertBefore(option, beforeOption);
+  }
+  if (select && selectOption && !selectOption.isConnected) {
+    const next = select.querySelector('option[value="delivery"]');
+    if (next) select.insertBefore(selectOption, next);
+    else select.append(selectOption);
+  }
+  return true;
+}
+
 export function deliveryPaymentOptions(isAdmin) {
   return ["pix", ...(isAdmin ? ["pix_test"] : [])];
 }

@@ -8,7 +8,8 @@ const storeHtml = fs.readFileSync(path.join(root, 'loja.html'), 'utf8');
 assert.equal(storeHtml.includes('id="payPixTestOption"'), false, 'Pix de teste não pode estar no HTML inicial');
 assert.equal(storeHtml.includes('id="payPixTest"'), false, 'radio de teste não pode existir antes da confirmação admin');
 assert.equal(storeHtml.includes('<option value="pix_test">'), false, 'opção do select não pode existir antes da confirmação admin');
-assert.equal(storeHtml.includes('#deliveryUberOption[hidden]'), true, 'Uber precisa ser visualmente ocultado pela folha de estilos real');
+assert.equal(storeHtml.includes('#deliveryUberOption[hidden]'), false, 'Uber não pode depender de CSS hidden');
+assert.equal(storeHtml.includes('syncUberPickupOption({'), true, 'Uber deve ser removido do DOM e do select');
 const helperSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8').replace(/^export\s+/gm, '');
 const styleStart = storeHtml.indexOf('/* Checkout option cards —');
 const styleEnd = storeHtml.indexOf('</style>', styleStart);
@@ -20,7 +21,7 @@ const checkoutCss = [
   'body{margin:0;padding:16px;background:#f4f7f2;font-family:Arial,sans-serif}',
   '.checkout-screen{max-width:520px;margin:0 auto}',
   '.checkout-choice-card{width:100%;padding:14px;border:1px solid #d9e2d6;border-radius:14px;background:#fff}',
-  '#deliveryUberOption[hidden]{display:none!important}',
+
 ].join('\n');
 
 (async () => {
@@ -28,6 +29,9 @@ const checkoutCss = [
   try {
     for (const width of [360, 412]) {
       const page = await browser.newPage({ viewport: { width, height: 800 } });
+      const consoleErrors = [];
+      page.on('pageerror', error => consoleErrors.push(error.message));
+      page.on('console', message => { if (message.type() === 'error') consoleErrors.push(message.text()); });
       await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>' +
         '<main class="checkout-screen"><form id="checkoutForm">' +
         '<label class="opt checkout-choice-card is-disabled" id="deliveryHomeOption" for="deliveryHome" aria-disabled="true">' +
@@ -35,13 +39,38 @@ const checkoutCss = [
         '<span class="checkout-choice-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H3V10Z"></path></svg></span>' +
         '<span class="checkout-choice-copy"><b>Entrega Feira On</b><span class="s" id="deliveryHomeDescription">Receba em casa sem precisar pedir Uber.</span></span>' +
         '<span class="checkout-choice-end" id="deliveryStartingPrice">Em breve</span><span class="r" aria-hidden="true"></span>' +
-        '</label><label class="opt checkout-choice-card" id="deliveryUberOption"><input id="deliveryUber" type="radio" name="deliveryChoice"><span class="checkout-choice-copy"><b>Receber com seu Uber</b></span></label><section class="checkout-card"><div class="checkout-choice-list" id="checkoutPaymentChoices">' +
+        '</label><label class="opt checkout-choice-card" id="deliveryUberOption"><input id="deliveryUber" type="radio" name="deliveryChoice"><span class="checkout-choice-copy"><b>Receber com seu Uber</b></span></label><select id="delivery"><option value="pickup_store">Retirada</option><option value="pickup_uber">Uber</option><option value="delivery">Entrega</option></select><section class="checkout-card"><div class="checkout-choice-list" id="checkoutPaymentChoices">' +
         '<label class="opt checkout-choice-card" for="payPix"><input class="choice-radio" id="payPix" type="radio" name="paymentChoice"><span class="checkout-choice-copy"><b>Pix</b></span><span class="r"></span></label>' +
         '<label class="opt checkout-choice-card" for="payCash"><input class="choice-radio" id="payCash" type="radio" name="paymentChoice"><span class="checkout-choice-copy"><b>Dinheiro na retirada</b></span><span class="r"></span></label>' +
         '</div><select id="payment"><option value="pix">Pix</option><option value="cash">Dinheiro</option></select></section></form></main></body></html>');
       await page.addStyleTag({ content: checkoutCss });
       await page.addScriptTag({ content: helperSource +
-        '\nwindow.FeiraDeliveryAccess = { loadDeliveryAccessState, renderDeliveryOption, syncAdminTestPaymentOption, canShowUberPickupOption, deliveryQuoteErrorMessage };' });
+        '\nwindow.FeiraDeliveryAccess = { loadDeliveryAccessState, renderDeliveryOption, syncAdminTestPaymentOption, canShowUberPickupOption, syncUberPickupOption, deliveryQuoteErrorMessage };' });
+
+      await page.evaluate(() => {
+        window.__uberCard = document.querySelector('#deliveryUberOption');
+        window.__uberSelectOption = document.querySelector('#delivery option[value="pickup_uber"]');
+      });
+      const syncUber = active => page.evaluate(deliveryActive => window.FeiraDeliveryAccess.syncUberPickupOption({
+        option: window.__uberCard,
+        selectOption: window.__uberSelectOption,
+        select: document.querySelector('#delivery'),
+        beforeOption: document.querySelector('#deliveryHomeOption'),
+        deliveryActive,
+      }), active);
+      for (const actor of ['cliente', 'admin']) {
+        assert.equal(await syncUber(true), false, actor + ': Uber deve ser removido com entrega_ativa=true');
+        assert.deepEqual(await page.evaluate(() => ({
+          card: !!document.querySelector('#deliveryUberOption'),
+          option: !!document.querySelector('#delivery option[value="pickup_uber"]'),
+          text: document.querySelector('main').textContent.includes('Receber com seu Uber'),
+        })), { card: false, option: false, text: false });
+        assert.equal(await syncUber(false), true, actor + ': Uber deve voltar com entrega_ativa=false');
+        assert.deepEqual(await page.evaluate(() => ({
+          card: !!document.querySelector('#deliveryUberOption'),
+          option: !!document.querySelector('#delivery option[value="pickup_uber"]'),
+        })), { card: true, option: true });
+      }
 
       const syncTestPayment = state => page.evaluate(value => window.FeiraDeliveryAccess.syncAdminTestPaymentOption({
         container: document.querySelector('#checkoutPaymentChoices'),
@@ -249,6 +278,7 @@ const checkoutCss = [
       assert.equal(view.badgeCount, 0);
       fs.mkdirSync(path.join(root, 'artifacts'), { recursive: true });
       await page.screenshot({ path: path.join(root, 'artifacts', 'checkout-delivery-admin-' + width + '.png'), fullPage: true });
+      assert.deepEqual(consoleErrors, [], width + 'px: erros de console');
       await page.close();
     }
   } finally {
