@@ -67,7 +67,7 @@
     const t=Math.min(1,(now-start)/duration),ease=t*t*(3-2*t);
     const lat=from.lat+(to.lat-from.lat)*ease,lng=from.lng+(to.lng-from.lng)*ease;
     state.driverMarker.setLngLat([lng,lat]);state.driverMarker.setRotation(heading);
-    if(t<1)state.animation=requestAnimationFrame(frame);else state.animation=0;
+    if(t<1)state.animation=requestAnimationFrame(frame);else{state.animation=0;state.lastDriverPoint={...to};}
    };
    state.animation=requestAnimationFrame(frame);
   }
@@ -93,9 +93,7 @@
     });
     state.storeMarker=new lib.Marker({element:makeMarkerElement('🏪',false,'Loja Feira On'),anchor:'center'}).setLngLat([store.lng,store.lat]).addTo(state.map);
     state.homeMarker=new lib.Marker({element:makeMarkerElement('🏠',false,'Endereço do cliente'),anchor:'center'}).setLngLat([home.lng,home.lat]).addTo(state.map);
-    state.driverElement=makeMarkerElement(data.vehicle==='CAR'?'🚗':'🛵',true,'Veículo do entregador');
-    state.driverMarker=new lib.Marker({element:state.driverElement,anchor:'center',rotationAlignment:'map',pitchAlignment:'map'}).setLngLat([driver?.lng??home.lng,driver?.lat??home.lat]).setRotation(0).addTo(state.map);
-    state.lastDriverPoint=driver?{...driver}:null;
+    if(driver){state.driverElement=makeMarkerElement(data.vehicle==='CAR'?'🚗':'🛵',true,'Veículo do entregador');state.driverMarker=new lib.Marker({element:state.driverElement,anchor:'center',rotationAlignment:'map',pitchAlignment:'map'}).setLngLat([driver.lng,driver.lat]).setRotation(0).addTo(state.map);state.lastDriverPoint={...driver};}
     state.map.addSource('feira-delivery-route',{type:'geojson',data:{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[[store.lng,store.lat],[home.lng,home.lat]]}}});
     state.map.addLayer({id:'feira-delivery-route-line',type:'line',source:'feira-delivery-route',paint:{'line-color':'#398451','line-width':3,'line-opacity':0.55,'line-dasharray':[2,2]}});
     fitMap(driver||home,home,store);
@@ -106,14 +104,11 @@
     source?.setData({type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[[store.lng,store.lat],[home.lng,home.lat]]}});
     if(state.driverElement)state.driverElement.textContent=data.vehicle==='CAR'?'🚗':'🛵';
     if(driver){
-     if(!state.driverMarker)state.driverMarker=new lib.Marker({element:state.driverElement,anchor:'center',rotationAlignment:'map',pitchAlignment:'map'}).setLngLat([driver.lng,driver.lat]).addTo(state.map);
+     if(!state.driverMarker){state.driverElement=makeMarkerElement(data.vehicle==='CAR'?'🚗':'🛵',true,'Veículo do entregador');state.driverMarker=new lib.Marker({element:state.driverElement,anchor:'center',rotationAlignment:'map',pitchAlignment:'map'}).setLngLat([driver.lng,driver.lat]).setRotation(0).addTo(state.map);state.lastDriverPoint={...driver};fitMap(driver,home,store);}
      else animateDriver(driver);
-     fitMap(driver,home,store);
     }
    }
    if(driver){
-    if(!state.lastDriverPoint)state.driverMarker?.setLngLat([driver.lng,driver.lat]);
-    if(!state.animation&&state.lastDriverPoint)state.lastDriverPoint={...driver};
     updateDriverInfo(data.driver,data.vehicle);
     status.textContent=data.status==='picked_up'?'Motorista a caminho do seu endereço.':'Motorista a caminho da loja.';
    }else{
