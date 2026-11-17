@@ -73,6 +73,7 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
             text:{name:title.textContent,old:old.textContent.trim().replace(/\u00a0/g,' '),wholesale:wholesale.textContent.trim().replace(/\u00a0/g,' '),value:value.textContent.trim().replace(/\u00a0/g,' '),weight:weight.textContent.trim()},
             emptyValueHidden:getComputedStyle(value).visibility==='hidden',
             emptyWeightHidden:getComputedStyle(weight).visibility==='hidden',
+            rowHasValue:card.classList.contains('row-has-value'),rowHasWeight:card.classList.contains('row-has-weight'),rowHasWholesale:card.classList.contains('row-has-wholesale'),
             noCardOverflow:card.scrollWidth<=card.clientWidth,
             inside:[media,title,old,price,wholesale,qty,value,weight].every(el=>{const a=el.getBoundingClientRect(),b=card.getBoundingClientRect();return a.left>=b.left-1&&a.right<=b.right+1&&a.top>=b.top-1&&a.bottom<=b.bottom+1;})
           };
@@ -88,7 +89,10 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
           assert.equal(d.order,true,width+'px '+label+' '+d.id+': ordem comum');
           assert.equal(d.noCardOverflow,true,width+'px '+label+' '+d.id+': sem overflow horizontal');
           assert.equal(d.inside,true,width+'px '+label+' '+d.id+': conteúdo dentro do card');
-          assert.ok(d.card.bottom-d.weight.bottom<=10,width+'px '+label+' '+d.id+': sem sobra branca após o conteúdo');
+          const tail=d.weight.height>0?d.weight:d.value.height>0?d.value:d.qty;assert.ok(d.card.bottom-tail.bottom<=10,width+'px '+label+' '+d.id+': sem sobra branca após o último slot ativo');
+          assert.equal(d.rowHasValue,true,width+'px '+label+' '+d.id+': linha de valor alinhada na fileira mista');
+          assert.equal(d.rowHasWeight,true,width+'px '+label+' '+d.id+': linha de peso alinhada na fileira mista');
+          assert.equal(d.rowHasWholesale,true,width+'px '+label+' '+d.id+': linha de atacado alinhada na fileira mista');
         }
         for(let i=0;i<data.length;i++){
           const sameRow=data.filter(d=>Math.abs(d.card.top-data[i].card.top)<2);
@@ -107,6 +111,22 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
         return data;
       };
 
+      const rowChecks=await page.evaluate(()=>{
+        const root=document.createElement('div');root.style.cssText='display:block;width:100%;position:relative';
+        const makeCard=({value=false,weight=false,wholesale=false})=>{
+          const card=document.createElement('article');card.className='product';card.innerHTML='<div class="resale-from-slot">'+(wholesale?'<span class="resale-from">A partir de 10 un</span>':'')+'</div><div class="product-controls"><div class="product-qty">− 0 +</div><div class="value-sale-row'+(value?'':' is-empty')+'">'+(value?'<button class="value-sale-open">Pedir por valor R$</button>':'')+'</div></div><small class="weight-note'+(weight?'':' is-empty')+'">'+(weight?'Peso aproximado':'')+'</small>';return card;
+        };
+        const addRow=(specs)=>{const row=document.createElement('div');row.className='catalog-row';row.style.cssText='display:flex;position:relative;width:100%;height:90px;margin-bottom:5px;gap:8px';specs.forEach(spec=>{const card=makeCard(spec);card.style.cssText='width:45%;height:90px';row.append(card);});root.append(row);return row;};
+        const polpas=addRow([{},{ }]);
+        const kg=addRow([{weight:true},{}]);
+        const mixed=addRow([{weight:true,value:true},{wholesale:true}]);
+        document.body.append(root);window.syncProductCardRowSlots(root);
+        const read=row=>[...row.children].map(card=>({value:card.classList.contains('row-has-value'),weight:card.classList.contains('row-has-weight'),wholesale:card.classList.contains('row-has-wholesale'),valueDisplay:getComputedStyle(card.querySelector('.value-sale-row')).display,weightDisplay:getComputedStyle(card.querySelector('.weight-note')).display,wholesaleDisplay:getComputedStyle(card.querySelector('.resale-from-slot')).display}));
+        const result={polpas:read(polpas),kg:read(kg),mixed:read(mixed)};root.remove();return result;
+      });
+      for(const card of rowChecks.polpas){assert.deepEqual([card.value,card.weight,card.wholesale],[false,false,false],width+'px: polpas sem slots opcionais');assert.deepEqual([card.valueDisplay,card.weightDisplay,card.wholesaleDisplay],['none','none','none'],width+'px: polpas sem espaço reservado');}
+      for(const card of rowChecks.kg){assert.deepEqual([card.value,card.weight,card.wholesale],[false,true,false],width+'px: fileira só de kg reserva somente peso');}
+      for(const card of rowChecks.mixed){assert.deepEqual([card.value,card.weight,card.wholesale],[true,true,true],width+'px: fileira mista alinha valor, peso e atacado');}
       await inspect('#homeProductSections .product','home');
       await page.locator('#homeProductSections [data-view-category]').first().click();
       await page.waitForFunction(()=>document.querySelector('#homeProductSections')?.classList.contains('category-detail'));
