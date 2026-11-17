@@ -10,6 +10,11 @@ assert.equal(storeHtml.includes('id="payPixTest"'), false, 'radio de teste não 
 assert.equal(storeHtml.includes('<option value="pix_test">'), false, 'opção do select não pode existir antes da confirmação admin');
 assert.equal(storeHtml.includes('#deliveryUberOption[hidden]'), false, 'Uber não pode depender de CSS hidden');
 assert.equal(storeHtml.includes('syncUberPickupOption({'), true, 'Uber deve ser removido do DOM e do select');
+assert.equal(storeHtml.includes("const uberRadio=$('#deliveryUber');if(uberRadio)uberRadio.checked=delivery==='pickup_uber';"), true, 'syncDeliverySelection deve tolerar o rádio Uber ausente');
+assert.equal(storeHtml.includes("$('#deliveryUber')?.addEventListener('change'"), true, 'listener do Uber deve tolerar o card removido');
+const syncSelectionMatch = storeHtml.match(/function syncDeliverySelection\(\)\{[\s\S]*?\n \}/);
+if (!syncSelectionMatch) throw new Error('syncDeliverySelection source missing');
+
 const helperSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8').replace(/^export\s+/gm, '');
 const styleStart = storeHtml.indexOf('/* Checkout option cards —');
 const styleEnd = storeHtml.indexOf('</style>', styleStart);
@@ -70,6 +75,51 @@ const checkoutCss = [
           card: !!document.querySelector('#deliveryUberOption'),
           option: !!document.querySelector('#delivery option[value="pickup_uber"]'),
         })), { card: true, option: true });
+      }
+
+      // Reproduz Continuar → checkout sem o card/radio Uber no DOM.
+      await page.evaluate(() => {
+        document.querySelector('#deliveryUberOption')?.remove();
+        document.querySelector('#delivery option[value="pickup_uber"]')?.remove();
+        const store = document.createElement('label'); store.className = 'opt'; store.innerHTML = '<input id="deliveryStore" type="radio" name="deliveryChoice">';
+        document.querySelector('#checkoutForm').prepend(store);
+        const address = document.createElement('div'); address.id = 'deliveryAddressFields'; document.querySelector('#checkoutForm').append(address);
+        const continueButton = document.createElement('button'); continueButton.id = 'checkout'; continueButton.textContent = 'Continuar · R$ 49,95'; document.body.append(continueButton);
+        const modal = document.createElement('div'); modal.id = 'modal'; document.body.append(modal);
+        window.$ = selector => document.querySelector(selector);
+        window.deliveryQuote = null; window.deliveryQuoteSequence = 0; window.deliveryQuoteTimer = null;
+        window.syncPickupPaymentOptions = () => {};
+        window.updateCheckoutTotals = () => {};
+        window.updateCheckoutScheduleNotice = () => {};
+        window.scheduleDeliveryQuote = () => {};
+        window.setDeliveryQuoteStatus = () => {};
+        window.renderCart = () => {};
+        window.cart = { coco: 5 };
+        continueButton.addEventListener('click', () => {
+          if (!Object.keys(window.cart).length) return;
+          window.syncDeliverySelection();
+          modal.classList.add('open');
+        });
+      });
+      await page.addScriptTag({ content: syncSelectionMatch[0] + '\nwindow.syncDeliverySelection = syncDeliverySelection;' });
+      const uberListenerMatch = storeHtml.match(/\$\('#deliveryUber'\)\?\.addEventListener\('change',[^;]+;/);
+      if (!uberListenerMatch) throw new Error('optional Uber change listener missing');
+      await page.addScriptTag({ content: uberListenerMatch[0] });
+      await page.locator('#checkout').click();
+      assert.equal(await page.locator('#modal').evaluate(el => el.classList.contains('open')), true, width + 'px: Continuar deve abrir checkout');
+      for (const deliveryType of ['pickup_store', 'delivery']) {
+        await page.locator('#delivery').selectOption(deliveryType);
+        await page.locator('#delivery').dispatchEvent('change');
+        const selected = await page.evaluate(() => ({
+          delivery: document.querySelector('#delivery').value,
+          store: document.querySelector('#deliveryStore').checked,
+          home: document.querySelector('#deliveryHome').checked,
+          uber: !!document.querySelector('#deliveryUber'),
+        }));
+        assert.equal(selected.delivery, deliveryType);
+        assert.equal(selected.store, deliveryType === 'pickup_store');
+        assert.equal(selected.home, deliveryType === 'delivery');
+        assert.equal(selected.uber, false);
       }
 
       const syncTestPayment = state => page.evaluate(value => window.FeiraDeliveryAccess.syncAdminTestPaymentOption({
