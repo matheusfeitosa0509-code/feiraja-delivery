@@ -64,7 +64,7 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
         const data = await cards.evaluateAll(nodes => nodes.map(card => {
           const rect = el => {const r=el.getBoundingClientRect();return {x:r.x,y:r.y,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
           const media=card.querySelector('.product-media'),img=media.querySelector('img'),body=card.querySelector('.pbody');
-          const title=body.querySelector('h3'),old=body.querySelector('.price-old-slot'),price=body.querySelector('.price'),wholesale=body.querySelector('.resale-from-slot'),qty=body.querySelector('.product-qty'),value=body.querySelector('.value-sale-row'),weight=body.querySelector('.weight-note');
+          const title=body.querySelector('h3'),old=body.querySelector('.price-before-slot'),price=body.querySelector('.price'),wholesale=body.querySelector('.resale-from-slot'),qty=body.querySelector('.product-qty'),value=body.querySelector('.value-sale-row'),weight=body.querySelector('.weight-note');
           return {
             id:card.dataset.productId,card:rect(card),media:rect(media),img:rect(img),title:rect(title),old:rect(old),price:rect(price),wholesale:rect(wholesale),qty:rect(qty),value:rect(value),weight:rect(weight),
             objectFit:getComputedStyle(img).objectFit,mediaBg:getComputedStyle(media).backgroundColor,imgBg:getComputedStyle(img).backgroundColor,
