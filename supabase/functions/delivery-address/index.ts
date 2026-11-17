@@ -37,7 +37,8 @@ function addressFromPlace(place: any) {
   const country = component(components, "country");
   const state = component(components, "administrative_area_level_1");
   const city = component(components, "locality") || component(components, "administrative_area_level_2");
-  if ((country && country.shortText !== "BR") || (state && state.shortText !== "AM") ||
+  if (country?.shortText !== "BR" || state?.shortText !== "AM" ||
+      (city && !String(city.longText || "").toLocaleLowerCase("pt-BR").includes("manaus")) ||
       !isManausPoint(place?.location)) throw new Error("ADDRESS_OUTSIDE_MANAUS");
   const route = component(components, "route");
   const number = component(components, "street_number");
