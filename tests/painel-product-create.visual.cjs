@@ -5,7 +5,7 @@ const {chromium}=require("playwright");
 function bootstrap(){
  return `<script>
  window.__testDb=(()=>{
-  const state={products:[],rpcCalls:[]};
+  const state={products:[{id:"seed-frutas",name:"Banana teste",price:5,category:"Frutas",image:null,available:true,resale_enabled:false,resale_price:null,resale_min_qty:10,resale_unit:"un",old_price:null},{id:"seed-polpas",name:"Polpa teste",price:12,category:"Polpas e Congelados",image:null,available:true,resale_enabled:false,resale_price:null,resale_min_qty:10,resale_unit:"un",old_price:null}],rpcCalls:[]};
   function from(table){
    let op="select",values=null,filters={};
    const q={
@@ -51,15 +51,24 @@ function prepare(source){
    await page.setContent(prepare(source),{waitUntil:"domcontentloaded"});
    await page.waitForFunction(()=>!document.getElementById("panel")?.classList.contains("hidden"),{timeout:15000});
    await page.locator("#tabProducts").click();
+   await page.waitForFunction(()=>!document.querySelector("#openNewProduct")?.disabled,{timeout:10000});
+   const categories=await page.locator("#sheetCategory option").allTextContents();
+   if(!categories.includes("Frutas")||!categories.includes("Polpas e Congelados"))throw new Error("Categorias da vitrine não carregaram no seletor: "+categories.join(", "));
    await page.locator("#openNewProduct").click();
    if(await page.locator("#productSheetBackdrop").isHidden())throw new Error(width+"px: Adicionar produto não abriu a ficha.");
    if((await page.locator("#sheetName").inputValue())!=="")throw new Error("A ficha de novo produto não abriu vazia.");
    await page.locator("#sheetName").fill("Produto Playwright");
    await page.locator("#sheetPrice").fill("12,50");
-   await page.locator("#sheetCategory").selectOption("Frutas");
+   await page.locator("#sheetCategory").selectOption("Polpas e Congelados");
    await page.locator("#saveProductSheet").click();
-   await page.waitForFunction(()=>window.__testDb.__state.products.length===1,{timeout:10000});
+   await page.waitForFunction(()=>window.__testDb.__state.products.length===3,{timeout:10000});
    if(await page.locator("#productSheetBackdrop").isVisible())throw new Error("A ficha não fechou após salvar.");
+   await page.locator('[data-open-product="seed-frutas"]').click();
+   if(await page.locator("#productSheetBackdrop").isHidden())throw new Error("Editar produto não abriu a ficha.");
+   if(await page.locator("#sheetCategory").inputValue()!=="Frutas")throw new Error("Editar produto não preservou a categoria existente.");
+   const editCategories=await page.locator("#sheetCategory option").allTextContents();
+   if(!editCategories.includes("Polpas e Congelados"))throw new Error("Editar produto não carregou a lista completa de categorias.");
+   await page.locator("#closeProductSheet").click();
    await page.locator("#tabOrders").click();
    await page.locator("#tabProducts").click();
    await page.locator("#lalamoveSettingsCard").evaluate(el=>el.scrollIntoView());
