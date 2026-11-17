@@ -11,7 +11,7 @@ const syncPresentationStart = storeHtml.indexOf('function syncDeliveryAddressPre
 const syncPresentationEnd = storeHtml.indexOf('\nlet deliveryPlacesSessionToken', syncPresentationStart);
 const mapFnStart = storeHtml.indexOf('function loadMapLibre(){');
 const mapFnEnd = storeHtml.indexOf('function setDeliveryQuoteStatus', mapFnStart);
-const quoteFnStart = storeHtml.indexOf('function scheduleDeliveryQuote(){');
+const quoteFnStart = storeHtml.indexOf('async function requestDeliveryQuote(){');
 const quoteFnEnd = storeHtml.indexOf('function syncDeliverySelection(){', quoteFnStart);
 if ([addressFnStart, syncPresentationStart, syncPresentationEnd, mapFnStart, mapFnEnd, quoteFnStart, quoteFnEnd].some(x => x < 0)) throw new Error('Delivery map functions not found');
 const syncPresentationFn = storeHtml.slice(syncPresentationStart, syncPresentationEnd);
@@ -36,14 +36,24 @@ assert.ok(helperSource.includes('deliveryQuoteErrorMessage'));
 
 const harness = `
 const $ = selector => document.querySelector(selector);
-let deliveryPlacesSessionToken='session-123',deliveryAutocompleteTimer=null,deliveryMap=null,deliveryMapCoordinates=null,deliveryMapReverseTimer=null,deliveryMapReverseSequence=0,deliveryNeedsExplicitConfirm=true,deliveryStreetHome=null,deliveryNumberHome=null,deliveryNeighborhoodHome=null,deliveryMapPlaceName='',deliveryQuoteTimer=null,deliveryQuoteSequence=0,deliveryQuote=null;
+let deliveryPlacesSessionToken='session-123',deliveryAutocompleteTimer=null,deliveryMap=null,deliveryMapCoordinates=null,deliveryMapReverseTimer=null,deliveryMapReverseSequence=0,deliveryMapReversePromise=Promise.resolve(),deliveryMapReverseError='',deliveryAddressManualEdits={street:false,number:false,neighborhood:false},deliveryQuoteTimeoutMs=80,deliveryNeedsExplicitConfirm=true,deliveryStreetHome=null,deliveryNumberHome=null,deliveryNeighborhoodHome=null,deliveryMapPlaceName='',deliveryQuoteTimer=null,deliveryQuoteSequence=0,deliveryQuote=null;
 const normalizeDeliveryAddress = value => ({street:String(value.street||'').trim(),number:String(value.number||'').trim(),neighborhood:String(value.neighborhood||'').trim(),complement:'',reference:''});
 const getDeliveryAddress = () => normalizeDeliveryAddress({street:$('#deliveryStreet').value,number:$('#deliveryNumber').value,neighborhood:$('#deliveryNeighborhood').value});
 const setDeliveryQuoteStatus = (message,isError=false) => {const box=$('#deliveryQuoteStatus');box.textContent=message||'';box.hidden=!message;box.dataset.error=String(!!isError);};
-const updateCheckoutTotals = () => {};
-let quoteCalls=0;
-const requestDeliveryQuote = async () => {quoteCalls++;};
+let quoteCalls=0,quoteMode='success';
+const currentUser=null;
+const totals=()=>({sub:39.96,items:[{p:{id:'banana'},q:1}]});
+const buildDeliveryQuoteItems=()=>[{product_id:'banana',quantity:1}];
+const isValidDeliveryQuote=quote=>!!quote&&['MOTO','CAR'].includes(quote.vehicle)&&Number(quote.fee)>0&&Date.parse(quote.valid_until)>Date.now();
+const deliveryQuoteLabel=(vehicle,fee)=>'Entrega de '+vehicle+': '+fee;
+const deliveryQuoteErrorMessage=()=> 'Entrega indisponível no momento.';
+const isDeliveryOutOfArea=()=>false;
+const money=value=>'R$ '+Number(value).toFixed(2);
+const saveDeliveryAddress=async()=>{};
+const updateCheckoutTotals=()=>{const valid=isValidDeliveryQuote(deliveryQuote);$('#submitOrder').disabled=!valid;$('#submitOrder').textContent=valid?'Pagar com Pix · R$ 39,96':'Aguardando cálculo da entrega';};
+const setDeliveryQuoteStatus=(message,isError=false,showRetry=false)=>{const box=$('#deliveryQuoteStatus');box.textContent=message||'';box.hidden=!message;box.dataset.error=String(!!isError);if(showRetry){const button=document.createElement('button');button.type='button';button.textContent='Tentar de novo';button.id='retryDeliveryQuote';button.addEventListener('click',()=>void requestDeliveryQuote());box.append(button);}};
 const supabase={functions:{invoke:async(name,{body})=>{
+ if(name==='delivery-quote'){quoteCalls++;if(quoteMode==='timeout')return await new Promise(()=>{});return {data:{vehicle:'MOTO',fee:9,valid_until:new Date(Date.now()+60000).toISOString()},error:null};}
  if(name!=='delivery-address')throw new Error('unexpected function '+name);
  if(body.action==='autocomplete')return {data:{suggestions:[{place_id:'place-test-123',description:'Mercado Teste, Centro, Manaus - AM'}]},error:null};
  if(body.action==='details')return {data:{address:{street:'Rua do Mercado',number:'123',neighborhood:'Centro',lat:'-3.10',lng:'-60.02',reference:'Mercado Teste'}},error:null};
@@ -60,7 +70,7 @@ window.maplibregl={
  },
  NavigationControl:class{},AttributionControl:class{}
 };
-const mapOverlayMarkup = '<div id="checkout"><div id="deliveryAddressFields"><div id="deliveryStreetSearch"><label for="deliveryStreet">Rua</label><div class="checkout-address-input"><input id="deliveryStreet"></div><div id="deliveryStreetSuggestions" hidden></div></div><div id="deliveryAddressSummary" hidden><strong id="deliveryAddressSummaryStreet"></strong><span id="deliveryAddressSummaryNeighborhood"></span></div><div id="deliveryNumberField" class="field"><label for="deliveryNumber">Número</label><input id="deliveryNumber"></div><div id="deliveryNeighborhoodField" class="field"><label for="deliveryNeighborhood">Bairro</label><input id="deliveryNeighborhood"></div><input id="deliveryReference"></div><div id="deliveryMapPreview" hidden><img id="deliveryMapPreviewImage"><small id="deliveryMapPreviewAddress"></small></div><div id="deliveryMapFullscreen" class="delivery-map-fullscreen" hidden><header class="delivery-map-topbar"><button id="deliveryMapBack"></button><div id="deliveryMapSearchSlot"></div></header><div id="deliveryMap"></div><div class="delivery-map-fixed-pin"><span>📍</span><i></i></div><button id="deliveryMapGps" class="delivery-map-gps"></button><section class="delivery-map-sheet"><div class="delivery-map-sheet-handle"></div><strong id="deliveryMapAddress"></strong><div id="deliveryMapNumberSlot"></div><div id="deliveryMapNeighborhoodSlot"></div><p id="deliveryMapNeighborhood" class="delivery-map-neighborhood"></p><button id="deliveryMapConfirm" class="delivery-map-confirm"></button></section></div><button id="deliveryMapAdjust"></button><button id="deliveryMapChange"></button><button id="deliveryUseGps"></button><select id="delivery"><option value="delivery" selected>Entrega</option></select><div id="minimumCheckoutNotice" class="hidden"></div><p id="deliveryQuoteStatus"></p></div>';
+const mapOverlayMarkup = '<div id="checkout"><button id="submitOrder" disabled>Aguardando cálculo da entrega</button><div id="minimumCheckoutNotice" class="hidden"></div><div id="checkoutProductsTotal"></div><div id="checkoutSummaryTotal"></div><div id="checkoutDeliveryTotal"></div><div id="checkoutDeliveryLabel"></div><div id="checkoutDeliveryMeta"></div><div id="modalTotal"></div><div id="deliveryAddressFields"><div id="deliveryStreetSearch"><label for="deliveryStreet">Rua</label><div class="checkout-address-input"><input id="deliveryStreet"></div><div id="deliveryStreetSuggestions" hidden></div></div><div id="deliveryAddressSummary" hidden><strong id="deliveryAddressSummaryStreet"></strong><span id="deliveryAddressSummaryNeighborhood"></span></div><div id="deliveryNumberField" class="field"><label for="deliveryNumber">Número</label><input id="deliveryNumber"></div><div id="deliveryNeighborhoodField" class="field"><label for="deliveryNeighborhood">Bairro</label><input id="deliveryNeighborhood"></div><input id="deliveryReference"></div><div id="deliveryMapPreview" hidden><img id="deliveryMapPreviewImage"><small id="deliveryMapPreviewAddress"></small></div><div id="deliveryMapFullscreen" class="delivery-map-fullscreen" hidden><header class="delivery-map-topbar"><button id="deliveryMapBack"></button><div id="deliveryMapSearchSlot"></div></header><div id="deliveryMap"></div><div class="delivery-map-fixed-pin"><span>📍</span><i></i></div><button id="deliveryMapGps" class="delivery-map-gps"></button><section class="delivery-map-sheet"><div class="delivery-map-sheet-handle"></div><strong id="deliveryMapAddress"></strong><div id="deliveryMapNumberSlot"></div><div id="deliveryMapNeighborhoodSlot"></div><p id="deliveryMapNeighborhood" class="delivery-map-neighborhood"></p><button id="deliveryMapConfirm" class="delivery-map-confirm"></button></section></div><button id="deliveryMapAdjust"></button><button id="deliveryMapChange"></button><button id="deliveryUseGps"></button><select id="delivery"><option value="delivery" selected>Entrega</option></select><p id="deliveryQuoteStatus"></p></div>';
 document.body.innerHTML=mapOverlayMarkup;
 `;
 (async () => {
@@ -89,6 +99,8 @@ document.body.innerHTML=mapOverlayMarkup;
     window.confirmMap=confirmDeliveryMapAddress;
     window.runGps=useDeliveryGps;
     window.quoteCount=()=>quoteCalls;
+    window.setQuoteMode=value=>{quoteMode=value;};
+    window.runQuote=()=>requestDeliveryQuote();
    `});
    await page.evaluate(()=>window.startAutocomplete());
    assert.equal(await page.locator('#deliveryStreetSuggestions button').count(),1,'establishment suggestion is shown');
@@ -107,6 +119,20 @@ document.body.innerHTML=mapOverlayMarkup;
    await page.waitForFunction(()=>document.querySelector('#deliveryMapFullscreen').hidden===true);
    await page.waitForTimeout(1550);
    assert.equal(await page.evaluate(()=>window.quoteCount()),1,'quote runs only after explicit confirmation');
+   await page.waitForFunction(()=>document.querySelector('#submitOrder').disabled===false);
+   assert.equal(await page.locator('#submitOrder').textContent(),'Pagar com Pix · R$ 39,96','Pix only unlocks after a positive live quote');
+   await page.evaluate(()=>{window.setQuoteMode('timeout');window.runQuote();});
+   await page.waitForFunction(()=>document.querySelector('#deliveryQuoteStatus').textContent.includes('mais de 15 segundos'));
+   assert.equal(await page.locator('#submitOrder').isDisabled(),true,'timeout keeps Pix blocked');
+   assert.equal(await page.locator('#submitOrder').textContent(),'Aguardando cálculo da entrega');
+   assert.equal(await page.locator('#retryDeliveryQuote').textContent(),'Tentar de novo');
+   await page.evaluate(()=>window.setQuoteMode('success'));
+   await page.locator('#retryDeliveryQuote').click();
+   await page.waitForFunction(()=>document.querySelector('#submitOrder').disabled===false);
+   assert.equal(await page.evaluate(()=>window.quoteCount()),3,'retry requests a fresh quote');
+   assert.equal(await page.locator('#deliveryStreet').inputValue(),'Rua do Mercado','reverse geocoding fills street before confirmation');
+   assert.equal(await page.locator('#deliveryNumber').inputValue(),'123','reverse geocoding fills number before confirmation');
+   assert.equal(await page.locator('#deliveryNeighborhood').inputValue(),'Centro','reverse geocoding fills neighborhood before confirmation');
    assert.equal(await page.locator('#deliveryMapPreview').isVisible(),true,'confirmed map preview is shown');
    assert.equal(await page.locator('#deliveryMapPreviewAddress').textContent(),'Rua do Mercado · 123 · Centro','confirmed street, number and neighborhood remain visible');
    assert.equal(await page.locator('#deliveryAddressSummary').isVisible(),false,'duplicate edit summary is hidden after map confirmation');
