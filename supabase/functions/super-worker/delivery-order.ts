@@ -81,7 +81,8 @@ export async function calculateServerDelivery(input: {
 // The client-supplied delivery fee is intentionally not an input to this function.
 export function orderTotals(subtotalCents: number, serverDeliveryFee: number, deliveryType: string) {
   if (!Number.isSafeInteger(subtotalCents) || subtotalCents <= 0 ||
-      !Number.isSafeInteger(serverDeliveryFee) || serverDeliveryFee < 0) {
+      !Number.isSafeInteger(serverDeliveryFee) || serverDeliveryFee < 0 ||
+      (deliveryType === "delivery" && serverDeliveryFee <= 0)) {
     throw new Error("INVALID_ORDER_TOTAL");
   }
   const feeCents = deliveryType === "delivery" ? serverDeliveryFee * 100 : 0;
