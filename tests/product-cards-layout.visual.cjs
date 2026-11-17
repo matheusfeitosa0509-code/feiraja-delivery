@@ -80,11 +80,13 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
           assert.equal(d.objectFit,'contain',width+'px '+label+' '+d.id+': object-fit contain');
           assert.ok(Math.abs(d.media.width-d.media.height)<1.5,width+'px '+label+' '+d.id+': foto quadrada');
           assert.ok(Math.abs(d.img.width-d.media.width)<1.5,width+'px '+label+' '+d.id+': imagem ocupa largura da área');
+          assert.ok(Math.abs(d.img.height-d.media.height)<1.5,width+'px '+label+' '+d.id+': imagem ocupa altura da área');
           assert.equal(d.mediaBg,'rgb(255, 255, 255)');
           assert.equal(d.imgBg,'rgb(255, 255, 255)');
           assert.equal(d.order,true,width+'px '+label+' '+d.id+': ordem comum');
           assert.equal(d.noCardOverflow,true,width+'px '+label+' '+d.id+': sem overflow horizontal');
           assert.equal(d.inside,true,width+'px '+label+' '+d.id+': conteúdo dentro do card');
+          assert.ok(d.card.bottom-d.weight.bottom<=10,width+'px '+label+' '+d.id+': sem sobra branca após o conteúdo');
         }
         for(let i=0;i<data.length;i++){
           const sameRow=data.filter(d=>Math.abs(d.card.top-data[i].card.top)<2);
