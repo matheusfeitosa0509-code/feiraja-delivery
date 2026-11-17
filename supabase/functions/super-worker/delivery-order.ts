@@ -16,7 +16,7 @@ export function validateCheckoutDelivery(input: {
   deliveryActive: boolean;
 }): { ok: true } | { ok: false; status: number; error: string } {
   if (!["pickup_store", "pickup_uber", "delivery"].includes(input.deliveryType)) {
-    return { ok: false, status: 400, error: "Modalidade inválida. Escolha retirada, Receber com seu Uber ou Entrega Feira On." };
+    return { ok: false, status: 400, error: "Modalidade inválida. Escolha retirada na loja ou Entrega Feira On." };
   }
   if (input.paymentMethod === "pix_test" && !input.isAdmin) {
     return { ok: false, status: 403, error: "Pix de teste disponível somente para administradores." };
@@ -30,7 +30,7 @@ export function validateCheckoutDelivery(input: {
     }
   }
   if (input.deliveryType === "pickup_uber" && input.deliveryActive) {
-    return { ok: false, status: 400, error: "Receber com seu Uber não está disponível para novos pedidos." };
+    return { ok: false, status: 400, error: "Essa modalidade de retirada não está disponível enquanto a Entrega Feira On estiver ativa." };
   }
   if (input.deliveryType === "pickup_uber" && !["pix", "pix_test"].includes(input.paymentMethod)) {
     return { ok: false, status: 400, error: "Na modalidade Receber com seu Uber, o pagamento é somente por Pix." };
@@ -81,7 +81,8 @@ export async function calculateServerDelivery(input: {
 // The client-supplied delivery fee is intentionally not an input to this function.
 export function orderTotals(subtotalCents: number, serverDeliveryFee: number, deliveryType: string) {
   if (!Number.isSafeInteger(subtotalCents) || subtotalCents <= 0 ||
-      !Number.isSafeInteger(serverDeliveryFee) || serverDeliveryFee < 0) {
+      !Number.isSafeInteger(serverDeliveryFee) || serverDeliveryFee < 0 ||
+      (deliveryType === "delivery" && serverDeliveryFee <= 0)) {
     throw new Error("INVALID_ORDER_TOTAL");
   }
   const feeCents = deliveryType === "delivery" ? serverDeliveryFee * 100 : 0;

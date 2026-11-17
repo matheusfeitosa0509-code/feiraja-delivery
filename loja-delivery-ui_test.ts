@@ -2,7 +2,7 @@ import { assertEquals, assertThrows } from "jsr:@std/assert@1.0.14";
 import {
   buildDeliveryQuoteItems, canShowDeliveryOption, canShowUberPickupOption, checkoutGrandTotal,
   deliveryUnavailableMessage, isDeliveryOptionDisabled, loadDeliveryAccessState,
-  deliveryPaymentOptions, deliveryQuoteErrorMessage, deliveryQuoteLabel, isAdminRpcTrue, isDeliveryOutOfArea,
+  deliveryPaymentOptions, deliveryQuoteErrorMessage, deliveryQuoteLabel, isAdminRpcTrue, isDeliveryOutOfArea, isValidDeliveryQuote,
   normalizeDeliveryAddress,
 } from "./loja-delivery-ui.js";
 
@@ -83,10 +83,20 @@ Deno.test("itens do carrinho viram payload de cotação", () => {
   ]);
 });
 
-Deno.test("total do checkout soma taxa somente na entrega", () => {
-  assertEquals(checkoutGrandTotal(30, "delivery", { fee: 9 }), 39);
-  assertEquals(checkoutGrandTotal(30, "pickup_store", { fee: 9 }), 30);
-  assertThrows(() => checkoutGrandTotal(30, "delivery", { fee: -1 }));
+Deno.test("cotação válida exige veículo, taxa positiva e validade futura", () => {
+  const valid = { vehicle: "MOTO", fee: 9, valid_until: new Date(Date.now() + 60_000).toISOString() };
+  assertEquals(isValidDeliveryQuote(valid), true);
+  assertEquals(isValidDeliveryQuote({ ...valid, fee: 0 }), false);
+  assertEquals(isValidDeliveryQuote({ ...valid, valid_until: new Date(Date.now() - 1000).toISOString() }), false);
+  assertEquals(isValidDeliveryQuote({ ...valid, vehicle: "BICYCLE" }), false);
+});
+
+Deno.test("total do checkout soma somente uma cotação positiva e vigente", () => {
+  const quote = { vehicle: "MOTO", fee: 9, valid_until: new Date(Date.now() + 60_000).toISOString() };
+  assertEquals(checkoutGrandTotal(30, "delivery", quote), 39);
+  assertEquals(checkoutGrandTotal(30, "pickup_store", quote), 30);
+  assertThrows(() => checkoutGrandTotal(30, "delivery", { ...quote, fee: 0 }));
+  assertThrows(() => checkoutGrandTotal(30, "delivery", { ...quote, valid_until: new Date(Date.now() - 1000).toISOString() }));
 });
 
 Deno.test("rótulo da cotação e endereço fora da área", () => {
@@ -105,7 +115,7 @@ Deno.test("loja.html conecta a opção, cotação, endereço salvo e acompanhame
     'id="deliveryComplement"', 'id="deliveryReference"',
     "loadDeliveryAccessState(user", "hasConfirmedDeliveryAdmin()", "functions.invoke('delivery-quote'",
     "address_street", "address_reference", "delivery_vehicle", "delivery_fee",
-    "syncAdminTestPaymentOption", "Sai quando o pedido estiver pronto",
+    "syncAdminTestPaymentOption", "checkoutScheduleMessage(new Date(),true)",
     "await loadDeliveryAccess(currentUser)", "async function openCheckoutModal()", "delivery-address", "session_token", "deliveryMapCoordinates", "deliveryPlacesSessionToken=null;", "await openDeliveryMap()", "tiles.openfreemap.org/styles/positron", "zoom:17",
   ]) assertEquals(html.includes(required), true, "missing UI wiring: " + required);
   assertEquals(html.includes('id="payPixTestOption"'), false, "Pix de teste não pode existir no HTML inicial");

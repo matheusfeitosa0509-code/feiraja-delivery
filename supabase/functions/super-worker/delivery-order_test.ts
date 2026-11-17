@@ -69,7 +69,7 @@ Deno.test("novos pedidos com Uber são recusados quando Entrega Feira On está a
   assertEquals(validateCheckoutDelivery({
     deliveryType: "pickup_uber", paymentMethod: "pix", isAdmin: false, deliveryActive: true,
   }), {
-    ok: false, status: 400, error: "Receber com seu Uber não está disponível para novos pedidos.",
+    ok: false, status: 400, error: "Essa modalidade de retirada não está disponível enquanto a Entrega Feira On estiver ativa.",
   });
   assertEquals(validateCheckoutDelivery({
     deliveryType: "pickup_uber", paymentMethod: "pix", isAdmin: false, deliveryActive: false,
@@ -89,6 +89,15 @@ Deno.test("taxa enviada pelo navegador não participa do total: usa apenas taxa 
   const totals = orderTotals(10_000, 9, "delivery");
   assertEquals(totals.deliveryFee, 9);
   assertEquals(totals.total, 109);
+});
+
+Deno.test("entrega nunca aceita taxa ausente ou zero", () => {
+  let zeroRejected = false;
+  let missingRejected = false;
+  try { orderTotals(10_000, 0, "delivery"); } catch { zeroRejected = true; }
+  try { orderTotals(10_000, Number.NaN, "delivery"); } catch { missingRejected = true; }
+  assertEquals(zeroRejected, true);
+  assertEquals(missingRejected, true);
 });
 
 Deno.test("retirada mantém taxa zero e total igual ao subtotal", () => {

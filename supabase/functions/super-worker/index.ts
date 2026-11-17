@@ -633,6 +633,14 @@ Deno.serve(async (req: Request) => {
         }
       }
     }
+    if (deliveryType === "delivery" && (!deliveryQuote ||
+        !["MOTO", "CAR"].includes(String(deliveryQuote.vehicle)) ||
+        !Number.isFinite(Number(deliveryQuote.weightKg)) || Number(deliveryQuote.weightKg) <= 0 ||
+        !Number.isFinite(Number(deliveryQuote.fee)) || Number(deliveryQuote.fee) <= 0 ||
+        (!priorOrder && (!Number.isFinite(Date.parse(String(deliveryQuote.validUntil || ""))) ||
+          Date.parse(String(deliveryQuote.validUntil)) <= Date.now())))) {
+      return json({ error: "Não foi possível confirmar uma cotação válida e positiva para esta entrega. Calcule novamente antes de pagar." }, 502);
+    }
     const totals = orderTotals(subtotalCents, deliveryQuote?.fee || 0, deliveryType);
     const totalCents = totals.totalCents;
     const deliveryFee = totals.deliveryFee;

@@ -85,8 +85,12 @@ on:
 jobs:
   test:
     runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
     steps:
       - uses: actions/checkout@v4
+      - name: Install unzip for Deno setup
+        run: apt-get update && apt-get install -y unzip
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
@@ -103,7 +107,6 @@ jobs:
         with:
           node-version: 22
       - run: npm install --prefix /tmp/playwright playwright@1.58.2
-      - run: /tmp/playwright/node_modules/.bin/playwright install --with-deps chromium
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-product-create.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-compact.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/lalamove-panel.visual.cjs
