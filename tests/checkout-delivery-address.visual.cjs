@@ -59,7 +59,7 @@ window.maplibregl={
  },
  NavigationControl:class{},AttributionControl:class{}
 };
-const mapOverlayMarkup = `
+const mapOverlayMarkup = '
 <div id="checkout"><div id="deliveryAddressFields"><div id="deliveryStreetSearch"><label for="deliveryStreet">Rua</label><div class="checkout-address-input"><input id="deliveryStreet"></div><div id="deliveryStreetSuggestions" hidden></div></div><div id="deliveryNumberField" class="field"><label for="deliveryNumber">Número</label><input id="deliveryNumber"></div><input id="deliveryNeighborhood"><input id="deliveryReference"></div><div id="deliveryMapPreview" hidden><img id="deliveryMapPreviewImage"></div><div id="deliveryMapSearchSlot"></div><div id="deliveryMapNumberSlot"></div><div id="deliveryMapFullscreen" hidden><header id="topbar"><button id="deliveryMapBack"></button></header><div id="deliveryMap"></div><div id="deliveryMapAddress"></div><div id="deliveryMapNeighborhood"></div><button id="deliveryMapGps"></button><button id="deliveryMapConfirm"></button></div><button id="deliveryMapAdjust"></button><button id="deliveryMapChange"></button><button id="deliveryUseGps"></button><select id="delivery"><option value="delivery" selected>Entrega</option></select><div id="minimumCheckoutNotice" class="hidden"></div><p id="deliveryQuoteStatus"></p></div>`;
 document.body.innerHTML=mapOverlayMarkup;
 const deliveryMapFunctions = ${JSON.stringify(addressFns + mapFns + quoteFns)};
