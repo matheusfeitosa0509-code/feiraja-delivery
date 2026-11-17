@@ -30,7 +30,7 @@ for (const required of [
       await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:14px Arial;margin:0;padding:12px}.panel{max-width:520px;margin:auto}button{width:100%;min-height:46px}#deliveryQuoteStatus{overflow-wrap:anywhere}</style></head><body><main class="panel"><button id="deliveryUseGps">Usar minha localização</button><button id="deliveryConfirmAddress" hidden>Confirmar endereço e calcular entrega</button><div id="deliveryMapPanel" hidden></div><p id="deliveryQuoteStatus" aria-live="polite"></p></main></body></html>');
       await page.addScriptTag({ content: helperSource + '\nwindow.quoteError = deliveryQuoteErrorMessage;' });
       await page.addScriptTag({ content: `
-        let deliveryMap=null;
+        let deliveryMap=null,deliveryMapCoordinates=null,deliveryNeedsExplicitConfirm=false;
         const $=selector=>document.querySelector(selector);
         function setDeliveryQuoteStatus(message){ $('#deliveryQuoteStatus').textContent=message; }
         async function openDeliveryMap(){ $('#deliveryMapPanel').hidden=false; deliveryMap={setView(point){window.lastGpsPoint=point;}}; }
