@@ -58,8 +58,12 @@ export function buildQuotationBody(
   serviceType: "LALAGO" | "CAR",
   dropoff: string,
   coordinates: { origin: DeliveryCoordinates; dropoff: DeliveryCoordinates },
+  scheduleAt?: string,
 ) {
-  return { data: { serviceType, language: "pt_BR", stops: [
+  if (scheduleAt && (!scheduleAt.endsWith("Z") || !Number.isFinite(Date.parse(scheduleAt)))) {
+    throw new Error("INVALID_SCHEDULE_TIME");
+  }
+  return { data: { ...(scheduleAt ? { scheduleAt } : {}), serviceType, language: "pt_BR", stops: [
     { coordinates: coordinates.origin, address: "Av. Lourenço da Silva Braga, 700 - Centro, Manaus - AM, Brasil" },
     { coordinates: coordinates.dropoff, address: dropoff },
   ] } };
