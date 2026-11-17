@@ -136,7 +136,8 @@ function prepareHtml(source) {
       await page.locator("#shoppingListButton").click();
       await page.waitForFunction(()=>window.__sharedPayload?.text?.includes("Lista de compras"));
       const allShare=await page.evaluate(()=>window.__sharedPayload.text);
-      if(!allShare.includes("Banana Prata — 3,5 kg")||!allShare.includes("Coco — R$ 15,00 (~1,5 kg)")||!allShare.includes("Tomate — 2 un"))throw new Error("A lista consolidada não somou produtos/unidades e compra por valor: "+allShare);
+      const normalizedAllShare=allShare.replace(/\s+/g,' ');
+      if(!normalizedAllShare.includes("Banana Prata — 3,5 kg")||!normalizedAllShare.includes("Coco — R$ 15,00 (~1,5 kg)")||!normalizedAllShare.includes("Tomate — 2 un"))throw new Error("A lista consolidada não somou produtos/unidades e compra por valor: "+allShare);
       if(!allShare.includes("Bem maduras | Sem manchas")||allShare.includes("Produto de teste oculto")||/92999990000|92911112222|92933334444|@privado|endereço privado|lucro|custo/i.test(allShare))throw new Error("A lista consolidada perdeu observações, incluiu pedido de teste ou expôs dados/custos: "+allShare);
       // Sem Web Share nativo, copia o texto e mostra o aviso do app.
       await page.evaluate(()=>{window.__copiedText='';Object.defineProperty(navigator,'share',{configurable:true,value:undefined});Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{window.__copiedText=value;}}});});
