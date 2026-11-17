@@ -1787,8 +1787,8 @@ function change(id,d){const product=products.find(p=>String(p.id)===String(id));
 function getDeliveryAddress(){return normalizeDeliveryAddress({street:$('#deliveryStreet').value,number:$('#deliveryNumber').value,neighborhood:$('#deliveryNeighborhood').value,complement:$('#deliveryComplement').value,reference:$('#deliveryReference').value});}
 function syncDeliveryAddressPresentation(showSummary=false){
  const street=$('#deliveryStreet').value.trim(),number=$('#deliveryNumber').value.trim(),neighborhood=$('#deliveryNeighborhood').value.trim();
- const ready=!!(street&&neighborhood);
- const show=showSummary&&ready;
+ const ready=!!(street&&neighborhood),preview=$('#deliveryMapPreview');
+ const show=showSummary&&ready&&(!preview||preview.hidden);
  $('#deliveryStreetSearch').hidden=show;
  $('#deliveryAddressSummary').hidden=!show;
  $('#deliveryNumberField').hidden=show&&!!number;
