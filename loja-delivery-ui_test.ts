@@ -115,7 +115,7 @@ Deno.test("loja.html conecta a opção, cotação, endereço salvo e acompanhame
     'id="deliveryComplement"', 'id="deliveryReference"',
     "loadDeliveryAccessState(user", "hasConfirmedDeliveryAdmin()", "functions.invoke('delivery-quote'",
     "address_street", "address_reference", "delivery_vehicle", "delivery_fee",
-    "syncAdminTestPaymentOption", "Sai quando o pedido estiver pronto",
+    "syncAdminTestPaymentOption", "checkoutScheduleMessage(new Date(),true)",
     "await loadDeliveryAccess(currentUser)", "async function openCheckoutModal()", "delivery-address", "session_token", "deliveryMapCoordinates", "deliveryPlacesSessionToken=null;", "await openDeliveryMap()", "tiles.openfreemap.org/styles/positron", "zoom:17",
   ]) assertEquals(html.includes(required), true, "missing UI wiring: " + required);
   assertEquals(html.includes('id="payPixTestOption"'), false, "Pix de teste não pode existir no HTML inicial");
