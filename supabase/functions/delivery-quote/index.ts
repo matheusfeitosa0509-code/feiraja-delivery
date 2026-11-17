@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
       pinnedAddress ? Promise.resolve({ lat: pinnedAddress.lat, lng: pinnedAddress.lng }) :
         geocodeManausAddress(dropoff, geocodingKey),
     ]);
-    const lalamoveDropoff = pinnedAddress?.formattedAddress || dropoff;
+    const lalamoveDropoff = dropoff || pinnedAddress?.formattedAddress || "";
     const quoteFetch: typeof fetch = (input, init) => retryLalamove429(fetch, input, init);
     const response = await requestSandboxQuotation(apiKey, apiSecret, serviceType, lalamoveDropoff, {
       origin: originCoordinates, dropoff: dropoffCoordinates,
