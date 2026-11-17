@@ -19,9 +19,9 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
     for (const width of [360, 412]) {
       const page = await browser.newPage({ viewport: { width, height: 780 } });
       await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:14px Arial;margin:0;padding:12px}.card{display:grid;grid-template-columns:22px 32px minmax(0,1fr) auto;gap:10px;align-items:center;padding:14px;border:1px solid #ddd;border-radius:14px}.copy{min-width:0}.copy span{display:block;overflow-wrap:anywhere}.price{font-size:11px;text-align:right;max-width:118px}</style></head><body><label id="deliveryHomeOption" class="card"><input id="deliveryHome" type="radio"><span>🏠</span><span class="copy"><b>Entrega Feira On</b><span id="deliveryHomeDescription"></span></span><span id="deliveryStartingPrice" class="price"></span></label></body></html>');
-      await page.addScriptTag({ content: scheduleSource + '\n' + uiSource });
+      await page.addScriptTag({ content: scheduleSource + '\n' + uiSource + '\nwindow.ScheduleTest = { getStoreSchedule, renderDeliveryOption };' });
       const result = await page.evaluate(() => ({
-        monday: getStoreSchedule(new Date('2026-11-16T22:00:00.000Z')),
+        monday: window.ScheduleTest.getStoreSchedule(new Date('2026-11-16T22:00:00.000Z')),
         saturday: getStoreSchedule(new Date('2026-11-14T18:00:00.000Z')),
         sunday: getStoreSchedule(new Date('2026-11-15T12:00:00.000Z')),
       }));
@@ -30,7 +30,7 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
       assert.equal(result.sunday.scheduledFor, '2026-11-16T10:00:00.000Z');
       await page.evaluate(() => {
         const schedule = getStoreSchedule(new Date('2026-11-16T22:00:00.000Z'));
-        renderDeliveryOption({
+        window.ScheduleTest.renderDeliveryOption({
           option: document.querySelector('#deliveryHomeOption'),
           radio: document.querySelector('#deliveryHome'),
           starting: document.querySelector('#deliveryStartingPrice'),
