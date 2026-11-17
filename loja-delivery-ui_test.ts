@@ -102,7 +102,8 @@ Deno.test("total do checkout soma somente uma cotação positiva e vigente", () 
 Deno.test("rótulo da cotação e endereço fora da área", () => {
   assertEquals(deliveryQuoteLabel("MOTO", 9), "Entrega de moto: R$ 9,00");
   assertEquals(deliveryQuoteLabel("CAR", 14), "Entrega de carro: R$ 14,00");
-  assertEquals(isDeliveryOutOfArea(422), true);
+  assertEquals(isDeliveryOutOfArea(422), false, "422 não significa necessariamente endereço fora da área");
+  assertEquals(isDeliveryOutOfArea(422, "LALAMOVE_OUT_OF_SERVICE_AREA"), true);
   assertEquals(isDeliveryOutOfArea(502, "upstream"), false);
 });
 
@@ -135,6 +136,8 @@ Deno.test("erros da cotação diferenciam endereço, Manaus e cobertura Lalamove
   assertEquals(deliveryQuoteErrorMessage(429, "QUOTE_RATE_LIMIT"), "Muitas consultas agora, tente em alguns segundos.");
   assertEquals(deliveryQuoteErrorMessage(502, "LALAMOVE_QUOTE_FAILED"), "Entrega indisponível no momento.");
   assertEquals(deliveryQuoteErrorMessage(422, "LALAMOVE_OUT_OF_SERVICE_AREA").includes("Endereço fora da área de entrega"), true);
+  assertEquals(deliveryQuoteErrorMessage(502, "LALAMOVE_INVALID_SCHEDULE_TIME"), "A Lalamove recusou o horário agendado. Tente novamente em instantes.");
+  assertEquals(deliveryQuoteErrorMessage(422, "LALAMOVE_INVALID_SERVICE_TYPE"), "A Lalamove não oferece o tipo de veículo selecionado para esta rota.");
   assertEquals(deliveryQuoteErrorMessage(503, "GEOCODER_NOT_CONFIGURED"), "Entrega indisponível no momento.");
   assertEquals(deliveryQuoteErrorMessage(403, "STORE_CLOSED"), "Entrega disponível no horário de funcionamento.");
 });
@@ -165,7 +168,7 @@ Deno.test("checkout novo mantém a ordem visual dos cards e os campos funcionais
     "syncAdminTestPaymentOption", "syncUberPickupOption",
     'id="submitOrder"', 'id="modalTotal"', 'id="cpf"', 'id="phone"', 'id="email"', 'id="deliveryUberOption"', 'syncUberPickupOption({', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga o Uber pelo app. Nós levamos o pedido até o carro.', "const uberAction=o.delivery_type==='pickup_uber'", 'id="deliveryUberOption"', 'syncUberPickupOption({', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga o Uber pelo app. Nós levamos o pedido até o carro.',
     'position:fixed!important', 'min-height:64px', '#delivery,#payment{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}',
-    "function updateCheckoutSummary()", "value.textContent=money(deliveryQuote.fee)",
+    "function updateCheckoutSummary()", "value.textContent=money(deliveryQuote.fee)", "schedule_at:data.schedule_at||null",
   ]) assertEquals(html.includes(required), true, "missing checkout presentation: " + required);
 });
 
