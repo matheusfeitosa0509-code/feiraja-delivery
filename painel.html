@@ -474,6 +474,79 @@ let allOrders=[],seenOrderIds=new Set(),firstLoadDone=false,hasMoreOrders=true,n
   const id=String(order.id);if(separatedPending.has(id))return separatedPending.get(id);if(separatedMemory.has(id))return separatedMemory.get(id);
   return Array.isArray(order.separated_items)?order.separated_items.filter(v=>typeof v==='string'):[];
  }
+ function itemFingerprint(item){
+  return JSON.stringify([String(item?.product_id??item?.productId??item?.id??''),String(item?.name??''),String(item?.unit??item?.unit_name??''),Number(item?.price??0),Number(item?.quantity??item?.qty??1)]);
+ }
+ function isOrderItemSeparated(order,index){
+  const items=Array.isArray(order.items)?order.items:[],item=items[index];if(!item)return false;
+  const occurrence=items.slice(0,index).filter(x=>itemFingerprint(x)===itemFingerprint(item)).length;
+  return separatedKeysFor(order).includes(itemSeparationKey(item,occurrence));
+ }
+ function buildOrderShoppingText(order){
+  const items=Array.isArray(order.items)?order.items:[];
+  const lines=items.map((item,index)=>{
+   const mark=isOrderItemSeparated(order,index)?'✅':'⬜';
+   const note=String(item?.item_note||'').trim();
+   return mark+' '+formatOrderItemDescription(item)+(note?'\n   Observação: '+note:'');
+  });
+  return 'Lista de compras — Pedido '+shortOrderNumber(order.id)+'\n'+lines.join('\n');
+ }
+ function buildPendingShoppingListText(){
+  const eligibleStatuses=new Set(['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega']);
+  const eligible=allOrders.filter(order=>order.is_test_order!==true&&eligibleStatuses.has(normalizeOrderStatus(order.status)));
+  const grouped=new Map();
+  eligible.forEach(order=>{
+   const items=Array.isArray(order.items)?order.items:[];
+   items.forEach((item,index)=>{
+    const description=formatOrderItemDescription(item);
+    const rawName=String(item?.name||item?.product_name||item?.id||'Produto');
+    const name=rawName.replace(/\s*\((?:kg|un|unidade|maço|maco|pacote)\)\s*$/i,'').trim();
+    const mode=String(item?.sale_mode||'').toLowerCase();
+    const suffix=rawName.match(/\s*\((kg|un|unidade|maço|maco|pacote)\)\s*$/i);
+    const rawUnit=String(suffix?.[1]||item?.sale_unit||item?.saleUnit||item?.unit||item?.unit_name||'').toLowerCase();
+    const unit=mode==='value'?'value':(/kg/.test(rawUnit)||description.endsWith(' kg')?'kg':(/maço|maco/.test(rawUnit)||description.endsWith(' maço')?'maço':(/pacote/.test(rawUnit)||description.endsWith(' pacote')?'pacote':'un'));
+    const productKey=String(item?.product_id??item?.productId??item?.id??name);
+    const key=JSON.stringify([productKey,name,unit,mode==='value'?'value':'quantity']);
+    let entry=grouped.get(key);
+    if(!entry){entry={name,unit,isValue:mode==='value',quantity:0,amountCents:0,notes:new Set(),allSeparated:true};grouped.set(key,entry);}
+    const quantity=Number(item?.quantity??item?.qty??1)||0;
+    if(entry.isValue){
+     const cents=Number(item?.line_total_cents??item?.amount_cents);
+     entry.amountCents+=Number.isSafeInteger(cents)&&cents>0?cents:Math.round(Number(item?.price||0)*quantity*100);
+     entry.quantity+=quantity;
+    }else entry.quantity+=quantity;
+    const note=String(item?.item_note||'').trim();if(note)entry.notes.add(note);
+    if(!isOrderItemSeparated(order,index))entry.allSeparated=false;
+   });
+  });
+  if(!grouped.size)return '';
+  const lines=[...grouped.values()].map(entry=>{
+   const amount=entry.isValue?money(entry.amountCents/100)+' (~'+formatOrderQuantity(entry.quantity)+' kg)':formatOrderQuantity(entry.quantity)+' '+entry.unit;
+   const notes=entry.notes.size?'\n   Observação: '+[...entry.notes].join(' | '):'';
+   return (entry.allSeparated?'✅ ':'⬜ ')+entry.name+' — '+amount+notes;
+  });
+  return 'Lista de compras — Feira On Delivery\n'+lines.join('\n');
+ }
+ async function copyPanelText(text){
+  try{if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(text);return true;}}catch{}
+  try{const field=document.createElement('textarea');field.value=text;field.setAttribute('readonly','');field.style.position='fixed';field.style.opacity='0';document.body.append(field);field.select();const copied=document.execCommand('copy');field.remove();return copied;}catch{return false;}
+ }
+ async function sharePanelText(title,text){
+  if(typeof navigator.share==='function'){
+   try{await navigator.share({title,text});return;}catch(error){if(error?.name==='AbortError')return;}
+  }
+  const copied=await copyPanelText(text);
+  notice(copied?'Compartilhamento nativo indisponível. Texto copiado para a área de transferência.':'Não foi possível compartilhar nem copiar a lista.',!copied);
+ }
+ async function shareOrderShoppingList(orderId){
+  const order=allOrders.find(item=>String(item.id)===String(orderId));if(!order)return;
+  await sharePanelText('Lista do pedido '+shortOrderNumber(order.id),buildOrderShoppingText(order));
+ }
+ async function shareAllPendingShoppingList(){
+  const text=buildPendingShoppingListText();
+  if(!text){notice('Não há pedidos pagos ainda não entregues para montar a lista.');return;}
+  await sharePanelText('Lista de compras — Feira On Delivery',text);
+ }
  function updateSeparationItemUI(orderId,key){
   const id=String(orderId),order=allOrders.find(o=>String(o.id)===id),content=document.querySelector('[data-order-content="'+CSS.escape(id)+'"]');
   if(!order||!content)return;
