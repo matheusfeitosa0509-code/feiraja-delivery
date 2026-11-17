@@ -43,6 +43,7 @@ export async function calculateServerDelivery(input: {
   apiKey: string;
   apiSecret: string;
   geocodingApiKey: string;
+  environment?: "sandbox" | "producao";
   geocodeFetcher?: typeof fetch;
   fetcher?: typeof fetch;
 }) {
@@ -56,7 +57,7 @@ export async function calculateServerDelivery(input: {
   ]);
   const response = await requestSandboxQuotation(
     input.apiKey, input.apiSecret, serviceType, dropoff,
-    { origin: originCoordinates, dropoff: dropoffCoordinates }, input.fetcher || fetch,
+    { origin: originCoordinates, dropoff: dropoffCoordinates }, input.fetcher || fetch, input.environment || "sandbox",
   );
   const payload = await response.json().catch(() => ({}));
   const upstreamCode = String(payload?.message || "");
