@@ -153,10 +153,17 @@ export function buildDeliveryQuoteItems(items) {
   }));
 }
 
+export function isValidDeliveryQuote(quote, now = Date.now()) {
+  if (!quote || !["MOTO", "CAR"].includes(String(quote.vehicle || ""))) return false;
+  const fee = Number(quote.fee);
+  const expiresAt = Date.parse(String(quote.valid_until || quote.validUntil || ""));
+  return Number.isFinite(fee) && fee > 0 && Number.isFinite(expiresAt) && expiresAt > Number(now);
+}
+
 export function checkoutGrandTotal(subtotal, deliveryType, quote) {
   const base = Number(subtotal);
-  const fee = deliveryType === "delivery" && quote ? Number(quote.fee) : 0;
-  if (!Number.isFinite(base) || base < 0 || !Number.isFinite(fee) || fee < 0) {
+  const fee = deliveryType === "delivery" && isValidDeliveryQuote(quote) ? Number(quote.fee) : 0;
+  if (!Number.isFinite(base) || base < 0 || !Number.isFinite(fee) || fee < 0 || (deliveryType === "delivery" && fee <= 0)) {
     throw new Error("INVALID_CHECKOUT_TOTAL");
   }
   return Math.round((base + fee) * 100) / 100;
