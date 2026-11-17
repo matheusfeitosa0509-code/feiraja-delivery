@@ -130,6 +130,12 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 .separation-item.is-separated .separation-name{text-decoration:line-through;color:#829087}
 .separation-item.is-separated>strong{color:#829087}
 .separation-done{font-size:12px;color:#52735a;background:#f1f6ef;border-radius:9px;padding:7px 10px;margin:4px 0 8px}
+.separation-done[hidden]{display:none!important}
+.orders-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0}
+.orders-toolbar button{min-height:44px}
+.order-share-actions{margin:8px 0}
+.order-share-actions button{min-height:42px}
+@media(max-width:520px){.orders-toolbar{align-items:stretch}.orders-toolbar button{width:100%}.order-share-actions button{width:100%}}
 
 /* Lista unificada de produtos: responsiva e independente por aba. */
 .shared-product-list{display:grid;gap:8px;margin:12px 0;max-height:52vh;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}.shared-product-list-item{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:10px;align-items:center;width:100%;min-height:68px;padding:9px;background:#fbfdf9;border:1px solid #e2ebe0;border-radius:14px;color:var(--ink);text-align:left}.shared-product-list-item img{width:52px;height:52px;object-fit:cover;border-radius:10px;background:#edf3eb}.shared-product-list-item .product-meta{min-width:0}.shared-product-list-item .product-meta strong{display:block;overflow-wrap:anywhere}.shared-product-list-item .product-meta small{display:block;color:var(--muted);font-size:11px;font-weight:600}.shared-product-list-item .product-price{font-weight:800;white-space:nowrap;font-size:13px}.shared-product-list-empty{padding:18px;text-align:center;color:var(--muted)}.shared-list-count{margin:8px 0;color:var(--muted);font-size:12px;font-weight:700}
@@ -262,7 +268,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 </section>
 <div id="notice" class="notice hidden" role="status"></div>
 
-<div class="stats"><div class="stat"><small>Pedidos encontrados</small><strong id="count">0</strong></div><div class="stat"><small>Aguardando pagamento</small><strong id="pending">0</strong></div><div class="stat"><small>Em andamento</small><strong id="active">0</strong></div><div class="stat"><small>Vendas pagas (sem cancelados)</small><strong id="sum">R$ 0,00</strong></div></div><section class="card"><div class="filters"><input id="search" placeholder="Buscar por pedido, cliente ou telefone" aria-label="Buscar pedidos"><select id="filter" aria-label="Filtrar por status"><option value="">Todos os status</option><option>Pedido Recebido</option><option>Pagamento Pendente</option><option>Pagamento Confirmado</option><option>Preparando</option><option>Pronto para Retirada</option><option>Entregue</option><option>Cancelada</option><option value="Saiu para Entrega">Saiu para Entrega (pedido antigo)</option><option>Reembolsado</option><option>Contestado</option></select></div></section><div id="orders" class="orders"></div><div class="actions" style="justify-content:center;margin:16px 0"><button id="loadMore" class="secondary">Carregar mais pedidos</button></div>
+<div class="stats"><div class="stat"><small>Pedidos encontrados</small><strong id="count">0</strong></div><div class="stat"><small>Aguardando pagamento</small><strong id="pending">0</strong></div><div class="stat"><small>Em andamento</small><strong id="active">0</strong></div><div class="stat"><small>Vendas pagas (sem cancelados)</small><strong id="sum">R$ 0,00</strong></div></div><div class="orders-toolbar"><button type="button" id="shoppingListButton" class="secondary">Lista de compras</button><span class="muted">Pedidos pagos ainda não entregues</span></div><section class="card"><div class="filters"><input id="search" placeholder="Buscar por pedido, cliente ou telefone" aria-label="Buscar pedidos"><select id="filter" aria-label="Filtrar por status"><option value="">Todos os status</option><option>Pedido Recebido</option><option>Pagamento Pendente</option><option>Pagamento Confirmado</option><option>Preparando</option><option>Pronto para Retirada</option><option>Entregue</option><option>Cancelada</option><option value="Saiu para Entrega">Saiu para Entrega (pedido antigo)</option><option>Reembolsado</option><option>Contestado</option></select></div></section><div id="orders" class="orders"></div><div class="actions" style="justify-content:center;margin:16px 0"><button id="loadMore" class="secondary">Carregar mais pedidos</button></div>
 <details class="panel-test-tool"><summary>Ferramenta de teste · Simulação de expiração de Pix</summary><section class="card" id="pixSimulationCard"><h2>Simulação de expiração de Pix</h2><p class="muted">Somente consulta. Nenhum pedido será cancelado ou alterado.</p><button id="simulatePixExpiry" type="button">Simular expiração de Pix</button><p id="pixSimulationMessage" class="muted" role="status"></p><div id="pixSimulationResults" class="simulation-wrap"></div></section></details>
 </section>
 <section id="productTools" class="hidden" role="tabpanel">
@@ -987,7 +993,7 @@ function render(){
    const occurrence=items.slice(0,index).filter(x=>JSON.stringify([String(x?.product_id??x?.productId??x?.id??''),String(x?.name??''),String(x?.unit??x?.unit_name??''),Number(x?.price??0),Number(x?.quantity??x?.qty??1)])===fingerprint).length;
    return separatedKeys.includes(itemSeparationKey(i,occurrence));
   }).length;
-  const separationHeader='<div class="separation-header"><strong>Itens do pedido</strong><span>'+separatedCount+' de '+items.length+' separados</span></div>'+(items.length&&separatedCount===items.length?'<p class="separation-done">Tudo separado</p>':'');
+  const separationHeader='<div class="separation-header"><strong>Itens do pedido</strong><span data-separated-count="'+esc(o.id)+'">'+separatedCount+' de '+items.length+' separados</span></div><p class="separation-done" data-separated-done="'+esc(o.id)+'" '+(items.length&&separatedCount===items.length?'':'hidden')+'>Tudo separado</p>';
   const date=o.created_at?new Date(o.created_at).toLocaleString('pt-BR'):'Data indisponível';
   const phoneDigits=String(o.customer_phone||'').replace(/\D/g,'');
   const waDigits=phoneDigits?(phoneDigits.startsWith('55')?phoneDigits:'55'+phoneDigits):'';
@@ -1006,6 +1012,7 @@ function render(){
    +contact+chips+'</div>'
    +'<div class="order-content" data-order-content="'+esc(o.id)+'" hidden>'
    +separationPill+refundPill+cancelNote+pickupAddress+codeHtml+deliveryBlock
+   +'<div class="actions order-share-actions"><button type="button" class="secondary" data-share-order-list="'+esc(o.id)+'">Compartilhar lista</button></div>'
    +'<div class="order-observation"><small>OBSERVAÇÕES DO CLIENTE</small><span>'+esc(notes||'Nenhuma observação')+'</span></div>'
    +'<div class="items">'+separationHeader+(items.length?itemRows:'<p class="muted">Itens não detalhados</p>')+'<div class="item"><span>Subtotal</span><span>'+money(o.subtotal)+'</span></div><div class="item"><span>Taxa</span><span>'+money(o.delivery_fee)+'</span></div><div class="item item-total"><strong>Total</strong><strong>'+money(o.total)+'</strong></div></div>'
    +'<div class="statusrow"><div><label for="status-'+esc(o.id)+'">Atualizar status</label><select id="status-'+esc(o.id)+'" data-status="'+esc(o.id)+'">'+opts+'</select></div><button data-save="'+esc(o.id)+'">Salvar</button></div>'+refundAction+'</div></article>';
