@@ -40,8 +40,21 @@ export function renderDeliveryOption({ option, radio, starting, description, isA
   option.setAttribute("aria-disabled", String(disabled));
   starting.replaceChildren();
   if (enabledForCustomers) {
-    starting.textContent = withinHours === true ? "Calcular taxa" : "Entrega a partir de " + String(scheduleLabel).split(",")[0] + " pela manhã";
     description.textContent = "Taxa por distância, paga com Pix junto do pedido.";
+    if (withinHours === true) {
+      starting.textContent = "Calcular taxa";
+    } else {
+      const weekday = String(scheduleLabel).split(",")[0].trim().toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");
+      const shortWeekday = ({ segunda: "Seg.", terca: "Ter.", quarta: "Qua.", quinta: "Qui.", sexta: "Sex.", sabado: "Sáb.", domingo: "Dom." })[weekday] || "Próx.";
+      const badge = document.createElement("span");
+      badge.className = "checkout-delivery-badge";
+      badge.textContent = shortWeekday + " de manhã";
+      starting.append(badge);
+      const schedule = document.createElement("small");
+      schedule.className = "checkout-delivery-schedule";
+      schedule.textContent = "Entrega a partir de " + String(scheduleLabel) + " pela manhã.";
+      description.append(schedule);
+    }
   } else if (adminPreview) {
     const badge = document.createElement("span");
     badge.className = "checkout-test-badge";
