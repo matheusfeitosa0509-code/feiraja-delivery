@@ -313,9 +313,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <label for="saleUnit">Unidade de venda</label><select id="saleUnit"><option value="un" selected>Unidade (un)</option><option value="kg">Quilograma (kg)</option><option value="pacote">Pacote</option><option value="maco">Maço / palma</option><option value="duzia">Dúzia</option></select>
 <small>Produtos novos já começam com “Por valor” ligado. Escolha kg, unidade, pacote, maço ou dúzia conforme a venda real.</small>
 <label>Categoria</label>
-<select id="category">
-<option>Frutas</option><option>Verduras e legumes</option><option>Farinhas e derivados</option><option>Temperos e ervas</option><option>Grãos e secos</option><option>Bebidas</option><option>Pescados e frutos do mar</option><option>Ovos e laticínios</option>
-</select>
+<select id="category"></select>
 <label>Caminho/URL alternativo da foto ou nome do arquivo</label><input id="imgfile" placeholder="imagens/produtos/produto.jpg, URL HTTPS ou produto.jpg">
 <small>Você também pode usar “Enviar foto” para escolher uma imagem do celular.</small>
 <div class="photo-upload-controls"><button type="button" class="secondary" id="btnPickNewProductPhoto">Enviar foto</button><input id="newProductPhotoInput" type="file" accept="image/*" hidden><small>A foto escolhida será reduzida para até 800 px e 300 KB e enviada junto com o cadastro.</small></div>
@@ -666,7 +664,9 @@ async function toggleProductValueSale(productId){
 }
 
 // Ficha única de produto. Mantém custo em RPC privado e grava somente campos alterados.
-const productCategories=['Frutas','Verduras e legumes','Farinhas e derivados','Temperos e ervas','Grãos e secos','Bebidas','Pescados e frutos do mar','Ovos e laticínios'];
+function getProductCategories(){return [...new Set(adminProducts.filter(p=>p.available===true).map(p=>String(p.category||'').trim()||'Outros'))].sort((a,b)=>a.localeCompare(b,'pt-BR'));}
+function fillProductCategorySelect(select,selected=''){const categories=getProductCategories();select.replaceChildren(...categories.map(value=>new Option(value,value)));if(selected&&!categories.includes(selected))select.add(new Option(selected,selected));select.value=selected||categories[0]||'Outros';}
+function populateProductCategorySelectors(){fillProductCategorySelect($('category'),$('category').value);fillProductCategorySelect($('sheetCategory'),$('sheetCategory').value);}
 const PRODUCT_PHOTO_BUCKET='product-photos';
 const PRODUCT_PHOTO_MAX_BYTES=300*1024;
 let unifiedCurrentProductId=null;
@@ -781,7 +781,7 @@ function renderUnifiedProductList(){
 }
 function populateUnifiedCategory(){
  const select=$('unifiedCategoryFilter'),previous=select.value;
- const cats=[...new Set(adminProducts.map(p=>p.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+ const cats=getProductCategories();
  select.replaceChildren(new Option('Todas as categorias',''));
  cats.forEach(category=>select.add(new Option(category,category)));
  if(cats.includes(previous))select.value=previous;
@@ -795,9 +795,7 @@ function fillProductSheet(product){
  $('productSheetTitle').textContent=product.name;
  $('productSheetSubtitle').textContent='ID: '+product.id;
  $('sheetName').value=product.name||'';
- $('sheetCategory').replaceChildren(...productCategories.map(v=>new Option(v,v)));
- if(product.category&&!productCategories.includes(product.category))$('sheetCategory').add(new Option(product.category,product.category));
- $('sheetCategory').value=product.category||productCategories[0];
+ fillProductCategorySelect($('sheetCategory'),product.category||'');
  $('sheetImage').value=product.image||'';
  $('sheetImagePreview').src=productListImage(product.image)||'';
  $('sheetPrice').value=moneyInput(product.price);
@@ -827,8 +825,7 @@ function fillNewProductSheet(){
   $('productSheetTitle').textContent='Adicionar produto';
   $('productSheetSubtitle').textContent='Novo cadastro';
   $('sheetName').value='';
-  $('sheetCategory').replaceChildren(...productCategories.map(v=>new Option(v,v)));
-  $('sheetCategory').value=productCategories[0];
+  fillProductCategorySelect($('sheetCategory'));
   $('sheetImage').value='';
   $('sheetImagePreview').removeAttribute('src');
   $('sheetPrice').value='';
@@ -945,7 +942,7 @@ async function loadAdminProducts(){
   resaleProducts=rows.map(p=>({...p,price:Number(p.price),resale_price:p.resale_price==null?null:Number(p.resale_price),resale_enabled:p.resale_enabled===true,resale_min_qty:Number(p.resale_min_qty??10),resale_unit:p.resale_unit==='kg'?'kg':'un'}));
   editableProducts=rows.slice();
   renderAdminProducts();
-  populateUnifiedCategory();renderUnifiedProductList();
+  populateProductCategorySelectors();populateUnifiedCategory();renderUnifiedProductList();
   renderPriceProducts();
   renderResaleProducts();
   renderEditableProducts();
