@@ -12,14 +12,6 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   status, headers: { ...cors, "Content-Type": "application/json" },
 });
 const PATH = "/v3/quotations";
-function isStoreOpenForDelivery(date = new Date()): boolean {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Manaus", weekday: "short", hour: "2-digit", hourCycle: "h23",
-  }).formatToParts(date);
-  const weekday = parts.find((part) => part.type === "weekday")?.value || "";
-  const hour = Number(parts.find((part) => part.type === "hour")?.value);
-  return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].includes(weekday) && hour >= 6 && hour < 13;
-}
 const ORIGIN = "Av. Lourenço da Silva Braga, 700 - Centro, Manaus - AM, Brasil";
 
 async function signRequest(key: string, secret: string, body: string) {
@@ -55,7 +47,6 @@ Deno.serve(async (req: Request) => {
     ]);
     if (adminError || settingsError) return json({ error: "Não foi possível validar a configuração de entrega." }, 500);
     const isAdmin = !!adminRow;
-    if (!isStoreOpenForDelivery()) return json({ error: "Entrega disponível no horário de funcionamento.", code: "STORE_CLOSED" }, 403);
     if (!isQuoteAllowed(settings?.delivery_ativa === true, isAdmin)) return json({ error: "Entrega indisponível." }, 403);
 
     const { data: allowed, error: rateError } = await db.rpc("consume_delivery_quote_rate_limit", {

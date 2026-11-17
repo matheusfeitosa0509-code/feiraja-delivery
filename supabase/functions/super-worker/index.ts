@@ -5,6 +5,7 @@ import { normalizeItemPreference } from "../_shared/item-preferences.ts";
 import { formatDropoff } from "../_shared/delivery-quote.ts";
 import { readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
 import { calculateServerDelivery, orderTotals, validateCheckoutDelivery } from "./delivery-order.ts";
+import { getStoreSchedule } from "../_shared/store-schedule.js";
 
 function isValidCpf(value: string) { const cpf = String(value || "").replace(/\D/g, ""); if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false; const calc = (base: string, factor: number) => { let sum = 0; for (const digit of base) sum += Number(digit) * factor--; const mod = (sum * 10) % 11; return mod === 10 ? 0 : mod; }; return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10]); }
 
@@ -21,16 +22,7 @@ function isValidCnpj(value: string) {
   return first === Number(cnpj[12]) && second === Number(cnpj[13]);
 }
 
-function isStoreOpenForDelivery(date = new Date()): boolean {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Manaus", weekday: "short", hour: "2-digit", hourCycle: "h23",
-  }).formatToParts(date);
-  const weekday = parts.find((part) => part.type === "weekday")?.value || "";
-  const hour = Number(parts.find((part) => part.type === "hour")?.value);
-  return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].includes(weekday) && hour >= 6 && hour < 13;
-}
-
-function isOrderRateLimitError(error: any) {
+ function isOrderRateLimitError(error: any) {
   return error?.code === "P0001" && error?.message === "ORDER_RATE_LIMIT";
 }
 
@@ -305,7 +297,7 @@ Deno.serve(async (req: Request) => {
     let priorOrder: any = null;
     if (priorAttempt) {
       const { data: existingOrder, error: existingOrderError } = await db.from("orders")
-        .select("id,status,total,payment_id,pix_qr_code,pix_qr_code_base64,pickup_code,payment_provider,payment_method,delivery_address,delivery_vehicle,delivery_weight_kg,delivery_fee")
+        .select("id,status,total,payment_id,pix_qr_code,pix_qr_code_base64,pickup_code,payment_provider,payment_method,delivery_address,delivery_vehicle,delivery_weight_kg,delivery_fee,scheduled_for")
         .eq("id", String(priorAttempt.order_id)).eq("user_id", orderUserId).maybeSingle();
       if (existingOrderError || !existingOrder) return json({ error: "Não foi possível recuperar o pedido desta tentativa." }, 503);
       priorOrder = existingOrder;
@@ -346,9 +338,10 @@ Deno.serve(async (req: Request) => {
     });
     if (!deliveryAccess.ok) return json({ error: deliveryAccess.error }, deliveryAccess.status);
     const deliveryType = requestedDeliveryType;
-    if (deliveryType === "delivery" && !isStoreOpenForDelivery()) {
-      return json({ error: "Entrega disponível no horário de funcionamento." }, 403);
-    }
+    const deliverySchedule = deliveryType === "delivery" ? getStoreSchedule() : null;
+    const scheduledFor = deliveryType === "delivery"
+      ? (priorOrder ? (priorOrder.scheduled_for || null) : (deliverySchedule?.scheduledFor || null))
+      : null;
     if (paymentMethod === "pix" && (asaasEnabled ? !asaasApiKey : !mpToken)) {
       return json({ error: asaasEnabled ? "Asaas Pix ainda não está configurado." : "Pagamento Pix ainda não está configurado." }, 503);
     }
@@ -746,6 +739,7 @@ Deno.serve(async (req: Request) => {
           delivery_address: normalizedDeliveryAddress,
           delivery_vehicle: deliveryQuote?.vehicle,
           delivery_weight_kg: deliveryQuote?.weightKg,
+          scheduled_for: scheduledFor,
         });
         if (paymentMethod === "pix_test") Object.assign(orderUpdate, {
           is_test_order: true,
@@ -798,6 +792,7 @@ Deno.serve(async (req: Request) => {
         delivery_address: normalizedDeliveryAddress,
         delivery_vehicle: deliveryQuote?.vehicle,
         delivery_weight_kg: deliveryQuote?.weightKg,
+        scheduled_for: scheduledFor,
       }).eq("id", orderId).eq("user_id", orderUserId).eq("status", "Pagamento Pendente");
       if (deliveryMetadataError) {
         await db.from("orders").update({ status: "Cancelada" }).eq("id", orderId).eq("status", "Pagamento Pendente");

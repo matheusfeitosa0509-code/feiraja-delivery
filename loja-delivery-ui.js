@@ -3,13 +3,13 @@ export function isAdminRpcTrue(value) {
 }
 
 export function canShowDeliveryOption(deliveryActive, isAdmin, adminCheckComplete = true, withinHours = true) {
-  // Com a flag ligada, o recurso é público para qualquer conta autenticada; o RPC admin só controla o modo TESTE.
-  return deliveryActive === true && withinHours === true;
+  // A flag controla disponibilidade; horário apenas agenda o próximo período de entrega.
+  return deliveryActive === true;
 }
 
 export function isDeliveryOptionDisabled(deliveryActive, isAdmin, adminCheckComplete = false, withinHours = true) {
-  if (deliveryActive === true) return withinHours !== true;
-  return adminCheckComplete !== true || isAdmin !== true || withinHours !== true;
+  if (deliveryActive === true) return false;
+  return adminCheckComplete !== true || isAdmin !== true;
 }
 
 export async function loadDeliveryAccessState(user, rpc) {
@@ -30,9 +30,9 @@ export async function loadDeliveryAccessState(user, rpc) {
   };
 }
 
-export function renderDeliveryOption({ option, radio, starting, description, isAdmin, adminCheckComplete, deliveryActive, withinHours = true }) {
+export function renderDeliveryOption({ option, radio, starting, description, isAdmin, adminCheckComplete, deliveryActive, withinHours = true, scheduleLabel = "próximo dia" }) {
   const enabledForCustomers = canShowDeliveryOption(deliveryActive, isAdmin, adminCheckComplete, withinHours);
-  const adminPreview = deliveryActive !== true && adminCheckComplete === true && isAdmin === true && withinHours === true;
+  const adminPreview = deliveryActive !== true && adminCheckComplete === true && isAdmin === true;
   const disabled = !(enabledForCustomers || adminPreview);
   option.hidden = false;
   radio.disabled = disabled;
@@ -40,11 +40,8 @@ export function renderDeliveryOption({ option, radio, starting, description, isA
   option.setAttribute("aria-disabled", String(disabled));
   starting.replaceChildren();
   if (enabledForCustomers) {
-    starting.textContent = "Calcular taxa";
+    starting.textContent = withinHours === true ? "Calcular taxa" : "Entrega a partir de " + String(scheduleLabel).split(",")[0] + " pela manhã";
     description.textContent = "Taxa por distância, paga com Pix junto do pedido.";
-  } else if (withinHours !== true && (deliveryActive === true || isAdmin === true)) {
-    starting.textContent = "Fora do horário";
-    description.textContent = "Entrega disponível no horário de funcionamento.";
   } else if (adminPreview) {
     const badge = document.createElement("span");
     badge.className = "checkout-test-badge";
@@ -90,8 +87,7 @@ export function syncAdminTestPaymentOption({ container, paymentSelect, isAdminCo
   }
   return true;
 }
-export function deliveryUnavailableMessage(deliveryActive = false, withinHours = true) {
-  if (deliveryActive === true && withinHours !== true) return "Entrega disponível no horário de funcionamento.";
+export function deliveryUnavailableMessage() {
   return "A Entrega Feira On está temporariamente indisponível. Escolha Retirar na loja.";
 }
 

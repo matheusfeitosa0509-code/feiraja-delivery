@@ -10,18 +10,18 @@ Deno.test("Entrega Feira On fica pública com flag ativa, mantém prévia admin 
   assertEquals(canShowDeliveryOption(false, false), false);
   assertEquals(canShowDeliveryOption(true, false), true, "cliente logado pode ver entrega ativa");
   assertEquals(canShowDeliveryOption(false, true), false, "flag desligada não libera cliente");
-  assertEquals(canShowDeliveryOption(true, false, true, false), false, "fora do horário não libera entrega");
+  assertEquals(canShowDeliveryOption(true, false, true, false), true, "fora do horário agenda a entrega sem bloqueá-la");
   assertEquals(isDeliveryOptionDisabled(false, false, false), true);
   assertEquals(isDeliveryOptionDisabled(false, true, false), true, "admin pendente fica bloqueado");
   assertEquals(isDeliveryOptionDisabled(true, false, false), false, "falha no RPC admin não bloqueia entrega pública ativa");
   assertEquals(isDeliveryOptionDisabled(false, true, true), false, "admin vê prévia TESTE");
-  assertEquals(isDeliveryOptionDisabled(false, true, true, false), true, "prévia admin também respeita o horário");
+  assertEquals(isDeliveryOptionDisabled(false, true, true, false), false, "prévia admin permanece disponível fora do horário");
   assertEquals(isDeliveryOptionDisabled(true, true, true), false);
   assertEquals(isDeliveryOptionDisabled(true, false, true), false, "cliente comum recebe acesso quando ativa");
-  assertEquals(isDeliveryOptionDisabled(true, false, true, false), true, "fora do horário bloqueia");
+  assertEquals(isDeliveryOptionDisabled(true, false, true, false), false, "fora do horário não bloqueia");
   assertEquals(isDeliveryOptionDisabled(true, false), false, "entrega ativa não depende do RPC admin");
   assertEquals(deliveryUnavailableMessage(), "A Entrega Feira On está temporariamente indisponível. Escolha Retirar na loja.");
-  assertEquals(deliveryUnavailableMessage(true, false), "Entrega disponível no horário de funcionamento.");
+  assertEquals(deliveryUnavailableMessage(), "A Entrega Feira On está temporariamente indisponível. Escolha Retirar na loja.");
 });
 
 Deno.test("acesso à entrega: anônimo não chama RPC e conta comum não ganha acesso", async () => {
@@ -112,7 +112,7 @@ Deno.test("loja.html conecta a opção, cotação, endereço salvo e acompanhame
   assertEquals(html.includes('id="payPixTest"'), false, "radio Pix de teste só pode ser criado após confirmação admin");
   assertEquals(html.includes('<option value="pix_test">'), false, "select Pix de teste só pode ser criado após confirmação admin");
   assertEquals(deliveryUi.includes("export function syncAdminTestPaymentOption"), true);
-  for (const required of ['rpc("is_current_user_admin")', 'rpc("get_delivery_enabled")', 'if (deliveryActive === true) return withinHours !== true;']) {
+  for (const required of ['rpc("is_current_user_admin")', 'rpc("get_delivery_enabled")', 'if (deliveryActive === true) return false;']) {
     assertEquals(deliveryUi.includes(required), true, "missing delivery access rule: " + required);
   }
 });
