@@ -1944,14 +1944,14 @@ function scheduleDeliveryQuote(){
  deliveryQuoteTimer=setTimeout(()=>void requestDeliveryQuote(),1500);
 }
 function syncDeliverySelection(){
- const delivery=$('#delivery').value;
+ const delivery=$('#delivery').value,mapPreview=$('#deliveryMapPreview');if(mapPreview)mapPreview.hidden=true;
  const subtitle=$('#checkoutSubtitle');if(subtitle)subtitle.textContent=delivery==='delivery'?'Confira seus dados, a entrega e o pagamento':'Confira seus dados, a retirada e o pagamento.';
  $('#deliveryStore').checked=delivery==='pickup_store';const uberRadio=$('#deliveryUber');if(uberRadio)uberRadio.checked=delivery==='pickup_uber';$('#deliveryHome').checked=delivery==='delivery';
  document.querySelectorAll('[name=deliveryChoice]').forEach(r=>r.closest('.opt').classList.toggle('sel',r.checked));
  $('#deliveryAddressFields').classList.toggle('hidden',delivery!=='delivery');
  syncPickupPaymentOptions();updateCheckoutTotals();updateCheckoutScheduleNotice();
- if(delivery==='delivery'){deliveryNeedsExplicitConfirm=true;deliveryQuote=null;$('#deliveryMapPreview').hidden=true;}
- else{deliveryNeedsExplicitConfirm=false;$('#deliveryMapPreview').hidden=true;deliveryQuote=null;deliveryQuoteSequence++;clearTimeout(deliveryQuoteTimer);setDeliveryQuoteStatus('');}
+ if(delivery==='delivery'){deliveryNeedsExplicitConfirm=true;deliveryQuote=null;}
+ else{deliveryNeedsExplicitConfirm=false;deliveryQuote=null;deliveryQuoteSequence++;clearTimeout(deliveryQuoteTimer);setDeliveryQuoteStatus('');}
 }
 function totals(){const items=Object.entries(cart).map(([id,q])=>({p:products.find(p=>p.id===id),q,saleMode:cartModes[id]==='value'?'value':'kg'})).filter(x=>x.p).map(x=>{const unitPriceCents=effectiveUnitPriceCents(x.p,x.q);const lineTotalCents=x.saleMode==='value'?(cartValueCents[x.p.id]||0):Math.round(unitPriceCents*x.q);return {...x,unitPriceCents,unitPrice:unitPriceCents/100,lineTotalCents,resaleApplied:unitPriceCents<Math.round(Number(x.p.price)*100)};});const subtotalCents=items.reduce((sum,x)=>sum+x.lineTotalCents,0);const sub=subtotalCents/100;return {items,subtotalCents,sub,total:sub};}
 function minimumOrderMessage(t){return t.sub<MIN_ORDER_AMOUNT?'Pedido mínimo: '+money(MIN_ORDER_AMOUNT)+' em produtos. Faltam '+money(MIN_ORDER_AMOUNT-t.sub)+'.':'';}
