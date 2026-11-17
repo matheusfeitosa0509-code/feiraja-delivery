@@ -15,6 +15,7 @@ Deno.test("Entrega Feira On fica pública com flag ativa, mantém prévia admin 
   assertEquals(isDeliveryOptionDisabled(false, true, false), true, "admin pendente fica bloqueado");
   assertEquals(isDeliveryOptionDisabled(true, false, false), true, "falha na checagem fecha o acesso");
   assertEquals(isDeliveryOptionDisabled(false, true, true), false, "admin vê prévia TESTE");
+  assertEquals(isDeliveryOptionDisabled(false, true, true, false), true, "prévia admin também respeita o horário");
   assertEquals(isDeliveryOptionDisabled(true, true, true), false);
   assertEquals(isDeliveryOptionDisabled(true, false, true), false, "cliente comum recebe acesso quando ativa");
   assertEquals(isDeliveryOptionDisabled(true, false, true, false), true, "fora do horário bloqueia");
