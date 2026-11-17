@@ -153,8 +153,10 @@ const checkoutCss = [
       assert.equal(view.description.includes('Taxa por distância'), true);
       await page.evaluate(() => { document.querySelector('#deliveryUberOption').hidden = !window.FeiraDeliveryAccess.canShowUberPickupOption(true); });
       assert.equal(await page.locator('#deliveryUberOption').evaluate(el => el.hidden), true);
+      assert.equal(await page.locator('#deliveryUberOption').isHidden(), true);
       await page.evaluate(() => { document.querySelector('#deliveryUberOption').hidden = !window.FeiraDeliveryAccess.canShowUberPickupOption(false); });
       assert.equal(await page.locator('#deliveryUberOption').evaluate(el => el.hidden), false);
+      assert.equal(await page.locator('#deliveryUberOption').isVisible(), true);
       assert.equal(await page.evaluate(() => window.FeiraDeliveryAccess.deliveryQuoteErrorMessage(502, 'LALAMOVE_QUOTE_FAILED')),
         'A localização foi encontrada, mas a Lalamove não concluiu a cotação. Tente novamente.');
 
