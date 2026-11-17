@@ -3,11 +3,12 @@ export function isAdminRpcTrue(value) {
 }
 
 export function canShowDeliveryOption(deliveryActive, isAdmin, adminCheckComplete = true, withinHours = true) {
-  return deliveryActive === true && adminCheckComplete === true && withinHours === true;
+  // Com a flag ligada, o recurso é público para qualquer conta autenticada; o RPC admin só controla o modo TESTE.
+  return deliveryActive === true && withinHours === true;
 }
 
 export function isDeliveryOptionDisabled(deliveryActive, isAdmin, adminCheckComplete = false, withinHours = true) {
-  if (deliveryActive === true) return adminCheckComplete !== true || withinHours !== true;
+  if (deliveryActive === true) return withinHours !== true;
   return adminCheckComplete !== true || isAdmin !== true || withinHours !== true;
 }
 
