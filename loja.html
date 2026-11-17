@@ -1249,7 +1249,7 @@ try {
 <script src="./lalamove-map.js"></script>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.1';
-import { canShowUberPickupOption, buildDeliveryQuoteItems, checkoutGrandTotal, deliveryQuoteErrorMessage, deliveryQuoteLabel, isDeliveryOutOfArea, normalizeDeliveryAddress, deliveryUnavailableMessage, loadDeliveryAccessState, renderDeliveryOption, syncAdminTestPaymentOption } from './loja-delivery-ui.js?v=20261116-pix-test-dom-gate';
+import { canShowUberPickupOption, buildDeliveryQuoteItems, checkoutGrandTotal, deliveryQuoteErrorMessage, deliveryQuoteLabel, isDeliveryOutOfArea, normalizeDeliveryAddress, deliveryUnavailableMessage, loadDeliveryAccessState, renderDeliveryOption, syncAdminTestPaymentOption } from './loja-delivery-ui.js?v=20261117-entrega-feira-on';
 const supabase=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW');
 
 const VAPID_PUBLIC_KEY = 'BJ9dTvmRGcTHYQSOOLj61AG2kC2YEMuhWMM2J6GdDdTuofeBkYJsyF5uNIhCfnV03jZBn2fFP1ZUqty0QZ_uuog'; // VAPID pública
@@ -1552,10 +1552,10 @@ function syncDeliveryOptionVisibility(){
  const radio=$('#deliveryHome');
  const disabled=renderDeliveryOption({
   option,radio,starting:$('#deliveryStartingPrice'),description:$('#deliveryHomeDescription'),
-  isAdmin:currentUserIsAdmin,adminCheckComplete:deliveryAdminCheckComplete,deliveryActive
+  isAdmin:currentUserIsAdmin,adminCheckComplete:deliveryAdminCheckComplete,deliveryActive,withinHours:pickupEstimate().within
  });
  option.onclick=event=>{
-  if(disabled){event.preventDefault();event.stopPropagation();showStoreNotice(deliveryUnavailableMessage());}
+  if(disabled){event.preventDefault();event.stopPropagation();showStoreNotice(deliveryUnavailableMessage(deliveryActive,pickupEstimate().within));}
  };
  if(disabled&&$('#delivery').value==='delivery'){
   $('#delivery').value='pickup_store';deliveryQuote=null;$('#deliveryAddressFields').classList.add('hidden');
@@ -1933,7 +1933,7 @@ async function requestDeliveryQuote(){
  }catch(error){
   if(sequence!==deliveryQuoteSequence)return;
   deliveryQuote=null;
-  setDeliveryQuoteStatus(String(error?.message||'Não foi possível calcular a entrega. Tente novamente.'),true);
+  setDeliveryQuoteStatus(String(error?.message||'Não foi possível calcular a entrega. Tente novamente.')+' Você pode escolher Retirar na loja.',true);
   updateCheckoutTotals();
   console.warn('Falha na cotação da entrega:',error?.message||error);
  }
