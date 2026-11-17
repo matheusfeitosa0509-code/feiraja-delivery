@@ -189,6 +189,10 @@ const checkoutCss = [
       assert.equal(view.label, 'TESTE');
       assert.equal(view.badgeCount, 1);
       assert.equal(view.description.includes('Consulte o valor'), false);
+      await render({ ...adminInactive, withinHours: false });
+      view = await snapshot();
+      assert.equal(view.disabled, true);
+      assert.equal(view.description, 'Entrega disponível no horário de funcionamento.');
 
       // Com a flag ligada, inclusive o administrador vê a opção normal, sem selo TESTE.
       const adminActive = await page.evaluate(() => window.FeiraDeliveryAccess.loadDeliveryAccessState(
