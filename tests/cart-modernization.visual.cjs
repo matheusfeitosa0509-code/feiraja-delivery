@@ -119,7 +119,7 @@ const normalizeText = value => String(value || '').replace(/\u00a0/g, ' ');
       assert.equal(layout.summaryPosition, 'fixed');
       assert.equal(layout.footerPosition, 'fixed');
       assert.equal(layout.summaryAboveButton, true);
-      assert.equal(layout.buttonAboveNav, true);
+      assert.equal(layout.buttonAboveNav, true, JSON.stringify(layout));
       assert.equal(layout.noHorizontalOverflow, true);
       assert.notEqual(layout.cardShadow, 'none');
       assert.deepEqual(dialogs, [], width + 'px: sem alert/confirm nativos');
