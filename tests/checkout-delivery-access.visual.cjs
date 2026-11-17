@@ -19,6 +19,7 @@ const checkoutCss = [
   'body{margin:0;padding:16px;background:#f4f7f2;font-family:Arial,sans-serif}',
   '.checkout-screen{max-width:520px;margin:0 auto}',
   '.checkout-choice-card{width:100%;padding:14px;border:1px solid #d9e2d6;border-radius:14px;background:#fff}',
+  '#deliveryUberOption[hidden]{display:none!important}',
 ].join('\n');
 
 (async () => {
