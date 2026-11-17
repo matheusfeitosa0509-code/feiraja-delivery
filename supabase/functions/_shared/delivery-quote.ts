@@ -88,6 +88,7 @@ export async function requestSandboxQuotation(
   coordinates: { origin: DeliveryCoordinates; dropoff: DeliveryCoordinates },
   fetcher: typeof fetch = fetch,
   environment: LalamoveEnvironment = "sandbox",
+  scheduleAt?: string,
 ): Promise<Response> {
   const keyPrefix = environment === "producao" ? "pk_prod" : "pk_test";
   const secretPrefix = environment === "producao" ? "sk_prod" : "sk_test";
