@@ -474,21 +474,37 @@ let allOrders=[],seenOrderIds=new Set(),firstLoadDone=false,hasMoreOrders=true,n
   const id=String(order.id);if(separatedPending.has(id))return separatedPending.get(id);if(separatedMemory.has(id))return separatedMemory.get(id);
   return Array.isArray(order.separated_items)?order.separated_items.filter(v=>typeof v==='string'):[];
  }
+ function updateSeparationItemUI(orderId,key){
+  const id=String(orderId),order=allOrders.find(o=>String(o.id)===id),content=document.querySelector('[data-order-content="'+CSS.escape(id)+'"]');
+  if(!order||!content)return;
+  const keys=separatedKeysFor(order),marked=keys.includes(key);
+  const button=[...content.querySelectorAll('[data-separate-key]')].find(el=>el.dataset.separateKey===key);
+  if(button){
+   button.setAttribute('aria-pressed',String(marked));
+   button.setAttribute('aria-label',marked?'Desmarcar item separado':'Marcar item como separado');
+   const mark=button.querySelector('.separation-check-mark');if(mark)mark.textContent=marked?'✓':'';
+   button.closest('.separation-item')?.classList.toggle('is-separated',marked);
+  }
+  const total=content.querySelectorAll('.separation-item').length;
+  const count=content.querySelectorAll('.separation-item.is-separated').length;
+  const counter=content.querySelector('[data-separated-count]');if(counter)counter.textContent=count+' de '+total+' separados';
+  const done=content.querySelector('[data-separated-done]');if(done)done.hidden=!(total>0&&count===total);
+ }
  async function toggleSeparatedItem(orderId,key){
   const order=allOrders.find(o=>String(o.id)===String(orderId));if(!order||separatedPending.has(String(orderId))||normalizeOrderStatus(order.status)==='Cancelada')return;
   const id=String(orderId),previous=[...separatedKeysFor(order)],next=previous.includes(key)?previous.filter(v=>v!==key):[...previous,key];
   if(!order.separation_started_at&&!order.separation_started_legacy&&previous.length===0&&next.length>0&&!(await appConfirm('Ao começar a separar, o cliente não poderá mais cancelar este pedido.',{title:'Começar a separar?',confirmText:'Começar a separar'})))return;
-  separatedPending.set(id,next);order.separated_items=next;render();
-  if(!separatedColumnAvailable){separatedMemory.set(id,next);separatedPending.delete(id);return;}
+  separatedPending.set(id,next);order.separated_items=next;updateSeparationItemUI(id,key);
+  if(!separatedColumnAvailable){separatedMemory.set(id,next);separatedPending.delete(id);updateSeparationItemUI(id,key);return;}
   try{
    const{error}=await db.rpc('set_order_separated_items',{p_order_id:id,p_item_keys:next});
    if(error){
     if(isMissingSeparationSchema(error)){separatedColumnAvailable=false;separatedMemory.set(id,next);separatedPending.delete(id);return;}
     throw error;
    }
-   const{data:startedOrder,error:startedError}=await db.from('orders').select('separation_started_at,separation_started_legacy').eq('id',id).maybeSingle();if(startedError&&/separation_started_legacy/i.test(String(startedError.message||'')))separationLegacyColumnAvailable=false;else if(startedError&&/separation_started_at|schema cache|does not exist/i.test(String(startedError.message||'')))separationStartedColumnAvailable=false;else if(startedError)throw startedError;const latestOrder=allOrders.find(o=>String(o.id)===id);if(latestOrder){latestOrder.separated_items=next;latestOrder.separation_started_at=startedOrder?.separation_started_at||latestOrder.separation_started_at||null;latestOrder.separation_started_legacy=startedOrder?.separation_started_legacy??latestOrder.separation_started_legacy??false;}separatedMemory.delete(id);separatedPending.delete(id);render();
+   const{data:startedOrder,error:startedError}=await db.from('orders').select('separation_started_at,separation_started_legacy').eq('id',id).maybeSingle();if(startedError&&/separation_started_legacy/i.test(String(startedError.message||'')))separationLegacyColumnAvailable=false;else if(startedError&&/separation_started_at|schema cache|does not exist/i.test(String(startedError.message||'')))separationStartedColumnAvailable=false;else if(startedError)throw startedError;const latestOrder=allOrders.find(o=>String(o.id)===id);if(latestOrder){latestOrder.separated_items=next;latestOrder.separation_started_at=startedOrder?.separation_started_at||latestOrder.separation_started_at||null;latestOrder.separation_started_legacy=startedOrder?.separation_started_legacy??latestOrder.separation_started_legacy??false;}separatedMemory.delete(id);separatedPending.delete(id);updateSeparationItemUI(id,key);
   }catch(error){
-   const latestOrder=allOrders.find(o=>String(o.id)===id);if(latestOrder)latestOrder.separated_items=previous;separatedPending.delete(id);separatedMemory.delete(id);render();notice('Não deu para salvar, tente de novo',true);
+   const latestOrder=allOrders.find(o=>String(o.id)===id);if(latestOrder)latestOrder.separated_items=previous;separatedPending.delete(id);separatedMemory.delete(id);updateSeparationItemUI(id,key);notice('Não deu para salvar, tente de novo',true);
   }
  }
 const money=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(n)||0);
