@@ -50,10 +50,10 @@ Deno.serve(async (req: Request) => {
     if (!isQuoteAllowed(settings?.delivery_ativa === true, isAdmin)) return json({ error: "Entrega indisponível." }, 403);
 
     const { data: allowed, error: rateError } = await db.rpc("consume_delivery_quote_rate_limit", {
-      p_user_id: authData.user.id, p_max_requests: 5, p_window_seconds: 60,
+      p_user_id: authData.user.id, p_max_requests: 15, p_window_seconds: 60,
     });
     if (rateError) return json({ error: "Limite de cotações temporariamente indisponível." }, 503);
-    if (allowed !== true) return json({ error: "Muitas cotações. Aguarde um minuto." }, 429);
+    if (allowed !== true) return json({ error: "Muitas consultas agora, tente em alguns segundos.", code: "QUOTE_RATE_LIMIT" }, 429);
 
     const body = await req.json();
     if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Requisição inválida." }, 400);
@@ -86,9 +86,21 @@ Deno.serve(async (req: Request) => {
         geocodeManausAddress(dropoff, geocodingKey),
     ]);
     const lalamoveDropoff = pinnedAddress?.formattedAddress || dropoff;
+    const quoteFetch: typeof fetch = async (input, init) => {
+      let response: Response | null = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        response = await fetch(input, init);
+        if (response.status !== 429 || attempt === 2) return response;
+        const retryAfter = Number(response.headers.get("Retry-After") || 0);
+        const delay = retryAfter > 0 ? Math.min(retryAfter * 1000, 5000) : 1200 * (attempt + 1);
+        console.warn("delivery-quote", { stage: "lalamove_rate_limit_retry", attempt: attempt + 1, delay_ms: delay });
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+      return response!;
+    };
     const response = await requestSandboxQuotation(apiKey, apiSecret, serviceType, lalamoveDropoff, {
       origin: originCoordinates, dropoff: dropoffCoordinates,
-    }, fetch, environment);
+    }, quoteFetch, environment);
     const result = await response.json().catch(() => ({}));
     const upstreamCode = String(result?.message || "");
     if (upstreamCode === "ERR_OUT_OF_SERVICE_AREA") {
