@@ -97,7 +97,7 @@ export async function requestSandboxQuotation(
   }
   const path = "/v3/quotations";
   const url = lalamoveBaseUrl(environment) + path;
-  const body = JSON.stringify(buildQuotationBody(serviceType, dropoff, coordinates));
+  const body = JSON.stringify(buildQuotationBody(serviceType, dropoff, coordinates, scheduleAt));
   const timestamp = String(Date.now());
   const raw = timestamp + "\r\nPOST\r\n" + path + "\r\n\r\n" + body;
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(apiSecret),
