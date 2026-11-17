@@ -39,7 +39,7 @@ const checkoutCss = [
         '</div><select id="payment"><option value="pix">Pix</option><option value="cash">Dinheiro</option></select></section></form></main></body></html>');
       await page.addStyleTag({ content: checkoutCss });
       await page.addScriptTag({ content: helperSource +
-        '\nwindow.FeiraDeliveryAccess = { loadDeliveryAccessState, renderDeliveryOption, syncAdminTestPaymentOption };' });
+        '\nwindow.FeiraDeliveryAccess = { loadDeliveryAccessState, renderDeliveryOption, syncAdminTestPaymentOption, canShowUberPickupOption };' });
 
       const syncTestPayment = state => page.evaluate(value => window.FeiraDeliveryAccess.syncAdminTestPaymentOption({
         container: document.querySelector('#checkoutPaymentChoices'),
@@ -137,7 +137,7 @@ const checkoutCss = [
       assert.equal(view.disabled, true);
       assert.equal(view.label, 'Em breve');
 
-      // Ordinary account remains blocked even when delivery_ativa is true.
+      // Cliente comum confirmado vê a entrega quando a flag está ligada.
       const common = await page.evaluate(() => window.FeiraDeliveryAccess.loadDeliveryAccessState(
         { id: 'ordinary-user' },
         async name => name === 'is_current_user_admin'
@@ -147,9 +147,19 @@ const checkoutCss = [
       assert.deepEqual(common, { adminCheckComplete: true, isAdmin: false, deliveryActive: true });
       await render(common);
       view = await snapshot();
+      assert.equal(view.disabled, false);
+      assert.equal(view.label, 'Calcular taxa');
+      assert.equal(view.badgeCount, 0);
+      assert.equal(view.description.includes('Taxa por distância'), true);
+      assert.equal(await page.evaluate(() => window.FeiraDeliveryAccess.canShowUberPickupOption(true)), false);
+      assert.equal(await page.evaluate(() => window.FeiraDeliveryAccess.canShowUberPickupOption(false)), true);
+
+      // Fora do horário, a entrega fica desabilitada com a mensagem obrigatória.
+      await render({ ...common, withinHours: false });
+      view = await snapshot();
       assert.equal(view.disabled, true);
-      assert.equal(view.label, 'Em breve');
-      assert.equal(view.description.includes('Consulte o valor'), false);
+      assert.equal(view.description, 'Entrega disponível no horário de funcionamento.');
+      assert.equal(view.label, 'Fora do horário');
 
       // Delayed admin response: remain disabled until the positive answer.
       await page.evaluate(() => {
@@ -174,16 +184,18 @@ const checkoutCss = [
       assert.equal(view.badgeCount, 1);
       assert.equal(view.description.includes('Consulte o valor'), false);
 
-      // Only the active flag adds the quote hint; the TESTE badge remains.
+      // Com a flag ligada, inclusive o administrador vê a opção normal, sem selo TESTE.
       const adminActive = await page.evaluate(() => window.FeiraDeliveryAccess.loadDeliveryAccessState(
-        { id: 'confirmed-admin' }, async () => ({ data: true, error: null }),
+        { id: 'confirmed-admin' }, async name => name === 'is_current_user_admin'
+          ? { data: true, error: null }
+          : { data: true, error: null },
       ));
       await render(adminActive);
       view = await snapshot();
       assert.equal(view.disabled, false);
-      assert.equal(view.label, 'TESTE');
-      assert.equal(view.badgeCount, 1);
-      assert.equal(view.description.includes('Consulte o valor'), true);
+      assert.equal(view.label, 'Calcular taxa');
+      assert.equal(view.badgeCount, 0);
+      assert.equal(view.description.includes('Taxa por distância'), true);
 
       // RPC returning an error and RPC throwing a network error both fail closed.
       const rpcError = await page.evaluate(() => window.FeiraDeliveryAccess.loadDeliveryAccessState(
@@ -213,13 +225,17 @@ const checkoutCss = [
       assert.equal(view.badgeCount, 0);
       assert.equal(view.description.includes('Consulte o valor'), false);
 
-      // Badge stays on one line at the right; description is capped at two.
-      await render(adminActive);
+      // A prévia TESTE desligada permanece em uma linha no celular; opção ativa não tem selo.
+      await render(adminInactive);
       view = await snapshot();
       assert.equal(view.clamp, '2');
       assert.equal(view.badgeWhiteSpace, 'nowrap');
       assert.equal(view.noHorizontalOverflow, true);
       assert.ok(view.badgeRight <= view.cardRight + 1);
+      await render(adminActive);
+      view = await snapshot();
+      assert.equal(view.label, 'Calcular taxa');
+      assert.equal(view.badgeCount, 0);
       fs.mkdirSync(path.join(root, 'artifacts'), { recursive: true });
       await page.screenshot({ path: path.join(root, 'artifacts', 'checkout-delivery-admin-' + width + '.png'), fullPage: true });
       await page.close();
