@@ -92,6 +92,7 @@ async function runViewport(browser, width, height, vehicle) {
   assert.equal(initial.pollMs, 15000, 'tracking polls every 15 seconds');
   assert.equal(initial.noHorizontalScroll, true);
   assert.equal(initial.cameraIncludesThreePoints, true, 'initial camera fits driver, destination and store');
+  await page.waitForFunction(() => window.__tracking && !window.__tracking.inFlight);
   const start = await page.evaluate(() => window.__tracking.driverMarker.getLngLat());
   await page.evaluate(() => window.__tracking.refresh());
   await page.waitForTimeout(400);
