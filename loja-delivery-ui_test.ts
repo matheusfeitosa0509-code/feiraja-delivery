@@ -185,7 +185,7 @@ Deno.test("acompanhamento usa quatro etapas horizontais e mensagens por modalida
     "Retire na Av. Lourenço da Silva Braga, 700",
     "A solicitação expirou. Estamos chamando outro entregador.",
     "Taxa '+money(Number(o.delivery_fee||0))",
-    "Acompanhar entrega",
+    "Abrir rastreio",
     "data-tracking-url",
     "data-lalamove-map",
   ]) assertEquals(html.includes(required), true, "missing order tracking requirement: " + required);
@@ -202,7 +202,7 @@ Deno.test("mapa usa função autenticada, rate limit e atualiza enquanto visíve
   const endpoint = await Deno.readTextFile("supabase/functions/lalamove-tracking/index.ts");
   const migration = await Deno.readTextFile("supabase/migrations/20261115230000_lalamove_tracking_rate_limit.sql");
   const panel = await Deno.readTextFile("painel.html");
-  for (const required of ["15000", "visibilitychange", "pagehide", "openstreetmap.org", "IntersectionObserver"]) {
+  for (const required of ["15000", "visibilitychange", "pagehide", "tiles.openfreemap.org/styles/positron", "maplibre-gl@5.6.2", "IntersectionObserver", "setRotation", "requestAnimationFrame"]) {
     assertEquals(map.includes(required), true, "missing map lifecycle requirement: " + required);
   }
   for (const required of ['.eq("id", orderId)', '.eq("user_id", authData.user.id)', 'consume_lalamove_tracking_rate_limit', 'p_max_requests: 30', 'getProviderTracking']) {
