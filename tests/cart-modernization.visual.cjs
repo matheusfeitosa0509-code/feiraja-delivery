@@ -113,6 +113,11 @@ const normalizeText = value => String(value || '').replace(/\u00a0/g, ' ');
           footerPosition: getComputedStyle(footer).position,
           summaryAboveButton: a.bottom <= b.top + 1,
           buttonAboveNav: b.bottom <= c.top + 1,
+          summaryBottom: a.bottom,
+          footerTop: b.top,
+          footerBottom: b.bottom,
+          navTop: c.top,
+          navHeight: c.height,
           noHorizontalOverflow: document.documentElement.scrollWidth <= window.innerWidth,
         };
       });
