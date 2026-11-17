@@ -75,6 +75,7 @@ document.body.innerHTML=mapOverlayMarkup;
    await page.addStyleTag({content:mapCss});
    await page.addScriptTag({content: `
     ${harness}
+    ${syncPresentationFn}
     ${addressFns}
     ${mapFns}
     ${quoteFns}
