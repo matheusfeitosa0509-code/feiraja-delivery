@@ -33,7 +33,7 @@ assert.ok(helperSource.includes('deliveryQuoteErrorMessage'));
 
 const harness = `
 const $ = selector => document.querySelector(selector);
-let deliveryPlacesSessionToken='session-123',deliveryAutocompleteTimer=null,deliveryMap=null,deliveryMapCoordinates=null,deliveryMapReverseTimer=null,deliveryMapReverseSequence=0,deliveryNeedsExplicitConfirm=true,deliveryStreetHome=null,deliveryNumberHome=null,deliveryQuoteTimer=null,deliveryQuoteSequence=0,deliveryQuote=null;
+let deliveryPlacesSessionToken='session-123',deliveryAutocompleteTimer=null,deliveryMap=null,deliveryMapCoordinates=null,deliveryMapReverseTimer=null,deliveryMapReverseSequence=0,deliveryNeedsExplicitConfirm=true,deliveryStreetHome=null,deliveryNumberHome=null,deliveryMapPlaceName='',deliveryQuoteTimer=null,deliveryQuoteSequence=0,deliveryQuote=null;
 const normalizeDeliveryAddress = value => ({street:String(value.street||'').trim(),number:String(value.number||'').trim(),neighborhood:String(value.neighborhood||'').trim(),complement:'',reference:''});
 const getDeliveryAddress = () => normalizeDeliveryAddress({street:$('#deliveryStreet').value,number:$('#deliveryNumber').value,neighborhood:$('#deliveryNeighborhood').value});
 const syncDeliveryAddressPresentation = () => {};
