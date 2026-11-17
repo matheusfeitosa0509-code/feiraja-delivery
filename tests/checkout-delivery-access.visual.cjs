@@ -102,6 +102,7 @@ const checkoutCss = [
         });
       });
       await page.addScriptTag({ content: syncSelectionMatch[0] + '\nwindow.syncDeliverySelection = syncDeliverySelection;' });
+      await page.addScriptTag({ content: "$('#delivery').addEventListener('change',()=>{syncDeliverySelection();renderCart()});" });
       const uberListenerMatch = storeHtml.match(/\$\('#deliveryUber'\)\?\.addEventListener\('change',[^;]+;/);
       if (!uberListenerMatch) throw new Error('optional Uber change listener missing');
       await page.addScriptTag({ content: uberListenerMatch[0] });
@@ -121,6 +122,25 @@ const checkoutCss = [
         assert.equal(selected.home, deliveryType === 'delivery');
         assert.equal(selected.uber, false);
       }
+      // Com entrega_ativa=false, o mesmo helper restaura o card e a opção.
+      assert.equal(await page.evaluate(() => window.FeiraDeliveryAccess.syncUberPickupOption({
+        option: window.__uberCard,
+        selectOption: window.__uberSelectOption,
+        select: document.querySelector('#delivery'),
+        beforeOption: document.querySelector('#deliveryHomeOption'),
+        deliveryActive: false,
+      })), true);
+      assert.equal(await page.locator('#deliveryUber').count(), 1);
+      assert.equal(await page.locator('#delivery option[value="pickup_uber"]').count(), 1);
+      await page.locator('#delivery').selectOption('pickup_store');
+      await page.locator('#delivery').dispatchEvent('change');
+      assert.equal(await page.locator('#deliveryStore').isChecked(), true);
+      await page.locator('#delivery').selectOption('delivery');
+      await page.locator('#delivery').dispatchEvent('change');
+      assert.equal(await page.locator('#deliveryHome').isChecked(), true);
+      await page.locator('#delivery').selectOption('pickup_uber');
+      await page.locator('#delivery').dispatchEvent('change');
+      assert.equal(await page.locator('#deliveryUber').isChecked(), true);
 
       const syncTestPayment = state => page.evaluate(value => window.FeiraDeliveryAccess.syncAdminTestPaymentOption({
         container: document.querySelector('#checkoutPaymentChoices'),
