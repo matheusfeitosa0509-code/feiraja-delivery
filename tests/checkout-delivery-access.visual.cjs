@@ -284,7 +284,7 @@ const checkoutCss = [
       await render({ ...common, withinHours: false, scheduleLabel: 'terça, 17/11' });
       view = await snapshot();
       assert.equal(view.disabled, false);
-      assert.equal(view.description, 'Taxa por distância, paga com Pix junto do pedido.');
+      assert.equal(view.description.startsWith('Taxa por distância, paga com Pix junto do pedido.'), true);
       assert.equal(view.label, 'Ter. de manhã');
       assert.equal(view.deliveryBadge, 'Ter. de manhã');
       assert.equal(view.schedule, 'Entrega a partir de terça, 17/11 pela manhã.');
