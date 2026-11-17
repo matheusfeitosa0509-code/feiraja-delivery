@@ -38,7 +38,7 @@ export function chooseVehicle(weightKg: number, bulky: boolean, motoLimitKg: num
 
 export function roundFeeUpToReal(amount: unknown): number {
   const parsed = Number(amount);
-  if (!Number.isFinite(parsed) || parsed < 0) throw new Error("INVALID_QUOTE_PRICE");
+  if (!Number.isFinite(parsed) || parsed <= 0) throw new Error("INVALID_QUOTE_PRICE");
   return Math.ceil(parsed);
 }
 
