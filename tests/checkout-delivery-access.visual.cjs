@@ -12,6 +12,8 @@ assert.equal(storeHtml.includes('#deliveryUberOption[hidden]'), false, 'Uber nã
 assert.equal(storeHtml.includes('syncUberPickupOption({'), true, 'Uber deve ser removido do DOM e do select');
 assert.equal(storeHtml.includes("const uberRadio=$('#deliveryUber');if(uberRadio)uberRadio.checked=delivery==='pickup_uber';"), true, 'syncDeliverySelection deve tolerar o rádio Uber ausente');
 assert.equal(storeHtml.includes("$('#deliveryUber')?.addEventListener('change'"), true, 'listener do Uber deve tolerar o card removido');
+const safeUberListener = "$('#deliveryUber')?.addEventListener('change',()=>{if($('#deliveryUber')?.checked){$('#delivery').value='pickup_uber';$('#delivery').dispatchEvent(new Event('change'));}});";
+assert.equal(storeHtml.includes(safeUberListener), true, 'listener completo do Uber deve permanecer protegido');
 const syncSelectionStart = storeHtml.indexOf('function syncDeliverySelection()');
 const syncSelectionEnd = storeHtml.indexOf('\nfunction totals()', syncSelectionStart);
 const syncSelectionSource = syncSelectionStart >= 0 && syncSelectionEnd > syncSelectionStart ? storeHtml.slice(syncSelectionStart, syncSelectionEnd) : '';
@@ -105,9 +107,7 @@ const checkoutCss = [
       });
       await page.addScriptTag({ content: syncSelectionSource + '\nwindow.syncDeliverySelection = syncDeliverySelection;' });
       await page.addScriptTag({ content: "$('#delivery').addEventListener('change',()=>{syncDeliverySelection();renderCart()});" });
-      const uberListenerMatch = storeHtml.match(/\$\('#deliveryUber'\)\?\.addEventListener\('change',[^;]+;/);
-      if (!uberListenerMatch) throw new Error('optional Uber change listener missing');
-      await page.addScriptTag({ content: uberListenerMatch[0] });
+      await page.addScriptTag({ content: safeUberListener });
       assert.equal(await page.evaluate(() => typeof window.syncDeliverySelection), 'function', 'syncDeliverySelection deve estar disponível');
       const syncProbe = await page.evaluate(() => { try { window.syncDeliverySelection(); return 'ok'; } catch (error) { return error.stack || error.message; } });
       assert.equal(syncProbe, 'ok', width + 'px: falha ao sincronizar checkout sem Uber: ' + syncProbe);
