@@ -116,7 +116,7 @@ const checkoutCss = [
       await page.evaluate(() => { window.pickupEstimate = () => ({ within: false, label: 'terça, 17/11' }); });
       await page.addScriptTag({ content: scheduleMessageSource + '\nwindow.checkoutScheduleMessage = checkoutScheduleMessage;' });
       assert.equal(await page.evaluate(() => window.checkoutScheduleMessage(new Date(), false)), 'Estamos fechados agora. Seu pedido fica pronto para retirada na terça, 17/11 a partir das 6h.');
-      assert.equal(await page.evaluate(() => window.checkoutScheduleMessage(new Date(), true)), 'Estamos fechados agora. Sua entrega sai na terça, 17/11 a partir das 6h.');
+      assert.equal(await page.evaluate(() => window.checkoutScheduleMessage(new Date(), true)), 'Estamos fechados agora. Sua entrega sai na terça, 17/11, a partir das 6h.');
       await page.evaluate(() => { window.pickupEstimate = () => ({ within: true, label: 'hoje' }); });
       assert.equal(await page.evaluate(() => window.checkoutScheduleMessage(new Date(), false)), 'Pedidos ficam prontos ainda hoje, até 13h.');
       assert.equal(await page.evaluate(() => window.checkoutScheduleMessage(new Date(), true)), 'A entrega sai quando o pedido estiver pronto, durante o horário da loja.');
