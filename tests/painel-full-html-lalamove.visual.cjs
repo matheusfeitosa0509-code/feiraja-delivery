@@ -58,13 +58,13 @@ function prepareHtml(source) {
       const costProducts=await page.locator("#costProductStatusList").textContent();
       if(!costProducts.includes("Banana Prata"))throw new Error("O painel deixou de exibir os custos dos produtos via RPC admin: "+costProducts);
       await page.waitForSelector("[data-order-toggle]");
-      await page.locator("[data-order-toggle]").click();
+      await page.locator('[data-order-toggle="TEST-6259DB63"]').click();
       await page.waitForSelector('[data-lalamove-quote="TEST-6259DB63"]');
 
       await page.locator("#lalamoveEnvironmentSelect").selectOption("producao");
       await page.getByRole("dialog").getByRole("button",{name:"Confirmar Produção"}).click();
       await page.waitForFunction(()=>document.getElementById("lalamoveSettingsBadge")?.textContent==="PRODUÇÃO");
-      await page.locator("[data-order-toggle]").click();
+      await page.locator('[data-order-toggle="TEST-6259DB63"]').click();
       await page.locator('[data-lalamove-quote="TEST-6259DB63"]').click();
       await page.getByRole("dialog").getByRole("button",{name:"Continuar"}).click();
       const productionQuote=page.locator('[data-lalamove-quote-box="TEST-6259DB63"]');
@@ -80,11 +80,11 @@ function prepareHtml(source) {
       await page.evaluate(()=>window.__testDb.resetOrder());
       await page.locator("#refresh").click();
       await page.waitForSelector("[data-order-toggle]");
-      await page.locator("[data-order-toggle]").click();
+      await page.locator('[data-order-toggle="TEST-6259DB63"]').click();
       await page.waitForSelector('[data-lalamove-quote="TEST-6259DB63"]');
       await page.locator("#lalamoveEnvironmentSelect").selectOption("sandbox");
       await page.waitForFunction(()=>document.getElementById("lalamoveSettingsBadge")?.textContent==="SANDBOX");
-      await page.locator("[data-order-toggle]").click();
+      await page.locator('[data-order-toggle="TEST-6259DB63"]').click();
       await page.locator('[data-lalamove-quote="TEST-6259DB63"]').click();
       await page.getByRole("dialog").getByRole("button",{name:"Continuar"}).click();
       const sandboxQuote=page.locator('[data-lalamove-quote-box="TEST-6259DB63"]');
