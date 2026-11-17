@@ -165,7 +165,7 @@ const checkoutCss = [
       view = await snapshot();
       assert.equal(view.disabled, false);
       assert.equal(view.description, 'Taxa por distância, paga com Pix junto do pedido.');
-      assert.equal(view.label, 'Entrega a partir de terça, 17/11 pela manhã');
+      assert.equal(view.label, 'Entrega a partir de terça pela manhã');
 
       // Delayed admin response: remain disabled until the positive answer.
       await render({ isAdmin: false, adminCheckComplete: false, deliveryActive: false, withinHours: true });
