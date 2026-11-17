@@ -11,7 +11,7 @@ assert.ok(panelHtml.includes('!scheduledPending'), 'painel impede cotação ante
 const scheduleSource = fs.readFileSync(path.join(root, 'supabase/functions/_shared/store-schedule.js'), 'utf8')
   .replaceAll('export async function ', 'async function ').replaceAll('export function ', 'function ').replaceAll('export const ', 'const ');
 const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
-  .replaceAll('export function ', 'function ').replaceAll('export const ', 'const ');
+  .replaceAll('export async function ', 'async function ').replaceAll('export function ', 'function ').replaceAll('export const ', 'const ');
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
