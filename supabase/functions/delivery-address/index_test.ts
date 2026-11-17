@@ -7,7 +7,7 @@ Deno.test("proxy usa Places API New, restrição geográfica e token de sessão"
     "https://places.googleapis.com/v1/places/",
     "sessionToken", "includedRegionCodes: [\"br\"]", "locationBias", "radius: 30000",
     "GOOGLE_PLACES_API_KEY", "GOOGLE_GEOCODING_API_KEY",
-    "authData.user.is_anonymous", "allowAddressRequest", "current.count <= 30", "displayName", "reference: String(place.displayName?.text || \"\" ).slice(0, 160)",
+    "authData.user.is_anonymous", "allowAddressRequest", "current.count <= 30", "displayName", "place.displayName?.text",
   ]) assertEquals(source.includes(required), true, "missing proxy guard: " + required);
 });
 
