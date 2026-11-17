@@ -10,7 +10,7 @@ async function runViewport(browser, width, height, vehicle) {
   const errors = [];
   page.on('pageerror', error => errors.push('pageerror: ' + error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push('console.error: ' + message.text()); });
-  await page.addInitScript(() => {
+  const installMocks = () => {
     window.__pollMs = null;
     window.__cleared = false;
     window.setInterval = (fn, ms) => { window.__pollMs = ms; return 77; };
@@ -46,8 +46,9 @@ async function runViewport(browser, width, height, vehicle) {
     }
     window.maplibregl = { Map: MockMap, Marker: MockMarker, LngLatBounds: Bounds, AttributionControl: class {} };
     window.IntersectionObserver = undefined;
-  });
+  };
   await page.setContent(`<!doctype html><html lang="pt-BR"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;font:14px Arial"><main style="width:100%;max-width:520px;margin:auto;padding:12px;box-sizing:border-box"><h3>Pedido · Entrega Feira On</h3><div id="map" data-order-id="MOCK-TRACKING"></div><div id="searching" data-order-id="MOCK-SEARCHING"></div></main></body></html>`);
+  await page.evaluate(installMocks);
   await page.addStyleTag({ content: '*{box-sizing:border-box}.feira-lalamove-map-canvas{height:230px}.maplibregl-canvas{position:absolute;inset:0}.feira-map-pin{position:relative}' });
   await page.addScriptTag({ path: path.join(root, 'lalamove-map.js') });
   await page.evaluate(async vehicleType => {
