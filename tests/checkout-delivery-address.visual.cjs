@@ -26,7 +26,7 @@ for (const required of [
   'https://tiles.openfreemap.org/styles/positron', 'zoom:17', 'new lib.AttributionControl({compact:true})',
   'id="deliveryMapFullscreen"', 'id="deliveryMapFixedPin"', 'id="deliveryMapConfirm"',
   'id="deliveryMapPreview"', 'Endereço confirmado no mapa', 'deliveryNeedsExplicitConfirm)return;',
-  'setTimeout(()=>void reverseDeliveryMapCenter(),700)', 'id="deliveryMapGps"',
+  'deliveryMapReversePromise=new Promise', 'await deliveryMapReversePromise', 'id="deliveryMapGps"',
 ]) assert.ok(storeHtml.includes(required), 'missing MapLibre delivery behavior: ' + required);
 for (const removed of ['id="deliveryMapFallback"', 'id="deliveryMapPanel"', 'id="deliveryMapUse"', 'id="deliveryConfirmAddress"', 'loadLeaflet()', 'L.tileLayer']) {
   assert.ok(!storeHtml.includes(removed), 'legacy embedded map remains: ' + removed);
