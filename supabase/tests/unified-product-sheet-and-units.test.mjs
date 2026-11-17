@@ -11,7 +11,10 @@ for(const id of ['unifiedProductSearch','unifiedCategoryFilter','unifiedProductL
 assert.match(panel,/normalizeProductSearch\(\$\('unifiedProductSearch'\)\.value\)/,'search is accent/case insensitive');
 assert.match(panel,/data-quick-availability/,'availability can be changed directly in the list');
 assert.match(panel,/data-open-product/,'tapping a product opens its detail sheet');
-assert.match(panel,/if\(saleUnit!==product\.sale_unit&&!\(await appConfirm\('Isso muda como o cliente compra\.'/,'sale unit changes use the app confirmation modal');
+assert.match(panel,/if\(mode==='edit'&&saleUnit!==product\.sale_unit&&!\(await appConfirm\('Isso muda como o cliente compra\.'/,'sale unit changes on existing products use the app confirmation modal');
+assert.match(panel,/function fillNewProductSheet\(\)/,'new product opens the unified product sheet');
+assert.match(panel,/\$\('openNewProduct'\)\.addEventListener\('click',fillNewProductSheet\)/,'add product button is bound to the unified sheet');
+assert.match(panel,/admin_create_product_with_sales_rule/,'new product is created through the existing admin RPC');
 assert.doesNotMatch(panel,/\b(?:window\.)?(?:alert|confirm|prompt)\s*\(/,'panel must not use native browser dialogs');
 assert.match(panel,/admin_update_product_sales_rule/,'sale unit and quantity rules use the admin RPC');
 assert.match(panel,/admin_set_product_cost/,'private product cost uses the existing admin RPC');
