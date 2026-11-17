@@ -6,18 +6,21 @@ import {
   normalizeDeliveryAddress,
 } from "./loja-delivery-ui.js";
 
-Deno.test("Entrega Feira On exige admin confirmado mesmo quando a entrega está ativa", () => {
+Deno.test("Entrega Feira On fica pública com flag ativa, mantém prévia admin desligada e respeita horário", () => {
   assertEquals(canShowDeliveryOption(false, false), false);
-  assertEquals(canShowDeliveryOption(true, false), false);
-  assertEquals(canShowDeliveryOption(false, true), true);
+  assertEquals(canShowDeliveryOption(true, false), true, "cliente logado pode ver entrega ativa");
+  assertEquals(canShowDeliveryOption(false, true), false, "flag desligada não libera cliente");
+  assertEquals(canShowDeliveryOption(true, false, true, false), false, "fora do horário não libera entrega");
   assertEquals(isDeliveryOptionDisabled(false, false, false), true);
   assertEquals(isDeliveryOptionDisabled(false, true, false), true, "admin pendente fica bloqueado");
-  assertEquals(isDeliveryOptionDisabled(true, true, false), true, "entrega ativa não libera antes da checagem");
-  assertEquals(isDeliveryOptionDisabled(false, true, true), false);
+  assertEquals(isDeliveryOptionDisabled(true, false, false), true, "falha na checagem fecha o acesso");
+  assertEquals(isDeliveryOptionDisabled(false, true, true), false, "admin vê prévia TESTE");
   assertEquals(isDeliveryOptionDisabled(true, true, true), false);
-  assertEquals(isDeliveryOptionDisabled(true, false, true), true, "conta comum permanece bloqueada");
+  assertEquals(isDeliveryOptionDisabled(true, false, true), false, "cliente comum recebe acesso quando ativa");
+  assertEquals(isDeliveryOptionDisabled(true, false, true, false), true, "fora do horário bloqueia");
   assertEquals(isDeliveryOptionDisabled(true, false), true, "omitir confirmação falha fechado");
-  assertEquals(deliveryUnavailableMessage(), "A Entrega Feira On chega em breve. Por enquanto, retire na loja ou receba com seu Uber.");
+  assertEquals(deliveryUnavailableMessage(), "A Entrega Feira On está temporariamente indisponível. Escolha Retirar na loja.");
+  assertEquals(deliveryUnavailableMessage(true, false), "Entrega disponível no horário de funcionamento.");
 });
 
 Deno.test("acesso à entrega: anônimo não chama RPC e conta comum não ganha acesso", async () => {
@@ -31,7 +34,7 @@ Deno.test("acesso à entrega: anônimo não chama RPC e conta comum não ganha a
     return name === "is_current_user_admin" ? { data: false, error: null } : { data: true, error: null };
   });
   assertEquals(common, { adminCheckComplete: true, isAdmin: false, deliveryActive: true });
-  assertEquals(isDeliveryOptionDisabled(common.deliveryActive, common.isAdmin, common.adminCheckComplete), true);
+  assertEquals(isDeliveryOptionDisabled(common.deliveryActive, common.isAdmin, common.adminCheckComplete), false);
 });
 
 Deno.test("falha da RPC administrativa mantém Em breve mesmo se a flag estiver ativa", async () => {
@@ -108,7 +111,7 @@ Deno.test("loja.html conecta a opção, cotação, endereço salvo e acompanhame
   assertEquals(html.includes('id="payPixTest"'), false, "radio Pix de teste só pode ser criado após confirmação admin");
   assertEquals(html.includes('<option value="pix_test">'), false, "select Pix de teste só pode ser criado após confirmação admin");
   assertEquals(deliveryUi.includes("export function syncAdminTestPaymentOption"), true);
-  for (const required of ['rpc("is_current_user_admin")', 'rpc("get_delivery_enabled")', 'adminCheckComplete !== true || isAdmin !== true']) {
+  for (const required of ['rpc("is_current_user_admin")', 'rpc("get_delivery_enabled")', 'deliveryActive === true && adminCheckComplete !== true']) {
     assertEquals(deliveryUi.includes(required), true, "missing delivery access rule: " + required);
   }
 });
@@ -118,6 +121,7 @@ Deno.test("erros da cotação diferenciam endereço, Manaus e cobertura Lalamove
   assertEquals(deliveryQuoteErrorMessage(422, "ADDRESS_OUTSIDE_MANAUS").includes("fora de Manaus"), true);
   assertEquals(deliveryQuoteErrorMessage(422, "LALAMOVE_OUT_OF_SERVICE_AREA").includes("Lalamove não atende"), true);
   assertEquals(deliveryQuoteErrorMessage(503, "GEOCODER_NOT_CONFIGURED").includes("GOOGLE_GEOCODING_API_KEY"), true);
+  assertEquals(deliveryQuoteErrorMessage(403, "STORE_CLOSED"), "Entrega disponível no horário de funcionamento.");
 });
 
 Deno.test("resultado da RPC administrativa é normalizado sem falsos negativos", () => {
