@@ -16,7 +16,7 @@ export function validateCheckoutDelivery(input: {
   deliveryActive: boolean;
 }): { ok: true } | { ok: false; status: number; error: string } {
   if (!["pickup_store", "pickup_uber", "delivery"].includes(input.deliveryType)) {
-    return { ok: false, status: 400, error: "Modalidade inválida. Escolha retirada, Receber com seu Uber ou Entrega Feira On." };
+    return { ok: false, status: 400, error: "Modalidade inválida. Escolha retirada na loja ou Entrega Feira On." };
   }
   if (input.paymentMethod === "pix_test" && !input.isAdmin) {
     return { ok: false, status: 403, error: "Pix de teste disponível somente para administradores." };
