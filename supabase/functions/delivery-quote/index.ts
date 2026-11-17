@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
-import { chooseVehicle, estimateLoad, formatDropoff, isQuoteAllowed, parseQuotation, requestSandboxQuotation } from "../_shared/delivery-quote.ts";
+import { chooseVehicle, estimateLoad, formatDropoff, isQuoteAllowed, parseQuotation, requestSandboxQuotation, retryLalamove429 } from "../_shared/delivery-quote.ts";
 import { geocodeManausAddress, geocodeManausCoordinates } from "../_shared/geocoding.ts";
 
 const cors = {
@@ -86,18 +86,7 @@ Deno.serve(async (req: Request) => {
         geocodeManausAddress(dropoff, geocodingKey),
     ]);
     const lalamoveDropoff = pinnedAddress?.formattedAddress || dropoff;
-    const quoteFetch: typeof fetch = async (input, init) => {
-      let response: Response | null = null;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        response = await fetch(input, init);
-        if (response.status !== 429 || attempt === 2) return response;
-        const retryAfter = Number(response.headers.get("Retry-After") || 0);
-        const delay = retryAfter > 0 ? Math.min(retryAfter * 1000, 5000) : 1200 * (attempt + 1);
-        console.warn("delivery-quote", { stage: "lalamove_rate_limit_retry", attempt: attempt + 1, delay_ms: delay });
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      }
-      return response!;
-    };
+    const quoteFetch: typeof fetch = (input, init) => retryLalamove429(fetch, input, init);
     const response = await requestSandboxQuotation(apiKey, apiSecret, serviceType, lalamoveDropoff, {
       origin: originCoordinates, dropoff: dropoffCoordinates,
     }, quoteFetch, environment);
