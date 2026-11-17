@@ -41,7 +41,7 @@ on:
       - "loja.html"
       - "loja-delivery-ui.js"
       - "loja-delivery-ui_test.ts"
-      - "tests/scheduled-delivery.visual.cjs"
+      - "tests/scheduled-delivery.visual.cjs"\n      - "tests/checkout-delivery-address.visual.cjs"
       - "tests/painel-product-create.visual.cjs"
       - ".github/workflows/delivery-quote-tests.yml"
   push:
@@ -105,7 +105,7 @@ jobs:
       - run: node supabase/tests/panel-order-value-display.test.mjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/order-tracking.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/checkout-delivery-access.visual.cjs
-      - run: NODE_PATH=/tmp/playwright/node_modules node tests/scheduled-delivery.visual.cjs
+      - run: NODE_PATH=/tmp/playwright/node_modules node tests/scheduled-delivery.visual.cjs\n      - run: NODE_PATH=/tmp/playwright/node_modules node tests/checkout-delivery-address.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/legal-identity.visual.cjs
       - uses: actions/upload-artifact@v4
         if: always()
