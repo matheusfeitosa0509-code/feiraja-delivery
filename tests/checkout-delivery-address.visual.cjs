@@ -6,6 +6,7 @@ const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
 const storeHtml = fs.readFileSync(path.join(root, 'loja.html'), 'utf8');
 const helperSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8').replace(/^export\s+/gm, '');
+const addressFunctionSource = fs.readFileSync(path.join(root, 'supabase/functions/delivery-address/index.ts'), 'utf8');
 const gpsStart = storeHtml.indexOf('async function useDeliveryGps(){');
 const gpsEnd = storeHtml.indexOf('\nfunction setDeliveryQuoteStatus', gpsStart);
 if (gpsStart < 0 || gpsEnd < 0) throw new Error('GPS implementation not found');
