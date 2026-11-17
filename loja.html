@@ -1788,9 +1788,9 @@ function getDeliveryAddress(){return normalizeDeliveryAddress({street:$('#delive
 function syncDeliveryAddressPresentation(showSummary=false){
  const street=$('#deliveryStreet').value.trim(),number=$('#deliveryNumber').value.trim(),neighborhood=$('#deliveryNeighborhood').value.trim();
  const ready=!!(street&&neighborhood),preview=$('#deliveryMapPreview');
- const show=showSummary&&ready&&(!preview||preview.hidden);
+ const show=showSummary&&ready;
  $('#deliveryStreetSearch').hidden=show;
- $('#deliveryAddressSummary').hidden=!show;
+ $('#deliveryAddressSummary').hidden=!show||!!(preview&&!preview.hidden);
  $('#deliveryNumberField').hidden=show&&!!number;
  $('#deliveryAddressSummaryStreet').textContent=street+(number?', '+number:'');
  $('#deliveryAddressSummaryNeighborhood').textContent=neighborhood;
