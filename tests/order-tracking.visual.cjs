@@ -69,6 +69,7 @@ async function runViewport(browser, width, height, vehicle) {
   }, vehicle);
   await page.waitForSelector('#map .feira-map-pin.driver');
   await page.waitForSelector('#searching .feira-lalamove-map-status');
+  await page.waitForFunction(() => window.__tracking && !window.__tracking.inFlight && window.__tracking.map?.bounds?.length === 3);
   const initial = await page.evaluate(() => ({
     status: document.querySelector('#map .feira-lalamove-map-status').textContent,
     driver: document.querySelector('#map .feira-map-pin.driver').textContent,
