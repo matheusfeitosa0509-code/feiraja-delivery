@@ -67,6 +67,9 @@ export async function calculateServerDelivery(input: {
   const upstreamCode = String(payload?.message || "");
   if (upstreamCode === "ERR_OUT_OF_SERVICE_AREA") throw new Error("OUT_OF_SERVICE_AREA");
   if (upstreamCode === "ERR_REVERSE_GEOCODE_FAILURE") throw new Error("LALAMOVE_REVERSE_GEOCODE_FAILURE");
+  if (upstreamCode === "ERR_INVALID_SCHEDULE_TIME") throw new Error("LALAMOVE_INVALID_SCHEDULE_TIME");
+  if (upstreamCode === "ERR_INVALID_SERVICE_TYPE") throw new Error("LALAMOVE_INVALID_SERVICE_TYPE");
+  if (upstreamCode === "ERR_INVALID_MARKET") throw new Error("LALAMOVE_INVALID_MARKET");
   if (!response.ok) throw new Error(response.status === 429 ? "LALAMOVE_RATE_LIMIT" : "LALAMOVE_QUOTE_FAILED");
   const quote = parseQuotation(payload?.data, vehicle, load.weightKg);
   return {
