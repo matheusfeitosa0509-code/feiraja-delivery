@@ -15,7 +15,7 @@ for (const required of [
   'deliveryQuoteCache=new Map()', 'expiresAt:Date.now()+300000',
   'setTimeout(()=>void requestDeliveryQuote(),1500)',
   'delivery-map-center-pin', 'locationBias: { circle:',
-  'id="deliveryUseGps"', "deliveryMap.on('moveend',()=>scheduleDeliveryMapReverse())",
+  'id="deliveryUseGps"', 'id="deliveryConfirmAddress"', "deliveryMap.on('moveend',()=>scheduleDeliveryMapReverse())",
   "deliveryQuoteCache.set(cacheKey",
 ]) assert.ok(storeHtml.includes(required), 'missing delivery behavior: ' + required);
 
@@ -27,7 +27,7 @@ for (const required of [
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
       page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
-      await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:14px Arial;margin:0;padding:12px}.panel{max-width:520px;margin:auto}button{width:100%;min-height:46px}#deliveryQuoteStatus{overflow-wrap:anywhere}</style></head><body><main class="panel"><button id="deliveryUseGps">Usar minha localização</button><div id="deliveryMapPanel" hidden></div><p id="deliveryQuoteStatus" aria-live="polite"></p></main></body></html>');
+      await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:14px Arial;margin:0;padding:12px}.panel{max-width:520px;margin:auto}button{width:100%;min-height:46px}#deliveryQuoteStatus{overflow-wrap:anywhere}</style></head><body><main class="panel"><button id="deliveryUseGps">Usar minha localização</button><button id="deliveryConfirmAddress" hidden>Confirmar endereço e calcular entrega</button><div id="deliveryMapPanel" hidden></div><p id="deliveryQuoteStatus" aria-live="polite"></p></main></body></html>');
       await page.addScriptTag({ content: helperSource + '\nwindow.quoteError = deliveryQuoteErrorMessage;' });
       await page.addScriptTag({ content: `
         let deliveryMap=null;
@@ -69,7 +69,7 @@ for (const required of [
       });
       await page.waitForFunction(() => document.querySelector('#deliveryQuoteStatus').textContent.includes('Localização aproximada encontrada'));
       assert.deepEqual(await page.evaluate(() => window.lastGpsPoint), [-3.10, -60.02]);
-      assert.equal(await page.locator('#deliveryMapPanel').isVisible(), true);
+      assert.equal(await page.locator('#deliveryMapPanel').isVisible(), true);\n      assert.equal(await page.locator('#deliveryConfirmAddress').isVisible(), true);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       assert.deepEqual(errors, [], 'zero erros de console/page em ' + width + 'px');
       await page.close();
