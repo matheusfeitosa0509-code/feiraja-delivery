@@ -92,7 +92,9 @@ Deno.serve(async (req: Request) => {
     const response = await requestSandboxQuotation(apiKey, apiSecret, serviceType, lalamoveDropoff, {
       origin: originCoordinates, dropoff: dropoffCoordinates,
     }, quoteFetch, environment, scheduleAt);
-    const result = await response.json().catch(() => ({}));
+    const responseBody = await response.text();
+    let result: any = {};
+    try { result = JSON.parse(responseBody); } catch { result = {}; }
     const upstreamCode = String(result?.message || "");
     if (upstreamCode === "ERR_OUT_OF_SERVICE_AREA") {
       return json({ error: "Endereço localizado, mas a Lalamove não atende esta região.", code: "LALAMOVE_OUT_OF_SERVICE_AREA" }, 422);
@@ -101,13 +103,21 @@ Deno.serve(async (req: Request) => {
       console.error("delivery-quote", { stage: "lalamove_quote", status: response.status, upstream_message: upstreamCode });
       return json({ error: "A Lalamove recusou o horário agendado. Tente novamente em instantes.", code: "LALAMOVE_INVALID_SCHEDULE_TIME" }, 502);
     }
+    if (upstreamCode === "ERR_INVALID_SERVICE_TYPE") {
+      console.error("delivery-quote", { stage: "lalamove_quote", status: response.status, upstream_message: upstreamCode });
+      return json({ error: "A Lalamove não oferece o tipo de veículo selecionado para esta rota. Tente novamente ou escolha retirada.", code: "LALAMOVE_INVALID_SERVICE_TYPE" }, 422);
+    }
+    if (upstreamCode === "ERR_INVALID_MARKET") {
+      console.error("delivery-quote", { stage: "lalamove_quote", status: response.status, upstream_message: upstreamCode });
+      return json({ error: "A Lalamove não reconheceu a região de atendimento desta rota. Confira o endereço.", code: "LALAMOVE_INVALID_MARKET" }, 422);
+    }
     if (upstreamCode === "ERR_REVERSE_GEOCODE_FAILURE") {
       console.error("delivery-quote", { stage: "lalamove_quote", status: response.status, code: "ERR_REVERSE_GEOCODE_FAILURE" });
       return json({ error: "A Lalamove não conseguiu validar a rota mesmo com as coordenadas. Tente novamente.", code: "LALAMOVE_REVERSE_GEOCODE_FAILURE" }, 502);
     }
     if (!response.ok) {
       const code = response.status === 429 ? "LALAMOVE_RATE_LIMIT" : "LALAMOVE_QUOTE_FAILED";
-      console.error("delivery-quote", { stage: "lalamove_quote", status: response.status, upstream_message: upstreamCode.slice(0, 120) || null, code });
+      console.error("delivery-quote", { stage: "lalamove_quote", status: response.status, upstream_message: upstreamCode.slice(0, 120) || null, upstream_body: responseBody.slice(0, 500), code });
       return json({ error: "A localização foi encontrada, mas a Lalamove não concluiu a cotação. Tente novamente.", code }, response.status === 429 ? 429 : 502);
     }
     const quote = parseQuotation(result?.data, vehicle, load.weightKg);
