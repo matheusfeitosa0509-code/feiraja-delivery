@@ -1,0 +1,33 @@
+name: Product card layout
+on:
+  pull_request:
+    paths:
+      - "loja.html"
+      - "tests/product-cards-layout.visual.cjs"
+      - ".github/workflows/product-card-layout.yml"
+  push:
+    branches: [main]
+    paths:
+      - "loja.html"
+      - "tests/product-cards-layout.visual.cjs"
+      - ".github/workflows/product-card-layout.yml"
+permissions:
+  contents: read
+jobs:
+  mobile-cards:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --prefix /tmp/playwright playwright@1.58.2
+      - run: /tmp/playwright/node_modules/.bin/playwright install --with-deps chromium
+      - run: mkdir -p artifacts
+      - run: NODE_PATH=/tmp/playwright/node_modules node tests/product-cards-layout.visual.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: product-cards-mobile-360-412
+          path: artifacts/product-cards-*.png
+          if-no-files-found: warn
