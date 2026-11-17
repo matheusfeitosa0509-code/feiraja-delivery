@@ -187,7 +187,7 @@ export function deliveryQuoteErrorMessage(status, code = "") {
     LALAMOVE_REVERSE_GEOCODE_FAILURE: "A Lalamove não conseguiu validar a rota mesmo com as coordenadas. Tente novamente.",
     LALAMOVE_RATE_LIMIT: "Muitas consultas agora, tente em alguns segundos.",
     QUOTE_RATE_LIMIT: "Muitas consultas agora, tente em alguns segundos.",
-    LALAMOVE_QUOTE_FAILED: "A localização foi encontrada, mas a Lalamove não concluiu a cotação. Tente novamente.",
+    LALAMOVE_QUOTE_FAILED: "Entrega indisponível no momento.",
     STORE_CLOSED: "Entrega disponível no horário de funcionamento.",
   };
   return known[String(code)] || (Number(status) === 422
