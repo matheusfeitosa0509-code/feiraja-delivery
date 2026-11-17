@@ -664,7 +664,7 @@ async function toggleProductValueSale(productId){
 }
 
 // Ficha única de produto. Mantém custo em RPC privado e grava somente campos alterados.
-function getProductCategories(){return [...new Set(adminProducts.map(p=>String(p.category||'').trim()||'Outros'))].sort((a,b)=>a.localeCompare(b,'pt-BR'));}
+function getProductCategories(){return [...new Set(adminProducts.filter(p=>p.available===true).map(p=>String(p.category||'').trim()||'Outros'))].sort((a,b)=>a.localeCompare(b,'pt-BR'));}
 function fillProductCategorySelect(select,selected=''){const categories=getProductCategories();select.replaceChildren(...categories.map(value=>new Option(value,value)));if(selected&&!categories.includes(selected))select.add(new Option(selected,selected));select.value=selected||categories[0]||'Outros';}
 function populateProductCategorySelectors(){fillProductCategorySelect($('category'),$('category').value);fillProductCategorySelect($('sheetCategory'),$('sheetCategory').value);}
 const PRODUCT_PHOTO_BUCKET='product-photos';
