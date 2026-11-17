@@ -7,11 +7,14 @@ const root = path.resolve(__dirname, '..');
 const storeHtml = fs.readFileSync(path.join(root, 'loja.html'), 'utf8');
 const helperSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8').replace(/^export\\s+/gm, '');
 const addressFnStart = storeHtml.indexOf('function hideDeliverySuggestions(){');
+const syncPresentationStart = storeHtml.indexOf('function syncDeliveryAddressPresentation(');
+const syncPresentationEnd = storeHtml.indexOf('\\nlet deliveryPlacesSessionToken', syncPresentationStart);
 const mapFnStart = storeHtml.indexOf('function loadMapLibre(){');
 const mapFnEnd = storeHtml.indexOf('function setDeliveryQuoteStatus', mapFnStart);
 const quoteFnStart = storeHtml.indexOf('function scheduleDeliveryQuote(){');
 const quoteFnEnd = storeHtml.indexOf('function syncDeliverySelection(){', quoteFnStart);
-if ([addressFnStart, mapFnStart, mapFnEnd, quoteFnStart, quoteFnEnd].some(x => x < 0)) throw new Error('Delivery map functions not found');
+if ([addressFnStart, syncPresentationStart, syncPresentationEnd, mapFnStart, mapFnEnd, quoteFnStart, quoteFnEnd].some(x => x < 0)) throw new Error('Delivery map functions not found');
+const syncPresentationFn = storeHtml.slice(syncPresentationStart, syncPresentationEnd);
 const addressFns = storeHtml.slice(addressFnStart, mapFnStart);
 const mapFns = storeHtml.slice(mapFnStart, mapFnEnd);
 const quoteFns = storeHtml.slice(quoteFnStart, quoteFnEnd);
@@ -36,7 +39,6 @@ const $ = selector => document.querySelector(selector);
 let deliveryPlacesSessionToken='session-123',deliveryAutocompleteTimer=null,deliveryMap=null,deliveryMapCoordinates=null,deliveryMapReverseTimer=null,deliveryMapReverseSequence=0,deliveryNeedsExplicitConfirm=true,deliveryStreetHome=null,deliveryNumberHome=null,deliveryNeighborhoodHome=null,deliveryMapPlaceName='',deliveryQuoteTimer=null,deliveryQuoteSequence=0,deliveryQuote=null;
 const normalizeDeliveryAddress = value => ({street:String(value.street||'').trim(),number:String(value.number||'').trim(),neighborhood:String(value.neighborhood||'').trim(),complement:'',reference:''});
 const getDeliveryAddress = () => normalizeDeliveryAddress({street:$('#deliveryStreet').value,number:$('#deliveryNumber').value,neighborhood:$('#deliveryNeighborhood').value});
-const syncDeliveryAddressPresentation = () => {};
 const setDeliveryQuoteStatus = (message,isError=false) => {const box=$('#deliveryQuoteStatus');box.textContent=message||'';box.hidden=!message;box.dataset.error=String(!!isError);};
 const updateCheckoutTotals = () => {};
 let quoteCalls=0;
@@ -58,7 +60,7 @@ window.maplibregl={
  },
  NavigationControl:class{},AttributionControl:class{}
 };
-const mapOverlayMarkup = '<div id="checkout"><div id="deliveryAddressFields"><div id="deliveryStreetSearch"><label for="deliveryStreet">Rua</label><div class="checkout-address-input"><input id="deliveryStreet"></div><div id="deliveryStreetSuggestions" hidden></div></div><div id="deliveryNumberField" class="field"><label for="deliveryNumber">Número</label><input id="deliveryNumber"></div><div id="deliveryNeighborhoodField" class="field"><label for="deliveryNeighborhood">Bairro</label><input id="deliveryNeighborhood"></div><input id="deliveryReference"></div><div id="deliveryMapPreview" hidden><img id="deliveryMapPreviewImage"></div><div id="deliveryMapFullscreen" class="delivery-map-fullscreen" hidden><header class="delivery-map-topbar"><button id="deliveryMapBack"></button><div id="deliveryMapSearchSlot"></div></header><div id="deliveryMap"></div><div class="delivery-map-fixed-pin"><span>📍</span><i></i></div><button id="deliveryMapGps" class="delivery-map-gps"></button><section class="delivery-map-sheet"><div class="delivery-map-sheet-handle"></div><strong id="deliveryMapAddress"></strong><div id="deliveryMapNumberSlot"></div><div id="deliveryMapNeighborhoodSlot"></div><p id="deliveryMapNeighborhood" class="delivery-map-neighborhood"></p><button id="deliveryMapConfirm" class="delivery-map-confirm"></button></section></div><button id="deliveryMapAdjust"></button><button id="deliveryMapChange"></button><button id="deliveryUseGps"></button><select id="delivery"><option value="delivery" selected>Entrega</option></select><div id="minimumCheckoutNotice" class="hidden"></div><p id="deliveryQuoteStatus"></p></div>';
+const mapOverlayMarkup = '<div id="checkout"><div id="deliveryAddressFields"><div id="deliveryStreetSearch"><label for="deliveryStreet">Rua</label><div class="checkout-address-input"><input id="deliveryStreet"></div><div id="deliveryStreetSuggestions" hidden></div></div><div id="deliveryAddressSummary" hidden><strong id="deliveryAddressSummaryStreet"></strong><span id="deliveryAddressSummaryNeighborhood"></span></div><div id="deliveryNumberField" class="field"><label for="deliveryNumber">Número</label><input id="deliveryNumber"></div><div id="deliveryNeighborhoodField" class="field"><label for="deliveryNeighborhood">Bairro</label><input id="deliveryNeighborhood"></div><input id="deliveryReference"></div><div id="deliveryMapPreview" hidden><img id="deliveryMapPreviewImage"></div><div id="deliveryMapFullscreen" class="delivery-map-fullscreen" hidden><header class="delivery-map-topbar"><button id="deliveryMapBack"></button><div id="deliveryMapSearchSlot"></div></header><div id="deliveryMap"></div><div class="delivery-map-fixed-pin"><span>📍</span><i></i></div><button id="deliveryMapGps" class="delivery-map-gps"></button><section class="delivery-map-sheet"><div class="delivery-map-sheet-handle"></div><strong id="deliveryMapAddress"></strong><div id="deliveryMapNumberSlot"></div><div id="deliveryMapNeighborhoodSlot"></div><p id="deliveryMapNeighborhood" class="delivery-map-neighborhood"></p><button id="deliveryMapConfirm" class="delivery-map-confirm"></button></section></div><button id="deliveryMapAdjust"></button><button id="deliveryMapChange"></button><button id="deliveryUseGps"></button><select id="delivery"><option value="delivery" selected>Entrega</option></select><div id="minimumCheckoutNotice" class="hidden"></div><p id="deliveryQuoteStatus"></p></div>';
 document.body.innerHTML=mapOverlayMarkup;
 `;
 (async () => {
@@ -105,6 +107,7 @@ document.body.innerHTML=mapOverlayMarkup;
    await page.waitForTimeout(1550);
    assert.equal(await page.evaluate(()=>window.quoteCount()),1,'quote runs only after explicit confirmation');
    assert.equal(await page.locator('#deliveryMapPreview').isVisible(),true,'confirmed map preview is shown');
+   assert.equal(await page.locator('#deliveryAddressSummary').isVisible(),false,'duplicate edit summary is hidden after map confirmation');
    await page.evaluate(()=>{Object.defineProperty(navigator,'geolocation',{configurable:true,value:{getCurrentPosition(success,failure){failure(new Error('denied'));}}});window.runGps();});
    await page.waitForFunction(()=>document.querySelector('#deliveryQuoteStatus').textContent.includes('Não foi possível acessar o GPS'));
    await page.evaluate(()=>{Object.defineProperty(navigator,'geolocation',{configurable:true,value:{getCurrentPosition(success){success({coords:{latitude:-3.12,longitude:-60.04}});}}});window.runGps();});
