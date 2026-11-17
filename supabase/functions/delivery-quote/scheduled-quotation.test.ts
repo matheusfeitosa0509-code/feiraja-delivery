@@ -1,4 +1,6 @@
-import { assertEquals } from "jsr:@std/assert@1.0.14";
+function assertEquals(actual: unknown, expected: unknown) {
+  if (actual !== expected) throw new Error("Expected " + String(expected) + ", received " + String(actual));
+}
 import { buildQuotationBody, requestSandboxQuotation } from "../_shared/delivery-quote.ts";
 import { getStoreSchedule } from "../_shared/store-schedule.js";
 
