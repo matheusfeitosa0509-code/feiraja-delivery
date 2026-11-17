@@ -100,6 +100,7 @@ jobs:
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-compact.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/lalamove-panel.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-full-html-lalamove.visual.cjs
+      - run: NODE_PATH=/tmp/playwright/node_modules node tests/checkout-delivery-address.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-product-create.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/loja-console-errors.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/cart-modernization.visual.cjs
@@ -107,7 +108,6 @@ jobs:
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/order-tracking.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/checkout-delivery-access.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/scheduled-delivery.visual.cjs
-      - run: NODE_PATH=/tmp/playwright/node_modules node tests/checkout-delivery-address.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/legal-identity.visual.cjs
       - uses: actions/upload-artifact@v4
         if: always()
