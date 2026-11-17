@@ -1,7 +1,7 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   buildQuotationBody, chooseVehicle, estimateLoad, formatDropoff, isQuoteAllowed,
-  parseQuotation, requestSandboxQuotation,
+  parseQuotation, requestSandboxQuotation, retryLalamove429,
 } from "../_shared/delivery-quote.ts";
 
 const products = [
@@ -141,4 +141,17 @@ Deno.test("limite de moto de 12 kg: 12 kg aceita moto e acima direciona para car
   assertEquals(chooseVehicle(12, false, 12), "MOTO");
   assertEquals(chooseVehicle(12.001, false, 12), "CAR");
   assertEquals(chooseVehicle(3, true, 12), "CAR");
+});
+
+
+Deno.test("Lalamove HTTP 429 repete automaticamente duas vezes com espera crescente", async () => {
+  let calls = 0;
+  const waits: number[] = [];
+  const response = await retryLalamove429(async () => {
+    calls++;
+    return new Response("{}", { status: calls < 3 ? 429 : 200 });
+  }, "https://rest.lalamove.com/v3/quotations", { method: "POST" }, async (ms) => { waits.push(ms); });
+  assertEquals(response.status, 200);
+  assertEquals(calls, 3);
+  assertEquals(waits, [1200, 2400]);
 });
