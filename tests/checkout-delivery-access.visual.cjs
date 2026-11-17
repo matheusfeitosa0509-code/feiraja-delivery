@@ -12,8 +12,10 @@ assert.equal(storeHtml.includes('#deliveryUberOption[hidden]'), false, 'Uber nã
 assert.equal(storeHtml.includes('syncUberPickupOption({'), true, 'Uber deve ser removido do DOM e do select');
 assert.equal(storeHtml.includes("const uberRadio=$('#deliveryUber');if(uberRadio)uberRadio.checked=delivery==='pickup_uber';"), true, 'syncDeliverySelection deve tolerar o rádio Uber ausente');
 assert.equal(storeHtml.includes("$('#deliveryUber')?.addEventListener('change'"), true, 'listener do Uber deve tolerar o card removido');
-const syncSelectionMatch = storeHtml.match(/function syncDeliverySelection\(\)\{[\s\S]*?\n \}/);
-if (!syncSelectionMatch) throw new Error('syncDeliverySelection source missing');
+const syncSelectionStart = storeHtml.indexOf('function syncDeliverySelection()');
+const syncSelectionEnd = storeHtml.indexOf('\nfunction totals()', syncSelectionStart);
+const syncSelectionSource = syncSelectionStart >= 0 && syncSelectionEnd > syncSelectionStart ? storeHtml.slice(syncSelectionStart, syncSelectionEnd) : '';
+if (!syncSelectionSource) throw new Error('syncDeliverySelection source missing');
 
 const helperSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8').replace(/^export\s+/gm, '');
 const styleStart = storeHtml.indexOf('/* Checkout option cards —');
@@ -101,7 +103,7 @@ const checkoutCss = [
           modal.classList.add('open');
         });
       });
-      await page.addScriptTag({ content: syncSelectionMatch[0] + '\nwindow.syncDeliverySelection = syncDeliverySelection;' });
+      await page.addScriptTag({ content: syncSelectionSource + '\nwindow.syncDeliverySelection = syncDeliverySelection;' });
       await page.addScriptTag({ content: "$('#delivery').addEventListener('change',()=>{syncDeliverySelection();renderCart()});" });
       const uberListenerMatch = storeHtml.match(/\$\('#deliveryUber'\)\?\.addEventListener\('change',[^;]+;/);
       if (!uberListenerMatch) throw new Error('optional Uber change listener missing');
