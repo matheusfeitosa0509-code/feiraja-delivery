@@ -249,12 +249,15 @@ assert.match(html,/id="storeConfirmModal"/);assert.match(html,/Limpar o carrinho
 assert.match(html,/id="cartUndoToast"/);assert.match(html,/DESFAZER/);assert.match(html,/function positionCartToast\(toast\)/);
 assert.match(html,/function showCartUndo\(message,snapshot\)/);assert.match(html,/function undoCartAction\(\)/);
 
-// Layout guards: controls are in their own row and every action has a 44 px target.
-assert.match(html,/class="cart-item-actions"/);
+// Layout guards: compact quantity row, separate remove action and value-sale link.
+assert.match(html,/class="cart-item-controls"/);
+assert.match(html,/class="cart-qty-control"/);
 assert.match(html,/data-cart-remove=/);
 assert.match(html,/data-cart-clear/);
-assert.match(html,/class="cart-value-summary" data-value-open=/);
-assert.match(html,/\.cart-item-actions button\{width:44px;height:44px;min-width:44px;min-height:44px/);
+assert.match(html,/class="cart-remove" data-cart-remove=/);
+assert.match(html,/class="cart-value-action"/);
+assert.match(html,/\.cart-qty-control button\{width:36px!important;height:38px!important;min-width:36px!important;min-height:38px!important/);
+assert.match(html,/\.cart-item-controls \.cart-remove\{flex:none!important;width:40px!important/);
 assert.match(html,/\.cart-item\{display:flex;flex-direction:column/);
 assert.match(html,/function cartSaleModeControl\(item\)\{return valueSaleEditorMarkup\(item\.p\);\}/);
 assert.doesNotMatch(html,/data-sale-mode=/,'cart no longer uses the cramped purchase-mode select');

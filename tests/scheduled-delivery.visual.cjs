@@ -5,7 +5,7 @@ const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
 const storeHtml = fs.readFileSync(path.join(root, 'loja.html'), 'utf8');
 const panelHtml = fs.readFileSync(path.join(root, 'painel.html'), 'utf8');
-assert.ok(storeHtml.includes('Sua entrega será feita na '), 'checkout avisa a data da entrega agendada');
+assert.ok(storeHtml.includes('Sua entrega sai na '), 'checkout avisa a data da entrega agendada');
 assert.ok(panelHtml.includes('Agendado para '), 'painel mostra o selo de agendamento');
 assert.ok(panelHtml.includes('!scheduledPending'), 'painel impede cotação antes da abertura');
 const scheduleSource = fs.readFileSync(path.join(root, 'supabase/functions/_shared/store-schedule.js'), 'utf8')
@@ -38,6 +38,7 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
           enabled: !document.querySelector('#deliveryHome').disabled,
           label: document.querySelector('#deliveryStartingPrice').textContent,
           description: document.querySelector('#deliveryHomeDescription').textContent,
+          schedule: document.querySelector('#deliveryHomeDescription .checkout-delivery-schedule')?.textContent || null,
           noOverflow: document.documentElement.scrollWidth <= innerWidth,
         };
       }, { scheduleSource, uiSource });
@@ -45,8 +46,9 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
       assert.equal(result.saturday.scheduledFor, '2026-11-16T10:00:00.000Z', 'sábado 14h → segunda às 6h');
       assert.equal(result.sunday.scheduledFor, '2026-11-16T10:00:00.000Z', 'domingo → segunda às 6h');
       assert.equal(result.enabled, true);
-      assert.equal(result.label, 'Entrega a partir de terça pela manhã');
-      assert.equal(result.description, 'Taxa por distância, paga com Pix junto do pedido.');
+      assert.equal(result.label, 'Ter. de manhã');
+      assert.equal(result.description.startsWith('Taxa por distância, paga com Pix junto do pedido.'), true);
+      assert.equal(result.schedule, 'Entrega a partir de terça, 17/11 pela manhã.');
       assert.equal(result.noOverflow, true, 'sem overflow horizontal em ' + width + 'px');
       await page.close();
     }

@@ -14,6 +14,11 @@ assert.equal(storeHtml.includes("const uberRadio=$('#deliveryUber');if(uberRadio
 assert.equal(storeHtml.includes("$('#deliveryUber')?.addEventListener('change'"), true, 'listener do Uber deve tolerar o card removido');
 const safeUberListener = "$('#deliveryUber')?.addEventListener('change',()=>{if($('#deliveryUber')?.checked){$('#delivery').value='pickup_uber';$('#delivery').dispatchEvent(new Event('change'));}});";
 assert.equal(storeHtml.includes(safeUberListener), true, 'listener completo do Uber deve permanecer protegido');
+const scheduleMessageStart = storeHtml.indexOf('function checkoutScheduleMessage(');
+const scheduleMessageEnd = storeHtml.indexOf('\nfunction updateCheckoutScheduleNotice()', scheduleMessageStart);
+const scheduleMessageSource = scheduleMessageStart >= 0 && scheduleMessageEnd > scheduleMessageStart ? storeHtml.slice(scheduleMessageStart, scheduleMessageEnd) : '';
+if (!scheduleMessageSource) throw new Error('checkoutScheduleMessage source missing');
+
 const syncSelectionStart = storeHtml.indexOf('function syncDeliverySelection()');
 const syncSelectionEnd = storeHtml.indexOf('\nfunction totals()', syncSelectionStart);
 const syncSelectionSource = syncSelectionStart >= 0 && syncSelectionEnd > syncSelectionStart ? storeHtml.slice(syncSelectionStart, syncSelectionEnd) : '';
@@ -42,7 +47,7 @@ const checkoutCss = [
       page.on('pageerror', error => consoleErrors.push(error.message));
       page.on('console', message => { if (message.type() === 'error') consoleErrors.push(message.text()); });
       await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>' +
-        '<main class="checkout-screen"><form id="checkoutForm">' +
+        '<main class="checkout-screen"><p id="checkoutSubtitle">Confira seus dados, a retirada e o pagamento.</p><form id="checkoutForm">' +
         '<label class="opt checkout-choice-card is-disabled" id="deliveryHomeOption" for="deliveryHome" aria-disabled="true">' +
         '<input class="choice-radio" id="deliveryHome" type="radio" name="deliveryChoice" disabled>' +
         '<span class="checkout-choice-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H3V10Z"></path></svg></span>' +
@@ -108,6 +113,13 @@ const checkoutCss = [
       await page.addScriptTag({ content: syncSelectionSource + '\nwindow.syncDeliverySelection = syncDeliverySelection;' });
       await page.addScriptTag({ content: "$('#delivery').addEventListener('change',()=>{syncDeliverySelection();renderCart()});" });
       await page.addScriptTag({ content: safeUberListener });
+      await page.evaluate(() => { window.pickupEstimate = () => ({ within: false, label: 'terça, 17/11' }); });
+      await page.addScriptTag({ content: scheduleMessageSource + '\nwindow.checkoutScheduleMessage = checkoutScheduleMessage;' });
+      assert.equal(await page.evaluate(() => window.checkoutScheduleMessage(new Date(), false)), 'Estamos fechados agora. Seu pedido fica pronto para retirada na terça, 17/11 a partir das 6h.');
+      assert.equal(await page.evaluate(() => window.checkoutScheduleMessage(new Date(), true)), 'Estamos fechados agora. Sua entrega sai na terça, 17/11 a partir das 6h.');
+      await page.evaluate(() => { window.pickupEstimate = () => ({ within: true, label: 'hoje' }); });
+      assert.equal(await page.evaluate(() => window.checkoutScheduleMessage(new Date(), false)), 'Pedidos ficam prontos ainda hoje, até 13h.');
+      assert.equal(await page.evaluate(() => window.checkoutScheduleMessage(new Date(), true)), 'A entrega sai quando o pedido estiver pronto, durante o horário da loja.');
       assert.equal(await page.evaluate(() => typeof window.syncDeliverySelection), 'function', 'syncDeliverySelection deve estar disponível');
       const syncProbe = await page.evaluate(() => { try { window.syncDeliverySelection(); return 'ok'; } catch (error) { return error.stack || error.message; } });
       assert.equal(syncProbe, 'ok', width + 'px: falha ao sincronizar checkout sem Uber: ' + syncProbe);
@@ -126,6 +138,7 @@ const checkoutCss = [
         assert.equal(selected.store, deliveryType === 'pickup_store');
         assert.equal(selected.home, deliveryType === 'delivery');
         assert.equal(selected.uber, false);
+        assert.equal(await page.locator('#checkoutSubtitle').textContent(), deliveryType === 'delivery' ? 'Confira seus dados, a entrega e o pagamento' : 'Confira seus dados, a retirada e o pagamento.');
       }
       // Com entrega_ativa=false, o mesmo helper restaura o card e a opção.
       assert.equal(await page.evaluate(() => window.FeiraDeliveryAccess.syncUberPickupOption({
@@ -210,6 +223,9 @@ const checkoutCss = [
         disabledClass: document.querySelector('#deliveryHomeOption').classList.contains('is-disabled'),
         label: document.querySelector('#deliveryStartingPrice').textContent.trim(),
         badgeCount: document.querySelectorAll('#deliveryStartingPrice .checkout-test-badge').length,
+        deliveryBadge: document.querySelector('#deliveryStartingPrice .checkout-delivery-badge')?.textContent || null,
+        schedule: document.querySelector('#deliveryHomeDescription .checkout-delivery-schedule')?.textContent || null,
+        titleOneLine: getComputedStyle(document.querySelector('#deliveryHomeOption .checkout-choice-copy>b')).whiteSpace === 'nowrap',
         description: document.querySelector('#deliveryHomeDescription').textContent,
         clamp: getComputedStyle(document.querySelector('#deliveryHomeDescription')).webkitLineClamp,
         badgeWhiteSpace: document.querySelector('.checkout-test-badge') ? getComputedStyle(document.querySelector('.checkout-test-badge')).whiteSpace : null,
@@ -268,8 +284,12 @@ const checkoutCss = [
       await render({ ...common, withinHours: false, scheduleLabel: 'terça, 17/11' });
       view = await snapshot();
       assert.equal(view.disabled, false);
-      assert.equal(view.description, 'Taxa por distância, paga com Pix junto do pedido.');
-      assert.equal(view.label, 'Entrega a partir de terça pela manhã');
+      assert.equal(view.description.startsWith('Taxa por distância, paga com Pix junto do pedido.'), true);
+      assert.equal(view.label, 'Ter. de manhã');
+      assert.equal(view.deliveryBadge, 'Ter. de manhã');
+      assert.equal(view.schedule, 'Entrega a partir de terça, 17/11 pela manhã.');
+      assert.equal(view.titleOneLine, true);
+      assert.equal(view.noHorizontalOverflow, true);
 
       // Delayed admin response: remain disabled until the positive answer.
       await render({ isAdmin: false, adminCheckComplete: false, deliveryActive: false, withinHours: true });
@@ -340,10 +360,10 @@ const checkoutCss = [
       assert.equal(view.badgeCount, 0);
       assert.equal(view.description.includes('Taxa por distância'), true);
 
-      // A prévia TESTE desligada permanece em uma linha no celular; opção ativa não tem selo.
+      // O texto da entrega não é truncado; o selo TESTE continua em uma linha no celular.
       await render(adminInactive);
       view = await snapshot();
-      assert.equal(view.clamp, '2');
+      assert.equal(view.clamp, 'none');
       assert.equal(view.badgeWhiteSpace, 'nowrap');
       assert.equal(view.noHorizontalOverflow, true);
       assert.ok(view.badgeRight <= view.cardRight + 1);
