@@ -58,7 +58,7 @@ window.maplibregl={
  },
  NavigationControl:class{},AttributionControl:class{}
 };
-const mapOverlayMarkup = '<div id="checkout"><div id="deliveryAddressFields"><div id="deliveryStreetSearch"><label for="deliveryStreet">Rua</label><div class="checkout-address-input"><input id="deliveryStreet"></div><div id="deliveryStreetSuggestions" hidden></div></div><div id="deliveryNumberField" class="field"><label for="deliveryNumber">Número</label><input id="deliveryNumber"></div><input id="deliveryNeighborhood"><input id="deliveryReference"></div><div id="deliveryMapPreview" hidden><img id="deliveryMapPreviewImage"></div><div id="deliveryMapSearchSlot"></div><div id="deliveryMapNumberSlot"></div><div id="deliveryMapFullscreen" hidden><header id="topbar"><button id="deliveryMapBack"></button></header><div id="deliveryMap"></div><div id="deliveryMapAddress"></div><div id="deliveryMapNeighborhood"></div><button id="deliveryMapGps"></button><button id="deliveryMapConfirm"></button></div><button id="deliveryMapAdjust"></button><button id="deliveryMapChange"></button><button id="deliveryUseGps"></button><select id="delivery"><option value="delivery" selected>Entrega</option></select><div id="minimumCheckoutNotice" class="hidden"></div><p id="deliveryQuoteStatus"></p></div>';
+const mapOverlayMarkup = '<div id="checkout"><div id="deliveryAddressFields"><div id="deliveryStreetSearch"><label for="deliveryStreet">Rua</label><div class="checkout-address-input"><input id="deliveryStreet"></div><div id="deliveryStreetSuggestions" hidden></div></div><div id="deliveryNumberField" class="field"><label for="deliveryNumber">Número</label><input id="deliveryNumber"></div><input id="deliveryNeighborhood"><input id="deliveryReference"></div><div id="deliveryMapPreview" hidden><img id="deliveryMapPreviewImage"></div><div id="deliveryMapFullscreen" class="delivery-map-fullscreen" hidden><header class="delivery-map-topbar"><button id="deliveryMapBack"></button><div id="deliveryMapSearchSlot"></div></header><div id="deliveryMap"></div><div class="delivery-map-fixed-pin"><span>📍</span><i></i></div><button id="deliveryMapGps" class="delivery-map-gps"></button><section class="delivery-map-sheet"><div class="delivery-map-sheet-handle"></div><strong id="deliveryMapAddress"></strong><div id="deliveryMapNumberSlot"></div><p id="deliveryMapNeighborhood" class="delivery-map-neighborhood"></p><button id="deliveryMapConfirm" class="delivery-map-confirm"></button></section></div><button id="deliveryMapAdjust"></button><button id="deliveryMapChange"></button><button id="deliveryUseGps"></button><select id="delivery"><option value="delivery" selected>Entrega</option></select><div id="minimumCheckoutNotice" class="hidden"></div><p id="deliveryQuoteStatus"></p></div>';
 document.body.innerHTML=mapOverlayMarkup;
 `;
 (async () => {
@@ -70,6 +70,7 @@ document.body.innerHTML=mapOverlayMarkup;
    page.on('pageerror',e=>errors.push(e.message));
    page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
    await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;font:14px Arial}#deliveryMapFullscreen{position:fixed;inset:0;overflow:hidden;background:#eee}#deliveryMapFullscreen[hidden]{display:none}#deliveryMap{position:absolute;inset:0;width:100%;height:100%}.delivery-map-topbar{position:absolute;top:10px;left:10px;right:10px;display:flex}.delivery-map-sheet{position:absolute;bottom:0;left:0;right:0;background:white;border-radius:24px 24px 0 0;padding:16px}.delivery-map-fixed-pin{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%)}.delivery-map-confirm{width:100%;min-height:54px}.delivery-map-gps{position:absolute;right:12px;bottom:220px}#deliveryStreetSearch,#deliveryNumberField{background:white;padding:8px}#deliveryStreetSuggestions{background:white}#deliveryStreetSuggestions button{display:block;width:100%;padding:12px}#deliveryQuoteStatus{overflow-wrap:anywhere}</style></head><body></body></html>');
+   await page.addStyleTag({content:mapCss});
    await page.addScriptTag({content: `
     ${harness}
     ${addressFns}
@@ -91,7 +92,7 @@ document.body.innerHTML=mapOverlayMarkup;
    await page.evaluate(()=>window.pickPlace());
    await page.waitForFunction(()=>document.querySelector('#deliveryMapFullscreen').hidden===false);
    await page.waitForTimeout(850);
-   assert.equal(await page.locator('#deliveryMapAddress').textContent(),'Rua do Mercado, 123');
+   assert.ok((await page.locator('#deliveryMapAddress').textContent()).includes('Mercado Teste'),'selected establishment name is displayed');
    const mapOptions=await page.evaluate(()=>({style:window.testMap.options.style,zoom:window.testMap.options.zoom,center:window.testMap.options.center}));
    assert.equal(mapOptions.style,'https://tiles.openfreemap.org/styles/positron');
    assert.equal(mapOptions.zoom,17);
