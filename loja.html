@@ -1054,12 +1054,13 @@ try {
  .checkout-screen #checkoutForm .checkout-choice-copy .checkout-pickup-address{font-size:9px;letter-spacing:-.25px}
  .checkout-screen #checkoutForm .checkout-choice-end{font-size:10px}
 }
-/* Entrega Feira On: descrição limitada a duas linhas; selo nunca quebra. */
-#deliveryHomeOption .checkout-choice-copy .s{
- display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
- overflow:hidden;text-overflow:ellipsis;line-height:1.35;
-}
-#deliveryHomeOption .checkout-choice-end{white-space:normal!important;overflow-wrap:anywhere!important;align-self:center!important;width:104px!important;max-width:104px!important;}
+/* Entrega Feira On: título em uma linha, selo curto e previsão completa abaixo da descrição. */
+#deliveryHomeOption .checkout-choice-copy{min-width:0!important}
+#deliveryHomeOption .checkout-choice-copy>b{display:block!important;white-space:nowrap!important;overflow:visible!important;font-size:13px!important;line-height:1.25!important}
+#deliveryHomeOption .checkout-choice-copy .s{display:block!important;overflow:visible!important;line-height:1.35!important}
+#deliveryHomeOption .checkout-choice-end{display:flex!important;align-items:center!important;justify-content:flex-end!important;white-space:nowrap!important;overflow:visible!important;overflow-wrap:normal!important;align-self:center!important;width:auto!important;max-width:none!important;min-width:0!important}
+#deliveryHomeOption .checkout-delivery-badge{display:inline-flex;align-items:center;justify-content:center;min-height:28px;padding:5px 7px;border-radius:8px;background:#eaf4e5;color:#286344;font-size:10px;font-weight:900;white-space:nowrap;word-break:keep-all}
+#deliveryHomeOption .checkout-delivery-schedule{display:block!important;margin-top:4px;color:#286344;font-size:11px;font-weight:750;line-height:1.35;white-space:normal;overflow-wrap:anywhere}
 #deliveryHomeOption .checkout-test-badge{display:block;white-space:nowrap;word-break:keep-all}
 </style></head><body>
 <header class="app-header" aria-label="Feira On Delivery"><a class="brand" href="#" aria-label="Feira On Delivery">Feira On Delivery<small>Tudo da feira, retire ou receba em casa</small></a><div class="search home-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="homeSearch" placeholder="Buscar produtos da feira…" aria-label="Buscar produtos da feira"></div></header>
@@ -1186,7 +1187,7 @@ try {
 <section id="accountProfile" class="account-profile hidden" aria-live="polite"></section><div id="myOrders" class="hidden"><p class="sm">Histórico de compras e status atualizado pela loja.</p><div id="myOrdersList"></div><button id="refreshMyOrders" class="btn alt full" type="button">Atualizar pedidos</button></div><button id="logoutBtn" class="btn alt full hidden" type="button">Sair da conta</button>
 </div></div></div>
 <footer class="legal-footer" aria-label="Informações e documentos da loja"><nav class="legal-links"><a href="#termos" data-legal-page="termos">Termos de uso</a><span>·</span><a href="#privacidade" data-legal-page="privacidade">Política de privacidade</a><span>·</span><a href="#retirada" data-legal-page="retirada">Retirada e trocas</a></nav><div class="legal-brand">Feira On Delivery · Manaus, AM</div><div>Retirada: Av. Lourenço da Silva Braga, 700 - Centro, Manaus - AM</div><div>Horário: Segunda a sábado, 6h às 13h. Domingo fechado.</div><div>Contato: <a href="#" data-whatsapp-link target="_blank" rel="noopener noreferrer">WhatsApp</a> · <a href="mailto:feiraondelivery2026@gmail.com">feiraondelivery2026@gmail.com</a></div><div id="legalDocumentLine">CNPJ/CPF: <span id="legalDocumentValue">65.414.756/0001-22</span></div></footer>
-<div class="modal checkout-screen" id="modal"><div class="dialog"><button class="close" id="close" type="button" aria-label="Voltar">‹</button><div class="checkout-page"><h1>Finalizar</h1><p class="sm">Confira seus dados, a retirada e o pagamento.</p><p id="checkoutScheduleNotice" class="checkout-alert checkout-schedule-alert" role="status" aria-live="polite" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg><span id="checkoutScheduleNoticeText"></span></p>
+<div class="modal checkout-screen" id="modal"><div class="dialog"><button class="close" id="close" type="button" aria-label="Voltar">‹</button><div class="checkout-page"><h1>Finalizar</h1><p class="sm" id="checkoutSubtitle">Confira seus dados, a retirada e o pagamento.</p><p id="checkoutScheduleNotice" class="checkout-alert checkout-schedule-alert" role="status" aria-live="polite" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg><span id="checkoutScheduleNoticeText"></span></p>
  <form id="checkoutForm">
   <div class="checkout-fields"><div class="formgrid checkout-layout">
    <section class="checkout-card checkout-receive" aria-labelledby="checkoutReceiveTitle">
@@ -1468,7 +1469,7 @@ function persistCart(){try{localStorage.setItem('feiraja_cart_v1',JSON.stringify
 const orderStatuses=['Pedido Recebido','Pagamento Pendente','Pagamento Confirmado','Preparando','Pronto para Retirada','Pedido Concluído','Cancelada'];
 function normalizeOrderStatus(status){const s=String(status||'').trim().toLowerCase();if(['cancelada','cancelado','pagamento cancelado','pagamento recusado'].includes(s))return 'Cancelada';if(s==='pagamento reembolsado')return 'Pagamento reembolsado';if(s==='pagamento contestado')return 'Pagamento contestado';if(s==='entregue')return 'Entregue';if(['concluído','concluido','pedido concluído','pedido concluido'].includes(s))return 'Pedido Concluído';if(['pronto para retirada','pronto'].includes(s))return 'Pronto para Retirada';if(['preparando','preparando pedido'].includes(s))return 'Preparando';if(s==='saiu para entrega')return 'Saiu para Entrega';if(['pedido recebido','recebido'].includes(s))return 'Pedido Recebido';if(['pagamento confirmado','pago'].includes(s))return 'Pagamento Confirmado';if(['pagamento pendente','aguardando pagamento pix','pagamento em análise'].includes(s))return 'Pagamento Pendente';return s||'Status desconhecido';}
 function pickupEstimate(date=new Date()){return getStoreSchedule(date);}
-function checkoutScheduleMessage(now=new Date(),delivery=false){const estimate=pickupEstimate(now);if(estimate.within)return delivery?'A entrega sai quando o pedido estiver pronto, durante o horário da loja.':'Pedidos ficam prontos ainda hoje, até 13h.';return delivery?'Estamos fechados agora. Sua entrega será feita na '+estimate.label+' a partir das 6h.':'Estamos fechados agora. Seu pedido fica pronto para retirada na '+estimate.label+' a partir das 6h.';}
+function checkoutScheduleMessage(now=new Date(),delivery=false){const estimate=pickupEstimate(now);if(estimate.within)return delivery?'A entrega sai quando o pedido estiver pronto, durante o horário da loja.':'Pedidos ficam prontos ainda hoje, até 13h.';return delivery?'Estamos fechados agora. Sua entrega sai na '+estimate.label+' a partir das 6h.':'Estamos fechados agora. Seu pedido fica pronto para retirada na '+estimate.label+' a partir das 6h.';}
 function updateCheckoutScheduleNotice(){const notice=$('#checkoutScheduleNotice');if(!notice)return;notice.hidden=pickupEstimate().within;$('#checkoutScheduleNoticeText').textContent=checkoutScheduleMessage(new Date(),$('#delivery')?.value==='delivery');}
 function formatOrderQuantity(quantity){return Number(quantity).toLocaleString('pt-BR',{maximumFractionDigits:2});}
 function formatOrderItemDescription(item){
@@ -1941,6 +1942,7 @@ function scheduleDeliveryQuote(){
 }
 function syncDeliverySelection(){
  const delivery=$('#delivery').value;
+ const subtitle=$('#checkoutSubtitle');if(subtitle)subtitle.textContent=delivery==='delivery'?'Confira seus dados, a entrega e o pagamento':'Confira seus dados, a retirada e o pagamento.';
  $('#deliveryStore').checked=delivery==='pickup_store';const uberRadio=$('#deliveryUber');if(uberRadio)uberRadio.checked=delivery==='pickup_uber';$('#deliveryHome').checked=delivery==='delivery';
  document.querySelectorAll('[name=deliveryChoice]').forEach(r=>r.closest('.opt').classList.toggle('sel',r.checked));
  $('#deliveryAddressFields').classList.toggle('hidden',delivery!=='delivery');
@@ -2610,8 +2612,8 @@ try{setupAppTabs();}catch(error){console.error('Falha isolada na navegação da 
 
 /* Carrinho modernizado — mantém controles e resumo acima da navegação móvel. */
 #pageCart{padding-bottom:calc(270px + env(safe-area-inset-bottom,0px))!important}
-#pageCart #cartPanel .sum{position:fixed!important;left:50%!important;right:auto!important;bottom:calc(env(safe-area-inset-bottom,0px) + 12px + 72px + 20px + 52px + 8px)!important;transform:translateX(-50%)!important;width:calc(100% - 32px)!important;max-width:480px!important;margin:0!important;z-index:29!important;padding:12px 16px!important;border-radius:16px!important;box-shadow:0 5px 20px rgba(29,42,18,.12)!important}
-#pageCart .cart-footer{position:fixed!important;left:50%!important;right:auto!important;bottom:calc(env(safe-area-inset-bottom,0px) + 12px + 72px + 20px)!important;transform:translateX(-50%)!important;width:calc(100% - 32px)!important;max-width:480px!important;margin:0!important;padding:0!important;z-index:29!important}
+#pageCart #cartPanel .sum{position:fixed!important;left:50%!important;right:auto!important;bottom:calc(env(safe-area-inset-bottom,0px) + 196px)!important;transform:translateX(-50%)!important;width:calc(100% - 32px)!important;max-width:480px!important;margin:0!important;z-index:29!important;padding:12px 16px!important;border-radius:16px!important;box-shadow:0 5px 20px rgba(29,42,18,.12)!important}
+#pageCart .cart-footer{position:fixed!important;left:50%!important;right:auto!important;bottom:calc(env(safe-area-inset-bottom,0px) + 136px)!important;transform:translateX(-50%)!important;width:calc(100% - 32px)!important;max-width:480px!important;margin:0!important;padding:0!important;z-index:29!important}
 #pageCart .cart-footer .btn{height:52px!important;min-height:52px!important;margin:0!important;border-radius:16px!important;box-shadow:0 6px 18px rgba(29,42,18,.2)!important}
 .cart-item{gap:9px!important;padding:12px!important;border-radius:18px!important;border:1px solid var(--line)!important;box-shadow:0 3px 14px rgba(29,42,18,.07)!important}
 .cart-item-top{align-items:center!important;gap:10px!important}
