@@ -5,7 +5,6 @@ on:
       - "painel.html"
       - "cadastro-produto.html"
       - "tests/painel-product-create.visual.cjs"
-      - ".github/workflows/panel-product-create-tests.yml"
   push:
     branches:
       - main
