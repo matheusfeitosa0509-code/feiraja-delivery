@@ -11,7 +11,7 @@ function bootstrap(){
    const q={
     select(){return q;},update(v){op="update";values=v;return q;},
     eq(k,v){filters[k]=v;return q;},neq(){return q;},in(){return q;},order(){return q;},limit(){return q;},range(){return q;},
-    maybeSingle(){let rows=table==="products"?state.products.filter(p=>Object.entries(filters).every(([k,v])=>p[k]===v)):[];if(op==="update"){rows.forEach(p=>Object.assign(p,values));}return Promise.resolve({data:rows[0]||null,error:null});},
+    maybeSingle(){let rows=table==="products"?state.products.filter(p=>Object.entries(filters).every(([k,v])=>p[k]===v)):[];if(table==="admin_users")return Promise.resolve({data:{user_id:"admin-test"},error:null});if(table==="delivery_settings")return Promise.resolve({data:{lalamove_ambiente:"sandbox",delivery_ativa:false},error:null});if(op==="update"){rows.forEach(p=>Object.assign(p,values));}return Promise.resolve({data:rows[0]||null,error:null});},
     single(){return q.maybeSingle();},
     then(resolve,reject){let rows=table==="products"?state.products.slice():[];if(op==="update")rows=rows.filter(p=>Object.entries(filters).every(([k,v])=>p[k]===v)).map(p=>Object.assign(p,values));return Promise.resolve({data:rows,error:null}).then(resolve,reject);}
    };return q;
