@@ -70,7 +70,7 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
             id:card.dataset.productId,card:rect(card),media:rect(media),img:rect(img),badge:badge?{...rect(badge),text:badge.textContent.trim()}:null,title:rect(title),old:rect(old),price:rect(price),wholesale:rect(wholesale),qty:rect(qty),value:rect(value),weight:rect(weight),
             objectFit:getComputedStyle(img).objectFit,mediaBg:getComputedStyle(media).backgroundColor,imgBg:getComputedStyle(img).backgroundColor,
             order:[media,title,old,price,wholesale,qty,value,weight].every((el,i,arr)=>i===0||!!(arr[i-1].compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING)),
-            text:{name:title.textContent,old:old.textContent.trim(),wholesale:wholesale.textContent.trim(),value:value.textContent.trim(),weight:weight.textContent.trim()},
+            text:{name:title.textContent,old:old.textContent.trim().replace(/\u00a0/g,' '),wholesale:wholesale.textContent.trim().replace(/\u00a0/g,' '),value:value.textContent.trim().replace(/\u00a0/g,' '),weight:weight.textContent.trim()},
             emptyValueHidden:getComputedStyle(value).visibility==='hidden',
             emptyWeightHidden:getComputedStyle(weight).visibility==='hidden',
             noCardOverflow:card.scrollWidth<=card.clientWidth,
