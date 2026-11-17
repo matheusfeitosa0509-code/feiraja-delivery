@@ -273,7 +273,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 </section>
 <section id="productTools" class="hidden" role="tabpanel">
 <section class="card unified-products" aria-label="Produtos">
- <div class="unified-products-head"><div><h1>Produtos</h1><p class="muted">Toque em um produto para abrir a ficha completa.</p></div><button type="button" id="openNewProduct">+ Novo produto</button></div>
+ <div class="unified-products-head"><div><h1>Produtos</h1><p class="muted">Toque em um produto para abrir a ficha completa.</p></div><button type="button" id="openNewProduct" disabled>+ Novo produto</button></div>
  <div class="unified-product-filters"><input id="unifiedProductSearch" type="search" placeholder="Buscar produto" aria-label="Buscar produto por nome"><select id="unifiedCategoryFilter" aria-label="Filtrar por categoria"><option value="">Todas as categorias</option></select></div>
  <p id="unifiedProductCount" class="muted" aria-live="polite"></p>
  <div id="unifiedProductList" class="unified-product-list"><p class="muted">Carregando produtos…</p></div>
@@ -666,7 +666,7 @@ async function toggleProductValueSale(productId){
 // Ficha única de produto. Mantém custo em RPC privado e grava somente campos alterados.
 function getProductCategories(){return [...new Set(adminProducts.filter(p=>p.available===true).map(p=>String(p.category||'').trim()||'Outros'))].sort((a,b)=>a.localeCompare(b,'pt-BR'));}
 function fillProductCategorySelect(select,selected=''){const categories=getProductCategories();select.replaceChildren(...categories.map(value=>new Option(value,value)));if(selected&&!categories.includes(selected))select.add(new Option(selected,selected));select.value=selected||categories[0]||'Outros';}
-function populateProductCategorySelectors(){fillProductCategorySelect($('category'),$('category').value);fillProductCategorySelect($('sheetCategory'),$('sheetCategory').value);}
+function populateProductCategorySelectors(){fillProductCategorySelect($('category'),$('category').value);fillProductCategorySelect($('sheetCategory'),$('sheetCategory').value);const ready=getProductCategories().length>0;$('openNewProduct').disabled=!ready;$('openNewProduct').title=ready?'':'Carregue produtos disponíveis para obter as categorias da vitrine.';}
 const PRODUCT_PHOTO_BUCKET='product-photos';
 const PRODUCT_PHOTO_MAX_BYTES=300*1024;
 let unifiedCurrentProductId=null;
@@ -925,6 +925,7 @@ document.addEventListener('click',async event=>{
 });
 
 async function loadAdminProducts(){
+ $('openNewProduct').disabled=true;
  $('refreshProducts').disabled=true;
  $('refreshProducts').textContent='Carregando…';
  availabilityMessage('Carregando todos os produtos…');
