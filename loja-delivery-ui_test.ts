@@ -13,13 +13,13 @@ Deno.test("Entrega Feira On fica pública com flag ativa, mantém prévia admin 
   assertEquals(canShowDeliveryOption(true, false, true, false), false, "fora do horário não libera entrega");
   assertEquals(isDeliveryOptionDisabled(false, false, false), true);
   assertEquals(isDeliveryOptionDisabled(false, true, false), true, "admin pendente fica bloqueado");
-  assertEquals(isDeliveryOptionDisabled(true, false, false), true, "falha na checagem fecha o acesso");
+  assertEquals(isDeliveryOptionDisabled(true, false, false), false, "falha no RPC admin não bloqueia entrega pública ativa");
   assertEquals(isDeliveryOptionDisabled(false, true, true), false, "admin vê prévia TESTE");
   assertEquals(isDeliveryOptionDisabled(false, true, true, false), true, "prévia admin também respeita o horário");
   assertEquals(isDeliveryOptionDisabled(true, true, true), false);
   assertEquals(isDeliveryOptionDisabled(true, false, true), false, "cliente comum recebe acesso quando ativa");
   assertEquals(isDeliveryOptionDisabled(true, false, true, false), true, "fora do horário bloqueia");
-  assertEquals(isDeliveryOptionDisabled(true, false), true, "omitir confirmação falha fechado");
+  assertEquals(isDeliveryOptionDisabled(true, false), false, "entrega ativa não depende do RPC admin");
   assertEquals(deliveryUnavailableMessage(), "A Entrega Feira On está temporariamente indisponível. Escolha Retirar na loja.");
   assertEquals(deliveryUnavailableMessage(true, false), "Entrega disponível no horário de funcionamento.");
 });
@@ -38,13 +38,13 @@ Deno.test("acesso à entrega: anônimo não chama RPC e conta comum não ganha a
   assertEquals(isDeliveryOptionDisabled(common.deliveryActive, common.isAdmin, common.adminCheckComplete), false);
 });
 
-Deno.test("falha da RPC administrativa mantém Em breve mesmo se a flag estiver ativa", async () => {
+Deno.test("falha da RPC administrativa não bloqueia a entrega pública ativa", async () => {
   const access = await loadDeliveryAccessState({ id: "admin" }, async (name: string) => {
     if (name === "is_current_user_admin") throw new Error("network failure");
     return { data: true, error: null };
   });
   assertEquals(access, { adminCheckComplete: false, isAdmin: false, deliveryActive: true });
-  assertEquals(isDeliveryOptionDisabled(access.deliveryActive, access.isAdmin, access.adminCheckComplete), true);
+  assertEquals(isDeliveryOptionDisabled(access.deliveryActive, access.isAdmin, access.adminCheckComplete), false);
 });
 
 Deno.test("admin confirmado pode testar; Consulte o valor depende da flag ativa", async () => {
