@@ -1862,9 +1862,9 @@ function updateCheckoutSummary(){
    label.textContent='Entrega de '+vehicle;
    meta.textContent='Sai quando o pedido estiver pronto · seg a sáb, 6h às 13h';
   }else{
-   value.textContent=$('#deliveryQuoteStatus')?.classList.contains('delivery-error')?'Indisponível':'Calculando entrega…';
+   value.textContent=deliveryNeedsExplicitConfirm?'Aguardando confirmação':$('#deliveryQuoteStatus')?.classList.contains('delivery-error')?'Indisponível':'Calculando entrega…';
    label.textContent='Entrega Feira On';
-   meta.textContent='Sai quando o pedido estiver pronto · seg a sáb, 6h às 13h';
+   meta.textContent=deliveryNeedsExplicitConfirm?'Confirme o endereço no mapa para calcular.':'Sai quando o pedido estiver pronto · seg a sáb, 6h às 13h';
   }
  }else if(delivery==='pickup_uber'){
   value.textContent='Por sua conta';label.textContent='Receber com seu Uber';
@@ -1949,9 +1949,9 @@ function syncDeliverySelection(){
  $('#deliveryStore').checked=delivery==='pickup_store';const uberRadio=$('#deliveryUber');if(uberRadio)uberRadio.checked=delivery==='pickup_uber';$('#deliveryHome').checked=delivery==='delivery';
  document.querySelectorAll('[name=deliveryChoice]').forEach(r=>r.closest('.opt').classList.toggle('sel',r.checked));
  $('#deliveryAddressFields').classList.toggle('hidden',delivery!=='delivery');
- syncPickupPaymentOptions();updateCheckoutTotals();updateCheckoutScheduleNotice();
  if(delivery==='delivery'){deliveryNeedsExplicitConfirm=true;deliveryQuote=null;}
  else{deliveryNeedsExplicitConfirm=false;deliveryQuote=null;deliveryQuoteSequence++;clearTimeout(deliveryQuoteTimer);setDeliveryQuoteStatus('');}
+ syncPickupPaymentOptions();updateCheckoutTotals();updateCheckoutScheduleNotice();
 }
 function totals(){const items=Object.entries(cart).map(([id,q])=>({p:products.find(p=>p.id===id),q,saleMode:cartModes[id]==='value'?'value':'kg'})).filter(x=>x.p).map(x=>{const unitPriceCents=effectiveUnitPriceCents(x.p,x.q);const lineTotalCents=x.saleMode==='value'?(cartValueCents[x.p.id]||0):Math.round(unitPriceCents*x.q);return {...x,unitPriceCents,unitPrice:unitPriceCents/100,lineTotalCents,resaleApplied:unitPriceCents<Math.round(Number(x.p.price)*100)};});const subtotalCents=items.reduce((sum,x)=>sum+x.lineTotalCents,0);const sub=subtotalCents/100;return {items,subtotalCents,sub,total:sub};}
 function minimumOrderMessage(t){return t.sub<MIN_ORDER_AMOUNT?'Pedido mínimo: '+money(MIN_ORDER_AMOUNT)+' em produtos. Faltam '+money(MIN_ORDER_AMOUNT-t.sub)+'.':'';}
