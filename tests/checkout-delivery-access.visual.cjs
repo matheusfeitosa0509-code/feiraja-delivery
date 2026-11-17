@@ -168,6 +168,7 @@ const checkoutCss = [
       assert.equal(view.label, 'Fora do horário');
 
       // Delayed admin response: remain disabled until the positive answer.
+      await render({ isAdmin: false, adminCheckComplete: false, deliveryActive: false, withinHours: true });
       await page.evaluate(() => {
         window.__pendingAdminAccess = window.FeiraDeliveryAccess.loadDeliveryAccessState(
           { id: 'confirmed-admin' },
