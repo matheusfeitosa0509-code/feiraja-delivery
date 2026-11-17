@@ -14,7 +14,7 @@ assert.ok(panelHtml.includes('!scheduledPending'), 'painel impede cotação ante
 const scheduleSource = fs.readFileSync(path.join(root, 'supabase/functions/_shared/store-schedule.js'), 'utf8')
   .replaceAll('export async function ', 'async function ').replaceAll('export function ', 'function ').replaceAll('export const ', 'const ');
 const copyStart = storeHtml.indexOf('function syncDeliveryCustomerCopy(){');
-const copyEnd = storeHtml.indexOf('\nfunction hasConfirmedDeliveryAdmin()', copyStart);
+const copyEnd = storeHtml.indexOf('\nfunction persistCart()', copyStart);
 const copySource = copyStart >= 0 && copyEnd > copyStart ? storeHtml.slice(copyStart, copyEnd) : '';
 if (!copySource) throw new Error('syncDeliveryCustomerCopy source missing');
 const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
