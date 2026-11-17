@@ -524,7 +524,7 @@ Deno.serve(async (req: Request) => {
         price: effectivePriceCents / 100, qty, sale_mode: saleMode,
         line_total_cents: lineTotalCents,
         ...(saleMode === "value" ? { amount_cents: amountCents } : {}),
-        ...(itemPreferencesById.has(String(p.id)) ? itemPreferencesById.get(String(p.id))! : { item_note: '', substitution_preference: 'call' }),
+        ...(itemPreferencesById.has(String(p.id)) ? itemPreferencesById.get(String(p.id))! : { item_note: '', substitution_preference: 'replace' }),
       });
     }
 
