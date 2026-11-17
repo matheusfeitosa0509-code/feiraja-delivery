@@ -22,14 +22,14 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
       await page.addScriptTag({ content: scheduleSource + '\n' + uiSource + '\nwindow.ScheduleTest = { getStoreSchedule, renderDeliveryOption };' });
       const result = await page.evaluate(() => ({
         monday: window.ScheduleTest.getStoreSchedule(new Date('2026-11-16T22:00:00.000Z')),
-        saturday: getStoreSchedule(new Date('2026-11-14T18:00:00.000Z')),
-        sunday: getStoreSchedule(new Date('2026-11-15T12:00:00.000Z')),
+        saturday: window.ScheduleTest.getStoreSchedule(new Date('2026-11-14T18:00:00.000Z')),
+        sunday: window.ScheduleTest.getStoreSchedule(new Date('2026-11-15T12:00:00.000Z')),
       }));
       assert.equal(result.monday.scheduledFor, '2026-11-17T10:00:00.000Z');
       assert.equal(result.saturday.scheduledFor, '2026-11-16T10:00:00.000Z');
       assert.equal(result.sunday.scheduledFor, '2026-11-16T10:00:00.000Z');
       await page.evaluate(() => {
-        const schedule = getStoreSchedule(new Date('2026-11-16T22:00:00.000Z'));
+        const schedule = window.ScheduleTest.getStoreSchedule(new Date('2026-11-16T22:00:00.000Z'));
         window.ScheduleTest.renderDeliveryOption({
           option: document.querySelector('#deliveryHomeOption'),
           radio: document.querySelector('#deliveryHome'),
