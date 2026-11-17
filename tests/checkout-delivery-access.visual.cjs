@@ -33,13 +33,13 @@ const checkoutCss = [
         '<span class="checkout-choice-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H3V10Z"></path></svg></span>' +
         '<span class="checkout-choice-copy"><b>Entrega Feira On</b><span class="s" id="deliveryHomeDescription">Receba em casa sem precisar pedir Uber.</span></span>' +
         '<span class="checkout-choice-end" id="deliveryStartingPrice">Em breve</span><span class="r" aria-hidden="true"></span>' +
-        '</label><section class="checkout-card"><div class="checkout-choice-list" id="checkoutPaymentChoices">' +
+        '</label><label class="opt checkout-choice-card" id="deliveryUberOption"><input id="deliveryUber" type="radio" name="deliveryChoice"><span class="checkout-choice-copy"><b>Receber com seu Uber</b></span></label><section class="checkout-card"><div class="checkout-choice-list" id="checkoutPaymentChoices">' +
         '<label class="opt checkout-choice-card" for="payPix"><input class="choice-radio" id="payPix" type="radio" name="paymentChoice"><span class="checkout-choice-copy"><b>Pix</b></span><span class="r"></span></label>' +
         '<label class="opt checkout-choice-card" for="payCash"><input class="choice-radio" id="payCash" type="radio" name="paymentChoice"><span class="checkout-choice-copy"><b>Dinheiro na retirada</b></span><span class="r"></span></label>' +
         '</div><select id="payment"><option value="pix">Pix</option><option value="cash">Dinheiro</option></select></section></form></main></body></html>');
       await page.addStyleTag({ content: checkoutCss });
       await page.addScriptTag({ content: helperSource +
-        '\nwindow.FeiraDeliveryAccess = { loadDeliveryAccessState, renderDeliveryOption, syncAdminTestPaymentOption, canShowUberPickupOption };' });
+        '\nwindow.FeiraDeliveryAccess = { loadDeliveryAccessState, renderDeliveryOption, syncAdminTestPaymentOption, canShowUberPickupOption, deliveryQuoteErrorMessage };' });
 
       const syncTestPayment = state => page.evaluate(value => window.FeiraDeliveryAccess.syncAdminTestPaymentOption({
         container: document.querySelector('#checkoutPaymentChoices'),
@@ -151,8 +151,12 @@ const checkoutCss = [
       assert.equal(view.label, 'Calcular taxa');
       assert.equal(view.badgeCount, 0);
       assert.equal(view.description.includes('Taxa por distância'), true);
-      assert.equal(await page.evaluate(() => window.FeiraDeliveryAccess.canShowUberPickupOption(true)), false);
-      assert.equal(await page.evaluate(() => window.FeiraDeliveryAccess.canShowUberPickupOption(false)), true);
+      await page.evaluate(() => { document.querySelector('#deliveryUberOption').hidden = !window.FeiraDeliveryAccess.canShowUberPickupOption(true); });
+      assert.equal(await page.locator('#deliveryUberOption').isHidden(), true);
+      await page.evaluate(() => { document.querySelector('#deliveryUberOption').hidden = !window.FeiraDeliveryAccess.canShowUberPickupOption(false); });
+      assert.equal(await page.locator('#deliveryUberOption').isHidden(), false);
+      assert.equal(await page.evaluate(() => window.FeiraDeliveryAccess.deliveryQuoteErrorMessage(502, 'LALAMOVE_QUOTE_FAILED')),
+        'A localização foi encontrada, mas a Lalamove não concluiu a cotação. Tente novamente.');
 
       // Fora do horário, a entrega fica desabilitada com a mensagem obrigatória.
       await render({ ...common, withinHours: false });
