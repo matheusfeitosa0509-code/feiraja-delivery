@@ -30,7 +30,7 @@ export function validateCheckoutDelivery(input: {
     }
   }
   if (input.deliveryType === "pickup_uber" && input.deliveryActive) {
-    return { ok: false, status: 400, error: "Receber com seu Uber não está disponível para novos pedidos." };
+    return { ok: false, status: 400, error: "Essa modalidade de retirada não está disponível enquanto a Entrega Feira On estiver ativa." };
   }
   if (input.deliveryType === "pickup_uber" && !["pix", "pix_test"].includes(input.paymentMethod)) {
     return { ok: false, status: 400, error: "Na modalidade Receber com seu Uber, o pagamento é somente por Pix." };
