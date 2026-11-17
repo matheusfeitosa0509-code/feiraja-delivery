@@ -1139,8 +1139,11 @@ function render(){
    const button=ordersRoot.querySelector('[data-order-toggle="'+CSS.escape(content.dataset.orderContent)+'"]');
    if(button){button.setAttribute('aria-expanded',String(expanded));button.textContent=expanded?'Recolher':'Expandir';}
   });
-  ordersRoot.scrollTop=savedOrdersScrollTop;
-  if((window.scrollY||window.pageYOffset||0)!==savedWindowScrollY)window.scrollTo(0,savedWindowScrollY);
+  const restoreOrdersView=()=>{
+   ordersRoot.scrollTop=savedOrdersScrollTop;
+   if(Math.abs((window.scrollY||window.pageYOffset||0)-savedWindowScrollY)>1)window.scrollTo(0,savedWindowScrollY);
+  };
+  if(typeof requestAnimationFrame==='function')requestAnimationFrame(restoreOrdersView);else restoreOrdersView();
  }
 }
 async function lalamoveErrorMessage(error,fallback){
