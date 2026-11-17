@@ -207,7 +207,7 @@ const checkoutCss = [
       assert.equal(view.badgeCount, 0);
       assert.equal(view.description.includes('Taxa por distância'), true);
 
-      // RPC returning an error and RPC throwing a network error both fail closed.
+      // Erro no RPC admin remove somente o modo TESTE; a entrega ativa continua pública.
       const rpcError = await page.evaluate(() => window.FeiraDeliveryAccess.loadDeliveryAccessState(
         { id: 'admin-rpc-error' },
         async name => name === 'is_current_user_admin'
@@ -216,10 +216,10 @@ const checkoutCss = [
       ));
       await render(rpcError);
       view = await snapshot();
-      assert.equal(view.disabled, true);
-      assert.equal(view.label, 'Em breve');
+      assert.equal(view.disabled, false);
+      assert.equal(view.label, 'Calcular taxa');
       assert.equal(view.badgeCount, 0);
-      assert.equal(view.description.includes('Consulte o valor'), false);
+      assert.equal(view.description.includes('Taxa por distância'), true);
 
       const networkError = await page.evaluate(() => window.FeiraDeliveryAccess.loadDeliveryAccessState(
         { id: 'admin-network-error' },
