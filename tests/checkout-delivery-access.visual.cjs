@@ -360,10 +360,10 @@ const checkoutCss = [
       assert.equal(view.badgeCount, 0);
       assert.equal(view.description.includes('Taxa por distância'), true);
 
-      // A prévia TESTE desligada permanece em uma linha no celular; opção ativa não tem selo.
+      // O texto da entrega não é truncado; o selo TESTE continua em uma linha no celular.
       await render(adminInactive);
       view = await snapshot();
-      assert.equal(view.clamp, '2');
+      assert.equal(view.clamp, 'none');
       assert.equal(view.badgeWhiteSpace, 'nowrap');
       assert.equal(view.noHorizontalOverflow, true);
       assert.ok(view.badgeRight <= view.cardRight + 1);
