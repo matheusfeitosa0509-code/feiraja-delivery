@@ -491,9 +491,9 @@ let allOrders=[],seenOrderIds=new Set(),firstLoadDone=false,hasMoreOrders=true,n
   });
   return 'Lista de compras — Pedido '+shortOrderNumber(order.id)+'\n'+lines.join('\n');
  }
- function buildPendingShoppingListText(){
+ function buildPendingShoppingListText(orders=allOrders){
   const eligibleStatuses=new Set(['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega']);
-  const eligible=allOrders.filter(order=>order.is_test_order!==true&&eligibleStatuses.has(normalizeOrderStatus(order.status)));
+  const eligible=orders.filter(order=>order.is_test_order!==true&&eligibleStatuses.has(normalizeOrderStatus(order.status)));
   const grouped=new Map();
   eligible.forEach(order=>{
    const items=Array.isArray(order.items)?order.items:[];
@@ -543,9 +543,20 @@ let allOrders=[],seenOrderIds=new Set(),firstLoadDone=false,hasMoreOrders=true,n
   await sharePanelText('Lista do pedido '+shortOrderNumber(order.id),buildOrderShoppingText(order));
  }
  async function shareAllPendingShoppingList(){
-  const text=buildPendingShoppingListText();
-  if(!text){notice('Não há pedidos pagos ainda não entregues para montar a lista.');return;}
-  await sharePanelText('Lista de compras — Feira On Delivery',text);
+  try{
+   const batchSize=200;let offset=0,orders=[];
+   while(true){
+    const {data,error}=await fetchOrdersPage(offset,batchSize,true);
+    if(error)throw error;
+    const batch=Array.isArray(data)?data:[];
+    orders.push(...batch);
+    if(batch.length<batchSize)break;
+    offset+=batchSize;
+   }
+   const text=buildPendingShoppingListText(orders);
+   if(!text){notice('Não há pedidos pagos ainda não entregues para montar a lista.');return;}
+   await sharePanelText('Lista de compras — Feira On Delivery',text);
+  }catch(error){notice('Não foi possível carregar todos os pedidos para montar a lista. Tente novamente.',true);}
  }
  function updateSeparationItemUI(orderId,key){
   const id=String(orderId),order=allOrders.find(o=>String(o.id)===id),content=document.querySelector('[data-order-content="'+CSS.escape(id)+'"]');
