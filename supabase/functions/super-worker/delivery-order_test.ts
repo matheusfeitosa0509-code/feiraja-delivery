@@ -69,7 +69,7 @@ Deno.test("novos pedidos com Uber são recusados quando Entrega Feira On está a
   assertEquals(validateCheckoutDelivery({
     deliveryType: "pickup_uber", paymentMethod: "pix", isAdmin: false, deliveryActive: true,
   }), {
-    ok: false, status: 400, error: "Receber com seu Uber não está disponível para novos pedidos.",
+    ok: false, status: 400, error: "Essa modalidade de retirada não está disponível enquanto a Entrega Feira On estiver ativa.",
   });
   assertEquals(validateCheckoutDelivery({
     deliveryType: "pickup_uber", paymentMethod: "pix", isAdmin: false, deliveryActive: false,
