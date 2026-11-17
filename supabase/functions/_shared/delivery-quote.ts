@@ -58,8 +58,12 @@ export function buildQuotationBody(
   serviceType: "LALAGO" | "CAR",
   dropoff: string,
   coordinates: { origin: DeliveryCoordinates; dropoff: DeliveryCoordinates },
+  scheduleAt?: string,
 ) {
-  return { data: { serviceType, language: "pt_BR", stops: [
+  if (scheduleAt && (!scheduleAt.endsWith("Z") || !Number.isFinite(Date.parse(scheduleAt)))) {
+    throw new Error("INVALID_SCHEDULE_TIME");
+  }
+  return { data: { ...(scheduleAt ? { scheduleAt } : {}), serviceType, language: "pt_BR", stops: [
     { coordinates: coordinates.origin, address: "Av. Lourenço da Silva Braga, 700 - Centro, Manaus - AM, Brasil" },
     { coordinates: coordinates.dropoff, address: dropoff },
   ] } };
@@ -84,6 +88,7 @@ export async function requestSandboxQuotation(
   coordinates: { origin: DeliveryCoordinates; dropoff: DeliveryCoordinates },
   fetcher: typeof fetch = fetch,
   environment: LalamoveEnvironment = "sandbox",
+  scheduleAt?: string,
 ): Promise<Response> {
   const keyPrefix = environment === "producao" ? "pk_prod" : "pk_test";
   const secretPrefix = environment === "producao" ? "sk_prod" : "sk_test";
@@ -92,7 +97,7 @@ export async function requestSandboxQuotation(
   }
   const path = "/v3/quotations";
   const url = lalamoveBaseUrl(environment) + path;
-  const body = JSON.stringify(buildQuotationBody(serviceType, dropoff, coordinates));
+  const body = JSON.stringify(buildQuotationBody(serviceType, dropoff, coordinates, scheduleAt));
   const timestamp = String(Date.now());
   const raw = timestamp + "\r\nPOST\r\n" + path + "\r\n\r\n" + body;
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(apiSecret),

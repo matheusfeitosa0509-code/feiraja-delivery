@@ -3,6 +3,7 @@ import {
   buildQuotationBody, chooseVehicle, estimateLoad, formatDropoff, isQuoteAllowed,
   parseQuotation, requestSandboxQuotation, retryLalamove429,
 } from "../_shared/delivery-quote.ts";
+import { getStoreSchedule } from "../_shared/store-schedule.js";
 
 const products = [
   { id: "unit", delivery_unit_weight_kg: 0.5, delivery_bulky: false, sale_unit: "unidade" },
@@ -24,6 +25,30 @@ const mockQuote = (total = "8.32", status = 200) => async (input: RequestInfo | 
       priceBreakdown: { total, currency: "BRL" } },
   } : { message: "ERR_OUT_OF_SERVICE_AREA" }), { status });
 };
+
+Deno.test("fora do horário, scheduleAt aponta para a próxima abertura em UTC", () => {
+  const schedule = getStoreSchedule(new Date("2026-11-17T23:40:00.000Z"));
+  assertEquals(schedule.within, false);
+  assertEquals(schedule.scheduledFor, "2026-11-18T10:00:00.000Z");
+});
+
+Deno.test("buildQuotationBody envia scheduleAt apenas para cotação agendada", () => {
+  const scheduled = buildQuotationBody("LALAGO", dropoff, coordinates, "2026-11-18T10:00:00.000Z");
+  assertEquals(scheduled.data.scheduleAt, "2026-11-18T10:00:00.000Z");
+  const immediate = buildQuotationBody("LALAGO", dropoff, coordinates);
+  assertEquals("scheduleAt" in immediate.data, false);
+});
+
+Deno.test("Lalamove MOCKADA recebe scheduleAt UTC na cotação agendada", async () => {
+  let sentScheduleAt = "";
+  const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
+    sentScheduleAt = String(JSON.parse(String(init?.body)).data.scheduleAt || "");
+    return new Response(JSON.stringify({ data: { expiresAt: new Date(Date.now() + 60_000).toISOString(), priceBreakdown: { total: "8.32", currency: "BRL" } } }), { status: 201 });
+  };
+  const response = await requestSandboxQuotation("pk_test_demo", "sk_test_demo", "LALAGO", dropoff, coordinates, fetcher, "sandbox", "2026-11-18T10:00:00.000Z");
+  assertEquals(response.status, 201);
+  assertEquals(sentScheduleAt, "2026-11-18T10:00:00.000Z");
+});
 
 Deno.test("Lalamove MOCKADA: peso leve usa serviço LALAGO (MOTO)", async () => {
   const load = estimateLoad([{ product_id: "unit", quantity: 2 }], products);

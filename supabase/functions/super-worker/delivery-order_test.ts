@@ -36,6 +36,21 @@ const mockLalamove = (total = "8.32", environment: "sandbox" | "producao" = "san
   }), { status: 200 });
 };
 
+Deno.test("checkout envia scheduleAt ao recalcular entrega fora do horário", async () => {
+  let sentScheduleAt = "";
+  const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
+    sentScheduleAt = String(JSON.parse(String(init?.body)).data.scheduleAt || "");
+    return new Response(JSON.stringify({ data: { expiresAt: new Date(Date.now() + 60_000).toISOString(), priceBreakdown: { total: "8.32", currency: "BRL" } } }), { status: 201 });
+  };
+  const quote = await calculateServerDelivery({
+    items: [{ product_id: "banana", quantity: 2 }], products, address, motoLimitKg: 8,
+    apiKey: "pk_test_demo", apiSecret: "sk_test_demo", geocodingApiKey: "google-test",
+    scheduleAt: "2026-11-18T10:00:00.000Z", geocodeFetcher: mockGeocoder, fetcher,
+  });
+  assertEquals(sentScheduleAt, "2026-11-18T10:00:00.000Z");
+  assertEquals(quote.scheduleAt, "2026-11-18T10:00:00.000Z");
+});
+
 Deno.test("entrega admin com Pix de teste: autoriza, calcula cotação Sandbox e taxa no servidor", async () => {
   assertEquals(validateCheckoutDelivery({
     deliveryType: "delivery", paymentMethod: "pix_test", isAdmin: true, deliveryActive: false,

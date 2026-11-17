@@ -47,6 +47,7 @@ export async function calculateServerDelivery(input: {
   apiSecret: string;
   geocodingApiKey: string;
   environment?: "sandbox" | "producao";
+  scheduleAt?: string;
   geocodeFetcher?: typeof fetch;
   fetcher?: typeof fetch;
 }) {
@@ -60,12 +61,15 @@ export async function calculateServerDelivery(input: {
   ]);
   const response = await requestSandboxQuotation(
     input.apiKey, input.apiSecret, serviceType, dropoff,
-    { origin: originCoordinates, dropoff: dropoffCoordinates }, input.fetcher || fetch, input.environment || "sandbox",
+    { origin: originCoordinates, dropoff: dropoffCoordinates }, input.fetcher || fetch, input.environment || "sandbox", input.scheduleAt,
   );
   const payload = await response.json().catch(() => ({}));
   const upstreamCode = String(payload?.message || "");
   if (upstreamCode === "ERR_OUT_OF_SERVICE_AREA") throw new Error("OUT_OF_SERVICE_AREA");
   if (upstreamCode === "ERR_REVERSE_GEOCODE_FAILURE") throw new Error("LALAMOVE_REVERSE_GEOCODE_FAILURE");
+  if (upstreamCode === "ERR_INVALID_SCHEDULE_TIME") throw new Error("LALAMOVE_INVALID_SCHEDULE_TIME");
+  if (upstreamCode === "ERR_INVALID_SERVICE_TYPE") throw new Error("LALAMOVE_INVALID_SERVICE_TYPE");
+  if (upstreamCode === "ERR_INVALID_MARKET") throw new Error("LALAMOVE_INVALID_MARKET");
   if (!response.ok) throw new Error(response.status === 429 ? "LALAMOVE_RATE_LIMIT" : "LALAMOVE_QUOTE_FAILED");
   const quote = parseQuotation(payload?.data, vehicle, load.weightKg);
   return {
@@ -73,6 +77,7 @@ export async function calculateServerDelivery(input: {
     weightKg: quote.weightKg,
     fee: quote.fee,
     validUntil: quote.validUntil,
+    scheduleAt: input.scheduleAt || null,
     address: input.address,
     formattedAddress: dropoff,
   };

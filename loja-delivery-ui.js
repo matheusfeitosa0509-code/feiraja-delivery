@@ -179,7 +179,7 @@ export function deliveryQuoteLabel(vehicle, fee) {
 }
 
 export function isDeliveryOutOfArea(status, message = "") {
-  return Number(status) === 422 || /fora da área|out.of.service.area|ERR_OUT_OF_SERVICE_AREA|LALAMOVE_OUT_OF_SERVICE_AREA|ADDRESS_OUTSIDE_MANAUS/i.test(String(message));
+  return /fora da área|out.of.service.area|ERR_OUT_OF_SERVICE_AREA|LALAMOVE_OUT_OF_SERVICE_AREA|ADDRESS_OUTSIDE_MANAUS/i.test(String(message));
 }
 
 export function deliveryQuoteErrorMessage(status, code = "") {
@@ -188,10 +188,13 @@ export function deliveryQuoteErrorMessage(status, code = "") {
     ADDRESS_OUTSIDE_MANAUS: "Endereço fora da área de entrega.",
     LALAMOVE_OUT_OF_SERVICE_AREA: "Endereço fora da área de entrega.",
     LALAMOVE_RATE_LIMIT: "Muitas consultas agora, tente em alguns segundos.",
+    LALAMOVE_INVALID_SCHEDULE_TIME: "A Lalamove recusou o horário agendado. Tente novamente em instantes.",
+    LALAMOVE_INVALID_SERVICE_TYPE: "A Lalamove não oferece o tipo de veículo selecionado para esta rota.",
+    LALAMOVE_INVALID_MARKET: "A Lalamove não reconheceu a região desta rota. Confira o endereço.",
     QUOTE_RATE_LIMIT: "Muitas consultas agora, tente em alguns segundos.",
     STORE_CLOSED: "Entrega disponível no horário de funcionamento.",
   };
   return known[String(code)] || (Number(status) === 422
-    ? "Endereço fora da área de entrega."
+    ? "A Lalamove recusou esta cotação. Confira o endereço ou tente novamente."
     : "Entrega indisponível no momento.");
 }
