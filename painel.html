@@ -1116,6 +1116,8 @@ function render(){
  document.querySelectorAll('[data-save]').forEach(b=>b.addEventListener('click',()=>saveStatus(b.dataset.save,b)));
  document.querySelectorAll('[data-refund-done]').forEach(b=>b.addEventListener('click',()=>markRefundDone(b.dataset.refundDone,b)));
  document.querySelectorAll('[data-separate-order]').forEach(b=>b.addEventListener('click',()=>toggleSeparatedItem(b.dataset.separateOrder,b.dataset.separateKey)));
+ document.querySelectorAll('[data-share-order-list]').forEach(b=>b.addEventListener('click',()=>shareOrderShoppingList(b.dataset.shareOrderList)));
+ const shoppingListButton=$('shoppingListButton');if(shoppingListButton)shoppingListButton.onclick=()=>shareAllPendingShoppingList();
 
  document.querySelectorAll('[data-lalamove-cancel]').forEach(b=>b.addEventListener('click',()=>cancelLalamoveDelivery(b.dataset.lalamoveCancel,b)));
  document.querySelectorAll('[data-lalamove-refresh]').forEach(b=>b.addEventListener('click',()=>refreshLalamoveStatus(b.dataset.lalamoveRefresh,b)));
