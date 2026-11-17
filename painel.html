@@ -979,6 +979,8 @@ function renderLalamoveDelivery(order,currentStatus){
   +(canQuote?'<div class="lalamove-quote-box" data-lalamove-quote-box="'+esc(order.id)+'" hidden></div>':'')+'</section>';
 }
 function render(){
+ const ordersRoot=$('orders'),expandedOrderIds=new Set(ordersRoot?[...ordersRoot.querySelectorAll('[data-order-content]')].filter(el=>!el.hidden).map(el=>el.dataset.orderContent):[]);
+ const savedWindowScrollY=window.scrollY||window.pageYOffset||0,savedOrdersScrollTop=ordersRoot?.scrollTop||0;
  const settingsBadge=$('lalamoveSettingsBadge');if(settingsBadge){settingsBadge.className='lalamove-env-badge '+lalamoveEnvironment;settingsBadge.textContent=lalamoveEnvironment==='producao'?'PRODUÇÃO':'SANDBOX';}
  const q=$('search').value.trim().toLowerCase(),f=$('filter').value;
  const filtered=allOrders.filter(o=>(!f||normalizeOrderStatus(o.status)===f)&&(!q||[o.id,o.customer_name,o.customer_phone].some(v=>String(v||'').toLowerCase().includes(q))));
@@ -1045,6 +1047,15 @@ function render(){
  document.querySelectorAll('[data-lalamove-cancel]').forEach(b=>b.addEventListener('click',()=>cancelLalamoveDelivery(b.dataset.lalamoveCancel,b)));
  document.querySelectorAll('[data-lalamove-refresh]').forEach(b=>b.addEventListener('click',()=>refreshLalamoveStatus(b.dataset.lalamoveRefresh,b)));
  if(window.FeiraLalamoveMap)window.FeiraLalamoveMap.mountAll('[data-lalamove-map]',async orderId=>{const {data,error}=await db.functions.invoke('lalamove-tracking',{body:{order_id:orderId}});if(error)throw error;return data;},{admin:true});
+ if(ordersRoot){
+  ordersRoot.querySelectorAll('[data-order-content]').forEach(content=>{
+   const expanded=expandedOrderIds.has(content.dataset.orderContent);content.hidden=!expanded;
+   const button=ordersRoot.querySelector('[data-order-toggle="'+CSS.escape(content.dataset.orderContent)+'"]');
+   if(button){button.setAttribute('aria-expanded',String(expanded));button.textContent=expanded?'Recolher':'Expandir';}
+  });
+  ordersRoot.scrollTop=savedOrdersScrollTop;
+  if((window.scrollY||window.pageYOffset||0)!==savedWindowScrollY)window.scrollTo(0,savedWindowScrollY);
+ }
 }
 async function lalamoveErrorMessage(error,fallback){
  const response=error?.context;
