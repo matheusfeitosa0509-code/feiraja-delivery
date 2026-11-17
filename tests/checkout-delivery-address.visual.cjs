@@ -69,7 +69,8 @@ for (const required of [
       });
       await page.waitForFunction(() => document.querySelector('#deliveryQuoteStatus').textContent.includes('Localização aproximada encontrada'));
       assert.deepEqual(await page.evaluate(() => window.lastGpsPoint), [-3.10, -60.02]);
-      assert.equal(await page.locator('#deliveryMapPanel').isVisible(), true);\n      assert.equal(await page.locator('#deliveryConfirmAddress').isVisible(), true);
+      assert.equal(await page.locator('#deliveryMapPanel').isVisible(), true);
+      assert.equal(await page.locator('#deliveryConfirmAddress').isVisible(), true);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       assert.deepEqual(errors, [], 'zero erros de console/page em ' + width + 'px');
       await page.close();
