@@ -44,7 +44,7 @@ export function renderDeliveryOption({ option, radio, starting, description, isA
     if (withinHours === true) {
       starting.textContent = "Calcular taxa";
     } else {
-      const weekday = String(scheduleLabel).split(",")[0].trim().toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");
+      const weekday = String(scheduleLabel).split(",")[0].trim().toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       const shortWeekday = ({ segunda: "Seg.", terca: "Ter.", quarta: "Qua.", quinta: "Qui.", sexta: "Sex.", sabado: "Sáb.", domingo: "Dom." })[weekday] || "Próx.";
       const badge = document.createElement("span");
       badge.className = "checkout-delivery-badge";
