@@ -40,7 +40,6 @@ let deliveryPlacesSessionToken='session-123',deliveryAutocompleteTimer=null,deli
 const deliveryQuoteCache=new Map();
 const normalizeDeliveryAddress = value => ({street:String(value.street||'').trim(),number:String(value.number||'').trim(),neighborhood:String(value.neighborhood||'').trim(),complement:'',reference:''});
 const getDeliveryAddress = () => normalizeDeliveryAddress({street:$('#deliveryStreet').value,number:$('#deliveryNumber').value,neighborhood:$('#deliveryNeighborhood').value});
-const setDeliveryQuoteStatus = (message,isError=false) => {const box=$('#deliveryQuoteStatus');box.textContent=message||'';box.hidden=!message;box.dataset.error=String(!!isError);};
 let quoteCalls=0,quoteMode='success';
 const currentUser=null;
 const totals=()=>({sub:39.96,items:[{p:{id:'banana'},q:1}]});
