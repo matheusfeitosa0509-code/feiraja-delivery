@@ -1,3 +1,4 @@
+// MapLibre Positron tracking rollout (PR #303); this file is included in the GitHub Pages artifact.
 (()=> {
  'use strict';
  const instances=new Map();
