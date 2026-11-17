@@ -17,6 +17,7 @@ test('carrinho persiste e apresenta observação e preferência por item', () =>
   assert.match(loja, /Não substituir/);
   assert.doesNotMatch(loja.slice(loja.indexOf('function itemPreferenceMarkup'), loja.indexOf('function setItemPreference')), /Me chamar no WhatsApp|<select/);
   assert.match(loja, /cartPreferencesMigrated/);
+  assert.match(loja, /cartPreferences\[x\.p\.id\]\?\.substitution\|\|'replace'/);
   assert.match(loja, /itemPreferenceMarkup\(x\.p\)/);
 });
 
