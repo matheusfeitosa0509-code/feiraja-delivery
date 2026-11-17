@@ -117,7 +117,7 @@ function prepareHtml(source) {
       if(!Array.isArray(savedSeparation)||savedSeparation.length!==3)throw new Error("A marcação dos três itens não foi persistida no banco mockado.");
       // A mesma atualização usada pelo polling automático mantém o card aberto e o scroll.
       const fetchCountBefore=await page.evaluate(()=>window.__testDb.__state.orderFetchCount);
-      await page.evaluate(()=>{window.__testDb.__state.middleOrder.status='Pronto para Retirada';return load(true);});
+      await page.evaluate(()=>{const state=window.__testDb.__state;state.middleOrder={...state.middleOrder,status:'Pronto para Retirada'};state.orders=state.orders.map(order=>String(order.id)===state.middleOrder.id?state.middleOrder:order);return load(true);});
       await page.waitForFunction(previous=>window.__testDb.__state.orderFetchCount>previous,fetchCountBefore);
       await page.waitForFunction(()=>document.querySelector('[data-order-content="ORDER-MIDDLE-002"]')?.hidden===false);
       await page.waitForFunction(expected=>Math.abs(window.scrollY-expected)<=1,scrollBefore);
