@@ -1,4 +1,4 @@
-/* Build 2026-11-17-entrega-feira-on-launch: força atualização dos apps instalados; sem cache nem interceptação. */
+/* Build 2026-11-17-separacao-compartilhamento-lista: força atualização dos apps instalados; sem cache nem interceptação. */
 self.addEventListener('install', function (event) {
   event.waitUntil(self.skipWaiting());
 });
