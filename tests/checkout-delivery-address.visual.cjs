@@ -5,10 +5,10 @@ const { chromium } = require('playwright');
 
 const root = path.resolve(__dirname, '..');
 const storeHtml = fs.readFileSync(path.join(root, 'loja.html'), 'utf8');
-const helperSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8').replace(/^export\\s+/gm, '');
+const helperSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8').replace(/^export\s+/gm, '');
 const addressFnStart = storeHtml.indexOf('function hideDeliverySuggestions(){');
 const syncPresentationStart = storeHtml.indexOf('function syncDeliveryAddressPresentation(');
-const syncPresentationEnd = storeHtml.indexOf('\\nlet deliveryPlacesSessionToken', syncPresentationStart);
+const syncPresentationEnd = storeHtml.indexOf('\nlet deliveryPlacesSessionToken', syncPresentationStart);
 const mapFnStart = storeHtml.indexOf('function loadMapLibre(){');
 const mapFnEnd = storeHtml.indexOf('function setDeliveryQuoteStatus', mapFnStart);
 const quoteFnStart = storeHtml.indexOf('function scheduleDeliveryQuote(){');
