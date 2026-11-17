@@ -103,7 +103,7 @@ document.body.innerHTML=mapOverlayMarkup;
     window.runGps=useDeliveryGps;
     window.quoteCount=()=>quoteCalls;
     window.setQuoteMode=value=>{quoteMode=value;};
-    window.runQuote=()=>requestDeliveryQuote();
+    window.runQuote=()=>{deliveryQuoteCache.clear();return requestDeliveryQuote();};
    `});
    await page.evaluate(()=>window.startAutocomplete());
    assert.equal(await page.locator('#deliveryStreetSuggestions button').count(),1,'establishment suggestion is shown');
