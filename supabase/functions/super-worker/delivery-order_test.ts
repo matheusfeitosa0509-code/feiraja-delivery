@@ -91,6 +91,15 @@ Deno.test("taxa enviada pelo navegador não participa do total: usa apenas taxa 
   assertEquals(totals.total, 109);
 });
 
+Deno.test("entrega nunca aceita taxa ausente ou zero", () => {
+  let zeroRejected = false;
+  let missingRejected = false;
+  try { orderTotals(10_000, 0, "delivery"); } catch { zeroRejected = true; }
+  try { orderTotals(10_000, Number.NaN, "delivery"); } catch { missingRejected = true; }
+  assertEquals(zeroRejected, true);
+  assertEquals(missingRejected, true);
+});
+
 Deno.test("retirada mantém taxa zero e total igual ao subtotal", () => {
   assertEquals(orderTotals(10_000, 999, "pickup_store"), {
     deliveryFee: 0, totalCents: 10_000, total: 100,
