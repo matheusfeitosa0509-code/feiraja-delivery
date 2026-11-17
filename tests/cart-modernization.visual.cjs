@@ -90,7 +90,7 @@ const normalizeText = value => String(value || '').replace(/\u00a0/g, ' ');
 
       await card.locator('[data-q][data-d="1"]').click();
       assert.equal((await page.locator('#cartItems .cart-qty-value').textContent()).trim(), '6 un');
-      assert.equal((await page.locator('#checkout').textContent()).trim(), 'Continuar · R$ 59,94');
+      assert.equal(normalizeText((await page.locator('#checkout').textContent()).trim()), 'Continuar · R$ 59,94');
       await page.locator('#cartItems .cart-item [data-q][data-d="-1"]').click();
       assert.equal((await page.locator('#cartItems .cart-qty-value').textContent()).trim(), '5 un');
 
