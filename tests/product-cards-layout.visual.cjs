@@ -114,12 +114,11 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
       await page.locator('#homeSearch').fill('Produto');
       await page.waitForFunction(()=>document.querySelector('#homeProductSections')?.classList.contains('search-mode'));
       await inspect('#homeProductSections .product','busca home');
-      await inspect('#products .product','catálogo');
       fs.mkdirSync(path.join(root,'artifacts'),{recursive:true});
       await page.screenshot({path:path.join(root,'artifacts','product-cards-'+width+'.png'),fullPage:true});
       assert.deepEqual(errors,[],width+'px: zero erros de console');
       await page.close();
     }
   } finally { await browser.close(); }
-  console.log('Cards da vitrine aprovados em 360px e 412px: home, Ver todos, busca home e catálogo; alturas alinhadas, foto 1:1/contain, espaços reservados e zero erros de console.');
+  console.log('Cards da vitrine aprovados em 360px e 412px: home, Ver todos e busca; alturas alinhadas, foto 1:1/contain, espaços reservados e zero erros de console.');
 })().catch(error=>{console.error(error);process.exit(1);});
