@@ -1790,6 +1790,7 @@ function syncDeliveryAddressPresentation(showSummary=false){
  $('#deliveryNumberField').hidden=show&&!!number;
  $('#deliveryAddressSummaryStreet').textContent=street+(number?', '+number:'');
  $('#deliveryAddressSummaryNeighborhood').textContent=neighborhood;
+ $('#deliveryNeighborhoodField').classList.toggle('hidden',!!neighborhood);
 }
 let deliveryPlacesSessionToken=null,deliveryAutocompleteTimer=null,deliveryMap=null,deliveryMapCoordinates=null,deliveryMapReverseTimer=null,deliveryNeedsExplicitConfirm=false;const deliveryQuoteCache=new Map();
 function hideDeliverySuggestions(){const box=$('#deliveryStreetSuggestions');if(box){box.hidden=true;box.replaceChildren();}}
