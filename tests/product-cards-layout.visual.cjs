@@ -65,8 +65,9 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
           const rect = el => {const r=el.getBoundingClientRect();return {x:r.x,y:r.y,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
           const media=card.querySelector('.product-media'),img=media.querySelector('img'),body=card.querySelector('.pbody');
           const title=body.querySelector('h3'),old=body.querySelector('.price-before-slot'),price=body.querySelector('.price'),wholesale=body.querySelector('.resale-from-slot'),qty=body.querySelector('.product-qty'),value=body.querySelector('.value-sale-row'),weight=body.querySelector('.weight-note');
+          const badge=card.querySelector('.pct-badge');
           return {
-            id:card.dataset.productId,card:rect(card),media:rect(media),img:rect(img),title:rect(title),old:rect(old),price:rect(price),wholesale:rect(wholesale),qty:rect(qty),value:rect(value),weight:rect(weight),
+            id:card.dataset.productId,card:rect(card),media:rect(media),img:rect(img),badge:badge?{...rect(badge),text:badge.textContent.trim()}:null,title:rect(title),old:rect(old),price:rect(price),wholesale:rect(wholesale),qty:rect(qty),value:rect(value),weight:rect(weight),
             objectFit:getComputedStyle(img).objectFit,mediaBg:getComputedStyle(media).backgroundColor,imgBg:getComputedStyle(img).backgroundColor,
             order:[media,title,old,price,wholesale,qty,value,weight].every((el,i,arr)=>i===0||!!(arr[i-1].compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING)),
             text:{name:title.textContent,old:old.textContent.trim(),wholesale:wholesale.textContent.trim(),value:value.textContent.trim(),weight:weight.textContent.trim()},
@@ -83,6 +84,7 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
           assert.ok(Math.abs(d.img.height-d.media.height)<1.5,width+'px '+label+' '+d.id+': imagem ocupa altura da área');
           assert.equal(d.mediaBg,'rgb(255, 255, 255)');
           assert.equal(d.imgBg,'rgb(255, 255, 255)');
+          if(d.id==='p-02'){assert.equal(d.badge.text,'-33%',width+'px '+label+': selo de desconto');assert.ok(d.badge.top>=d.media.top&&d.badge.bottom<=d.media.bottom&&d.badge.right<=d.media.right,width+'px '+label+': selo sobre a foto');}else if(d.id==='p-01')assert.equal(d.badge,null,width+'px '+label+': sem selo quando não há promoção');
           assert.equal(d.order,true,width+'px '+label+' '+d.id+': ordem comum');
           assert.equal(d.noCardOverflow,true,width+'px '+label+' '+d.id+': sem overflow horizontal');
           assert.equal(d.inside,true,width+'px '+label+' '+d.id+': conteúdo dentro do card');
