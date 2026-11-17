@@ -20,8 +20,10 @@ const mockGeocoder = async (input: RequestInfo | URL) => {
     geometry: { location: { lat: -3.1, lng: -60.02 } },
   }] }), { status: 200 });
 };
-const mockLalamove = (total = "8.32") => async (input: RequestInfo | URL, init?: RequestInit) => {
-  assertEquals(String(input), "https://rest.sandbox.lalamove.com/v3/quotations");
+const mockLalamove = (total = "8.32", environment: "sandbox" | "producao" = "sandbox") => async (input: RequestInfo | URL, init?: RequestInit) => {
+  assertEquals(String(input), environment === "producao"
+    ? "https://rest.lalamove.com/v3/quotations"
+    : "https://rest.sandbox.lalamove.com/v3/quotations");
   const body = JSON.parse(String(init?.body));
   assertEquals(body.data.stops[0].address.includes("Av. Lourenço da Silva Braga, 700"), true);
   assertEquals(body.data.stops[1].address.includes("Rua A, 10"), true);
@@ -61,6 +63,17 @@ Deno.test("não-admin bloqueado quando entrega está desligada", () => {
   assertEquals(validateCheckoutDelivery({
     deliveryType: "delivery", paymentMethod: "pix", isAdmin: false, deliveryActive: false,
   }), { ok: false, status: 403, error: "A Entrega Feira On está temporariamente desativada." });
+});
+
+Deno.test("novos pedidos com Uber são recusados quando Entrega Feira On está ativa", () => {
+  assertEquals(validateCheckoutDelivery({
+    deliveryType: "pickup_uber", paymentMethod: "pix", isAdmin: false, deliveryActive: true,
+  }), {
+    ok: false, status: 400, error: "Receber com seu Uber não está disponível para novos pedidos.",
+  });
+  assertEquals(validateCheckoutDelivery({
+    deliveryType: "pickup_uber", paymentMethod: "pix", isAdmin: false, deliveryActive: false,
+  }), { ok: true });
 });
 
 Deno.test("dinheiro e cartão são recusados para entrega", () => {
@@ -103,4 +116,16 @@ Deno.test("produto volumoso força CAR na cotação real mockada", async () => {
   });
   assertEquals(quote.vehicle, "CAR");
   assertEquals(quote.fee, 14);
+});
+
+Deno.test("checkout recalcula cotação no ambiente Lalamove configurado e arredonda no servidor", async () => {
+  const quote = await calculateServerDelivery({
+    items: [{ product_id: "banana", quantity: 2 }],
+    products, address, motoLimitKg: 12,
+    apiKey: "pk_prod_demo", apiSecret: "sk_prod_demo", geocodingApiKey: "google-test",
+    environment: "producao",
+    geocodeFetcher: mockGeocoder, fetcher: mockLalamove("10.25", "producao"),
+  });
+  assertEquals(quote.vehicle, "MOTO");
+  assertEquals(quote.fee, 11);
 });

@@ -3,6 +3,7 @@ import { calculateLineTotalCents, calculateQuantityFromValueCents, calculateValu
 import { resolveMercadoPagoOrderStatus } from "./payment-status.ts";
 import { normalizeItemPreference } from "../_shared/item-preferences.ts";
 import { formatDropoff } from "../_shared/delivery-quote.ts";
+import { readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
 import { calculateServerDelivery, orderTotals, validateCheckoutDelivery } from "./delivery-order.ts";
 
 function isValidCpf(value: string) { const cpf = String(value || "").replace(/\D/g, ""); if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false; const calc = (base: string, factor: number) => { let sum = 0; for (const digit of base) sum += Number(digit) * factor--; const mod = (sum * 10) % 11; return mod === 10 ? 0 : mod; }; return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10]); }
@@ -18,6 +19,15 @@ function isValidCnpj(value: string) {
   const first = digit(cnpj.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
   const second = digit(cnpj.slice(0, 12) + String(first), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
   return first === Number(cnpj[12]) && second === Number(cnpj[13]);
+}
+
+function isStoreOpenForDelivery(date = new Date()): boolean {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Manaus", weekday: "short", hour: "2-digit", hourCycle: "h23",
+  }).formatToParts(date);
+  const weekday = parts.find((part) => part.type === "weekday")?.value || "";
+  const hour = Number(parts.find((part) => part.type === "hour")?.value);
+  return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].includes(weekday) && hour >= 6 && hour < 13;
 }
 
 function isOrderRateLimitError(error: any) {
@@ -324,7 +334,7 @@ Deno.serve(async (req: Request) => {
     const deliveryAddressInput = customer.deliveryAddress || customer.delivery_address || body?.delivery_address || null;
     let deliveryActive = false;
     let deliveryMotoLimitKg = 8;
-    if (requestedDeliveryType === "delivery") {
+    if (requestedDeliveryType === "delivery" || (requestedDeliveryType === "pickup_uber" && !priorOrder)) {
       const { data: deliverySettings, error: deliverySettingsError } = await db.from("delivery_settings")
         .select("delivery_ativa,moto_limite_kg").eq("singleton", true).maybeSingle();
       if (deliverySettingsError || !deliverySettings) return json({ error: "Não foi possível validar a configuração de entrega." }, 503);
@@ -336,6 +346,9 @@ Deno.serve(async (req: Request) => {
     });
     if (!deliveryAccess.ok) return json({ error: deliveryAccess.error }, deliveryAccess.status);
     const deliveryType = requestedDeliveryType;
+    if (deliveryType === "delivery" && !isStoreOpenForDelivery()) {
+      return json({ error: "Entrega disponível no horário de funcionamento." }, 403);
+    }
     if (paymentMethod === "pix" && (asaasEnabled ? !asaasApiKey : !mpToken)) {
       return json({ error: asaasEnabled ? "Asaas Pix ainda não está configurado." : "Pagamento Pix ainda não está configurado." }, 503);
     }
@@ -594,6 +607,8 @@ Deno.serve(async (req: Request) => {
         if (quoteRateError) return json({ error: "Limite de cotações temporariamente indisponível." }, 503);
         if (quoteAllowed !== true) return json({ error: "Muitas cotações. Aguarde um minuto." }, 429);
         try {
+          const lalamoveEnvironment = await readLalamoveEnvironment(db);
+          const lalamoveCredentials = readLalamoveCredentials(lalamoveEnvironment, (name) => Deno.env.get(name));
           deliveryQuote = await calculateServerDelivery({
             items: items.map((item: any) => ({ product_id: String(item.id), quantity: Number(item.qty) })),
             products: (products as any[]).map((product: any) => ({
@@ -604,9 +619,10 @@ Deno.serve(async (req: Request) => {
             })),
             address: normalizedDeliveryAddress!,
             motoLimitKg: deliveryMotoLimitKg,
-            apiKey: Deno.env.get("LALAMOVE_SANDBOX_API_KEY") || "",
-            apiSecret: Deno.env.get("LALAMOVE_SANDBOX_API_SECRET") || "",
+            apiKey: lalamoveCredentials.apiKey,
+            apiSecret: lalamoveCredentials.apiSecret,
             geocodingApiKey: Deno.env.get("GOOGLE_GEOCODING_API_KEY") || "",
+            environment: lalamoveEnvironment,
           });
         } catch (error) {
           const code = error instanceof Error ? error.message : "UNKNOWN";
@@ -618,7 +634,7 @@ Deno.serve(async (req: Request) => {
           if (code === "LALAMOVE_REVERSE_GEOCODE_FAILURE") return json({ error: "A Lalamove não conseguiu validar a rota mesmo com as coordenadas. Tente novamente.", code }, 502);
           if (code === "LALAMOVE_RATE_LIMIT") return json({ error: "A Lalamove está recebendo muitas cotações. Aguarde um minuto e tente novamente.", code }, 429);
           if (code === "INVALID_ADDRESS") return json({ error: "Informe rua, número e bairro para a entrega.", code }, 400);
-          if (code === "SANDBOX_CREDENTIALS_REQUIRED") return json({ error: "Cotação de entrega temporariamente indisponível.", code }, 503);
+          if (code === "SANDBOX_CREDENTIALS_REQUIRED" || code === "PRODUCTION_CREDENTIALS_REQUIRED" || code === "LALAMOVE_ENVIRONMENT_UNAVAILABLE") return json({ error: "Cotação de entrega temporariamente indisponível.", code }, 503);
           console.error("super-worker", { code: "DELIVERY_QUOTE_FAILED", stage: "checkout_quote", reason: code });
           return json({ error: "Não foi possível calcular a taxa de entrega. Tente novamente." }, 502);
         }

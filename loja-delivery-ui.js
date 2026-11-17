@@ -2,14 +2,14 @@ export function isAdminRpcTrue(value) {
   return value === true || value === "true" || value === 1;
 }
 
-export function canShowDeliveryOption(deliveryActive, isAdmin) {
-  return isAdmin === true;
+export function canShowDeliveryOption(deliveryActive, isAdmin, adminCheckComplete = true, withinHours = true) {
+  // Com a flag ligada, o recurso é público para qualquer conta autenticada; o RPC admin só controla o modo TESTE.
+  return deliveryActive === true && withinHours === true;
 }
 
-export function isDeliveryOptionDisabled(deliveryActive, isAdmin, adminCheckComplete = false) {
-  // Entrega Feira On é um recurso de teste restrito a administrador confirmado.
-  // deliveryActive controla apenas a informação de cotação, nunca concede acesso.
-  return adminCheckComplete !== true || isAdmin !== true;
+export function isDeliveryOptionDisabled(deliveryActive, isAdmin, adminCheckComplete = false, withinHours = true) {
+  if (deliveryActive === true) return withinHours !== true;
+  return adminCheckComplete !== true || isAdmin !== true || withinHours !== true;
 }
 
 export async function loadDeliveryAccessState(user, rpc) {
@@ -30,23 +30,31 @@ export async function loadDeliveryAccessState(user, rpc) {
   };
 }
 
-export function renderDeliveryOption({ option, radio, starting, description, isAdmin, adminCheckComplete, deliveryActive }) {
-  const disabled = isDeliveryOptionDisabled(deliveryActive, isAdmin, adminCheckComplete);
+export function renderDeliveryOption({ option, radio, starting, description, isAdmin, adminCheckComplete, deliveryActive, withinHours = true }) {
+  const enabledForCustomers = canShowDeliveryOption(deliveryActive, isAdmin, adminCheckComplete, withinHours);
+  const adminPreview = deliveryActive !== true && adminCheckComplete === true && isAdmin === true && withinHours === true;
+  const disabled = !(enabledForCustomers || adminPreview);
   option.hidden = false;
   radio.disabled = disabled;
   option.classList.toggle("is-disabled", disabled);
   option.setAttribute("aria-disabled", String(disabled));
   starting.replaceChildren();
-  if (disabled) {
-    starting.textContent = "Em breve";
-  } else {
+  if (enabledForCustomers) {
+    starting.textContent = "Calcular taxa";
+    description.textContent = "Taxa por distância, paga com Pix junto do pedido.";
+  } else if (withinHours !== true && (deliveryActive === true || isAdmin === true)) {
+    starting.textContent = "Fora do horário";
+    description.textContent = "Entrega disponível no horário de funcionamento.";
+  } else if (adminPreview) {
     const badge = document.createElement("span");
     badge.className = "checkout-test-badge";
     badge.textContent = "TESTE";
     starting.append(badge);
+    description.textContent = "Prévia administrativa da Entrega Feira On.";
+  } else {
+    starting.textContent = "Em breve";
+    description.textContent = "Receba em casa sem precisar pedir Uber.";
   }
-  description.textContent = "Receba em casa sem precisar pedir Uber." +
-    (!disabled && deliveryActive ? " Consulte o valor." : "");
   return disabled;
 }
 
@@ -82,8 +90,9 @@ export function syncAdminTestPaymentOption({ container, paymentSelect, isAdminCo
   }
   return true;
 }
-export function deliveryUnavailableMessage() {
-  return "A Entrega Feira On chega em breve. Por enquanto, retire na loja ou receba com seu Uber.";
+export function deliveryUnavailableMessage(deliveryActive = false, withinHours = true) {
+  if (deliveryActive === true && withinHours !== true) return "Entrega disponível no horário de funcionamento.";
+  return "A Entrega Feira On está temporariamente indisponível. Escolha Retirar na loja.";
 }
 
 export function canShowUberPickupOption(deliveryActive) {
@@ -150,6 +159,7 @@ export function deliveryQuoteErrorMessage(status, code = "") {
     LALAMOVE_REVERSE_GEOCODE_FAILURE: "A Lalamove não conseguiu validar a rota mesmo com as coordenadas. Tente novamente.",
     LALAMOVE_RATE_LIMIT: "A Lalamove está recebendo muitas cotações. Aguarde um minuto e tente novamente.",
     LALAMOVE_QUOTE_FAILED: "A localização foi encontrada, mas a Lalamove não concluiu a cotação. Tente novamente.",
+    STORE_CLOSED: "Entrega disponível no horário de funcionamento.",
   };
   return known[String(code)] || (Number(status) === 422
     ? "Endereço localizado, mas não está disponível para entrega."

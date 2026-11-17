@@ -8,6 +8,7 @@ const storeHtml = fs.readFileSync(path.join(root, 'loja.html'), 'utf8');
 assert.equal(storeHtml.includes('id="payPixTestOption"'), false, 'Pix de teste não pode estar no HTML inicial');
 assert.equal(storeHtml.includes('id="payPixTest"'), false, 'radio de teste não pode existir antes da confirmação admin');
 assert.equal(storeHtml.includes('<option value="pix_test">'), false, 'opção do select não pode existir antes da confirmação admin');
+assert.equal(storeHtml.includes('#deliveryUberOption[hidden]'), true, 'Uber precisa ser visualmente ocultado pela folha de estilos real');
 const helperSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8').replace(/^export\s+/gm, '');
 const styleStart = storeHtml.indexOf('/* Checkout option cards —');
 const styleEnd = storeHtml.indexOf('</style>', styleStart);
@@ -19,6 +20,7 @@ const checkoutCss = [
   'body{margin:0;padding:16px;background:#f4f7f2;font-family:Arial,sans-serif}',
   '.checkout-screen{max-width:520px;margin:0 auto}',
   '.checkout-choice-card{width:100%;padding:14px;border:1px solid #d9e2d6;border-radius:14px;background:#fff}',
+  '#deliveryUberOption[hidden]{display:none!important}',
 ].join('\n');
 
 (async () => {
@@ -33,13 +35,13 @@ const checkoutCss = [
         '<span class="checkout-choice-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H3V10Z"></path></svg></span>' +
         '<span class="checkout-choice-copy"><b>Entrega Feira On</b><span class="s" id="deliveryHomeDescription">Receba em casa sem precisar pedir Uber.</span></span>' +
         '<span class="checkout-choice-end" id="deliveryStartingPrice">Em breve</span><span class="r" aria-hidden="true"></span>' +
-        '</label><section class="checkout-card"><div class="checkout-choice-list" id="checkoutPaymentChoices">' +
+        '</label><label class="opt checkout-choice-card" id="deliveryUberOption"><input id="deliveryUber" type="radio" name="deliveryChoice"><span class="checkout-choice-copy"><b>Receber com seu Uber</b></span></label><section class="checkout-card"><div class="checkout-choice-list" id="checkoutPaymentChoices">' +
         '<label class="opt checkout-choice-card" for="payPix"><input class="choice-radio" id="payPix" type="radio" name="paymentChoice"><span class="checkout-choice-copy"><b>Pix</b></span><span class="r"></span></label>' +
         '<label class="opt checkout-choice-card" for="payCash"><input class="choice-radio" id="payCash" type="radio" name="paymentChoice"><span class="checkout-choice-copy"><b>Dinheiro na retirada</b></span><span class="r"></span></label>' +
         '</div><select id="payment"><option value="pix">Pix</option><option value="cash">Dinheiro</option></select></section></form></main></body></html>');
       await page.addStyleTag({ content: checkoutCss });
       await page.addScriptTag({ content: helperSource +
-        '\nwindow.FeiraDeliveryAccess = { loadDeliveryAccessState, renderDeliveryOption, syncAdminTestPaymentOption };' });
+        '\nwindow.FeiraDeliveryAccess = { loadDeliveryAccessState, renderDeliveryOption, syncAdminTestPaymentOption, canShowUberPickupOption, deliveryQuoteErrorMessage };' });
 
       const syncTestPayment = state => page.evaluate(value => window.FeiraDeliveryAccess.syncAdminTestPaymentOption({
         container: document.querySelector('#checkoutPaymentChoices'),
@@ -137,7 +139,7 @@ const checkoutCss = [
       assert.equal(view.disabled, true);
       assert.equal(view.label, 'Em breve');
 
-      // Ordinary account remains blocked even when delivery_ativa is true.
+      // Cliente comum confirmado vê a entrega quando a flag está ligada.
       const common = await page.evaluate(() => window.FeiraDeliveryAccess.loadDeliveryAccessState(
         { id: 'ordinary-user' },
         async name => name === 'is_current_user_admin'
@@ -147,11 +149,26 @@ const checkoutCss = [
       assert.deepEqual(common, { adminCheckComplete: true, isAdmin: false, deliveryActive: true });
       await render(common);
       view = await snapshot();
+      assert.equal(view.disabled, false);
+      assert.equal(view.label, 'Calcular taxa');
+      assert.equal(view.badgeCount, 0);
+      assert.equal(view.description.includes('Taxa por distância'), true);
+      await page.evaluate(() => { document.querySelector('#deliveryUberOption').hidden = !window.FeiraDeliveryAccess.canShowUberPickupOption(true); });
+      assert.equal(await page.locator('#deliveryUberOption').evaluate(el => el.hidden), true);
+      await page.evaluate(() => { document.querySelector('#deliveryUberOption').hidden = !window.FeiraDeliveryAccess.canShowUberPickupOption(false); });
+      assert.equal(await page.locator('#deliveryUberOption').evaluate(el => el.hidden), false);
+      assert.equal(await page.evaluate(() => window.FeiraDeliveryAccess.deliveryQuoteErrorMessage(502, 'LALAMOVE_QUOTE_FAILED')),
+        'A localização foi encontrada, mas a Lalamove não concluiu a cotação. Tente novamente.');
+
+      // Fora do horário, a entrega fica desabilitada com a mensagem obrigatória.
+      await render({ ...common, withinHours: false });
+      view = await snapshot();
       assert.equal(view.disabled, true);
-      assert.equal(view.label, 'Em breve');
-      assert.equal(view.description.includes('Consulte o valor'), false);
+      assert.equal(view.description, 'Entrega disponível no horário de funcionamento.');
+      assert.equal(view.label, 'Fora do horário');
 
       // Delayed admin response: remain disabled until the positive answer.
+      await render({ isAdmin: false, adminCheckComplete: false, deliveryActive: false, withinHours: true });
       await page.evaluate(() => {
         window.__pendingAdminAccess = window.FeiraDeliveryAccess.loadDeliveryAccessState(
           { id: 'confirmed-admin' },
@@ -173,19 +190,25 @@ const checkoutCss = [
       assert.equal(view.label, 'TESTE');
       assert.equal(view.badgeCount, 1);
       assert.equal(view.description.includes('Consulte o valor'), false);
+      await render({ ...adminInactive, withinHours: false });
+      view = await snapshot();
+      assert.equal(view.disabled, true);
+      assert.equal(view.description, 'Entrega disponível no horário de funcionamento.');
 
-      // Only the active flag adds the quote hint; the TESTE badge remains.
+      // Com a flag ligada, inclusive o administrador vê a opção normal, sem selo TESTE.
       const adminActive = await page.evaluate(() => window.FeiraDeliveryAccess.loadDeliveryAccessState(
-        { id: 'confirmed-admin' }, async () => ({ data: true, error: null }),
+        { id: 'confirmed-admin' }, async name => name === 'is_current_user_admin'
+          ? { data: true, error: null }
+          : { data: true, error: null },
       ));
       await render(adminActive);
       view = await snapshot();
       assert.equal(view.disabled, false);
-      assert.equal(view.label, 'TESTE');
-      assert.equal(view.badgeCount, 1);
-      assert.equal(view.description.includes('Consulte o valor'), true);
+      assert.equal(view.label, 'Calcular taxa');
+      assert.equal(view.badgeCount, 0);
+      assert.equal(view.description.includes('Taxa por distância'), true);
 
-      // RPC returning an error and RPC throwing a network error both fail closed.
+      // Erro no RPC admin remove somente o modo TESTE; a entrega ativa continua pública.
       const rpcError = await page.evaluate(() => window.FeiraDeliveryAccess.loadDeliveryAccessState(
         { id: 'admin-rpc-error' },
         async name => name === 'is_current_user_admin'
@@ -194,10 +217,10 @@ const checkoutCss = [
       ));
       await render(rpcError);
       view = await snapshot();
-      assert.equal(view.disabled, true);
-      assert.equal(view.label, 'Em breve');
+      assert.equal(view.disabled, false);
+      assert.equal(view.label, 'Calcular taxa');
       assert.equal(view.badgeCount, 0);
-      assert.equal(view.description.includes('Consulte o valor'), false);
+      assert.equal(view.description.includes('Taxa por distância'), true);
 
       const networkError = await page.evaluate(() => window.FeiraDeliveryAccess.loadDeliveryAccessState(
         { id: 'admin-network-error' },
@@ -208,18 +231,22 @@ const checkoutCss = [
       ));
       await render(networkError);
       view = await snapshot();
-      assert.equal(view.disabled, true);
-      assert.equal(view.label, 'Em breve');
+      assert.equal(view.disabled, false);
+      assert.equal(view.label, 'Calcular taxa');
       assert.equal(view.badgeCount, 0);
-      assert.equal(view.description.includes('Consulte o valor'), false);
+      assert.equal(view.description.includes('Taxa por distância'), true);
 
-      // Badge stays on one line at the right; description is capped at two.
-      await render(adminActive);
+      // A prévia TESTE desligada permanece em uma linha no celular; opção ativa não tem selo.
+      await render(adminInactive);
       view = await snapshot();
       assert.equal(view.clamp, '2');
       assert.equal(view.badgeWhiteSpace, 'nowrap');
       assert.equal(view.noHorizontalOverflow, true);
       assert.ok(view.badgeRight <= view.cardRight + 1);
+      await render(adminActive);
+      view = await snapshot();
+      assert.equal(view.label, 'Calcular taxa');
+      assert.equal(view.badgeCount, 0);
       fs.mkdirSync(path.join(root, 'artifacts'), { recursive: true });
       await page.screenshot({ path: path.join(root, 'artifacts', 'checkout-delivery-admin-' + width + '.png'), fullPage: true });
       await page.close();
