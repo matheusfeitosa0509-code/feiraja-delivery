@@ -37,7 +37,6 @@ let deliveryPlacesSessionToken='session-123',deliveryAutocompleteTimer=null,deli
 const normalizeDeliveryAddress = value => ({street:String(value.street||'').trim(),number:String(value.number||'').trim(),neighborhood:String(value.neighborhood||'').trim(),complement:'',reference:''});
 const getDeliveryAddress = () => normalizeDeliveryAddress({street:$('#deliveryStreet').value,number:$('#deliveryNumber').value,neighborhood:$('#deliveryNeighborhood').value});
 const syncDeliveryAddressPresentation = () => {};
-const hideDeliverySuggestions = () => {const box=$('#deliveryStreetSuggestions');box.hidden=true;box.replaceChildren();};
 const setDeliveryQuoteStatus = (message,isError=false) => {const box=$('#deliveryQuoteStatus');box.textContent=message||'';box.hidden=!message;box.dataset.error=String(!!isError);};
 const updateCheckoutTotals = () => {};
 let quoteCalls=0;
