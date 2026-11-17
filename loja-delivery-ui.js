@@ -158,6 +158,7 @@ export function deliveryQuoteErrorMessage(status, code = "") {
     LALAMOVE_REVERSE_GEOCODE_FAILURE: "A Lalamove não conseguiu validar a rota mesmo com as coordenadas. Tente novamente.",
     LALAMOVE_RATE_LIMIT: "A Lalamove está recebendo muitas cotações. Aguarde um minuto e tente novamente.",
     LALAMOVE_QUOTE_FAILED: "A localização foi encontrada, mas a Lalamove não concluiu a cotação. Tente novamente.",
+    STORE_CLOSED: "Entrega disponível no horário de funcionamento.",
   };
   return known[String(code)] || (Number(status) === 422
     ? "Endereço localizado, mas não está disponível para entrega."
