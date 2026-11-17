@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
 import { chooseVehicle, estimateLoad, formatDropoff, isQuoteAllowed, parseQuotation, requestSandboxQuotation, retryLalamove429 } from "../_shared/delivery-quote.ts";
 import { geocodeManausAddress, geocodeManausCoordinates } from "../_shared/geocoding.ts";
+import { getStoreSchedule } from "../_shared/store-schedule.js";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -87,13 +88,18 @@ Deno.serve(async (req: Request) => {
     ]);
     const lalamoveDropoff = dropoff || pinnedAddress?.formattedAddress || "";
     const quoteFetch: typeof fetch = (input, init) => retryLalamove429(fetch, input, init);
+    const scheduleAt = getStoreSchedule().scheduledFor || undefined;
     const response = await requestSandboxQuotation(apiKey, apiSecret, serviceType, lalamoveDropoff, {
       origin: originCoordinates, dropoff: dropoffCoordinates,
-    }, quoteFetch, environment);
+    }, quoteFetch, environment, scheduleAt);
     const result = await response.json().catch(() => ({}));
     const upstreamCode = String(result?.message || "");
     if (upstreamCode === "ERR_OUT_OF_SERVICE_AREA") {
       return json({ error: "Endereço localizado, mas a Lalamove não atende esta região.", code: "LALAMOVE_OUT_OF_SERVICE_AREA" }, 422);
+    }
+    if (upstreamCode === "ERR_INVALID_SCHEDULE_TIME") {
+      console.error("delivery-quote", { stage: "lalamove_quote", status: response.status, upstream_message: upstreamCode });
+      return json({ error: "A Lalamove recusou o horário agendado. Tente novamente em instantes.", code: "LALAMOVE_INVALID_SCHEDULE_TIME" }, 502);
     }
     if (upstreamCode === "ERR_REVERSE_GEOCODE_FAILURE") {
       console.error("delivery-quote", { stage: "lalamove_quote", status: response.status, code: "ERR_REVERSE_GEOCODE_FAILURE" });
@@ -101,13 +107,14 @@ Deno.serve(async (req: Request) => {
     }
     if (!response.ok) {
       const code = response.status === 429 ? "LALAMOVE_RATE_LIMIT" : "LALAMOVE_QUOTE_FAILED";
-      console.error("delivery-quote", { stage: "lalamove_quote", status: response.status, code: upstreamCode.slice(0, 80) || code });
+      console.error("delivery-quote", { stage: "lalamove_quote", status: response.status, upstream_message: upstreamCode.slice(0, 120) || null, code });
       return json({ error: "A localização foi encontrada, mas a Lalamove não concluiu a cotação. Tente novamente.", code }, response.status === 429 ? 429 : 502);
     }
     const quote = parseQuotation(result?.data, vehicle, load.weightKg);
-    return json({ vehicle: quote.vehicle, estimated_weight_kg: quote.weightKg, fee: quote.fee, valid_until: quote.validUntil, ambiente: environment });
+    return json({ vehicle: quote.vehicle, estimated_weight_kg: quote.weightKg, fee: quote.fee, valid_until: quote.validUntil, schedule_at: scheduleAt || null, ambiente: environment });
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
+    if (code === "INVALID_SCHEDULE_TIME") return json({ error: "Não foi possível agendar a cotação para o próximo horário de funcionamento. Tente novamente.", code }, 502);
     if (code === "INVALID_ADDRESS") return json({ error: "Informe rua, número e bairro.", code }, 400);
     if (code === "ADDRESS_NOT_FOUND") return json({ error: "Endereço não encontrado. Confira a rua, o número e o bairro.", code }, 400);
     if (code === "ADDRESS_OUTSIDE_MANAUS") return json({ error: "Este endereço fica fora de Manaus - AM. Informe um endereço dentro de Manaus.", code }, 422);
