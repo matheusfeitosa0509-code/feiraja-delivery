@@ -8,6 +8,7 @@ const storeHtml = fs.readFileSync(path.join(root, 'loja.html'), 'utf8');
 assert.equal(storeHtml.includes('id="payPixTestOption"'), false, 'Pix de teste não pode estar no HTML inicial');
 assert.equal(storeHtml.includes('id="payPixTest"'), false, 'radio de teste não pode existir antes da confirmação admin');
 assert.equal(storeHtml.includes('<option value="pix_test">'), false, 'opção do select não pode existir antes da confirmação admin');
+assert.equal(storeHtml.includes('#deliveryUberOption[hidden]'), true, 'Uber precisa ser visualmente ocultado pela folha de estilos real');
 const helperSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8').replace(/^export\s+/gm, '');
 const styleStart = storeHtml.indexOf('/* Checkout option cards —');
 const styleEnd = storeHtml.indexOf('</style>', styleStart);
