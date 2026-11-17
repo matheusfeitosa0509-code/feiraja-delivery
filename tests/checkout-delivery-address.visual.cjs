@@ -53,7 +53,7 @@ const saveDeliveryAddress=async()=>{};
 const updateCheckoutTotals=()=>{const valid=isValidDeliveryQuote(deliveryQuote);$('#submitOrder').disabled=!valid;$('#submitOrder').textContent=valid?'Pagar com Pix · R$ 39,96':'Aguardando cálculo da entrega';};
 const setDeliveryQuoteStatus=(message,isError=false,showRetry=false)=>{const box=$('#deliveryQuoteStatus');box.textContent=message||'';box.hidden=!message;box.dataset.error=String(!!isError);if(showRetry){const button=document.createElement('button');button.type='button';button.textContent='Tentar de novo';button.id='retryDeliveryQuote';button.addEventListener('click',()=>void requestDeliveryQuote());box.append(button);}};
 const supabase={functions:{invoke:async(name,{body})=>{
- if(name==='delivery-quote'){quoteCalls++;if(quoteMode==='timeout')return await new Promise(()=>{});return {data:{vehicle:'MOTO',fee:9,valid_until:new Date(Date.now()+60000).toISOString()},error:null};}
+ if(name==='delivery-quote'){quoteCalls++;if(quoteMode==='timeout')return await new Promise(()=>{});return {data:{vehicle:'MOTO',fee:9,valid_until:new Date(Date.now()+60000).toISOString(),schedule_at:'2026-11-18T10:00:00.000Z'},error:null};}
  if(name!=='delivery-address')throw new Error('unexpected function '+name);
  if(body.action==='autocomplete')return {data:{suggestions:[{place_id:'place-test-123',description:'Mercado Teste, Centro, Manaus - AM'}]},error:null};
  if(body.action==='details')return {data:{address:{street:'Rua do Mercado',number:'123',neighborhood:'Centro',lat:'-3.10',lng:'-60.02',reference:'Mercado Teste'}},error:null};
@@ -102,6 +102,7 @@ document.body.innerHTML=mapOverlayMarkup;
     window.confirmMap=confirmDeliveryMapAddress;
     window.runGps=useDeliveryGps;
     window.quoteCount=()=>quoteCalls;
+    window.quoteSchedule=()=>deliveryQuote?.schedule_at||null;
     window.setQuoteMode=value=>{quoteMode=value;};
     window.runQuote=()=>{deliveryQuoteCache.clear();return requestDeliveryQuote();};
    `});
@@ -123,6 +124,7 @@ document.body.innerHTML=mapOverlayMarkup;
    assert.equal(await page.evaluate(()=>window.quoteCount()),1,'quote runs only after explicit confirmation');
    await page.waitForFunction(()=>document.querySelector('#submitOrder').disabled===false);
    assert.equal(await page.locator('#submitOrder').textContent(),'Pagar com Pix · R$ 39,96','Pix only unlocks after a positive live quote');
+   assert.equal(await page.evaluate(()=>window.quoteSchedule()),'2026-11-18T10:00:00.000Z','checkout retains the UTC scheduleAt used for the nighttime quote');
    await page.evaluate(()=>{window.setQuoteMode('timeout');window.runQuote();});
    await page.waitForFunction(()=>document.querySelector('#deliveryQuoteStatus').textContent.includes('mais de 15 segundos'));
    assert.equal(await page.locator('#submitOrder').isDisabled(),true,'timeout keeps Pix blocked');
