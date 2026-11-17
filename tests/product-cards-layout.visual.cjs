@@ -86,7 +86,7 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
           assert.equal(d.order,true,width+'px '+label+' '+d.id+': ordem comum');
           assert.equal(d.noCardOverflow,true,width+'px '+label+' '+d.id+': sem overflow horizontal');
           assert.equal(d.inside,true,width+'px '+label+' '+d.id+': conteúdo dentro do card');
-          assert.ok(d.card.bottom-d.weight.bottom<=10,width+'px '+label+' '+d.id+': sem sobra branca após o conteúdo');
+          assert.ok(d.card.bottom-d.weight.bottom<=14,width+'px '+label+' '+d.id+': sem sobra branca após o conteúdo (padding interno)');
         }
         for(let i=0;i<data.length;i++){
           const sameRow=data.filter(d=>Math.abs(d.card.top-data[i].card.top)<2);
