@@ -45,7 +45,7 @@ async function runViewport(browser, width, height, vehicle) {
       addTo(map) { this.map = map; map.container.append(this.element); return this; }
     }
     window.maplibregl = { Map: MockMap, Marker: MockMarker, LngLatBounds: Bounds, AttributionControl: class {} };
-    window.IntersectionObserver = undefined;
+    delete window.IntersectionObserver;
   };
   await page.setContent(`<!doctype html><html lang="pt-BR"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;font:14px Arial"><main style="width:100%;max-width:520px;margin:auto;padding:12px;box-sizing:border-box"><h3>Pedido · Entrega Feira On</h3><div id="map" data-order-id="MOCK-TRACKING"></div><div id="searching" data-order-id="MOCK-SEARCHING"></div></main></body></html>`);
   await page.evaluate(installMocks);
