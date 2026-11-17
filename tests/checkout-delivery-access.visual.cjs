@@ -160,12 +160,12 @@ const checkoutCss = [
       assert.equal(await page.evaluate(() => window.FeiraDeliveryAccess.deliveryQuoteErrorMessage(502, 'LALAMOVE_QUOTE_FAILED')),
         'A localização foi encontrada, mas a Lalamove não concluiu a cotação. Tente novamente.');
 
-      // Fora do horário, a entrega fica desabilitada com a mensagem obrigatória.
-      await render({ ...common, withinHours: false });
+      // Fora do horário, a opção continua selecionável e informa o próximo dia útil.
+      await render({ ...common, withinHours: false, scheduleLabel: 'terça, 17/11' });
       view = await snapshot();
-      assert.equal(view.disabled, true);
-      assert.equal(view.description, 'Entrega disponível no horário de funcionamento.');
-      assert.equal(view.label, 'Fora do horário');
+      assert.equal(view.disabled, false);
+      assert.equal(view.description, 'Taxa por distância, paga com Pix junto do pedido.');
+      assert.equal(view.label, 'Entrega a partir de terça, 17/11 pela manhã');
 
       // Delayed admin response: remain disabled until the positive answer.
       await render({ isAdmin: false, adminCheckComplete: false, deliveryActive: false, withinHours: true });
@@ -192,8 +192,8 @@ const checkoutCss = [
       assert.equal(view.description.includes('Consulte o valor'), false);
       await render({ ...adminInactive, withinHours: false });
       view = await snapshot();
-      assert.equal(view.disabled, true);
-      assert.equal(view.description, 'Entrega disponível no horário de funcionamento.');
+      assert.equal(view.disabled, false);
+      assert.equal(view.label, 'TESTE');
 
       // Com a flag ligada, inclusive o administrador vê a opção normal, sem selo TESTE.
       const adminActive = await page.evaluate(() => window.FeiraDeliveryAccess.loadDeliveryAccessState(
