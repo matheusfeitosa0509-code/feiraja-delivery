@@ -3,6 +3,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
+const storeHtml = fs.readFileSync(path.join(root, 'loja.html'), 'utf8');
+const panelHtml = fs.readFileSync(path.join(root, 'painel.html'), 'utf8');
+assert.ok(storeHtml.includes('Sua entrega será feita na '), 'checkout avisa a data da entrega agendada');
+assert.ok(panelHtml.includes('Agendado para '), 'painel mostra o selo de agendamento');
+assert.ok(panelHtml.includes('!scheduledPending'), 'painel impede cotação/despacho manual antes da abertura');
 const scheduleSource = fs.readFileSync(path.join(root, 'supabase/functions/_shared/store-schedule.js'), 'utf8')
   .replaceAll('export function ', 'function ').replaceAll('export const ', 'const ');
 const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
