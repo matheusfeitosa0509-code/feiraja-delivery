@@ -434,6 +434,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <script src="./lalamove-map.js"></script>
 <script type="module">
 import{createClient}from'https://esm.sh/@supabase/supabase-js@2.117.1';
+import{formatStoreScheduleLabel}from'./supabase/functions/_shared/store-schedule.js?v=20261117-entrega-agendada';
 const db=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',{auth:{persistSession:true,autoRefreshToken:true}});
 const VAPID_PUBLIC_KEY='BJ9dTvmRGcTHYQSOOLj61AG2kC2YEMuhWMM2J6GdDdTuofeBkYJsyF5uNIhCfnV03jZBn2fFP1ZUqty0QZ_uuog'; // VAPID pública
 const PANEL_PUSH_PENDING_KEY='feira_push_pending_release_v1';let panelPushUserSynced='',panelCurrentUser=null;
@@ -454,15 +455,15 @@ const $=id=>document.getElementById(id);
 const statuses=['Pedido Recebido','Pagamento Pendente','Pagamento Confirmado','Preparando','Pronto para Retirada','Entregue','Cancelada'];
 function normalizeOrderStatus(status){const s=String(status||'').trim().toLowerCase();if(s==='pagamento reembolsado')return 'Reembolsado';if(s==='pagamento contestado')return 'Contestado';if(['cancelada','cancelado'].includes(s))return 'Cancelada';if(s==='pagamento cancelado')return 'Pagamento cancelado';if(s==='pagamento recusado')return 'Pagamento recusado';if(['entregue','concluído','concluido'].includes(s))return 'Entregue';if(['pronto para retirada','pronto'].includes(s))return 'Pronto para Retirada';if(['preparando','preparando pedido'].includes(s))return 'Preparando';if(['saiu para entrega'].includes(s))return 'Saiu para Entrega';if(['pedido recebido','recebido'].includes(s))return 'Pedido Recebido';if(['pagamento confirmado','pago'].includes(s))return 'Pagamento Confirmado';return 'Pagamento Pendente';}
 let allOrders=[],seenOrderIds=new Set(),firstLoadDone=false,hasMoreOrders=true,nextOffset=0;const PAGE_SIZE=200;let adminProducts=[];let lalamoveEnvironment='sandbox',lalamoveEnvironmentReady=false,lalamoveEnvironmentLoadError='',deliveryIsActive=false;
- let separatedColumnAvailable=true,separationStartedColumnAvailable=true,separationLegacyColumnAvailable=true;const separatedMemory=new Map(),separatedPending=new Map();
- function orderSelectColumns(){let columns='id,created_at,customer_name,customer_phone,customer_address,customer_email,delivery_type,delivery_address,delivery_vehicle,delivery_weight_kg,delivery_fee,lalamove_status,lalamove_status_updated_at,lalamove_tracking_url,lalamove_driver,is_test_order,pickup_code,payment_method,items,subtotal,total,status,market_checklist';if(separatedColumnAvailable)columns+=',separated_items';if(separationStartedColumnAvailable)columns+=',separation_started_at';if(separationLegacyColumnAvailable)columns+=',separation_started_legacy';return columns+',refund_pending,cancelled_by,cancelled_at';}
- function isMissingSeparationSchema(error){const code=String(error?.code||'');const message=String(error?.message||'');return ['42703','PGRST204','PGRST202','42883'].includes(code)||/separated_items|separation_started_at|separation_started_legacy|set_order_separated_items|schema cache|does not exist/i.test(message);}
+ let separatedColumnAvailable=true,separationStartedColumnAvailable=true,separationLegacyColumnAvailable=true,scheduledColumnAvailable=true;const separatedMemory=new Map(),separatedPending=new Map();
+ function orderSelectColumns(){let columns='id,created_at,customer_name,customer_phone,customer_address,customer_email,delivery_type,delivery_address,delivery_vehicle,delivery_weight_kg,delivery_fee,lalamove_status,lalamove_status_updated_at,lalamove_tracking_url,lalamove_driver,is_test_order,pickup_code,payment_method,items,subtotal,total,status,market_checklist';if(scheduledColumnAvailable)columns+=',scheduled_for';if(separatedColumnAvailable)columns+=',separated_items';if(separationStartedColumnAvailable)columns+=',separation_started_at';if(separationLegacyColumnAvailable)columns+=',separation_started_legacy';return columns+',refund_pending,cancelled_by,cancelled_at';}
+ function isMissingSeparationSchema(error){const code=String(error?.code||'');const message=String(error?.message||'');return ['42703','PGRST204','PGRST202','42883'].includes(code)||/scheduled_for|separated_items|separation_started_at|separation_started_legacy|set_order_separated_items|schema cache|does not exist/i.test(message);}
  async function fetchOrdersPage(offset,limit,useRange=false){
   const query=()=>db.from('orders').select(orderSelectColumns()).order('created_at',{ascending:false});
   let result=useRange?await query().range(offset,offset+limit-1):await query().limit(limit);
   for(let attempt=0;attempt<2&&result.error&&isMissingSeparationSchema(result.error);attempt++){
    const message=String(result.error?.message||'');
-   if(/separation_started_legacy/i.test(message))separationLegacyColumnAvailable=false;else if(/separation_started_at/i.test(message))separationStartedColumnAvailable=false;else separatedColumnAvailable=false;
+   if(/scheduled_for/i.test(message))scheduledColumnAvailable=false;else if(/separation_started_legacy/i.test(message))separationLegacyColumnAvailable=false;else if(/separation_started_at/i.test(message))separationStartedColumnAvailable=false;else separatedColumnAvailable=false;
    result=useRange?await query().range(offset,offset+limit-1):await query().limit(limit);
   }
   return result;
@@ -1038,7 +1039,8 @@ function renderLalamoveDelivery(order,currentStatus){
  const pix=String(order.payment_method||'').toLowerCase().includes('pix');
  const paidOrTest=order.is_test_order===true||(pix&&['Pagamento Confirmado','Preparando','Pronto para Retirada','Pronto'].includes(currentStatus));
  const terminal=['Cancelada','Reembolsado','Contestado','Pagamento cancelado','Pagamento recusado'].includes(currentStatus);
- const canQuote=paidOrTest&&!terminal&&!order.lalamove_status;
+ const scheduledAt=Date.parse(String(order.scheduled_for||'')),scheduledPending=Number.isFinite(scheduledAt)&&scheduledAt>Date.now();
+ const canQuote=paidOrTest&&!terminal&&!order.lalamove_status&&!scheduledPending;
  const cancelStatus=String(order.lalamove_status||'');
  const matchedAt=Date.parse(String(order.lalamove_status_updated_at||''));
  const canCancel=cancelStatus==='searching'||(['assigned','enroute_pickup'].includes(cancelStatus)&&Number.isFinite(matchedAt)&&Date.now()>=matchedAt&&Date.now()-matchedAt<5*60*1000);
@@ -1054,7 +1056,8 @@ function renderLalamoveDelivery(order,currentStatus){
  const cancelButton=canCancel?'<button type="button" class="danger" data-lalamove-cancel="'+esc(order.id)+'">Cancelar entrega</button>':'';
  const trackingActive=['searching','assigned','enroute_pickup','picked_up'].includes(cancelStatus);
  const mapHtml=trackingActive?'<div data-lalamove-map data-order-id="'+esc(order.id)+'"></div>':'';
- return '<section class="lalamove-admin"><div class="lalamove-admin-head"><strong>Entrega Feira On</strong>'+lalamoveEnvironmentBadge()+'</div>'
+ const scheduledNote=scheduledPending?'<p class="pill">Agendado para '+esc(formatStoreScheduleLabel(scheduledAt))+' · disponível a partir das 6h</p>':'';
+ return '<section class="lalamove-admin"><div class="lalamove-admin-head"><strong>Entrega Feira On</strong>'+lalamoveEnvironmentBadge()+'</div>'+scheduledNote
   +'<div class="lalamove-address"><small>ENDEREÇO</small><strong>'+esc(fullAddress||order.customer_address||'Endereço não informado')+'</strong><a href="'+esc(mapUrl)+'" target="_blank" rel="noopener noreferrer">Abrir no mapa</a></div>'
   +'<div class="lalamove-facts"><span>Veículo: <b>'+esc(vehicle)+'</b></span><span>Peso: <b>'+esc(weightText)+'</b></span><span>Taxa: <b>'+money(order.delivery_fee)+'</b></span></div>'
   +(order.lalamove_status?'<p class="lalamove-state"><small>STATUS DA ENTREGA</small><strong data-lalamove-status-label>'+esc(lalamoveStatusLabel(order.lalamove_status))+'</strong></p>':'')
@@ -1106,11 +1109,12 @@ function render(){
   const contact='<div class="order-contact"><strong>'+esc(o.customer_name||'Cliente')+'</strong><span>·</span>'+phoneHtml+'<details class="order-email"><summary>E-mail</summary><span>'+esc(o.customer_email||'Não informado')+'</span></details></div>';
   const chips='<div class="order-chips"><span class="order-chip">'+esc(mode)+'</span><span class="order-chip">'+esc(o.payment_method||'Pagamento não informado')+'</span></div>';
   const testBadge=o.is_test_order===true?'<span class="lalamove-test-badge">TESTE</span>':'';
+  const scheduledAt=Date.parse(String(o.scheduled_for||'')),scheduledBadge=Number.isFinite(scheduledAt)&&scheduledAt>Date.now()?'<span class="pill">Agendado para '+esc(formatStoreScheduleLabel(scheduledAt))+'</span>':'';
   const separationPill=o.separation_started_at?'<span class="pill">Separação iniciada · '+esc(new Date(o.separation_started_at).toLocaleString('pt-BR'))+'</span>':o.separation_started_legacy?'<span class="pill">Separação iniciada · pedido anterior (horário não registrado)</span>':'';
   const cancelNote=currentStatus==='Cancelada'?'<p class="muted">Pedido cancelado. Não é possível marcar itens como separados.</p>':'';
   const refundPill=o.refund_pending?'<span class="pill" style="background:#fff0ed;color:#a02d20">Devolver Pix</span>':'';
   return '<article class="order">'
-   +'<div class="order-summary"><div class="order-summary-top"><div><h3>Pedido '+esc(shortOrderNumber(o.id))+'</h3><small class="muted">'+esc(date)+'</small></div><strong class="total">'+money(o.total)+'</strong><span class="pill '+(currentStatus==='Reembolsado'?'status-reembolsado':currentStatus==='Contestado'?'status-contestado':'')+'">'+esc(currentStatus)+'</span>'+testBadge+'<button type="button" class="order-expand" data-order-toggle="'+esc(o.id)+'" aria-expanded="false">Expandir</button></div>'
+   +'<div class="order-summary"><div class="order-summary-top"><div><h3>Pedido '+esc(shortOrderNumber(o.id))+'</h3><small class="muted">'+esc(date)+'</small></div><strong class="total">'+money(o.total)+'</strong><span class="pill '+(currentStatus==='Reembolsado'?'status-reembolsado':currentStatus==='Contestado'?'status-contestado':'')+'">'+esc(currentStatus)+'</span>'+testBadge+scheduledBadge+'<button type="button" class="order-expand" data-order-toggle="'+esc(o.id)+'" aria-expanded="false">Expandir</button></div>'
    +contact+chips+'</div>'
    +'<div class="order-content" data-order-content="'+esc(o.id)+'" hidden>'
    +separationPill+refundPill+cancelNote+pickupAddress+codeHtml+deliveryBlock
@@ -1229,6 +1233,7 @@ async function handleLalamoveQuoteClick(orderId,button){
    throw new Error('Não foi possível iniciar: ambiente Lalamove indisponível.'+reason);
   }
   const order=allOrders.find(o=>String(o.id)===String(orderId));
+  const scheduledAt=Date.parse(String(order?.scheduled_for||''));if(Number.isFinite(scheduledAt)&&scheduledAt>Date.now())throw new Error('Entrega agendada para '+formatStoreScheduleLabel(scheduledAt)+', a partir das 6h.');
   if(normalizeOrderStatus(order?.status)==='Preparando'&&!(await appConfirm('O entregador costuma chegar em ~10 min. Chame quando o pedido estiver quase pronto.',{title:'Pedido em preparação',confirmText:'Continuar'})))return;
   await startLalamoveQuote(orderId,button);
  }catch(error){
