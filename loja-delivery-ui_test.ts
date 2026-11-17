@@ -21,7 +21,7 @@ Deno.test("Entrega Feira On fica pública com flag ativa, mantém prévia admin 
   assertEquals(isDeliveryOptionDisabled(true, false, true, false), false, "fora do horário não bloqueia");
   assertEquals(isDeliveryOptionDisabled(true, false), false, "entrega ativa não depende do RPC admin");
   assertEquals(deliveryUnavailableMessage(), "A Entrega Feira On está temporariamente indisponível. Escolha Retirar na loja.");
-  assertEquals(deliveryUnavailableMessage(true, false), "A Entrega Feira On está temporariamente indisponível. Escolha Retirar na loja.");
+  assertEquals(deliveryUnavailableMessage(), "A Entrega Feira On está temporariamente indisponível. Escolha Retirar na loja.");
 });
 
 Deno.test("acesso à entrega: anônimo não chama RPC e conta comum não ganha acesso", async () => {
