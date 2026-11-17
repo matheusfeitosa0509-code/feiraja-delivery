@@ -35,7 +35,7 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
         });
       });
       assert.equal(await page.locator('#deliveryHome').isEnabled(), true);
-      assert.equal(await page.locator('#deliveryStartingPrice').textContent(), 'Entrega a partir de terça, 17/11 pela manhã');
+      assert.equal(await page.locator('#deliveryStartingPrice').textContent(), 'Entrega a partir de terça pela manhã');
       assert.equal(await page.locator('#deliveryHomeDescription').textContent(), 'Taxa por distância, paga com Pix junto do pedido.');
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'sem overflow em ' + width + 'px');
       await page.close();
