@@ -89,6 +89,8 @@ jobs:
       image: mcr.microsoft.com/playwright:v1.58.2-noble
     steps:
       - uses: actions/checkout@v4
+      - name: Install unzip for Deno setup
+        run: apt-get update && apt-get install -y unzip
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
