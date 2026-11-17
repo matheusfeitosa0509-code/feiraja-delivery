@@ -627,6 +627,9 @@ Deno.serve(async (req: Request) => {
           if (code === "GEOCODER_NOT_CONFIGURED") return json({ error: "Serviço de localização não configurado. Falta o Secret GOOGLE_GEOCODING_API_KEY no Supabase.", code }, 503);
           if (code === "GEOCODER_UNAVAILABLE") return json({ error: "Não foi possível localizar o endereço agora. Tente novamente em instantes.", code }, 503);
           if (code === "LALAMOVE_REVERSE_GEOCODE_FAILURE") return json({ error: "A Lalamove não conseguiu validar a rota mesmo com as coordenadas. Tente novamente.", code }, 502);
+          if (code === "LALAMOVE_INVALID_SCHEDULE_TIME") return json({ error: "A Lalamove recusou o horário agendado. Tente novamente em instantes.", code }, 502);
+          if (code === "LALAMOVE_INVALID_SERVICE_TYPE") return json({ error: "A Lalamove não oferece o tipo de veículo selecionado para esta rota. Tente novamente ou escolha retirada.", code }, 422);
+          if (code === "LALAMOVE_INVALID_MARKET") return json({ error: "A Lalamove não reconheceu a região de atendimento desta rota. Confira o endereço.", code }, 422);
           if (code === "LALAMOVE_RATE_LIMIT") return json({ error: "A Lalamove está recebendo muitas cotações. Aguarde um minuto e tente novamente.", code }, 429);
           if (code === "INVALID_ADDRESS") return json({ error: "Informe rua, número e bairro para a entrega.", code }, 400);
           if (code === "SANDBOX_CREDENTIALS_REQUIRED" || code === "PRODUCTION_CREDENTIALS_REQUIRED" || code === "LALAMOVE_ENVIRONMENT_UNAVAILABLE") return json({ error: "Cotação de entrega temporariamente indisponível.", code }, 503);
