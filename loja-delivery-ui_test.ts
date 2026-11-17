@@ -120,8 +120,10 @@ Deno.test("loja.html conecta a opção, cotação, endereço salvo e acompanhame
 });
 
 Deno.test("erros da cotação diferenciam endereço, Manaus e cobertura Lalamove", () => {
-  assertEquals(deliveryQuoteErrorMessage(400, "ADDRESS_NOT_FOUND").startsWith("Endereço não encontrado"), true);
-  assertEquals(deliveryQuoteErrorMessage(422, "ADDRESS_OUTSIDE_MANAUS").includes("fora de Manaus"), true);
+  assertEquals(deliveryQuoteErrorMessage(400, "ADDRESS_NOT_FOUND").startsWith("Não encontramos esse endereço"), true);
+  assertEquals(deliveryQuoteErrorMessage(422, "ADDRESS_OUTSIDE_MANAUS"), "Endereço fora da área de entrega.");
+  assertEquals(deliveryQuoteErrorMessage(429, "QUOTE_RATE_LIMIT"), "Muitas consultas agora, tente em alguns segundos.");
+  assertEquals(deliveryQuoteErrorMessage(502, "LALAMOVE_QUOTE_FAILED"), "Entrega indisponível no momento.");
   assertEquals(deliveryQuoteErrorMessage(422, "LALAMOVE_OUT_OF_SERVICE_AREA").includes("Lalamove não atende"), true);
   assertEquals(deliveryQuoteErrorMessage(503, "GEOCODER_NOT_CONFIGURED").includes("GOOGLE_GEOCODING_API_KEY"), true);
   assertEquals(deliveryQuoteErrorMessage(403, "STORE_CLOSED"), "Entrega disponível no horário de funcionamento.");
