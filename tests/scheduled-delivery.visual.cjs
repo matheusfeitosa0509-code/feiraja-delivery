@@ -76,7 +76,7 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
       assert.equal(copyResult.noOverflow, true, 'sem overflow nos textos em ' + width + 'px');
       await page.locator('body').evaluate(el => el.insertAdjacentHTML('beforeend', '<label id="deliveryHomeOption"><input id="deliveryHome" type="radio"><span id="deliveryHomeDescription"></span><span id="deliveryStartingPrice"></span></label>'));
 
-      const result = await page.evaluate(({ scheduleSource, uiSource }) => {
+      const result = await page.evaluate(({ scheduleSource, uiSource, checkoutScheduleSource }) => {
         const getStoreSchedule = new Function(scheduleSource + '\nreturn getStoreSchedule;')();
         const renderDeliveryOption = new Function(uiSource + '\nreturn renderDeliveryOption;')();
         const monday = getStoreSchedule(new Date('2026-11-16T22:00:00.000Z'));
@@ -101,7 +101,7 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
           schedule: document.querySelector('#deliveryHomeDescription .checkout-delivery-schedule')?.textContent || null,
           noOverflow: document.documentElement.scrollWidth <= innerWidth,
         };
-      }, { scheduleSource, uiSource });
+      }, { scheduleSource, uiSource, checkoutScheduleSource });
 
       assert.equal(result.monday.scheduledFor, '2026-11-17T10:00:00.000Z', 'segunda à noite → terça às 6h');
       assert.equal(result.saturday.scheduledFor, '2026-11-16T10:00:00.000Z', 'sábado 14h → segunda às 6h');
