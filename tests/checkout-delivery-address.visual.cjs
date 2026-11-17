@@ -14,10 +14,11 @@ const gpsSource = storeHtml.slice(gpsStart, gpsEnd);
 for (const required of [
   'deliveryQuoteCache=new Map()', 'expiresAt:Date.now()+300000',
   'setTimeout(()=>void requestDeliveryQuote(),1500)',
-  'delivery-map-center-pin', 'locationBias: { circle:',
+  'delivery-map-center-pin',
   'id="deliveryUseGps"', 'id="deliveryConfirmAddress"', "deliveryMap.on('moveend',()=>scheduleDeliveryMapReverse())",
   "deliveryQuoteCache.set(cacheKey",
 ]) assert.ok(storeHtml.includes(required), 'missing delivery behavior: ' + required);
+assert.ok(addressFunctionSource.includes('locationBias: { circle:'), 'Places must bias results to Manaus');
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
