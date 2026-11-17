@@ -117,13 +117,14 @@ function prepareHtml(source) {
       if(!Array.isArray(savedSeparation)||savedSeparation.length!==3)throw new Error("A marcação dos três itens não foi persistida no banco mockado.");
       // A mesma atualização usada pelo polling automático mantém o card aberto e o scroll.
       const fetchCountBefore=await page.evaluate(()=>window.__testDb.__state.orderFetchCount);
-      await page.locator("#refresh").evaluate(button=>button.click());
+      await page.evaluate(()=>{window.__testDb.__state.middleOrder.status='Pronto para Retirada';return load(true);});
       await page.waitForFunction(previous=>window.__testDb.__state.orderFetchCount>previous,fetchCountBefore);
       await page.waitForFunction(()=>document.querySelector('[data-order-content="ORDER-MIDDLE-002"]')?.hidden===false);
       await page.waitForFunction(expected=>Math.abs(window.scrollY-expected)<=1,scrollBefore);
-      if(await page.locator('[data-order-content="ORDER-MIDDLE-002"]').isHidden())throw new Error("A atualização da lista fechou o card aberto.");
-      if(Math.abs((await page.evaluate(()=>window.scrollY))-scrollBefore)>1)throw new Error("A atualização da lista alterou a rolagem.");
-      if(await page.locator('[data-order-content="ORDER-MIDDLE-002"] [data-separated-count]').textContent()!=="3 de 3 separados")throw new Error("O contador foi perdido após atualizar a lista.");
+      if(await page.locator('[data-order-content="ORDER-MIDDLE-002"]').isHidden())throw new Error("A atualização automática da lista fechou o card aberto.");
+      if(await page.locator('#status-ORDER-MIDDLE-002').inputValue()!=="Pronto para Retirada")throw new Error("A atualização automática não refletiu o status novo.");
+      if(Math.abs((await page.evaluate(()=>window.scrollY))-scrollBefore)>1)throw new Error("A atualização automática da lista alterou a rolagem.");
+      if(await page.locator('[data-order-content="ORDER-MIDDLE-002"] [data-separated-count]').textContent()!=="3 de 3 separados")throw new Error("O contador foi perdido após atualização automática.");
 
       // Compartilhar pedido e lista consolidada: somente itens, quantidades/unidades e observações.
       await page.locator('[data-share-order-list="ORDER-MIDDLE-002"]').click();
