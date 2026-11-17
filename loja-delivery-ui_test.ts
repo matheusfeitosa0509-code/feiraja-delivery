@@ -91,10 +91,12 @@ Deno.test("cotação válida exige veículo, taxa positiva e validade futura", (
   assertEquals(isValidDeliveryQuote({ ...valid, vehicle: "BICYCLE" }), false);
 });
 
-Deno.test("total do checkout soma taxa somente na entrega", () => {
-  assertEquals(checkoutGrandTotal(30, "delivery", { fee: 9 }), 39);
-  assertEquals(checkoutGrandTotal(30, "pickup_store", { fee: 9 }), 30);
-  assertThrows(() => checkoutGrandTotal(30, "delivery", { fee: -1 }));
+Deno.test("total do checkout soma somente uma cotação positiva e vigente", () => {
+  const quote = { vehicle: "MOTO", fee: 9, valid_until: new Date(Date.now() + 60_000).toISOString() };
+  assertEquals(checkoutGrandTotal(30, "delivery", quote), 39);
+  assertEquals(checkoutGrandTotal(30, "pickup_store", quote), 30);
+  assertThrows(() => checkoutGrandTotal(30, "delivery", { ...quote, fee: 0 }));
+  assertThrows(() => checkoutGrandTotal(30, "delivery", { ...quote, valid_until: new Date(Date.now() - 1000).toISOString() }));
 });
 
 Deno.test("rótulo da cotação e endereço fora da área", () => {
