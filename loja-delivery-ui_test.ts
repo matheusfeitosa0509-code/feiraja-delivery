@@ -112,7 +112,7 @@ Deno.test("loja.html conecta a opção, cotação, endereço salvo e acompanhame
   assertEquals(html.includes('id="payPixTest"'), false, "radio Pix de teste só pode ser criado após confirmação admin");
   assertEquals(html.includes('<option value="pix_test">'), false, "select Pix de teste só pode ser criado após confirmação admin");
   assertEquals(deliveryUi.includes("export function syncAdminTestPaymentOption"), true);
-  for (const required of ['rpc("is_current_user_admin")', 'rpc("get_delivery_enabled")', 'if (deliveryActive === true) return adminCheckComplete !== true || withinHours !== true;']) {
+  for (const required of ['rpc("is_current_user_admin")', 'rpc("get_delivery_enabled")', 'if (deliveryActive === true) return withinHours !== true;']) {
     assertEquals(deliveryUi.includes(required), true, "missing delivery access rule: " + required);
   }
 });
