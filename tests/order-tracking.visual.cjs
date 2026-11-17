@@ -97,7 +97,7 @@ async function runViewport(browser, width, height, vehicle) {
   await page.waitForTimeout(400);
   const mid = await page.evaluate(() => window.__tracking.driverMarker.getLngLat());
   assert.notDeepEqual(mid, start, 'driver marker must interpolate between positions instead of jumping');
-  assert.ok(mid.lat < start.lat && mid.lat > -3.1265, 'intermediate marker latitude should be between both mocked positions');
+  assert.ok(mid.lat > start.lat && mid.lat < -3.1265, 'intermediate marker latitude should be between both mocked positions');
   await page.waitForTimeout(850);
   const end = await page.evaluate(() => ({
     point: window.__tracking.driverMarker.getLngLat(),
