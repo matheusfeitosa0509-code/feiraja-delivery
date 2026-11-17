@@ -2,6 +2,8 @@ name: Delivery quote tests
 on:
   pull_request:
     paths:
+      - "supabase/functions/_shared/store-schedule.js"
+      - "supabase/functions/_shared/store-schedule_test.ts"
       - "supabase/functions/_shared/delivery-quote.ts"
       - "supabase/functions/_shared/geocoding.ts"
       - "supabase/functions/_shared/geocoding_test.ts"
@@ -38,6 +40,7 @@ on:
       - "loja.html"
       - "loja-delivery-ui.js"
       - "loja-delivery-ui_test.ts"
+      - "tests/scheduled-delivery.visual.cjs"
       - ".github/workflows/delivery-quote-tests.yml"
   push:
     branches:
@@ -84,7 +87,7 @@ jobs:
       - run: deno check --config supabase/functions/lalamove-webhook/deno.json supabase/functions/lalamove-webhook/index.ts
       - run: deno check --config supabase/functions/lalamove-tracking/deno.json supabase/functions/lalamove-tracking/index.ts
       - run: deno test --allow-net --allow-read supabase/functions/delivery-quote/index_test.ts supabase/functions/_shared/geocoding_test.ts supabase/functions/delivery-address/index_test.ts supabase/functions/lalamove-dispatch/index_test.ts supabase/functions/lalamove-tracking/index_test.ts supabase/functions/_shared/lalamove-environment_test.ts
-      - run: deno test --allow-read loja-delivery-ui_test.ts
+      - run: deno test --allow-read loja-delivery-ui_test.ts supabase/functions/_shared/store-schedule_test.ts
       - run: deno test --allow-read supabase/functions/super-worker/delivery-order_test.ts
       - uses: actions/setup-node@v4
         with:
@@ -98,6 +101,7 @@ jobs:
       - run: node supabase/tests/panel-order-value-display.test.mjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/order-tracking.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/checkout-delivery-access.visual.cjs
+      - run: NODE_PATH=/tmp/playwright/node_modules node tests/scheduled-delivery.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/legal-identity.visual.cjs
       - uses: actions/upload-artifact@v4
         if: always()
