@@ -2007,7 +2007,7 @@ function syncDeliverySelection(){
  $('#deliveryAddressFields').classList.toggle('hidden',delivery!=='delivery');
  syncPickupPaymentOptions();updateCheckoutTotals();updateCheckoutScheduleNotice();
  if(delivery==='delivery')scheduleDeliveryQuote();
- else{deliveryNeedsExplicitConfirm=false;$('#deliveryConfirmAddress').hidden=true;deliveryQuote=null;deliveryQuoteSequence++;clearTimeout(deliveryQuoteTimer);setDeliveryQuoteStatus('');}
+ else{deliveryNeedsExplicitConfirm=false;const confirmAddress=$('#deliveryConfirmAddress');if(confirmAddress)confirmAddress.hidden=true;deliveryQuote=null;deliveryQuoteSequence++;clearTimeout(deliveryQuoteTimer);setDeliveryQuoteStatus('');}
 }
 function totals(){const items=Object.entries(cart).map(([id,q])=>({p:products.find(p=>p.id===id),q,saleMode:cartModes[id]==='value'?'value':'kg'})).filter(x=>x.p).map(x=>{const unitPriceCents=effectiveUnitPriceCents(x.p,x.q);const lineTotalCents=x.saleMode==='value'?(cartValueCents[x.p.id]||0):Math.round(unitPriceCents*x.q);return {...x,unitPriceCents,unitPrice:unitPriceCents/100,lineTotalCents,resaleApplied:unitPriceCents<Math.round(Number(x.p.price)*100)};});const subtotalCents=items.reduce((sum,x)=>sum+x.lineTotalCents,0);const sub=subtotalCents/100;return {items,subtotalCents,sub,total:sub};}
 function minimumOrderMessage(t){return t.sub<MIN_ORDER_AMOUNT?'Pedido mínimo: '+money(MIN_ORDER_AMOUNT)+' em produtos. Faltam '+money(MIN_ORDER_AMOUNT-t.sub)+'.':'';}
