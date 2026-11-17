@@ -40,7 +40,7 @@ export function renderDeliveryOption({ option, radio, starting, description, isA
   option.setAttribute("aria-disabled", String(disabled));
   starting.replaceChildren();
   if (enabledForCustomers) {
-    starting.textContent = withinHours === true ? "Calcular taxa" : "Entrega a partir de " + scheduleLabel + " pela manhã";
+    starting.textContent = withinHours === true ? "Calcular taxa" : "Entrega a partir de " + String(scheduleLabel).split(",")[0] + " pela manhã";
     description.textContent = "Taxa por distância, paga com Pix junto do pedido.";
   } else if (adminPreview) {
     const badge = document.createElement("span");
