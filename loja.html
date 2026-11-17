@@ -1805,7 +1805,7 @@ async function requestDeliveryAutocomplete(input,sessionToken){
   const {data,error}=await supabase.functions.invoke('delivery-address',{body:{action:'autocomplete',input,session_token:sessionToken}});
   if($('#deliveryStreet').value.trim()!==input||deliveryPlacesSessionToken!==sessionToken)return;
   const box=$('#deliveryStreetSuggestions');box.replaceChildren();
-  if(error||!Array.isArray(data?.suggestions)||!data.suggestions.length){hideDeliverySuggestions();$('#deliveryMapFallback').hidden=false;return;}
+  if(error||!Array.isArray(data?.suggestions)||!data.suggestions.length){hideDeliverySuggestions();$('#deliveryMapFallback').hidden=false;setDeliveryQuoteStatus(error?'Entrega indisponível no momento. Você pode escolher Retirar na loja.':'Não encontramos esse endereço. Você pode escolher Retirar na loja.',true);return;}
   for(const item of data.suggestions){
    const button=document.createElement('button');button.type='button';button.className='delivery-suggestion';button.setAttribute('role','option');
    const parts=String(item.description||'').split(',').map(part=>part.trim()).filter(Boolean);
@@ -1833,7 +1833,7 @@ async function chooseDeliveryPlace(placeId){
   syncDeliveryAddressPresentation(true);
   setDeliveryQuoteStatus('Endereço selecionado. Confira o número e aguarde a cotação.');
   scheduleDeliveryQuote();
- }catch(error){deliveryPlacesSessionToken=null;$('#deliveryMapFallback').hidden=false;setDeliveryQuoteStatus(String(error?.message||'Não foi possível selecionar o endereço.'),true);}
+ }catch(error){deliveryPlacesSessionToken=null;$('#deliveryMapFallback').hidden=false;const raw=String(error?.message||'');const friendly=/ADDRESS_NOT_FOUND|rua e bairro/i.test(raw)?'Não encontramos esse endereço.':/ADDRESS_OUTSIDE_MANAUS|fora de Manaus/i.test(raw)?'Endereço fora da área de entrega.':'Entrega indisponível no momento.';setDeliveryQuoteStatus(friendly+' Você pode escolher Retirar na loja.',true);}
 }
 function loadLeaflet(){
  if(window.L)return Promise.resolve(window.L);
