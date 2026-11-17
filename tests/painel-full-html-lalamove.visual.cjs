@@ -78,7 +78,7 @@ function prepareHtml(source) {
       if(await page.locator("[data-lalamove-map]").count()!==1)throw new Error("Status/rastreio não apareceu após criação mockada em Produção.");
 
       await page.evaluate(()=>window.__testDb.resetOrder());
-      await page.locator("#refresh").click();
+      await page.locator("#refresh").evaluate(button=>button.click());
       await page.waitForSelector("[data-order-toggle]");
       if(await page.locator('[data-order-content="TEST-6259DB63"]').isHidden())await page.locator('[data-order-toggle="TEST-6259DB63"]').click();
       await page.waitForSelector('[data-lalamove-quote="TEST-6259DB63"]');
