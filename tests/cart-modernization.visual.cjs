@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require('playwright');
+const normalizeText = value => String(value || '').replace(/\u00a0/g, ' ');
 
 (async () => {
   const root = process.cwd();
@@ -79,8 +80,8 @@ const { chromium } = require('playwright');
       const card = page.locator('#cartItems .cart-item');
       assert.equal(await card.count(), 1, width + 'px: um item no carrinho');
       assert.equal((await card.locator('.cart-qty-value').textContent()).trim(), '5 un');
-      assert.equal((await page.locator('#checkout').textContent()).trim(), 'Continuar · R$ 49,95');
-      assert.equal((await page.locator('#subtotal').textContent()).trim(), 'R$ 49,95');
+      assert.equal(normalizeText((await page.locator('#checkout').textContent()).trim()), 'Continuar · R$ 49,95');
+      assert.equal(normalizeText((await page.locator('#subtotal').textContent()).trim()), 'R$ 49,95');
       assert.equal(await card.locator('.value-sale-open').textContent(), 'Pedir por valor R$');
       assert.equal(await card.locator('.cart-pref-chip').count(), 0, 'não deve duplicar sugestões como Maduro');
       assert.equal(await card.locator('.cart-pref-summary').count(), 0, 'não deve repetir a preferência abaixo do select');
