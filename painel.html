@@ -789,6 +789,7 @@ function populateUnifiedCategory(){
 function setSheetMessage(message,isError=false){$('productSheetMessage').textContent=message;$('productSheetMessage').style.color=isError?'#b3261e':'';}
 function fillProductSheet(product){
  clearPendingProductPhoto('sheet');
+ sheetMode='edit';
  unifiedCurrentProductId=product.id;
  const cost=getProductCost(product.id);
  $('productSheetTitle').textContent=product.name;
