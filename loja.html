@@ -1949,7 +1949,7 @@ function syncDeliverySelection(){
  $('#deliveryStore').checked=delivery==='pickup_store';const uberRadio=$('#deliveryUber');if(uberRadio)uberRadio.checked=delivery==='pickup_uber';$('#deliveryHome').checked=delivery==='delivery';
  document.querySelectorAll('[name=deliveryChoice]').forEach(r=>r.closest('.opt').classList.toggle('sel',r.checked));
  $('#deliveryAddressFields').classList.toggle('hidden',delivery!=='delivery');
- if(delivery==='delivery'){deliveryNeedsExplicitConfirm=true;deliveryQuote=null;}
+ if(delivery==='delivery'){deliveryNeedsExplicitConfirm=true;deliveryQuote=null;if($('#deliveryStreet'))syncDeliveryAddressPresentation(true);}
  else{deliveryNeedsExplicitConfirm=false;deliveryQuote=null;deliveryQuoteSequence++;clearTimeout(deliveryQuoteTimer);setDeliveryQuoteStatus('');}
  syncPickupPaymentOptions();updateCheckoutTotals();updateCheckoutScheduleNotice();
 }
