@@ -437,7 +437,7 @@ Deno.serve(async (req) => {
       const currentById = new Map(((currentRows || []) as Array<{ id: string; name: string | null; available: boolean | null }>).map((row) => [String(row.id), row]));
       const catalogById = new Map(catalog.map((product) => [product.id, product]));
       const proposedById = new Map<string, number>();
-      const preferencesById = new Map<string, { item_note: string; substitution_preference: 'replace' | 'remove' | 'call' }>();
+      const preferencesById = new Map<string, { item_note: string; substitution_preference: 'replace' | 'remove' }>();
       const unavailableMessages: string[] = [];
       for (const oldItem of previousItems) {
         const id = String(oldItem?.id || oldItem?.product_id || "");
@@ -467,7 +467,7 @@ Deno.serve(async (req) => {
           substitution_preference: preference === 'remove' ? 'remove' : 'replace',
         });
       }
-      const proposedItems = [...proposedById.entries()].map(([product_id, quantidade]) => ({ product_id, quantidade, ...(preferencesById.get(product_id) || { item_note: '', substitution_preference: 'call' as const }) }));
+      const proposedItems = [...proposedById.entries()].map(([product_id, quantidade]) => ({ product_id, quantidade, ...(preferencesById.get(product_id) || { item_note: '', substitution_preference: 'replace' as const }) }));
       const response = proposedItems.length
         ? "Encontrei seu último pedido. Confira os itens e quantidades antes de adicionar. A loja aplicará os preços atuais do catálogo; nenhum preço antigo será reutilizado."
         : "Não há itens do seu último pedido que possam ser propostos agora. Confira os avisos abaixo.";
@@ -720,7 +720,7 @@ Deno.serve(async (req) => {
     const byId = new Map(catalog.map((product) => [product.id, product]));
     const promptProductIds = new Set(promptCatalog.map((product) => product.id));
     const candidates = Array.isArray(parsed.itens) ? parsed.itens.slice(0, 15) : [];
-    const validCandidates: Array<{ product_id: string; quantidade: number; item_note: string; substitution_preference: 'replace' | 'remove' | 'call' }> = [];
+    const validCandidates: Array<{ product_id: string; quantidade: number; item_note: string; substitution_preference: 'replace' | 'remove' }> = [];
     let fractionalRejected = false;
     const seen = new Set();
     for (const item of candidates) {
