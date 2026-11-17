@@ -70,6 +70,7 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
         visibleUber: true,
       });
       assert.equal(copyResult.noOverflow, true, 'sem overflow nos textos em ' + width + 'px');
+      await page.locator('body').evaluate(el => el.insertAdjacentHTML('beforeend', '<label id="deliveryHomeOption"><input id="deliveryHome" type="radio"><span id="deliveryHomeDescription"></span><span id="deliveryStartingPrice"></span></label>'));
 
       const result = await page.evaluate(({ scheduleSource, uiSource }) => {
         const getStoreSchedule = new Function(scheduleSource + '\nreturn getStoreSchedule;')();
