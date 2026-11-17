@@ -67,7 +67,7 @@ Deno.serve(async (req: Request) => {
     })));
     const vehicle = chooseVehicle(load.weightKg, load.bulky, Number(settings?.moto_limite_kg || 12));
     const { data: allowed, error: rateError } = await db.rpc("consume_delivery_quote_rate_limit", {
-      p_user_id: authData.user.id, p_max_requests: 15, p_window_seconds: 60,
+      p_user_id: authData.user.id, p_max_requests: 30, p_window_seconds: 60,
     });
     if (rateError) return json({ error: "Limite de cotações temporariamente indisponível." }, 503);
     if (allowed !== true) return json({ error: "Muitas consultas agora, tente em alguns segundos.", code: "QUOTE_RATE_LIMIT" }, 429);
