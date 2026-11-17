@@ -86,7 +86,7 @@
    canvas.hidden=false;
    if(!state.map){
     state.map=new lib.Map({container:canvas,style:STYLE,center:[(store.lng+home.lng)/2,(store.lat+home.lat)/2],zoom:12,attributionControl:false,dragRotate:false,pitchWithRotate:false});
-    if(lib.AttributionControl)state.map.addControl(new lib.AttributionControl({compact:true,customAttribution:'© OpenFreeMap'}),'bottom-right');
+    if(lib.AttributionControl)state.map.addControl(new lib.AttributionControl({compact:true,customAttribution:'© OpenFreeMap · © OpenStreetMap contributors'}),'bottom-right');
     await new Promise((resolve,reject)=>{
      if(state.map.loaded?.()){resolve();return;}
      state.map.once('load',resolve);state.map.once('error',event=>reject(event?.error||new Error('MAP_STYLE_FAILED')));
