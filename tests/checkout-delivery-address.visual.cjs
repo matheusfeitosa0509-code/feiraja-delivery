@@ -108,6 +108,7 @@ document.body.innerHTML=mapOverlayMarkup;
    await page.waitForTimeout(1550);
    assert.equal(await page.evaluate(()=>window.quoteCount()),1,'quote runs only after explicit confirmation');
    assert.equal(await page.locator('#deliveryMapPreview').isVisible(),true,'confirmed map preview is shown');
+   assert.equal(await page.locator('#deliveryMapPreviewAddress').textContent(),'Rua do Mercado · 123 · Centro','confirmed street, number and neighborhood remain visible');
    assert.equal(await page.locator('#deliveryAddressSummary').isVisible(),false,'duplicate edit summary is hidden after map confirmation');
    await page.evaluate(()=>{Object.defineProperty(navigator,'geolocation',{configurable:true,value:{getCurrentPosition(success,failure){failure(new Error('denied'));}}});window.runGps();});
    await page.waitForFunction(()=>document.querySelector('#deliveryQuoteStatus').textContent.includes('Não foi possível acessar o GPS'));
