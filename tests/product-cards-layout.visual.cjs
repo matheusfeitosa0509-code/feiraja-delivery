@@ -16,8 +16,8 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
 (async () => {
   const root = process.cwd();
   const source = fs.readFileSync(path.join(root, 'loja.html'), 'utf8');
-  const helper = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8').replace(/\\bexport\\s+/g, '');
-  const schedule = fs.readFileSync(path.join(root, 'supabase/functions/_shared/store-schedule.js'), 'utf8').replace(/\\bexport\\s+/g, '');
+  const helper = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8').replace(/\bexport\s+/g, '');
+  const schedule = fs.readFileSync(path.join(root, 'supabase/functions/_shared/store-schedule.js'), 'utf8').replace(/\bexport\s+/g, '');
   const bootstrap = '<script>' +
     'window.__testSupabase={' +
     'auth:{getSession:async()=>({data:{session:null},error:null}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}}),signOut:async()=>({error:null})},' +
@@ -29,17 +29,17 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
     'window.FeiraLalamoveMap={mountAll(){}};' +
     '</script>';
   let html = source
-    .replace(/<script>[\\s\\S]*?serviceWorker\\.register[\\s\\S]*?<\\/script>/i, '')
+    .replace(/<script>[\s\S]*?serviceWorker\.register[\s\S]*?<\/script>/i, '')
     .replace(/<link rel="manifest"[^>]*>/gi, '')
     .replace(/<link rel="preconnect"[^>]*>/gi, '')
-    .replace(/<link href="https:\\/\\/fonts\\.googleapis\\.com[^>]*>/gi, '')
-    .replace(/<script src="\\.\\/turnstile\\.js" defer><\\/script>/i, '')
-    .replace(/<script src="\\.\\/lalamove-map\\.js"><\\/script>/i, '');
-  html = html.replace(/<script type="module">([\\s\\S]*?)<\\/script>/i, (_all, code) => {
-    code = code.replace(/^\\s*import\\s*\\{\\s*createClient\\s*\\}\\s*from\\s*['"]https:\\/\\/esm\\.sh\\/@supabase\\/supabase-js@2\\.117\\.1['"];\\s*/m, '');
-    code = code.replace(/^\\s*import\\s*\\{[^}]+\\}\\s*from\\s*['"]\\.\\/loja-delivery-ui\\.js[^'"]*['"];\\s*/m, '');
-    code = code.replace(/^\\s*import\\s*\\{\\s*getStoreSchedule\\s*\\}\\s*from\\s*['"]\\.\\/supabase\\/functions\\/_shared\\/store-schedule\\.js[^'"]*['"];\\s*/m, '');
-    code = code.replace(/const supabase=createClient\\([\\s\\S]*?\\);\\s*/, 'const supabase=window.__testSupabase;\\n');
+    .replace(/<link href="https:\/\/fonts\.googleapis\.com[^>]*>/gi, '')
+    .replace(/<script src="\.\/turnstile\.js" defer><\/script>/i, '')
+    .replace(/<script src="\.\/lalamove-map\.js"><\/script>/i, '');
+  html = html.replace(/<script type="module">([\s\S]*?)<\/script>/i, (_all, code) => {
+    code = code.replace(/^\s*import\s*\{\s*createClient\s*\}\s*from\s*['"]https:\/\/esm\.sh\/@supabase\/supabase-js@2\.117\.1['"];\s*/m, '');
+    code = code.replace(/^\s*import\s*\{[^}]+\}\s*from\s*['"]\.\/loja-delivery-ui\.js[^'"]*['"];\s*/m, '');
+    code = code.replace(/^\s*import\s*\{\s*getStoreSchedule\s*\}\s*from\s*['"]\.\/supabase\/functions\/_shared\/store-schedule\.js[^'"]*['"];\s*/m, '');
+    code = code.replace(/const supabase=createClient\([\s\S]*?\);\s*/, 'const supabase=window.__testSupabase;\n');
     return '<script>' + code + '</script>';
   });
   html = html.replace('<body', bootstrap + '<script>' + schedule + '</script><script>' + helper + '</script><body');
@@ -93,7 +93,7 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
         assert.equal(data[0].text.weight,'Peso aproximado',width+'px '+label+': kg mostra peso');
         assert.equal(data[1].text.weight,'',width+'px '+label+': unidade não mostra peso');
         assert.equal(data[0].text.wholesale,'',width+'px '+label+': sem atacado reserva espaço vazio');
-        assert.match(data[1].text.wholesale,/A partir de 10 un: R\\$ 10,00/,width+'px '+label+': atacado com unidade');
+        assert.match(data[1].text.wholesale,/A partir de 10 un: R\$ 10,00/,width+'px '+label+': atacado com unidade');
         assert.equal(data[0].text.old,'',width+'px '+label+': sem promoção reserva espaço vazio');
         assert.notEqual(data[1].text.old,'',width+'px '+label+': promoção exibe preço riscado');
         assert.ok(data[1].text.value.includes('Pedir por valor R$'),width+'px '+label+': botão de valor');
