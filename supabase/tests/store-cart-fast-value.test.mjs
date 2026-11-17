@@ -250,11 +250,14 @@ assert.match(html,/id="cartUndoToast"/);assert.match(html,/DESFAZER/);assert.mat
 assert.match(html,/function showCartUndo\(message,snapshot\)/);assert.match(html,/function undoCartAction\(\)/);
 
 // Layout guards: compact quantity row, separate remove action and value-sale link.
-assert.match(html,/class="cart-item-controls"/);\nassert.match(html,/class="cart-qty-control"/);
+assert.match(html,/class="cart-item-controls"/);
+assert.match(html,/class="cart-qty-control"/);
 assert.match(html,/data-cart-remove=/);
 assert.match(html,/data-cart-clear/);
-assert.match(html,/class="cart-remove" data-cart-remove=/);\nassert.match(html,/class="cart-value-action"/);
-assert.match(html,/\.cart-qty-control button\{width:36px!important;height:38px!important;min-width:36px!important;min-height:38px!important/);\nassert.match(html,/\.cart-item-controls \.cart-remove\{flex:none!important;width:40px!important/);
+assert.match(html,/class="cart-remove" data-cart-remove=/);
+assert.match(html,/class="cart-value-action"/);
+assert.match(html,/\.cart-qty-control button\{width:36px!important;height:38px!important;min-width:36px!important;min-height:38px!important/);
+assert.match(html,/\.cart-item-controls \.cart-remove\{flex:none!important;width:40px!important/);
 assert.match(html,/\.cart-item\{display:flex;flex-direction:column/);
 assert.match(html,/function cartSaleModeControl\(item\)\{return valueSaleEditorMarkup\(item\.p\);\}/);
 assert.doesNotMatch(html,/data-sale-mode=/,'cart no longer uses the cramped purchase-mode select');
