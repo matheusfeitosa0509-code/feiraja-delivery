@@ -1918,7 +1918,7 @@ async function requestDeliveryQuote(){
  if(!address){setDeliveryQuoteStatus('Informe rua, número e bairro para calcular a entrega.');return;}
  const items=buildDeliveryQuoteItems(totals().items);
  const cacheKey=JSON.stringify({address,items,coordinates:deliveryMapCoordinates||null});const cachedQuote=deliveryQuoteCache.get(cacheKey);
- if(cachedQuote&&cachedQuote.expiresAt>Date.now()){deliveryQuote={...cachedQuote.quote};setDeliveryQuoteStatus(deliveryQuoteLabel(deliveryQuote.vehicle,deliveryQuote.fee));updateCheckoutTotals();return;}
+ if(cachedQuote&&cachedQuote.expiresAt>Date.now()&&isValidDeliveryQuote(cachedQuote.quote)){deliveryQuote={...cachedQuote.quote};setDeliveryQuoteStatus(deliveryQuoteLabel(deliveryQuote.vehicle,deliveryQuote.fee));updateCheckoutTotals();return;}
  if(!items.length){setDeliveryQuoteStatus('Adicione produtos ao carrinho para calcular a entrega.');return;}
  setDeliveryQuoteStatus('Calculando a taxa de entrega…');
  try{
