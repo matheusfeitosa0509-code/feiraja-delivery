@@ -1526,7 +1526,6 @@ function showRequiredProfileStep(message=''){
 async function loadDeliveryAccess(user){
  const request=++deliveryAccessRequest;
  currentUserIsAdmin=false;deliveryAdminCheckComplete=false;deliveryActive=false;
- syncDeliveryOptionVisibility();
  if(!user?.id||user.is_anonymous){
   try{
    const {data,error}=await supabase.rpc("get_delivery_enabled");
