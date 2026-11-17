@@ -106,6 +106,9 @@ const checkoutCss = [
       const uberListenerMatch = storeHtml.match(/\$\('#deliveryUber'\)\?\.addEventListener\('change',[^;]+;/);
       if (!uberListenerMatch) throw new Error('optional Uber change listener missing');
       await page.addScriptTag({ content: uberListenerMatch[0] });
+      assert.equal(await page.evaluate(() => typeof window.syncDeliverySelection), 'function', 'syncDeliverySelection deve estar disponível');
+      const syncProbe = await page.evaluate(() => { try { window.syncDeliverySelection(); return 'ok'; } catch (error) { return error.stack || error.message; } });
+      assert.equal(syncProbe, 'ok', width + 'px: falha ao sincronizar checkout sem Uber: ' + syncProbe);
       await page.locator('#checkout').click();
       assert.equal(await page.locator('#modal').evaluate(el => el.classList.contains('open')), true, width + 'px: Continuar deve abrir checkout');
       for (const deliveryType of ['pickup_store', 'delivery']) {
