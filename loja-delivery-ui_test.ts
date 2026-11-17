@@ -1,6 +1,6 @@
 import { assertEquals, assertThrows } from "jsr:@std/assert@1.0.14";
 import {
-  buildDeliveryQuoteItems, canShowDeliveryOption, canShowUberPickupOption, syncUberPickupOption, checkoutGrandTotal,
+  buildDeliveryQuoteItems, canShowDeliveryOption, canShowUberPickupOption, checkoutGrandTotal,
   deliveryUnavailableMessage, isDeliveryOptionDisabled, loadDeliveryAccessState,
   deliveryPaymentOptions, deliveryQuoteErrorMessage, deliveryQuoteLabel, isAdminRpcTrue, isDeliveryOutOfArea,
   normalizeDeliveryAddress,
@@ -151,7 +151,7 @@ Deno.test("checkout novo mantém a ordem visual dos cards e os campos funcionais
     'id="checkoutProductsTotal"', 'id="checkoutDeliveryTotal"',
     'id="checkoutSummaryTotal"', 'id="deliveryStartingPrice"',
     "syncAdminTestPaymentOption", "syncUberPickupOption",
-    'id="submitOrder"', 'id="modalTotal"', 'id="cpf"', 'id="phone"', 'id="email"', 'id="deliveryUberOption"', 'canShowUberPickupOption(deliveryActive)', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga o Uber pelo app. Nós levamos o pedido até o carro.', "const uberAction=o.delivery_type==='pickup_uber'", 'id="deliveryUberOption"', 'canShowUberPickupOption(deliveryActive)', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga o Uber pelo app. Nós levamos o pedido até o carro.',
+    'id="submitOrder"', 'id="modalTotal"', 'id="cpf"', 'id="phone"', 'id="email"', 'id="deliveryUberOption"', 'syncUberPickupOption({', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga o Uber pelo app. Nós levamos o pedido até o carro.', "const uberAction=o.delivery_type==='pickup_uber'", 'id="deliveryUberOption"', 'syncUberPickupOption({', 'checkout-uber-details', 'checkout-schedule-alert', 'checkoutScheduleNoticeText', 'grid-template-columns:22px 32px minmax(0,1fr) auto', 'Você chama e paga o Uber pelo app. Nós levamos o pedido até o carro.',
     'position:fixed!important', 'min-height:64px', '#delivery,#payment{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}',
     "function updateCheckoutSummary()", "value.textContent=money(deliveryQuote.fee)",
   ]) assertEquals(html.includes(required), true, "missing checkout presentation: " + required);
