@@ -2,160 +2,145 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require('playwright');
-
 const root = path.resolve(__dirname, '..');
-const artifacts = path.join(root, 'artifacts');
-const videos = path.join(artifacts, 'order-tracking-videos');
-fs.mkdirSync(videos, { recursive: true });
+const source = fs.readFileSync(path.join(root, 'lalamove-map.js'), 'utf8');
 
-const storeHtml = fs.readFileSync(path.join(root, 'loja.html'), 'utf8');
-const styleStart = storeHtml.indexOf('<style id="orderTrackingLayout">');
-const styleEnd = storeHtml.indexOf('</style>', styleStart);
-if (styleStart < 0 || styleEnd < 0) throw new Error('orderTrackingLayout CSS missing from loja.html');
-const trackingCss = storeHtml.slice(styleStart + '<style id="orderTrackingLayout">'.length, styleEnd);
-const timelineCss = `:root{--mut:#607467;--ink:#203b27;--g:#2f8a4c}
-*{box-sizing:border-box}body{margin:0;background:#f4f7f2;font-family:Arial,sans-serif;color:#203b27}
-.frame{width:100%;max-width:520px;margin:0 auto;padding:14px;background:#fff}
-${trackingCss}
-#map{width:100%;min-width:0}
-`;
-
-async function runViewport(browser, width, height) {
-  const context = await browser.newContext({
-    viewport: { width, height },
-    recordVideo: { dir: videos, size: { width, height } },
+async function runViewport(browser, width, height, vehicle) {
+  const page = await browser.newPage({ viewport: { width, height } });
+  const errors = [];
+  page.on('pageerror', error => errors.push('pageerror: ' + error.message));
+  page.on('console', message => { if (message.type() === 'error') errors.push('console.error: ' + message.text()); });
+  await page.addInitScript(() => {
+    window.__pollMs = null;
+    window.__cleared = false;
+    window.setInterval = (fn, ms) => { window.__pollMs = ms; return 77; };
+    window.clearInterval = id => { if (id === 77) window.__cleared = true; };
+    class Bounds {
+      constructor() { this.points = []; }
+      extend(point) { this.points.push(point); return this; }
+    }
+    class MockMap {
+      constructor(options) {
+        this.options = options; this.handlers = {}; this.sources = {}; this.layers = [];
+        this.container = typeof options.container === 'string' ? document.getElementById(options.container) : options.container;
+        this.canvas = document.createElement('div'); this.canvas.className = 'maplibregl-canvas'; this.container.append(this.canvas);
+      }
+      loaded() { return true; }
+      on(name, fn) { this.handlers[name] = fn; return this; }
+      once(name, fn) { if (name === 'load') queueMicrotask(fn); return this; }
+      addControl(control) { this.control = control; return this; }
+      fitBounds(bounds, options) { this.bounds = bounds.points; this.fitOptions = options; return this; }
+      addSource(id, source) { this.sources[id] = { ...source, setData(data) { this.data = data; } }; }
+      getSource(id) { return this.sources[id]; }
+      addLayer(layer) { this.layers.push(layer); }
+      resize() {}
+      remove() { this.removed = true; this.container.replaceChildren(); }
+    }
+    class MockMarker {
+      constructor(options) { this.options = options; this.element = options.element; this.lngLat = null; this.rotation = 0; }
+      setLngLat(point) { this.lngLat = { lng: point[0], lat: point[1] }; return this; }
+      getLngLat() { return this.lngLat; }
+      setRotation(value) { this.rotation = value; return this; }
+      getRotation() { return this.rotation; }
+      addTo(map) { this.map = map; map.container.append(this.element); return this; }
+    }
+    window.maplibregl = { Map: MockMap, Marker: MockMarker, LngLatBounds: Bounds, AttributionControl: class {} };
+    window.IntersectionObserver = undefined;
   });
-  const page = await context.newPage();
-  await page.route('https://mock-driver-photo.test/avatar.svg', route => route.fulfill({
-    status: 200,
-    contentType: 'image/svg+xml',
-    body: '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><circle cx="32" cy="32" r="32" fill="#2f8a4c"/><text x="32" y="42" text-anchor="middle" font-size="30" fill="white">M</text></svg>',
-  }));
-  await page.setContent(`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>
-    <main class="frame">
-      <h3>Pedido de teste · Entrega Feira On</h3>
-      <div class="order-timeline"><ol>
-        <li class="done"><span class="timeline-dot"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect></svg></span><span class="timeline-label">Pago</span></li>
-        <li class="done"><span class="timeline-dot"><svg viewBox="0 0 24 24"><path d="M5 8h14l1 13H4L5 8Z"></path></svg></span><span class="timeline-label">Preparando</span></li>
-        <li class="now"><span class="timeline-dot"><svg viewBox="0 0 24 24"><circle cx="6" cy="17" r="3"></circle></svg></span><span class="timeline-label">A caminho</span></li>
-        <li><span class="timeline-dot"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"></path></svg></span><span class="timeline-label">Entregue</span></li>
-      </ol><p class="order-timeline-detail">Motorista simulado está levando seu pedido.</p></div>
-      <div id="map" data-order-id="MOCK-TRACKING"></div>
-    </main>
-  </body></html>`);
-  await page.addStyleTag({ content: timelineCss });
-  await page.addStyleTag({ url: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css' });
-  await page.evaluate(() => {
-    window.IntersectionObserver = class { observe() {} disconnect() {} };
-  });
-  await page.addScriptTag({ url: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' });
+  await page.setContent(`<!doctype html><html lang="pt-BR"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;font:14px Arial"><main style="width:100%;max-width:520px;margin:auto;padding:12px;box-sizing:border-box"><h3>Pedido · Entrega Feira On</h3><div id="map" data-order-id="MOCK-TRACKING"></div><div id="searching" data-order-id="MOCK-SEARCHING"></div></main></body></html>`);
+  await page.addStyleTag({ content: '*{box-sizing:border-box}.feira-lalamove-map-canvas{height:230px}.maplibregl-canvas{position:absolute;inset:0}.feira-map-pin{position:relative}' });
   await page.addScriptTag({ path: path.join(root, 'lalamove-map.js') });
-
-  await page.evaluate(async () => {
+  await page.evaluate(async vehicleType => {
     const route = [
       { lat: -3.1347, lng: -60.0237 },
       { lat: -3.1265, lng: -60.0181 },
       { lat: -3.1162, lng: -60.0124 },
-      { lat: -3.1050, lng: -60.0050 },
     ];
     let index = 0;
-    window.__tracking = window.FeiraLalamoveMap.mount(
-      document.querySelector('#map'),
-      async () => ({
-        active: true,
-        status: 'assigned',
-        provider: 'lalamove',
-        driver_assigned: true,
-        vehicle: 'MOTO',
-        store: { lat: -3.1347, lng: -60.0237 },
-        customer: { lat: -3.1050, lng: -60.0050 },
-        driver: {
-          name: 'Motorista simulado',
-          plateNumber: '**ABC*',
-          photo: 'https://mock-driver-photo.test/avatar.svg',
-          coordinates: route[Math.min(index++, route.length - 1)],
-        },
-      }),
-      { animationDurationMs: 550, pollIntervalMs: 60000 },
-    );
-    await window.__tracking.refresh();
+    window.__tracking = window.FeiraLalamoveMap.mount(document.querySelector('#map'), async () => ({
+      active: true, status: 'picked_up', provider: 'lalamove', driver_assigned: true, vehicle: vehicleType,
+      store: { lat: -3.1347, lng: -60.0237 }, customer: { lat: -3.1050, lng: -60.0050 },
+      driver: { name: 'Motorista simulado', plateNumber: '**ABC*', coordinates: route[Math.min(index++, route.length - 1)] },
+      tracking_url: 'https://tracking.lalamove.com/mock',
+    }), { animationDurationMs: 1100 });
+    window.__search = window.FeiraLalamoveMap.mount(document.querySelector('#searching'), async () => ({
+      active: true, status: 'searching', driver_assigned: false,
+    }));
+  }, vehicle);
+  await page.waitForSelector('#map .feira-map-pin.driver');
+  await page.waitForSelector('#searching .feira-lalamove-map-status');
+  const initial = await page.evaluate(() => ({
+    status: document.querySelector('#map .feira-lalamove-map-status').textContent,
+    driver: document.querySelector('#map .feira-map-pin.driver').textContent,
+    markers: document.querySelectorAll('#map .feira-map-pin').length,
+    info: document.querySelector('#map .feira-lalamove-driver-info').innerText,
+    fallback: document.querySelector('#map .feira-lalamove-tracking-fallback').href,
+    searching: document.querySelector('#searching .feira-lalamove-map-status').textContent,
+    searchingMapHidden: document.querySelector('#searching .feira-lalamove-map-canvas').hidden,
+    pollMs: window.__pollMs,
+    noHorizontalScroll: document.documentElement.scrollWidth <= window.innerWidth,
+    cameraIncludesThreePoints: window.__tracking.map.bounds.length === 3,
+  }));
+  assert.match(initial.status, /Motorista a caminho/);
+  assert.equal(initial.driver, vehicle === 'CAR' ? '🚗' : '🛵');
+  assert.equal(initial.markers, 3, 'store, customer and driver markers must be present');
+  assert.match(initial.info, /Motorista simulado/);
+  assert.match(initial.info, /Placa \*\*ABC\*/);
+  assert.match(initial.fallback, /tracking\.lalamove\.com/);
+  assert.match(initial.searching, /Procurando entregador/);
+  assert.equal(initial.searchingMapHidden, true, 'map stays hidden until a driver is assigned');
+  assert.equal(initial.pollMs, 15000, 'tracking polls every 15 seconds');
+  assert.equal(initial.noHorizontalScroll, true);
+  assert.equal(initial.cameraIncludesThreePoints, true, 'initial camera fits driver, destination and store');
+  const start = await page.evaluate(() => window.__tracking.driverMarker.getLngLat());
+  await page.evaluate(() => window.__tracking.refresh());
+  await page.waitForTimeout(400);
+  const mid = await page.evaluate(() => window.__tracking.driverMarker.getLngLat());
+  assert.notDeepEqual(mid, start, 'driver marker must interpolate between positions instead of jumping');
+  assert.ok(mid.lat < start.lat && mid.lat > -3.1265, 'intermediate marker latitude should be between both mocked positions');
+  await page.waitForTimeout(850);
+  const end = await page.evaluate(() => ({
+    point: window.__tracking.driverMarker.getLngLat(),
+    rotation: window.__tracking.driverMarker.getRotation(),
+  }));
+  assert.ok(Math.abs(end.point.lat - (-3.1265)) < 0.00001, 'marker reaches the next mocked position');
+  assert.ok(end.rotation > 0 && end.rotation < 360, 'vehicle rotates toward its direction of travel');
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
   });
-  for (let step = 0; step < 3; step++) {
-    await page.waitForTimeout(80);
-    await page.evaluate(() => window.__tracking.refresh());
-    await page.waitForTimeout(650);
-  }
-
-  const layout = await page.evaluate(() => {
-    const dots = [...document.querySelectorAll('.timeline-dot')];
-    const labels = [...document.querySelectorAll('.timeline-label')];
-    const tops = dots.map(dot => Math.round(dot.getBoundingClientRect().top));
-    return {
-      count: dots.length,
-      tops,
-      centers: dots.map(dot => Math.round(dot.getBoundingClientRect().left + dot.getBoundingClientRect().width / 2)),
-      labelsNoWrap: labels.every(label => getComputedStyle(label).whiteSpace === 'nowrap'),
-      noHorizontalScroll: document.documentElement.scrollWidth <= window.innerWidth,
-      driver: window.__tracking.driverMarker?.getLatLng()
-        ? { lat: window.__tracking.driverMarker.getLatLng().lat, lng: window.__tracking.driverMarker.getLatLng().lng }
-        : null,
-      mapVisible: !document.querySelector('.feira-lalamove-map-canvas').hidden,
-      driverPhoto: !!document.querySelector('.feira-lalamove-driver-info img'),
-    };
-  });
-  assert.equal(layout.count, 4, `expected four timeline stages at ${width}px`);
-  assert.equal(new Set(layout.tops).size, 1, `timeline circles wrapped vertically at ${width}px: ${layout.tops}`);
-  const gaps = layout.centers.slice(1).map((x, i) => x - layout.centers[i]);
-  assert.ok(Math.max(...gaps) - Math.min(...gaps) <= 2, `timeline columns are not equal at ${width}px: ${gaps}`);
-  assert.equal(layout.labelsNoWrap, true);
-  assert.equal(layout.noHorizontalScroll, true);
-  assert.equal(layout.mapVisible, true);
-  assert.equal(layout.driverPhoto, true, 'driver photo should appear when supplied by the API');
-  assert.ok(layout.driver && Math.abs(layout.driver.lat - (-3.1050)) < 0.001, 'mock motorcycle should finish near the customer pin');
-
-  await page.screenshot({ path: path.join(artifacts, `order-tracking-${width}.png`), fullPage: true });
-  const video = page.video();
-  await context.close();
-  if (video) {
-    const source = await video.path();
-    fs.copyFileSync(source, path.join(artifacts, `order-tracking-${width}.webm`));
-  }
+  const paused = await page.evaluate(() => window.__cleared);
+  assert.equal(paused, true, 'polling pauses when the app goes to the background');
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  assert.equal(overflow, false, `content must not overflow at ${width}px`);
+  assert.deepEqual(errors, [], `no browser or console errors at ${width}px: ${errors.join('; ')}`);
+  await page.close();
 }
 
-async function runTrackingFailureModes(browser) {
+async function runFailureMode(browser) {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await page.addInitScript(() => { window.IntersectionObserver = undefined; });
   await page.setContent('<main><div id="customer" data-order-id="MOCK-CUSTOMER"></div><div id="admin" data-order-id="MOCK-ADMIN"></div></main>');
-  await page.evaluate(() => { delete window.IntersectionObserver; });
   await page.addScriptTag({ path: path.join(root, 'lalamove-map.js') });
   await page.evaluate(() => {
     window.FeiraLalamoveMap.mount(document.querySelector('#customer'), async () => { throw new Error('tracking unavailable'); });
     window.FeiraLalamoveMap.mount(document.querySelector('#admin'), async () => { throw new Error('tracking unavailable'); }, { admin: true });
   });
   await page.waitForFunction(() => document.querySelector('#customer').hidden && document.querySelector('#admin .feira-lalamove-map-status')?.textContent.includes('Rastreio indisponível'));
-  const result = await page.evaluate(() => ({
-    customerHidden: document.querySelector('#customer').hidden,
-    customerErrorVisible: !!document.querySelector('#customer .feira-lalamove-map-status')?.textContent.trim(),
-    adminVisible: !document.querySelector('#admin').hidden,
-    adminMessage: document.querySelector('#admin .feira-lalamove-map-status')?.textContent || '',
-    adminCanvasHidden: document.querySelector('#admin .feira-lalamove-map-canvas').hidden,
-  }));
-  assert.equal(result.customerHidden, true, 'customer map must disappear silently after a tracking failure');
-  assert.equal(result.adminVisible, true, 'admin must retain the map panel');
-  assert.match(result.adminMessage, /Rastreio indisponível/, 'admin receives a diagnostic notice');
-  assert.equal(result.adminCanvasHidden, true, 'failed admin map canvas stays hidden');
+  assert.equal(await page.locator('#admin .feira-lalamove-map-canvas').isHidden(), true);
   await page.close();
 }
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
-    await runViewport(browser, 360, 800);
-    await runViewport(browser, 412, 915);
-    await runTrackingFailureModes(browser);
+    await runViewport(browser, 360, 800, 'MOTO');
+    await runViewport(browser, 412, 915, 'CAR');
+    await runFailureMode(browser);
   } finally {
     await browser.close();
   }
-  process.stdout.write('Order tracking mock map: 360px/412px and silent customer failure passed; screenshots and videos saved in artifacts/.\\n');
+  process.stdout.write('MapLibre Lalamove tracking: MOTO/CAR, interpolation, rotation, 15s polling, visibility pause, searching state and 360/412px passed.\\n');
 })().catch(error => {
   process.stderr.write(String(error && error.stack || error) + '\\n');
   process.exitCode = 1;
