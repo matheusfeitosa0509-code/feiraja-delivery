@@ -16,6 +16,10 @@ assert.ok(panelHtml.includes('!scheduledPending'), 'painel impede cotação ante
 
 const scheduleSource = fs.readFileSync(path.join(root, 'supabase/functions/_shared/store-schedule.js'), 'utf8')
   .replaceAll('export async function ', 'async function ').replaceAll('export function ', 'function ').replaceAll('export const ', 'const ');
+const checkoutScheduleStart = storeHtml.indexOf('function checkoutScheduleMessage(');
+const checkoutScheduleEnd = storeHtml.indexOf('\nfunction updateCheckoutScheduleNotice()', checkoutScheduleStart);
+const checkoutScheduleSource = checkoutScheduleStart >= 0 && checkoutScheduleEnd > checkoutScheduleStart ? storeHtml.slice(checkoutScheduleStart, checkoutScheduleEnd) : '';
+if (!checkoutScheduleSource) throw new Error('checkoutScheduleMessage source missing');
 const copyStart = storeHtml.indexOf('function syncDeliveryCustomerCopy(){');
 const copyEnd = storeHtml.indexOf('\nfunction persistCart()', copyStart);
 const copySource = copyStart >= 0 && copyEnd > copyStart ? storeHtml.slice(copyStart, copyEnd) : '';
@@ -78,6 +82,9 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
         const monday = getStoreSchedule(new Date('2026-11-16T22:00:00.000Z'));
         const saturday = getStoreSchedule(new Date('2026-11-14T18:00:00.000Z'));
         const sunday = getStoreSchedule(new Date('2026-11-15T12:00:00.000Z'));
+        const tuesdayNight = getStoreSchedule(new Date('2026-11-18T02:00:00.000Z'));
+        const checkoutScheduleMessage = new Function('pickupEstimate', checkoutScheduleSource + '\nreturn checkoutScheduleMessage;')(date => getStoreSchedule(date));
+        const nightMessage = checkoutScheduleMessage(new Date('2026-11-18T02:00:00.000Z'), true);
         renderDeliveryOption({
           option: document.querySelector('#deliveryHomeOption'),
           radio: document.querySelector('#deliveryHome'),
@@ -87,7 +94,7 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
           withinHours: monday.within, scheduleLabel: monday.label,
         });
         return {
-          monday, saturday, sunday,
+          monday, saturday, sunday, tuesdayNight, nightMessage,
           enabled: !document.querySelector('#deliveryHome').disabled,
           label: document.querySelector('#deliveryStartingPrice').textContent,
           description: document.querySelector('#deliveryHomeDescription').textContent,
@@ -99,6 +106,9 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
       assert.equal(result.monday.scheduledFor, '2026-11-17T10:00:00.000Z', 'segunda à noite → terça às 6h');
       assert.equal(result.saturday.scheduledFor, '2026-11-16T10:00:00.000Z', 'sábado 14h → segunda às 6h');
       assert.equal(result.sunday.scheduledFor, '2026-11-16T10:00:00.000Z', 'domingo → segunda às 6h');
+      assert.equal(result.tuesdayNight.scheduledFor, '2026-11-18T10:00:00.000Z', 'terça à noite → quarta às 6h');
+      assert.equal(result.tuesdayNight.label, 'quarta, 18/11');
+      assert.equal(result.nightMessage, 'Estamos fechados agora. Sua entrega sai na quarta, 18/11, a partir das 6h.');
       assert.equal(result.enabled, true);
       assert.equal(result.label, 'Ter. de manhã');
       assert.equal(result.description.startsWith('Taxa por distância, paga com Pix junto do pedido.'), true);
