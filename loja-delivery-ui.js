@@ -8,7 +8,7 @@ export function canShowDeliveryOption(deliveryActive, isAdmin, adminCheckComplet
 
 export function isDeliveryOptionDisabled(deliveryActive, isAdmin, adminCheckComplete = false, withinHours = true) {
   if (deliveryActive === true) return adminCheckComplete !== true || withinHours !== true;
-  return adminCheckComplete !== true || isAdmin !== true;
+  return adminCheckComplete !== true || isAdmin !== true || withinHours !== true;
 }
 
 export async function loadDeliveryAccessState(user, rpc) {
@@ -31,7 +31,7 @@ export async function loadDeliveryAccessState(user, rpc) {
 
 export function renderDeliveryOption({ option, radio, starting, description, isAdmin, adminCheckComplete, deliveryActive, withinHours = true }) {
   const enabledForCustomers = canShowDeliveryOption(deliveryActive, isAdmin, adminCheckComplete, withinHours);
-  const adminPreview = deliveryActive !== true && adminCheckComplete === true && isAdmin === true;
+  const adminPreview = deliveryActive !== true && adminCheckComplete === true && isAdmin === true && withinHours === true;
   const disabled = !(enabledForCustomers || adminPreview);
   option.hidden = false;
   radio.disabled = disabled;
@@ -41,7 +41,7 @@ export function renderDeliveryOption({ option, radio, starting, description, isA
   if (enabledForCustomers) {
     starting.textContent = "Calcular taxa";
     description.textContent = "Taxa por distância, paga com Pix junto do pedido.";
-  } else if (deliveryActive === true && withinHours !== true) {
+  } else if (withinHours !== true && (deliveryActive === true || isAdmin === true)) {
     starting.textContent = "Fora do horário";
     description.textContent = "Entrega disponível no horário de funcionamento.";
   } else if (adminPreview) {
