@@ -29,6 +29,9 @@ const checkoutCss = [
   try {
     for (const width of [360, 412]) {
       const page = await browser.newPage({ viewport: { width, height: 800 } });
+      const consoleErrors = [];
+      page.on('pageerror', error => consoleErrors.push(error.message));
+      page.on('console', message => { if (message.type() === 'error') consoleErrors.push(message.text()); });
       await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>' +
         '<main class="checkout-screen"><form id="checkoutForm">' +
         '<label class="opt checkout-choice-card is-disabled" id="deliveryHomeOption" for="deliveryHome" aria-disabled="true">' +
@@ -275,6 +278,7 @@ const checkoutCss = [
       assert.equal(view.badgeCount, 0);
       fs.mkdirSync(path.join(root, 'artifacts'), { recursive: true });
       await page.screenshot({ path: path.join(root, 'artifacts', 'checkout-delivery-admin-' + width + '.png'), fullPage: true });
+      assert.deepEqual(consoleErrors, [], width + 'px: erros de console');
       await page.close();
     }
   } finally {
