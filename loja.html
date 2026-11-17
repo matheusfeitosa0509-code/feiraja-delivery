@@ -1939,7 +1939,7 @@ async function requestDeliveryQuote(){
    throw new Error(friendly);
   }
   if(!data||!['MOTO','CAR'].includes(data.vehicle)||!Number.isFinite(Number(data.fee))||Number(data.fee)<=0||!Number.isFinite(Date.parse(String(data.valid_until||'')))||Date.parse(String(data.valid_until))<=Date.now())throw new Error('Resposta de cotação inválida ou expirada.');
-  deliveryQuote={vehicle:data.vehicle,fee:Number(data.fee),valid_until:data.valid_until};
+  deliveryQuote={vehicle:data.vehicle,fee:Number(data.fee),valid_until:data.valid_until,schedule_at:data.schedule_at||null};
   try{await saveDeliveryAddress(address);}catch(saveError){
    throw new Error('Cotação recebida, mas não foi possível salvar o endereço para os próximos pedidos. Verifique sua conexão e tente novamente.');
   }
