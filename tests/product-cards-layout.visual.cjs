@@ -77,7 +77,6 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
             inside:[media,title,old,price,wholesale,qty,value,weight].every(el=>{const a=el.getBoundingClientRect(),b=card.getBoundingClientRect();return a.left>=b.left-1&&a.right<=b.right+1&&a.top>=b.top-1&&a.bottom<=b.bottom+1;})
           };
         }));
-        console.log(width+'px '+label+' card bottom gaps: '+data.map(d=>d.id+'='+Math.round((d.card.bottom-d.weight.bottom)*100)/100).join(', '));
         for(const d of data){
           assert.equal(d.objectFit,'contain',width+'px '+label+' '+d.id+': object-fit contain');
           assert.ok(Math.abs(d.media.width-d.media.height)<1.5,width+'px '+label+' '+d.id+': foto quadrada');
@@ -89,7 +88,7 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
           assert.equal(d.order,true,width+'px '+label+' '+d.id+': ordem comum');
           assert.equal(d.noCardOverflow,true,width+'px '+label+' '+d.id+': sem overflow horizontal');
           assert.equal(d.inside,true,width+'px '+label+' '+d.id+': conteúdo dentro do card');
-          assert.ok(d.card.bottom-d.weight.bottom<=14,width+'px '+label+' '+d.id+': sem sobra branca após o conteúdo (padding interno), gap='+Math.round((d.card.bottom-d.weight.bottom)*100)/100);
+          assert.ok(d.card.bottom-d.weight.bottom<=10,width+'px '+label+' '+d.id+': sem sobra branca após o conteúdo');
         }
         for(let i=0;i<data.length;i++){
           const sameRow=data.filter(d=>Math.abs(d.card.top-data[i].card.top)<2);
