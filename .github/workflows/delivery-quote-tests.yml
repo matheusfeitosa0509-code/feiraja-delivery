@@ -9,6 +9,9 @@ on:
       - "supabase/functions/_shared/geocoding_test.ts"
       - "supabase/functions/delivery-address/**"
       - "supabase/functions/super-worker/**"
+      - "supabase/functions/assistente/**"
+      - "supabase/functions/_shared/item-preferences*"
+      - "supabase/tests/cart-item-preferences.test.mjs"
       - "supabase/functions/delivery-quote/**"
       - "supabase/functions/lalamove-dispatch/**"
       - "supabase/functions/lalamove-webhook/**"
@@ -54,6 +57,9 @@ on:
       - feat/checkout-order-tracking-map
     paths:
       - "supabase/functions/super-worker/**"
+      - "supabase/functions/assistente/**"
+      - "supabase/functions/_shared/item-preferences*"
+      - "supabase/tests/cart-item-preferences.test.mjs"
       - "supabase/functions/_shared/delivery-quote.ts"
       - "supabase/functions/delivery-quote/**"
       - "supabase/functions/lalamove-dispatch/**"
@@ -91,7 +97,8 @@ jobs:
       - run: deno check --config supabase/functions/lalamove-tracking/deno.json supabase/functions/lalamove-tracking/index.ts
       - run: deno test --allow-net --allow-read supabase/functions/delivery-quote/index_test.ts supabase/functions/_shared/geocoding_test.ts supabase/functions/delivery-address/index_test.ts supabase/functions/lalamove-dispatch/index_test.ts supabase/functions/lalamove-tracking/index_test.ts supabase/functions/_shared/lalamove-environment_test.ts
       - run: deno test --allow-read loja-delivery-ui_test.ts supabase/functions/_shared/store-schedule_test.ts
-      - run: deno test --allow-read supabase/functions/super-worker/delivery-order_test.ts
+      - run: deno test --allow-read supabase/functions/super-worker/delivery-order_test.ts supabase/functions/_shared/item-preferences_test.ts
+      - run: node supabase/tests/cart-item-preferences.test.mjs
       - uses: actions/setup-node@v4
         with:
           node-version: 22

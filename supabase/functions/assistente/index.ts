@@ -161,7 +161,7 @@ const outputSchema = {
           quantidade: { type: "number" },
           unidade: { type: "string" },
           item_note: { type: "string" },
-          substitution_preference: { type: "string", enum: ["replace", "remove", "call"] },
+          substitution_preference: { type: "string", enum: ["replace", "remove"] },
         },
         required: ["product_id", "quantidade", "unidade"],
         additionalProperties: false,
@@ -206,7 +206,7 @@ REGRAS COMERCIAIS
 FUNCIONAMENTO: em dias normais, a loja funciona de segunda a sábado, das 6h às 13h; domingo fechado. Em feriados oficiais nacionais, estaduais do Amazonas e municipais de Manaus, a loja abre das 6h às 11h; se o feriado cair no domingo, permanece fechada. Use exclusivamente o contexto_comercial recebido, que contém a data e hora atuais de Manaus (America/Manaus), identificação de feriado e próximo dia de funcionamento. Se perguntarem sobre o horário em feriado, informe 6h às 11h. Se perguntarem quando o pedido fica pronto, responda com o valor de pronto_a_partir_de; nunca prometa prazo em minutos nem diga “em minutos”. Durante o horário de funcionamento, pedidos ficam prontos no mesmo dia, até o fechamento aplicável (11h em feriado, 13h em dia normal); fora do horário, ficam prontos no próximo dia de funcionamento, a partir das 6h.
 COMPRA POR VALOR: a compra por valor pode ser usada em produtos vendidos por kg (o peso é aproximado) e por unidade. Para produtos por unidade, ofereça as quantidades inteiras mais próximas e seus valores aproximados, sem inventar preço: por exemplo, coco a R$ 9,99/un para R$ 20 pode resultar em 2 un por R$ 19,98 ou 3 un por R$ 29,97. Só faça esses cálculos quando os preços necessários estiverem explicitamente disponíveis no catálogo/contexto.
 PEDIDO MÍNIMO: R$ 30,00 em produtos, em qualquer modalidade. Se o cliente disser que quer fazer um pedido abaixo de R$ 30,00, avise imediatamente que o mínimo é R$ 30,00 e não proponha nem confirme uma compra abaixo desse valor.
-OBSERVAÇÕES E SUBSTITUIÇÃO: o cliente pode informar como quer cada item no carrinho, na opção “Como você quer?”. Pode registrar observação e escolher substituição por produto equivalente, remover o item se não houver substituto ou chamar o cliente para confirmar. Respeite item_note e substitution_preference quando existirem; não invente preferências.
+OBSERVAÇÕES E SUBSTITUIÇÃO: o cliente pode informar como quer cada item no carrinho, na opção “Como você quer?”. Pode registrar observação e escolher entre substituir por produto similar ou não substituir. O padrão é substituir por similar. Respeite item_note e substitution_preference quando existirem; não invente preferências.
 PAGAMENTO: na Entrega Feira On, o pedido e a taxa de entrega são pagos somente por Pix dentro do aplicativo. Na retirada na loja, aceitamos Pix, dinheiro ou cartão. Informe essas regras diretamente, sem mandar o cliente consultar WhatsApp.
 MODALIDADES: retirada gratuita na loja ou Entrega Feira On quando disponível no checkout, realizada por parceiro Lalamove. A taxa é calculada pela distância e exibida antes do pagamento. O cliente acompanha pelo aplicativo. Se não houver entregador disponível, a loja entra em contato para devolver a taxa ou combinar a retirada.`;
 
@@ -437,7 +437,7 @@ Deno.serve(async (req) => {
       const currentById = new Map(((currentRows || []) as Array<{ id: string; name: string | null; available: boolean | null }>).map((row) => [String(row.id), row]));
       const catalogById = new Map(catalog.map((product) => [product.id, product]));
       const proposedById = new Map<string, number>();
-      const preferencesById = new Map<string, { item_note: string; substitution_preference: 'replace' | 'remove' | 'call' }>();
+      const preferencesById = new Map<string, { item_note: string; substitution_preference: 'replace' | 'remove' }>();
       const unavailableMessages: string[] = [];
       for (const oldItem of previousItems) {
         const id = String(oldItem?.id || oldItem?.product_id || "");
@@ -464,10 +464,10 @@ Deno.serve(async (req) => {
         const preference = oldItem?.substitution_preference;
         preferencesById.set(id, {
           item_note: String(oldItem?.item_note ?? '').replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/<[^>]*>/g, '').replace(/[<>]/g, '').trim().slice(0, 100),
-          substitution_preference: preference === 'replace' || preference === 'remove' || preference === 'call' ? preference : 'call',
+          substitution_preference: preference === 'remove' ? 'remove' : 'replace',
         });
       }
-      const proposedItems = [...proposedById.entries()].map(([product_id, quantidade]) => ({ product_id, quantidade, ...(preferencesById.get(product_id) || { item_note: '', substitution_preference: 'call' as const }) }));
+      const proposedItems = [...proposedById.entries()].map(([product_id, quantidade]) => ({ product_id, quantidade, ...(preferencesById.get(product_id) || { item_note: '', substitution_preference: 'replace' as const }) }));
       const response = proposedItems.length
         ? "Encontrei seu último pedido. Confira os itens e quantidades antes de adicionar. A loja aplicará os preços atuais do catálogo; nenhum preço antigo será reutilizado."
         : "Não há itens do seu último pedido que possam ser propostos agora. Confira os avisos abaixo.";
@@ -720,7 +720,7 @@ Deno.serve(async (req) => {
     const byId = new Map(catalog.map((product) => [product.id, product]));
     const promptProductIds = new Set(promptCatalog.map((product) => product.id));
     const candidates = Array.isArray(parsed.itens) ? parsed.itens.slice(0, 15) : [];
-    const validCandidates: Array<{ product_id: string; quantidade: number; item_note: string; substitution_preference: 'replace' | 'remove' | 'call' }> = [];
+    const validCandidates: Array<{ product_id: string; quantidade: number; item_note: string; substitution_preference: 'replace' | 'remove' }> = [];
     let fractionalRejected = false;
     const seen = new Set();
     for (const item of candidates) {
@@ -747,7 +747,7 @@ Deno.serve(async (req) => {
         product_id: product.id,
         quantidade: quantity,
         item_note: typeof item.item_note === 'string' ? item.item_note.replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/<[^>]*>/g, '').replace(/[<>]/g, '').trim().slice(0, 100) : '',
-        substitution_preference: rawPreference === 'replace' || rawPreference === 'remove' || rawPreference === 'call' ? rawPreference : 'call',
+        substitution_preference: rawPreference === 'remove' ? 'remove' : 'replace',
       });
     }
 

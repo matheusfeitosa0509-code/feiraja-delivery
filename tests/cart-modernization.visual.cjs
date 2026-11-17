@@ -67,7 +67,7 @@ const normalizeText = value => String(value || '').replace(/\u00a0/g, ' ');
         localStorage.setItem('feiraja_cart_v1', JSON.stringify({ 'coco-un': 5 }));
         localStorage.setItem('feiraja_cart_modes_v1', '{}');
         localStorage.setItem('feiraja_cart_value_cents_v1', '{}');
-        localStorage.setItem('feiraja_cart_preferences_v1', '{}');
+        localStorage.setItem('feiraja_cart_preferences_v1', JSON.stringify({ 'coco-un': { note: 'Maduro', substitution: 'call' } }));
       });
       await page.route('**/*', route => route.fulfill({ status: 200, body: '' }));
       await page.route(url => url.hostname === 'juhwdevvwstmyxyyagzh.supabase.co' && url.pathname.endsWith('/rest/v1/products'),
@@ -85,7 +85,10 @@ const normalizeText = value => String(value || '').replace(/\u00a0/g, ' ');
       assert.equal(await card.locator('.value-sale-open').textContent(), 'Pedir por valor R$');
       assert.equal(await card.locator('.cart-pref-chip').count(), 0, 'não deve duplicar sugestões como Maduro');
       assert.equal(await card.locator('.cart-pref-summary').count(), 0, 'não deve repetir a preferência abaixo do select');
-      assert.equal(await card.locator('.cart-pref-substitution select').count(), 1);
+      assert.equal(await card.locator('.cart-pref-substitution select').count(), 0, 'não deve existir select nativo');
+      assert.equal(await card.locator('.cart-substitution-chip').count(), 2, 'somente dois chips lado a lado');
+      assert.equal(await card.locator('.cart-substitution-chip.active').textContent(), 'Substituir por similar', 'call salvo deve migrar para o padrão');
+      assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('feiraja_cart_preferences_v1'))['coco-un'].substitution), 'replace');
       assert.equal(await card.locator('.cart-item-preference textarea').getAttribute('rows'), '1');
 
       await card.locator('[data-q][data-d="1"]').click();
@@ -98,7 +101,11 @@ const normalizeText = value => String(value || '').replace(/\u00a0/g, ' ');
       await note.fill('Bem maduro, firme ao toque, sem manchas e pronto para consumir nos próximos dias.');
       const noteHeight = await note.evaluate(el => parseFloat(getComputedStyle(el).height));
       assert.ok(noteHeight > 40, width + 'px: campo de preferência deve crescer ao digitar');
-      await page.locator('#cartItems .cart-pref-substitution select').selectOption('replace');
+      await card.locator('.cart-substitution-chip[data-pref-value="remove"]').click();
+      assert.equal(await card.locator('.cart-substitution-chip.active').textContent(), 'Não substituir');
+      assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('feiraja_cart_preferences_v1'))['coco-un'].substitution), 'remove');
+      await card.locator('.cart-substitution-chip[data-pref-value="replace"]').click();
+      assert.equal(await card.locator('.cart-substitution-chip.active').textContent(), 'Substituir por similar');
 
       const layout = await page.evaluate(() => {
         const card = document.querySelector('#cartItems .cart-item');
@@ -134,5 +141,5 @@ const normalizeText = value => String(value || '').replace(/\u00a0/g, ' ');
   } finally {
     await browser.close();
   }
-  process.stdout.write('Carrinho modernizado: quantidade, preferência expansível, compra por valor e resumo fixo aprovados em 360px e 412px; sem erros de console ou diálogos nativos.\n');
+  process.stdout.write('Carrinho modernizado: chips de substituição, migração de preferência legada, quantidade, compra por valor e resumo fixo aprovados em 360px e 412px; sem erros de console ou diálogos nativos.\n');
 })().catch(error => { console.error(error); process.exit(1); });
