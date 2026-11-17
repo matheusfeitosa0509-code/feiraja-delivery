@@ -65,6 +65,17 @@ Deno.test("não-admin bloqueado quando entrega está desligada", () => {
   }), { ok: false, status: 403, error: "A Entrega Feira On está temporariamente desativada." });
 });
 
+Deno.test("novos pedidos com Uber são recusados quando Entrega Feira On está ativa", () => {
+  assertEquals(validateCheckoutDelivery({
+    deliveryType: "pickup_uber", paymentMethod: "pix", isAdmin: false, deliveryActive: true,
+  }), {
+    ok: false, status: 400, error: "Receber com seu Uber não está disponível para novos pedidos.",
+  });
+  assertEquals(validateCheckoutDelivery({
+    deliveryType: "pickup_uber", paymentMethod: "pix", isAdmin: false, deliveryActive: false,
+  }), { ok: true });
+});
+
 Deno.test("dinheiro e cartão são recusados para entrega", () => {
   for (const paymentMethod of ["cash", "card_on_delivery"]) {
     assertEquals(validateCheckoutDelivery({
