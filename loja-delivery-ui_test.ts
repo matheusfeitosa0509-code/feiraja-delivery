@@ -2,7 +2,7 @@ import { assertEquals, assertThrows } from "jsr:@std/assert@1.0.14";
 import {
   buildDeliveryQuoteItems, canShowDeliveryOption, canShowUberPickupOption, checkoutGrandTotal,
   deliveryUnavailableMessage, isDeliveryOptionDisabled, loadDeliveryAccessState,
-  deliveryPaymentOptions, deliveryQuoteErrorMessage, deliveryQuoteLabel, isAdminRpcTrue, isDeliveryOutOfArea,
+  deliveryPaymentOptions, deliveryQuoteErrorMessage, deliveryQuoteLabel, isAdminRpcTrue, isDeliveryOutOfArea, isValidDeliveryQuote,
   normalizeDeliveryAddress,
 } from "./loja-delivery-ui.js";
 
@@ -81,6 +81,14 @@ Deno.test("itens do carrinho viram payload de cotação", () => {
   assertEquals(buildDeliveryQuoteItems([{ p: { id: "banana" }, q: 2 }, { id: "melancia", qty: 1 }]), [
     { product_id: "banana", quantity: 2 }, { product_id: "melancia", quantity: 1 },
   ]);
+});
+
+Deno.test("cotação válida exige veículo, taxa positiva e validade futura", () => {
+  const valid = { vehicle: "MOTO", fee: 9, valid_until: new Date(Date.now() + 60_000).toISOString() };
+  assertEquals(isValidDeliveryQuote(valid), true);
+  assertEquals(isValidDeliveryQuote({ ...valid, fee: 0 }), false);
+  assertEquals(isValidDeliveryQuote({ ...valid, valid_until: new Date(Date.now() - 1000).toISOString() }), false);
+  assertEquals(isValidDeliveryQuote({ ...valid, vehicle: "BICYCLE" }), false);
 });
 
 Deno.test("total do checkout soma taxa somente na entrega", () => {
