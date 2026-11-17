@@ -504,7 +504,7 @@ let allOrders=[],seenOrderIds=new Set(),firstLoadDone=false,hasMoreOrders=true,n
     const mode=String(item?.sale_mode||'').toLowerCase();
     const suffix=rawName.match(/\s*\((kg|un|unidade|maço|maco|pacote)\)\s*$/i);
     const rawUnit=String(suffix?.[1]||item?.sale_unit||item?.saleUnit||item?.unit||item?.unit_name||'').toLowerCase();
-    const unit=mode==='value'?'value':(/kg/.test(rawUnit)||description.endsWith(' kg')?'kg':(/maço|maco/.test(rawUnit)||description.endsWith(' maço')?'maço':(/pacote/.test(rawUnit)||description.endsWith(' pacote')?'pacote':'un'));
+    const unit=mode==='value'?'value':(/kg/.test(rawUnit)||description.endsWith(' kg'))?'kg':(/maço|maco/.test(rawUnit)||description.endsWith(' maço'))?'maço':(/pacote/.test(rawUnit)||description.endsWith(' pacote'))?'pacote':'un';
     const productKey=String(item?.product_id??item?.productId??item?.id??name);
     const key=JSON.stringify([productKey,name,unit,mode==='value'?'value':'quantity']);
     let entry=grouped.get(key);
