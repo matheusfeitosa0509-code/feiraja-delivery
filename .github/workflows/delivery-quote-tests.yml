@@ -42,6 +42,7 @@ on:
       - "loja-delivery-ui.js"
       - "loja-delivery-ui_test.ts"
       - "tests/scheduled-delivery.visual.cjs"
+      - "tests/checkout-delivery-address.visual.cjs"
       - "tests/painel-product-create.visual.cjs"
       - ".github/workflows/delivery-quote-tests.yml"
   push:
@@ -99,7 +100,7 @@ jobs:
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-compact.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/lalamove-panel.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-full-html-lalamove.visual.cjs
-      - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-product-create.visual.cjs
+      - run: NODE_PATH=/tmp/playwright/node_modules node tests/checkout-delivery-address.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/loja-console-errors.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/cart-modernization.visual.cjs
       - run: node supabase/tests/panel-order-value-display.test.mjs

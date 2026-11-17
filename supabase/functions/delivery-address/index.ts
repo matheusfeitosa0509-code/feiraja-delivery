@@ -38,7 +38,7 @@ function addressFromPlace(place: any) {
   const state = component(components, "administrative_area_level_1");
   const city = component(components, "locality") || component(components, "administrative_area_level_2");
   if (country?.shortText !== "BR" || state?.shortText !== "AM" ||
-      !String(city?.longText || "").toLocaleLowerCase("pt-BR").includes("manaus") ||
+      (city && !String(city.longText || "").toLocaleLowerCase("pt-BR").includes("manaus")) ||
       !isManausPoint(place?.location)) throw new Error("ADDRESS_OUTSIDE_MANAUS");
   const route = component(components, "route");
   const number = component(components, "street_number");
@@ -49,6 +49,7 @@ function addressFromPlace(place: any) {
     place_id: String(place.id || ""),
     formatted_address: String(place.formattedAddress || ""),
     street: String(route?.longText || place.formattedAddress || "").slice(0, 160),
+    reference: String(place.displayName?.text || "").slice(0, 160),
     number: String(number?.longText || "").slice(0, 30),
     neighborhood: String(neighborhood?.longText || city?.longText || "").slice(0, 100),
     lat: String(place.location.latitude),
@@ -90,10 +91,7 @@ Deno.serve(async (req: Request) => {
           "X-Goog-FieldMask": "suggestions.placePrediction.placeId,suggestions.placePrediction.text,suggestions.placePrediction.structuredFormat" },
         body: JSON.stringify({
           input, sessionToken, includedRegionCodes: ["br"], languageCode: "pt-BR", regionCode: "BR",
-          locationRestriction: { rectangle: {
-            low: { latitude: BOUNDS.south, longitude: BOUNDS.west },
-            high: { latitude: BOUNDS.north, longitude: BOUNDS.east },
-          } },
+          locationBias: { circle: { center: { latitude: -3.1190, longitude: -60.0217 }, radius: 30000 } },
         }),
         signal: AbortSignal.timeout(10000),
       });
@@ -126,7 +124,7 @@ Deno.serve(async (req: Request) => {
       const response = await fetch(url, {
         method: "GET",
         headers: { "X-Goog-Api-Key": apiKey,
-          "X-Goog-FieldMask": "id,formattedAddress,location,addressComponents,types" },
+          "X-Goog-FieldMask": "id,displayName,formattedAddress,location,addressComponents,types" },
         signal: AbortSignal.timeout(10000),
       });
       const payload = await response.json().catch(() => ({}));

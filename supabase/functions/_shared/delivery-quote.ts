@@ -110,3 +110,21 @@ export async function requestSandboxQuotation(
     signal: AbortSignal.timeout(12000),
   });
 }
+
+
+export async function retryLalamove429(
+  fetcher: typeof fetch,
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  sleep: (milliseconds: number) => Promise<void> = (milliseconds) =>
+    new Promise((resolve) => setTimeout(resolve, milliseconds)),
+): Promise<Response> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const response = await fetcher(input, init);
+    if (response.status !== 429 || attempt === 2) return response;
+    const retryAfter = Number(response.headers.get("Retry-After") || 0);
+    const delay = retryAfter > 0 ? Math.min(retryAfter * 1000, 5000) : 1200 * (attempt + 1);
+    await sleep(delay);
+  }
+  throw new Error("LALAMOVE_RETRY_EXHAUSTED");
+}

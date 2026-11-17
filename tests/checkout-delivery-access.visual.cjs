@@ -278,7 +278,7 @@ const checkoutCss = [
       await page.evaluate(() => { document.querySelector('#deliveryUberOption').hidden = !window.FeiraDeliveryAccess.canShowUberPickupOption(false); });
       assert.equal(await page.locator('#deliveryUberOption').evaluate(el => el.hidden), false);
       assert.equal(await page.evaluate(() => window.FeiraDeliveryAccess.deliveryQuoteErrorMessage(502, 'LALAMOVE_QUOTE_FAILED')),
-        'A localização foi encontrada, mas a Lalamove não concluiu a cotação. Tente novamente.');
+        'Entrega indisponível no momento.');
 
       // Fora do horário, a opção continua selecionável e informa o próximo dia útil.
       await render({ ...common, withinHours: false, scheduleLabel: 'terça, 17/11' });

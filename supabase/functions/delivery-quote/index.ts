@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
-import { chooseVehicle, estimateLoad, formatDropoff, isQuoteAllowed, parseQuotation, requestSandboxQuotation } from "../_shared/delivery-quote.ts";
+import { chooseVehicle, estimateLoad, formatDropoff, isQuoteAllowed, parseQuotation, requestSandboxQuotation, retryLalamove429 } from "../_shared/delivery-quote.ts";
 import { geocodeManausAddress, geocodeManausCoordinates } from "../_shared/geocoding.ts";
 
 const cors = {
@@ -49,12 +49,6 @@ Deno.serve(async (req: Request) => {
     const isAdmin = !!adminRow;
     if (!isQuoteAllowed(settings?.delivery_ativa === true, isAdmin)) return json({ error: "Entrega indisponível." }, 403);
 
-    const { data: allowed, error: rateError } = await db.rpc("consume_delivery_quote_rate_limit", {
-      p_user_id: authData.user.id, p_max_requests: 5, p_window_seconds: 60,
-    });
-    if (rateError) return json({ error: "Limite de cotações temporariamente indisponível." }, 503);
-    if (allowed !== true) return json({ error: "Muitas cotações. Aguarde um minuto." }, 429);
-
     const body = await req.json();
     if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Requisição inválida." }, 400);
     const dropoff = formatDropoff(body.address);
@@ -72,6 +66,12 @@ Deno.serve(async (req: Request) => {
       delivery_bulky: p.delivery_bulky === true, sale_unit: saleUnits.get(p.id) || null,
     })));
     const vehicle = chooseVehicle(load.weightKg, load.bulky, Number(settings?.moto_limite_kg || 12));
+    const { data: allowed, error: rateError } = await db.rpc("consume_delivery_quote_rate_limit", {
+      p_user_id: authData.user.id, p_max_requests: 30, p_window_seconds: 60,
+    });
+    if (rateError) return json({ error: "Limite de cotações temporariamente indisponível." }, 503);
+    if (allowed !== true) return json({ error: "Muitas consultas agora, tente em alguns segundos.", code: "QUOTE_RATE_LIMIT" }, 429);
+
     const environment = await readLalamoveEnvironment(db);
     const credentials = readLalamoveCredentials(environment, (name) => Deno.env.get(name));
     const { apiKey, apiSecret } = credentials;
@@ -85,10 +85,11 @@ Deno.serve(async (req: Request) => {
       pinnedAddress ? Promise.resolve({ lat: pinnedAddress.lat, lng: pinnedAddress.lng }) :
         geocodeManausAddress(dropoff, geocodingKey),
     ]);
-    const lalamoveDropoff = pinnedAddress?.formattedAddress || dropoff;
+    const lalamoveDropoff = dropoff || pinnedAddress?.formattedAddress || "";
+    const quoteFetch: typeof fetch = (input, init) => retryLalamove429(fetch, input, init);
     const response = await requestSandboxQuotation(apiKey, apiSecret, serviceType, lalamoveDropoff, {
       origin: originCoordinates, dropoff: dropoffCoordinates,
-    }, fetch, environment);
+    }, quoteFetch, environment);
     const result = await response.json().catch(() => ({}));
     const upstreamCode = String(result?.message || "");
     if (upstreamCode === "ERR_OUT_OF_SERVICE_AREA") {
