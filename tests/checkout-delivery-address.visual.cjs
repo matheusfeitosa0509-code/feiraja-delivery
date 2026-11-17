@@ -29,7 +29,7 @@ assert.ok(addressFunctionSource.includes('locationBias: { circle:'), 'Places mus
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
       page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
-      await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:14px Arial;margin:0;padding:12px}.panel{max-width:520px;margin:auto}button{width:100%;min-height:46px}#deliveryQuoteStatus{overflow-wrap:anywhere}</style></head><body><main class="panel"><button id="deliveryUseGps">Usar minha localização</button><button id="deliveryConfirmAddress" hidden>Confirmar endereço e calcular entrega</button><div id="deliveryMapPanel" hidden></div><p id="deliveryQuoteStatus" aria-live="polite"></p></main></body></html>');
+      await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:14px Arial;margin:0;padding:12px}.panel{max-width:520px;margin:auto}button{width:100%;min-height:46px}#deliveryQuoteStatus{overflow-wrap:anywhere}</style></head><body><main class="panel"><button id="deliveryUseGps">Usar minha localização</button><button id="deliveryConfirmAddress" hidden>Confirmar endereço e calcular entrega</button><div id="deliveryMapPanel" style="min-height:100px" hidden><span>Mapa</span></div><p id="deliveryQuoteStatus" aria-live="polite"></p></main></body></html>');
       await page.addScriptTag({ content: helperSource + '\nwindow.quoteError = deliveryQuoteErrorMessage;' });
       await page.addScriptTag({ content: `
         let deliveryMap=null,deliveryMapCoordinates=null,deliveryNeedsExplicitConfirm=false;
