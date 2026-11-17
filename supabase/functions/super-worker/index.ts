@@ -334,7 +334,7 @@ Deno.serve(async (req: Request) => {
     const deliveryAddressInput = customer.deliveryAddress || customer.delivery_address || body?.delivery_address || null;
     let deliveryActive = false;
     let deliveryMotoLimitKg = 8;
-    if (requestedDeliveryType === "delivery") {
+    if (requestedDeliveryType === "delivery" || (requestedDeliveryType === "pickup_uber" && !priorOrder)) {
       const { data: deliverySettings, error: deliverySettingsError } = await db.from("delivery_settings")
         .select("delivery_ativa,moto_limite_kg").eq("singleton", true).maybeSingle();
       if (deliverySettingsError || !deliverySettings) return json({ error: "Não foi possível validar a configuração de entrega." }, 503);
