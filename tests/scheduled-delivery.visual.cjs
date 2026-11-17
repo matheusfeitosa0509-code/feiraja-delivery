@@ -8,6 +8,7 @@ const storeHtml = fs.readFileSync(path.join(root, 'loja.html'), 'utf8');
 const panelHtml = fs.readFileSync(path.join(root, 'painel.html'), 'utf8');
 
 assert.ok(storeHtml.includes('Sua entrega sai na '), 'checkout avisa a data da entrega agendada');
+assert.ok(storeHtml.includes('schedule_at:data.schedule_at||null'), 'checkout retém o scheduleAt usado na cotação');
 assert.ok(storeHtml.includes('get_delivery_enabled'), 'consulta a flag pública também para visitantes sem login');
 assert.ok(storeHtml.includes('homeDeliveryHeadline') && storeHtml.includes('homePickupBannerCopy') && storeHtml.includes('accountLoginSubtitle'), 'textos de entrega têm atualização dinâmica');
 assert.ok(!storeHtml.includes('Retirada na loja</strong><small>ou com Uber</small>'), 'não deixa a cópia antiga fixa no topo');
