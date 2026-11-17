@@ -590,6 +590,7 @@ Deno.serve(async (req: Request) => {
           weightKg: Number(priorOrder.delivery_weight_kg),
           fee: Number(priorOrder.delivery_fee),
           validUntil: "",
+          scheduleAt: priorOrder.scheduled_for || null,
           address: normalizedDeliveryAddress!,
           formattedAddress: address,
         };
@@ -616,6 +617,7 @@ Deno.serve(async (req: Request) => {
             apiSecret: lalamoveCredentials.apiSecret,
             geocodingApiKey: Deno.env.get("GOOGLE_GEOCODING_API_KEY") || "",
             environment: lalamoveEnvironment,
+            scheduleAt: scheduledFor || undefined,
           });
         } catch (error) {
           const code = error instanceof Error ? error.message : "UNKNOWN";
