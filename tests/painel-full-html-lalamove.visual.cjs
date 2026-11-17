@@ -95,6 +95,53 @@ function prepareHtml(source) {
       await page.waitForFunction(()=>document.querySelector("[data-lalamove-status-label]")?.textContent.includes("Procurando motorista"));
       if(await page.locator("[data-lalamove-map]").count()!==1)throw new Error("Status/rastreio não apareceu após criação mockada em Sandbox.");
 
+      // Três marcações consecutivas no pedido do meio: o card permanece aberto e a rolagem não salta.
+      await page.evaluate(()=>Object.defineProperty(navigator,'share',{configurable:true,value:async payload=>{window.__sharedPayload=payload;}}));
+      const middleToggle=page.locator('[data-order-toggle="ORDER-MIDDLE-002"]');
+      await middleToggle.click();
+      const middleContent=page.locator('[data-order-content="ORDER-MIDDLE-002"]');
+      await middleContent.scrollIntoViewIfNeeded();
+      const scrollBefore=await page.evaluate(()=>window.scrollY);
+      const separationButtons=middleContent.locator('[data-separate-order="ORDER-MIDDLE-002"]');
+      if(await separationButtons.count()!==3)throw new Error("O pedido do meio deveria ter exatamente três itens.");
+      for(let index=0;index<3;index++){
+        await separationButtons.nth(index).click();
+        await page.waitForFunction(expected=>window.__testDb.__state.separationWrites.length===expected,index+1);
+        if(await middleContent.isHidden())throw new Error("O card do pedido do meio fechou após marcar o item "+(index+1)+".");
+        const countText=await middleContent.locator('[data-separated-count]').textContent();
+        if(countText!==(index+1)+" de 3 separados")throw new Error("Contador incorreto após marcar item: "+countText);
+        const currentScroll=await page.evaluate(()=>window.scrollY);
+        if(Math.abs(currentScroll-scrollBefore)>1)throw new Error("A rolagem mudou após marcar o item "+(index+1)+".");
+      }
+      const savedSeparation=await page.evaluate(()=>window.__testDb.__state.middleOrder.separated_items);
+      if(!Array.isArray(savedSeparation)||savedSeparation.length!==3)throw new Error("A marcação dos três itens não foi persistida no banco mockado.");
+      // A mesma atualização usada pelo polling automático mantém o card aberto e o scroll.
+      const fetchCountBefore=await page.evaluate(()=>window.__testDb.__state.orderFetchCount);
+      await page.locator("#refresh").click();
+      await page.waitForFunction(previous=>window.__testDb.__state.orderFetchCount>previous,fetchCountBefore);
+      await page.waitForFunction(()=>document.querySelector('[data-order-content="ORDER-MIDDLE-002"]')?.hidden===false);
+      if(await page.locator('[data-order-content="ORDER-MIDDLE-002"]').isHidden())throw new Error("A atualização da lista fechou o card aberto.");
+      if(Math.abs((await page.evaluate(()=>window.scrollY))-scrollBefore)>1)throw new Error("A atualização da lista alterou a rolagem.");
+      if(await page.locator('[data-order-content="ORDER-MIDDLE-002"] [data-separated-count]').textContent()!=="3 de 3 separados")throw new Error("O contador foi perdido após atualizar a lista.");
+
+      // Compartilhar pedido e lista consolidada: somente itens, quantidades/unidades e observações.
+      await page.locator('[data-share-order-list="ORDER-MIDDLE-002"]').click();
+      await page.waitForFunction(()=>window.__sharedPayload?.text?.includes("Banana Prata"));
+      const orderShare=await page.evaluate(()=>window.__sharedPayload.text);
+      if(!orderShare.includes("✅ Banana Prata — 1,5 kg")||!orderShare.includes("Observação: Bem maduras"))throw new Error("A lista do pedido não incluiu status/observação do item: "+orderShare);
+      if(/92911112222|privado|@privado|Cliente do meio/i.test(orderShare))throw new Error("A lista individual incluiu dados pessoais do cliente.");
+      await page.evaluate(()=>{window.__sharedPayload=null;});
+      await page.locator("#shoppingListButton").click();
+      await page.waitForFunction(()=>window.__sharedPayload?.text?.includes("Lista de compras"));
+      const allShare=await page.evaluate(()=>window.__sharedPayload.text);
+      if(!allShare.includes("Banana Prata — 3,5 kg")||!allShare.includes("Coco — R$ 15,00 (~1,5 kg)")||!allShare.includes("Tomate — 2 un"))throw new Error("A lista consolidada não somou produtos/unidades e compra por valor: "+allShare);
+      if(!allShare.includes("Bem maduras | Sem manchas")||allShare.includes("Produto de teste oculto")||/92999990000|92911112222|92933334444|@privado|endereço privado|lucro|custo/i.test(allShare))throw new Error("A lista consolidada perdeu observações, incluiu pedido de teste ou expôs dados/custos: "+allShare);
+      // Sem Web Share nativo, copia o texto e mostra o aviso do app.
+      await page.evaluate(()=>{window.__copiedText='';Object.defineProperty(navigator,'share',{configurable:true,value:undefined});Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{window.__copiedText=value;}}});});
+      await page.locator('[data-share-order-list="ORDER-MIDDLE-002"]').click();
+      await page.waitForFunction(()=>window.__copiedText.includes("Lista de compras"));
+      if(!(await page.locator("#notice").textContent()).includes("Texto copiado"))throw new Error("Fallback de cópia não exibiu aviso do app.");
+
       const calls=await page.evaluate(()=>window.__testDb.__state.calls);
       if(calls.filter(x=>x.action==="quote").length!==2||calls.filter(x=>x.action==="create").length!==2)throw new Error("Esperadas duas cotações e duas criações mockadas.");
       if(!calls.some(x=>x.action==="create"&&x.environment==="producao")||!calls.some(x=>x.action==="create"&&x.environment==="sandbox"))throw new Error("As criações não respeitaram o ambiente escolhido.");
