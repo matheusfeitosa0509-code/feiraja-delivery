@@ -1785,8 +1785,8 @@ function normalizeCartForLoadedCatalog(){
 async function load(options={}){
  const force=options===true||options?.force===true;
  const status=$('#status');
- const previousProducts=products.map(p=>({...p}));
- const previousRules=JSON.stringify([...salesRulesById.entries()]);
+ let previousProducts=products.map(p=>({...p}));
+ let previousRules=JSON.stringify([...salesRulesById.entries()]);
  if(!force){
   const saved=readStorefrontCache();
   const memory=saved||catalogCache;
@@ -1803,6 +1803,8 @@ async function load(options={}){
  }else{
   status.textContent='Atualizando catálogo…';
  }
+ previousProducts=products.map(p=>({...p}));
+ previousRules=JSON.stringify([...salesRulesById.entries()]);
  try{
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),10000);
