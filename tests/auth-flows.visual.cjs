@@ -1,13 +1,13 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const {chromium}=require('playwright');
-const root=path.resolve(__dirname,'..'),storeSource=fs.readFileSync(path.join(root,'loja.html'),'utf8'),recoverySource=fs.readFileSync(path.join(root,'recuperar-senha.html'),'utf8'),turnstileSource=fs.readFileSync(path.join(root,'turnstile.js'),'utf8');
+const root=path.resolve(__dirname,'..'),helperSource=fs.readFileSync(path.join(root,'loja-delivery-ui.js'),'utf8').replace(/\\bexport\\s+/g,''),scheduleSource=fs.readFileSync(path.join(root,'supabase/functions/_shared/store-schedule.js'),'utf8').replace(/\\bexport\\s+/g,''),storeSource=fs.readFileSync(path.join(root,'loja.html'),'utf8'),recoverySource=fs.readFileSync(path.join(root,'recuperar-senha.html'),'utf8'),turnstileSource=fs.readFileSync(path.join(root,'turnstile.js'),'utf8');
 const PWNED_MESSAGE='Essa senha é muito comum e já apareceu em vazamentos de outros sites pela internet (não no nosso app). Para sua segurança, escolha outra senha — ou entre com o Google, sem senha.';
 const USER={id:'user-test-1',email:'teste@example.com',user_metadata:{},is_anonymous:false};
 const SESSION={access_token:'mock-access-token',refresh_token:'mock-refresh-token',expires_at:Math.floor(Date.now()/1000)+3600,user:USER};
 function appHtml(initial={},realTurnstile=false){
  let html=storeSource.replace(/<script src="\.\/turnstile\.js" defer><\/script>/i,'').replace(/<script src="\.\/lalamove-map\.js"><\/script>/i,'').replace(/<script>\s*if\('serviceWorker'[\s\S]*?<\/script>/i,'');
- if(realTurnstile)html=html.replace(/<script type="module">/i,'<script>'+turnstileSource+'</script><script type="module">');
+ html=html.replace(/<script type="module">/i,'<script>'+scheduleSource+'</script><script>'+helperSource+'</script>'+(realTurnstile?'<script>'+turnstileSource+'</script>':'')+'<script type="module">');
  html=html.replace(/<script type="module">([\s\S]*?)<\/script>/i,(_all,js)=>{
   js=js.replace(/^\s*import\s*\{\s*createClient\s*\}\s*from\s*['"][^'"]+['"];\s*/m,'').replace(/^\s*import\s*\{[^}]+\}\s*from\s*['"]\.\/loja-delivery-ui\.js[^'"]*['"];\s*/m,'').replace(/^\s*import\s*\{[^}]+\}\s*from\s*['"]\.\/supabase\/functions\/_shared\/store-schedule\.js[^'"]*['"];\s*/m,'').replace(/const supabase=createClient\([\s\S]*?\);\s*/,'const supabase=window.__mockSupabase;\n');
   js+='\nwindow.__testHooks={getCheckoutAccessToken,showCheckoutSessionRecovery,getCart:()=>({...cart}),loadProfile,showRequiredProfileStep};\n';return '<script>'+js+'</script>';
@@ -19,6 +19,7 @@ async function pageFor(browser,width,html,refreshOutcomes=[]){
  const page=await browser.newPage({viewport:{width,height:900},deviceScaleFactor:1}),errors=[];
  page.on('pageerror',e=>errors.push('pageerror: '+e.message));page.on('console',m=>{if(m.type()==='error')errors.push('console.error: '+m.text());});
  page.__runtimeErrors=errors;page.__refreshOutcomes=refreshOutcomes;
+ await page.route('**/*',route=>route.fulfill({status:200,body:''}));
  await page.route('**/auth/v1/**',async route=>{const authUrl=new URL(route.request().url());const endpoint=authUrl.pathname.split('/auth/v1/')[1]+authUrl.search;if(endpoint.startsWith('token?grant_type=refresh_token')){const result=page.__refreshOutcomes.shift()||'ok';if(result==='500')return route.fulfill({status:500,contentType:'application/json',body:'{"message":"timeout"}'});return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({session:SESSION})});}if(endpoint.startsWith('token?grant_type=password'))return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({session:SESSION})});if(endpoint==='signup'||endpoint==='user'||endpoint.startsWith('authorize'))return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({session:SESSION,user:USER})});if(endpoint==='recover')return route.fulfill({status:200,contentType:'application/json',body:'{}'});return route.fulfill({status:200,contentType:'application/json',body:'{}'});});
  await page.route('**/api.pwnedpasswords.com/range/**',route=>{const suffix=crypto.createHash('sha1').update('Password123').digest('hex').toUpperCase().slice(5);return route.fulfill({status:200,contentType:'text/plain',body:suffix+':42\n'});});
  await page.route('**/rest/v1/**',route=>route.fulfill({status:200,contentType:'application/json',body:'[]'}));await page.route('**/functions/v1/**',route=>route.fulfill({status:200,contentType:'application/json',body:'{}'}));
