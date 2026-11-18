@@ -1767,6 +1767,7 @@ function writeStorefrontCache(){
  try{
   localStorage.setItem(STOREFRONT_CACHE_KEY,JSON.stringify({
    version:STOREFRONT_CACHE_VERSION,updatedAt:Date.now(),
+   categories:[...new Set(products.map(p=>String(p.category||'Outros')))],
    products:products.map(p=>({...p})),rules:[...salesRulesById.entries()],rulesWarning:cartRulesWarning
   }));
  }catch(error){console.warn('Cache local da vitrine indisponível:',error);}
