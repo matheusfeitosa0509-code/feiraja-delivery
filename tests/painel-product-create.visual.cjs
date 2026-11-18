@@ -53,6 +53,8 @@ function prepare(source){
    page.on("console",m=>{if(m.type()==="error")errors.push(m.text());});
    await page.setContent(prepare(source),{waitUntil:"domcontentloaded"});
    await page.waitForFunction(()=>!document.getElementById("panel")?.classList.contains("hidden"),{timeout:15000});
+   await page.waitForFunction(()=>document.getElementById("upcomingHolidaysList")?.textContent.includes("6h às 11h"),{timeout:10000});
+   if(!document.querySelector("#upcomingHolidaysCard")?.textContent.includes("Próximos feriados"))throw new Error("Card de próximos feriados não foi exibido.");
    await page.locator("#tabProducts").click();
    await page.waitForFunction(()=>!document.querySelector("#openNewProduct")?.disabled,{timeout:10000});
    const categories=await page.locator("#sheetCategory option").allTextContents();
