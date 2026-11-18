@@ -6,6 +6,7 @@ on:
       - "recuperar-senha.html"
       - "turnstile.js"
       - "tests/auth-flow.visual.cjs"
+      - "tests/auth-flows.visual.cjs"
       - ".github/workflows/auth-flow-visual.yml"
   push:
     branches: [main]
