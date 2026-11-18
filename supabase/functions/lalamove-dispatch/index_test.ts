@@ -1,7 +1,7 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   assertTestProductionDispatchConfirmation, buildLalamoveOrderBody, canCancelLalamove, canQuoteLalamove, canStartDispatch, isLalamoveDispatchReady, cancelLalamoveOrder, createLalamoveOrder, getLalamoveDriverDetails,
-  isWebhookVerificationProbe, makeWebhookSignature, mapLalamoveStatus, normalizeBrazilPhone, priceDifference, quoteFee, verifyWebhookSignature, requireSupabaseServiceRoleJwt, storeLalamoveQuotes, getLalamoveOrderDetails, sanitizeLalamoveErrorPayload,
+  isWebhookVerificationProbe, makeWebhookSignature, mapLalamoveStatus, normalizeBrazilPhone, priceDifference, quoteFee, verifyWebhookSignature, requireSupabaseServiceRoleJwt, storeLalamoveQuotes, getLalamoveOrderDetails, sanitizeLalamoveErrorPayload, sanitizeLalamoveErrorPayload,
 } from "../_shared/lalamove-dispatch.ts";
 
 const quote = {
@@ -297,5 +297,7 @@ Deno.test("pedido teste em Produção confirmado aceita criação com API mockad
 Deno.test("pedido real em Produção mantém fluxo atual sem flag de pedido teste", () => {
   assertTestProductionDispatchConfirmation(false, "producao", false);
 });
+
+Deno.test("diagnóstico Lalamove sanitiza a resposta do provedor",()=>{const safe=sanitizeLalamoveErrorPayload({code:"ERR_INVALID_ORDER",message:"cliente teste@exemplo.com +55 92 99999-0000 https://private.example.test",customerAddress:"Rua privada, 123"});assertEquals(safe.code,"ERR_INVALID_ORDER");assertEquals(safe.message.includes("teste@exemplo.com"),false);assertEquals(safe.message.includes("99999"),false);assertEquals(safe.message.includes("private.example.test"),false);assertEquals("customerAddress" in safe,false);});
 
 Deno.test("diagnóstico Lalamove sanitiza a resposta do provedor",()=>{const safe=sanitizeLalamoveErrorPayload({code:"ERR_INVALID_ORDER",message:"cliente teste@exemplo.com +55 92 99999-0000 https://private.example.test",customerAddress:"Rua privada, 123"});assertEquals(safe.code,"ERR_INVALID_ORDER");assertEquals(safe.message.includes("teste@exemplo.com"),false);assertEquals(safe.message.includes("99999"),false);assertEquals(safe.message.includes("private.example.test"),false);assertEquals("customerAddress" in safe,false);});
