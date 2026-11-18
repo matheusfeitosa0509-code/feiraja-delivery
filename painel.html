@@ -760,7 +760,7 @@ function unitLabel(unit){return ({kg:'kg',un:'un',maco:'maço',pacote:'pacote',d
 function moneyInput(value){return Number(value||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function sheetNumber(id){const raw=$(id).value.trim();if(!raw)return null;const normalized=raw.includes(',')?raw.replace(/\./g,'').replace(',','.'):raw;const n=Number(normalized);return Number.isFinite(n)?n:null;}
 function getProductCost(productId){return (window.__feiraCostProducts||[]).find(row=>row.id===productId)||null;}
-function productMargin(product,cost){if(!cost||cost.unit_cost==null||Number(product.price)<=0)return null;return (Number(product.price)-Number(cost.unit_cost))/Number(product.price)*100;}
+function productMargin(product,cost){if(!cost||cost.unit_cost==null||Number(cost.unit_cost)<=0||Number(product.price)<=0)return null;return (Number(product.price)-Number(cost.unit_cost))/Number(product.price)*100;}
 function renderUnifiedProductList(){
  const host=$('unifiedProductList');if(!host)return;
  const term=normalizeProductSearch($('unifiedProductSearch').value),category=$('unifiedCategoryFilter').value,costFilter=$('unifiedCostFilter')?.value||'';
@@ -773,7 +773,7 @@ function renderUnifiedProductList(){
  $('unifiedProductCount').textContent=rows.length+' de '+adminProducts.length+' produtos · '+missingCount+' sem custo cadastrado';
  if(!rows.length){host.innerHTML='<p class="muted">Nenhum produto encontrado.</p>';return;}
  host.innerHTML=rows.map(p=>{
-  const cost=costs.get(p.id),margin=productMargin(p,cost),hasCost=!!cost&&cost.unit_cost!=null;
+  const cost=costs.get(p.id),margin=productMargin(p,cost),hasCost=!!cost&&cost.unit_cost!=null&&Number(cost.unit_cost)>0;
   const profit=hasCost?Number(p.price)-Number(cost.unit_cost):null;
   const marginClass=margin!==null&&margin<0?'below-cost':margin!==null&&margin<costMarginThreshold?'low-margin':'';
   const badges=(p.available?[]:['<span class="unavailable">Indisponível</span>']).concat(!hasCost?['<span class="no-cost">Custo não cadastrado</span>']:[],margin!==null&&margin<0?['<span class="below-cost">Abaixo do custo</span>']:margin!==null&&margin<costMarginThreshold?['<span class="low-margin">Margem baixa</span>']:[]);
@@ -1914,11 +1914,11 @@ async function loadCostReport(){
   if(typeof renderUnifiedProductList==='function')renderUnifiedProductList();
   if(typeof renderAllSharedProductLists==='function')renderAllSharedProductLists();
   const now=Date.now();
-  $('costProductStatusList').innerHTML=products.map(product=>{const updated=product.updated_at?new Date(product.updated_at):null;const stale=updated&&now-updated.getTime()>7*24*60*60*1000;const margin=product.unit_cost==null||Number(product.price)<=0?null:(Number(product.price)-Number(product.unit_cost))/Number(product.price)*100;const below=margin!==null&&margin<0;const low=margin!==null&&!below&&margin<costMarginThreshold;const classes=[stale?'stale':'',below?'below-cost':low?'low-margin':''].filter(Boolean).join(' ');const date=updated?new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',day:'2-digit',month:'2-digit'}).format(updated):null;const costText=date?'Custo atualizado em: '+date:'Custo não cadastrado';const marginText=margin===null?'Margem: sem custo':('Margem estimada: '+margin.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%');return '<article class="cost-product-row '+classes+'"><strong>'+esc(product.name)+'</strong><small>'+costText+'</small><small>'+marginText+'</small></article>';}).join('')||'<p class="muted">Nenhum produto cadastrado.</p>';
+  $('costProductStatusList').innerHTML=products.map(product=>{const updated=product.updated_at?new Date(product.updated_at):null;const stale=updated&&now-updated.getTime()>7*24*60*60*1000;const margin=product.unit_cost==null||Number(product.unit_cost)<=0||Number(product.price)<=0?null:(Number(product.price)-Number(product.unit_cost))/Number(product.price)*100;const below=margin!==null&&margin<0;const low=margin!==null&&!below&&margin<costMarginThreshold;const classes=[stale?'stale':'',below?'below-cost':low?'low-margin':''].filter(Boolean).join(' ');const date=updated?new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',day:'2-digit',month:'2-digit'}).format(updated):null;const costText=product.unit_cost==null||Number(product.unit_cost)<=0?'Custo não cadastrado':date?'Custo atualizado em: '+date:'Custo não cadastrado';const marginText=margin===null?'Margem: sem custo':('Margem estimada: '+margin.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%');return '<article class="cost-product-row '+classes+'"><strong>'+esc(product.name)+'</strong><small>'+costText+'</small><small>'+marginText+'</small></article>';}).join('')||'<p class="muted">Nenhum produto cadastrado.</p>';
   const selected=$('costProductSelect').value;
   $('costProductSelect').replaceChildren(new Option('Selecione um produto',''));
   products.forEach(product=>{
-   const label=product.name+(product.available?'':' — indisponível')+(product.unit_cost==null?' — sem custo':' — custo '+money(product.unit_cost));
+   const label=product.name+(product.available?'':' — indisponível')+(product.unit_cost==null||Number(product.unit_cost)<=0?' — sem custo':' — custo '+money(product.unit_cost));
    $('costProductSelect').add(new Option(label,product.id));
   });
   if(products.some(product=>product.id===selected))$('costProductSelect').value=selected;
@@ -1948,7 +1948,7 @@ $('costProductSelect').addEventListener('change',()=>{
  const product=Array.from($('costProductSelect').options).map(option=>option.value).includes($('costProductSelect').value)
   ?$('costProductSelect').value:'';
  const current=(window.__feiraCostProducts||[]).find(item=>item.id===product);
- $('costUnitInput').value=current?.unit_cost==null?'':Number(current.unit_cost).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+ $('costUnitInput').value=current?.unit_cost==null||Number(current.unit_cost)<=0?'':Number(current.unit_cost).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
  $('btnSaveCost').disabled=!product;
 });
 $('btnSaveCost').addEventListener('click',async()=>{
