@@ -1823,6 +1823,7 @@ async function load(options={}){
   const priceFields=['price','old_price','resale_enabled','resale_price','resale_min_qty','resale_unit'];
   if(sameCatalogStructure){products.forEach(product=>{const old=previousProducts.find(item=>item.id===product.id);if(old&&priceFields.some(field=>old[field]!==product[field]))updateProductCardPrice(product);});renderCart();}
   else renderStorefrontProducts();
+  writeStorefrontCache();
   salesRulesById=new Map();cartRulesWarning=false;
   try{
    const {data:rules,error}=await supabase.from('product_sales_rules').select('product_id,sale_unit,quantity_step,min_quantity,max_quantity,allow_value_sale,value_min_kg').in('product_id',products.map(p=>p.id));
