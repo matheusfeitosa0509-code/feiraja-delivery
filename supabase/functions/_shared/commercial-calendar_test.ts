@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1.0.14";
-import { estaAberto, proximaAbertura, getCommercialSchedule } from "./commercial-calendar.js";
+import { estaAberto, proximaAbertura, getCommercialSchedule, HOLIDAYS } from "./commercial-calendar.js";
 const iso = (value: Date | null) => value?.toISOString() ?? null;
 Deno.test("19/11 à noite agenda 20/11 às 6h", () => {
  const d=new Date("2026-11-20T02:00:00.000Z");
@@ -30,4 +30,15 @@ Deno.test("Natal e Ano Novo ficam fechados", () => {
  assertEquals(getCommercialSchedule(new Date("2026-12-25T14:00:00.000Z")).hours,"fechado");
  assertEquals(getCommercialSchedule(new Date("2027-01-01T14:00:00.000Z")).hours,"fechado");
  assertEquals(getCommercialSchedule(new Date("2026-11-15T14:00:00.000Z")).hours,"fechado");
+});
+
+Deno.test("Carnaval, Sexta-feira Santa e Corpus Christi são calculados pela Páscoa", () => {
+ assertEquals(HOLIDAYS["2026-02-16"]?.name,"Carnaval (segunda-feira)");
+ assertEquals(HOLIDAYS["2026-02-17"]?.name,"Carnaval (terça-feira)");
+ assertEquals(HOLIDAYS["2026-04-03"]?.name,"Sexta-feira Santa");
+ assertEquals(HOLIDAYS["2026-06-04"]?.name,"Corpus Christi");
+ assertEquals(HOLIDAYS["2027-02-08"]?.name,"Carnaval (segunda-feira)");
+ assertEquals(HOLIDAYS["2027-02-09"]?.name,"Carnaval (terça-feira)");
+ assertEquals(HOLIDAYS["2027-03-26"]?.name,"Sexta-feira Santa");
+ assertEquals(HOLIDAYS["2027-05-27"]?.name,"Corpus Christi");
 });
