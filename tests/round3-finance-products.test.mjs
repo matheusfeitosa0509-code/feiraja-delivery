@@ -4,6 +4,7 @@ import fs from 'node:fs';
 const panel = fs.readFileSync('painel.html', 'utf8');
 const worker = fs.readFileSync('supabase/functions/super-worker/index.ts', 'utf8');
 const assistant = fs.readFileSync('supabase/functions/assistente/index.ts', 'utf8');
+const store = fs.readFileSync('loja.html', 'utf8');
 const migration = fs.readFileSync('supabase/migrations/20261118230000_round3_finance_products_mp_off.sql', 'utf8');
 const rollback = fs.readFileSync('supabase/rollbacks/20261118230000_round3_finance_products_mp_off_rollback.sql', 'utf8');
 
@@ -24,6 +25,8 @@ assert.doesNotMatch(worker, /api\.mercadopago\.com|MERCADO_PAGO_ACCESS_TOKEN|res
 assert.match(worker, /payment_provider: "asaas"/, 'new Pix orders are stored as Asaas payments');
 
 assert.match(assistant, /\.from\("products"\)/, 'assistant product names come from the live products table');
+assert.match(store, /\.from\(['"]products['"]\)/, 'storefront product names come from the live products table');
+assert.doesNotMatch(store + panel + assistant, /Brócolis \(unidade\)/, 'the old broccoli label is not hardcoded in UI consumers');
 assert.match(migration, /COALESCE\(o\.is_test_order, false\) = false/, 'sales dashboard excludes test orders');
 assert.match(migration, /admin_get_cost_report_with_delivery/, 'migration extends the delivery-inclusive report');
 assert.match(migration, /calculated_items/, 'migration adds calculated item coverage');
