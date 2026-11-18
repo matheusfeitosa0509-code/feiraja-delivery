@@ -7,10 +7,16 @@ self.addEventListener('fetch',function(event){
  if(request.method!=='GET'||request.mode==='navigate')return;
  const url=new URL(request.url);
  if(!STATIC_ORIGINS.has(url.origin)||!STATIC_ASSET.test(url.pathname+url.search))return;
- event.respondWith(caches.open(STATIC_CACHE).then(async cache=>{
+ const cachePromise=caches.open(STATIC_CACHE);
+ const networkPromise=cachePromise.then(async cache=>{
+  const response=await fetch(request);
+  if(response&&response.ok){try{await cache.put(request,response.clone());}catch(_){}}
+  return response;
+ });
+ event.waitUntil(networkPromise.then(()=>undefined).catch(()=>undefined));
+ event.respondWith(cachePromise.then(async cache=>{
   const cached=await cache.match(request);
-  const network=fetch(request).then(response=>{if(response&&response.ok)void cache.put(request,response.clone());return response;}).catch(error=>{if(cached)return cached;throw error;});
-  return cached||network;
+  return cached||networkPromise;
  }));
 });
 self.addEventListener('install', function (event) {
