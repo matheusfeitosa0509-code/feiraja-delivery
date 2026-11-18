@@ -52,6 +52,8 @@ async function measure(page,cdp,url) {
  assert.match(sw,/request.mode==='navigate'\)return/,'HTML navigations must bypass the cache');
  assert.ok(html.includes('storefrontCacheBootstrap'),'early cache bootstrap missing');
  assert.ok(html.includes('feira_storefront_catalog_v1'),'persistent catalog cache missing');
+ assert.ok(html.includes('updateProductCardPrice(product)'),'changed prices must patch only their cards');
+ assert.ok(html.includes("import('./assistant-speech.js?v=20261118-lazy-assistant')"),'assistant speech module must be imported on demand');
  assert.ok(html.includes('select=id,name,price,old_price,category,image,available,resale_enabled,resale_price,resale_min_qty,resale_unit'),'catalog select list missing');
  assert.ok(!/select=[^'"]*(?:cost|cost_price)/i.test(html),'cost fields must never be selected for storefront');
  const {server,url}=await startServer();
