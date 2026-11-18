@@ -92,15 +92,18 @@ Deno.serve(async (req: Request) => {
     timings.environment_ms = Math.round(performance.now() - environmentStarted);
     const geocodingKey = Deno.env.get("GOOGLE_GEOCODING_API_KEY") || "";
     const geocodingStarted = performance.now();
-    const dropoffCoordinates = await resolveDeliveryCoordinates(
-      dropoff,
-      body.coordinates && typeof body.coordinates === "object" ? body.coordinates : null,
-      (address) => geocodeManausAddress(address, geocodingKey),
-    );
     if (!originCoordinatesPromise) originCoordinatesPromise = geocodeManausAddress(ORIGIN, geocodingKey);
     let originCoordinates: { lat: string; lng: string };
+    let dropoffCoordinates: { lat: string; lng: string };
     try {
-      [originCoordinates] = await Promise.all([originCoordinatesPromise]);
+      [dropoffCoordinates, originCoordinates] = await Promise.all([
+        resolveDeliveryCoordinates(
+          dropoff,
+          body.coordinates && typeof body.coordinates === "object" ? body.coordinates : null,
+          (address) => geocodeManausAddress(address, geocodingKey),
+        ),
+        originCoordinatesPromise,
+      ]);
     } catch (error) {
       originCoordinatesPromise = null;
       throw error;
