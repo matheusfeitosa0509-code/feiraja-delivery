@@ -123,9 +123,10 @@ export function startParallelVehicleQuotes<T>(
 ): { selected: Promise<T>; background: Promise<T> } {
   const moto = Promise.resolve().then(() => quote("MOTO"));
   const car = Promise.resolve().then(() => quote("CAR"));
+  const allQuotes = Promise.all([moto, car]);
   return selectedVehicle === "MOTO"
-    ? { selected: moto, background: car }
-    : { selected: car, background: moto };
+    ? { selected: moto, background: allQuotes.then(([, carQuote]) => carQuote) }
+    : { selected: car, background: allQuotes.then(([motoQuote]) => motoQuote) };
 }
 
 export async function retryLalamove429(
