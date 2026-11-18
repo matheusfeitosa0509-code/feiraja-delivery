@@ -1,0 +1,6 @@
+import{assertEquals}from"jsr:@std/assert@1.0.14";import{applyLalamoveWebhookEvent}from"./webhook-event.ts";
+const base={p_event_id:"event-1",p_event_type:"ORDER_STATUS_CHANGED",p_event_at:"2026-11-18T12:00:00.000Z",p_lalamove_order_id:"LALA-123456",p_status:"assigned",p_tracking_url:"",p_driver:null,p_ambiente:"sandbox" as const};
+Deno.test("evento válido usa RPC mockada",async()=>{let called=false;const r=await applyLalamoveWebhookEvent({rpc:async(n,a)=>{called=true;assertEquals(n,"service_apply_lalamove_webhook");assertEquals(a.p_lalamove_order_id,"LALA-123456");return{data:{applied:true},error:null};}},base);assertEquals(called,true);assertEquals(r.data?.applied,true);});
+Deno.test("evento duplicado é reconhecido",async()=>{const r=await applyLalamoveWebhookEvent({rpc:async()=>({data:{duplicate:true},error:null})},base);assertEquals(r.data?.duplicate,true);});
+Deno.test("evento fora de ordem é reconhecido",async()=>{const r=await applyLalamoveWebhookEvent({rpc:async()=>({data:{out_of_order:true},error:null})},base);assertEquals(r.data?.out_of_order,true);});
+Deno.test("campo obrigatório ausente não chama RPC",async()=>{let called=false;const r=await applyLalamoveWebhookEvent({rpc:async()=>{called=true;return{data:null,error:null};}},{...base,p_lalamove_order_id:""});assertEquals(called,false);assertEquals(r.missingFields,["p_lalamove_order_id"]);});
