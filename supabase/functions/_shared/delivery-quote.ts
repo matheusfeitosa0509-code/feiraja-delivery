@@ -49,9 +49,8 @@ export function formatDropoff(address: DeliveryAddress): string {
   if (!street || !number || !neighborhood || street.length > 160 || number.length > 30 || neighborhood.length > 100) {
     throw new Error("INVALID_ADDRESS");
   }
-  const complement = String(address.complement || "").trim().slice(0, 100);
-  const reference = String(address.reference || "").trim().slice(0, 160);
-  return [street + ", " + number, complement, neighborhood, reference, "Manaus - AM, Brasil"].filter(Boolean).join(", ");
+  // Lalamove recebe apenas o endereço postal; POIs/referências permanecem no objeto salvo para o entregador.
+  return [street + ", " + number, neighborhood, "Manaus - AM, Brasil"].filter(Boolean).join(", ");
 }
 
 export function buildQuotationBody(
@@ -67,6 +66,27 @@ export function buildQuotationBody(
     { coordinates: coordinates.origin, address: "Av. Lourenço da Silva Braga, 700 - Centro, Manaus - AM, Brasil" },
     { coordinates: coordinates.dropoff, address: dropoff },
   ] } };
+}
+
+export function classifyLalamoveQuoteError(status: number, payload: any): {
+  code: string; upstreamCode: string; detail: string;
+} {
+  const first = Array.isArray(payload?.errors) ? payload.errors[0] : null;
+  const upstreamCode = String(payload?.message || first?.id || "");
+  const detail = String(first?.detail || "");
+  if (upstreamCode === "ERR_OUT_OF_SERVICE_AREA") return { code: "LALAMOVE_OUT_OF_SERVICE_AREA", upstreamCode, detail };
+  if (upstreamCode === "ERR_INVALID_SCHEDULE_TIME") return { code: "LALAMOVE_INVALID_SCHEDULE_TIME", upstreamCode, detail };
+  if (upstreamCode === "ERR_INVALID_SERVICE_TYPE") return { code: "LALAMOVE_INVALID_SERVICE_TYPE", upstreamCode, detail };
+  if (upstreamCode === "ERR_INVALID_MARKET") return { code: "LALAMOVE_INVALID_MARKET", upstreamCode, detail };
+  if (upstreamCode === "ERR_REVERSE_GEOCODE_FAILURE") return { code: "LALAMOVE_REVERSE_GEOCODE_FAILURE", upstreamCode, detail };
+  if (upstreamCode === "ERR_INVALID_FIELD") {
+    if (/coordinates\/(?:lat|lng)/i.test(detail)) return { code: "LALAMOVE_INVALID_COORDINATES", upstreamCode, detail };
+    if (/\/address/i.test(detail)) return { code: "LALAMOVE_INVALID_ADDRESS", upstreamCode, detail };
+    return { code: "LALAMOVE_INVALID_REQUEST", upstreamCode, detail };
+  }
+  if (status === 429) return { code: "LALAMOVE_RATE_LIMIT", upstreamCode, detail };
+  if (status === 422) return { code: "LALAMOVE_INVALID_REQUEST", upstreamCode, detail };
+  return { code: "LALAMOVE_QUOTE_FAILED", upstreamCode, detail };
 }
 
 export function parseQuotation(data: any, vehicle: "MOTO" | "CAR", weightKg: number): QuoteResult {
