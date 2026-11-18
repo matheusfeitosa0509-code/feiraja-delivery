@@ -5,7 +5,32 @@
 <meta property="og:title" content="Feira On Delivery - Frutas, verduras e feira para retirada em Manaus">
 <meta property="og:description" content="Peça frutas, verduras e produtos de feira pelo celular, com retirada na loja ou Entrega Feira On.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://www.feiraondelivery.com.br/loja.html"><link rel="preconnect" href="https://juhwdevvwstmyxyyagzh.supabase.co" crossorigin><link rel="preconnect" href="https://www.feiraondelivery.com.br" crossorigin><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<meta property="og:url" content="https://www.feiraondelivery.com.br/loja.html"><link rel="preconnect" href="https://juhwdevvwstmyxyyagzh.supabase.co" crossorigin><link rel="preconnect" href="https://www.feiraondelivery.com.br" crossorigin><meta name="supabase-url" content="https://juhwdevvwstmyxyyagzh.supabase.co"><meta name="supabase-publishable-key" content="sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW">
+<script id="storefrontProductsPrefetch">
+(()=>{try{
+ const url=document.querySelector('meta[name="supabase-url"]').content;
+ const key=document.querySelector('meta[name="supabase-publishable-key"]').content;
+ window.__FEIRA_PRODUCTS_QUERY='select=id,name,price,old_price,category,image,available,resale_enabled,resale_price,resale_min_qty,resale_unit&available=eq.true&order=name.asc';
+ const start=()=>{
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),10000);
+  fetch(url+'/rest/v1/products?'+window.__FEIRA_PRODUCTS_QUERY,{headers:{apikey:key,Authorization:'Bearer '+key},cache:'no-store',signal:controller.signal})
+   .then(async response=>response.ok?({data:await response.json()}):({error:new Error('HTTP '+response.status)}))
+   .catch(error=>({error}))
+   .finally(()=>clearTimeout(timeout))
+   .then(resolveResult);
+ };
+ let resolveResult;
+ window.__storefrontProductsPromise=new Promise(resolve=>{resolveResult=resolve;});
+ let hasCatalogCache=false;
+ try{const cache=JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')||'null');hasCatalogCache=!!(cache&&cache.version===1&&Array.isArray(cache.products)&&cache.products.length);}
+ catch(_){}
+ if(hasCatalogCache){
+  // Deixa o cache ser pintado antes de iniciar a revalidação em segundo plano.
+  requestAnimationFrame(()=>setTimeout(start,0));
+ }else start();
+}catch(error){window.__storefrontProductsPromise=Promise.resolve({error});}})();
+</script><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--g:#2f6a14;--g2:#7fb237;--ink:#1d2a12;--mut:#44503a;--bg:#f6f4ea;--card:#fff;--line:#e4e7d6;--soft:#e6efd3;--warn:#c2410c;--pix:#0f8f7e}
 .home-bubbles{display:flex;flex-wrap:nowrap;gap:10px;padding:14px 12px 6px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch}
@@ -1265,14 +1290,22 @@ try {
  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const money=value=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(value)||0);
  if(!root)return;
- if(cache&&cache.version===1&&Array.isArray(cache.products)&&cache.products.length&&cache.products.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'&&Number.isFinite(Number(p.price)))){
-  const groups=[...new Set(cache.products.map(p=>String(p.category||'').trim()||'Outros'))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-  root.innerHTML=groups.map(category=>'<section class="catalog-category home-catalog-category"><header class="home-category-heading"><h2>'+esc(category)+'</h2></header><div class="catalog-row">'+cache.products.filter(p=>(String(p.category||'').trim()||'Outros')===category).map((p,index)=>{const src=typeof p.image==='string'&&(p.image.startsWith('./')||/^https:\/\//i.test(p.image))?p.image:typeof p.image==='string'&&p.image.startsWith('imagens/produtos/')?'./'+p.image:'';return '<article class="product" data-product-id="'+esc(p.id)+'"><div class="product-media"><img width="160" height="160" loading="lazy" decoding="async" '+(index<4?'fetchpriority="high" ':'')+'src="'+esc(src)+'" alt="'+esc(p.name)+'"></div><div class="pbody"><h3>'+esc(p.name)+'</h3><div class="price">'+money(p.price)+'</div></div></article>';}).join('')+'</div></section>').join('');
+ const renderBootstrapProducts=list=>{
+  if(!Array.isArray(list)||!list.length)return false;
+  const groups=[...new Set(list.map(p=>String(p.category||'').trim()||'Outros'))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  root.innerHTML=groups.map(category=>'<section class="catalog-category home-catalog-category"><header class="home-category-heading"><h2>'+esc(category)+'</h2></header><div class="catalog-row">'+list.filter(p=>(String(p.category||'').trim()||'Outros')===category).map((p,index)=>{const src=typeof p.image==='string'&&(p.image.startsWith('./')||/^https:\/\//i.test(p.image))?p.image:typeof p.image==='string'&&p.image.startsWith('imagens/produtos/')?'./'+p.image:'';return '<article class="product" data-product-id="'+esc(p.id)+'"><div class="product-media"><img width="160" height="160" loading="lazy" decoding="async" '+(index<4?'fetchpriority="high" ':'')+'src="'+esc(src)+'" alt="'+esc(p.name)+'"></div><div class="pbody"><h3>'+esc(p.name)+'</h3><div class="price">'+money(p.price)+'</div></div></article>';}).join('')+'</div></section>').join('');
   root.dataset.storefrontCache='shown';
+  window.__storefrontBootstrapProducts=true;
+  return true;
+ };
+ if(cache&&cache.version===1&&Array.isArray(cache.products)&&cache.products.length&&cache.products.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'&&Number.isFinite(Number(p.price)))){
+  renderBootstrapProducts(cache.products);
  }else{
   const skeleton='<section class="catalog-category home-catalog-category storefront-skeleton"><header class="home-category-heading"><span class="skeleton-line"></span></header><div class="catalog-row">'+Array.from({length:4},()=>'<article class="product skeleton-card"><span class="skeleton-image"></span><span class="skeleton-line"></span><span class="skeleton-line short"></span></article>').join('')+'</div></section>';
   root.innerHTML=skeleton+skeleton;
   if(products)products.innerHTML=Array.from({length:4},()=>'<article class="product skeleton-card"><span class="skeleton-image"></span><span class="skeleton-line"></span><span class="skeleton-line short"></span></article>').join('');
+  const firstPromise=window.__storefrontProductsPromise;
+  if(firstPromise)firstPromise.then(result=>{if(root.dataset.storefrontCache!=='shown'&&result&&Array.isArray(result.data))renderBootstrapProducts(result.data);}).catch(()=>{});
  }
 }catch(_){}})();
 </script>
@@ -1282,7 +1315,9 @@ try {
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.1';
 import { canShowUberPickupOption, syncUberPickupOption, buildDeliveryQuoteItems, checkoutGrandTotal, deliveryQuoteErrorMessage, deliveryQuoteLabel, isDeliveryOutOfArea, isValidDeliveryQuote, normalizeDeliveryAddress, deliveryUnavailableMessage, loadDeliveryAccessState, renderDeliveryOption, syncAdminTestPaymentOption, buildDeliveryQuoteCacheKey, isCachedDeliveryQuoteValid } from './loja-delivery-ui.js?v=20261117-delivery-quote-performance';
 import { getStoreSchedule } from './supabase/functions/_shared/store-schedule.js?v=20261117-entrega-agendada';
-const supabase=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW');
+const SUPABASE_URL=document.querySelector('meta[name="supabase-url"]').content;
+const SUPABASE_ANON_KEY=document.querySelector('meta[name="supabase-publishable-key"]').content;
+const supabase=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
 const VAPID_PUBLIC_KEY = 'BJ9dTvmRGcTHYQSOOLj61AG2kC2YEMuhWMM2J6GdDdTuofeBkYJsyF5uNIhCfnV03jZBn2fFP1ZUqty0QZ_uuog'; // VAPID pública
 const PUSH_PENDING_RELEASE_KEY = 'feira_push_pending_release_v1';
@@ -1799,7 +1834,7 @@ async function load(options={}){
    renderStorefrontProducts();
   }else{
    status.textContent='Carregando produtos…';
-   renderStorefrontSkeleton();
+   if(!window.__storefrontBootstrapProducts)renderStorefrontSkeleton();
   }
  }else{
   status.textContent='Atualizando catálogo…';
@@ -1807,17 +1842,25 @@ async function load(options={}){
  previousProducts=products.map(p=>({...p}));
  previousRules=JSON.stringify([...salesRulesById.entries()]);
  try{
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),10000);
-  let response;
-  try{
-   response=await fetch('https://juhwdevvwstmyxyyagzh.supabase.co/rest/v1/products?select=id,name,price,old_price,category,image,available,resale_enabled,resale_price,resale_min_qty,resale_unit&available=eq.true&order=name.asc',{
-    headers:{apikey:'sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',Authorization:'Bearer sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW'},
-    signal:controller.signal,cache:'no-store'
-   });
-  }finally{clearTimeout(timer);}
-  if(!response.ok)throw new Error('HTTP '+response.status);
-  const data=await response.json();
+  let response,data;
+  const prefetched=window.__storefrontProductsPromise;
+  if(prefetched){
+   window.__storefrontProductsPromise=null;
+   const result=await prefetched;
+   if(result&&Array.isArray(result.data))data=result.data;
+  }
+  if(!Array.isArray(data)){
+   const controller=new AbortController();
+   const timer=setTimeout(()=>controller.abort(),10000);
+   try{
+    response=await fetch(SUPABASE_URL+'/rest/v1/products?'+(window.__FEIRA_PRODUCTS_QUERY||'select=id,name,price,old_price,category,image,available,resale_enabled,resale_price,resale_min_qty,resale_unit&available=eq.true&order=name.asc'),{
+     headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY},
+     signal:controller.signal,cache:'no-store'
+    });
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    data=await response.json();
+   }finally{clearTimeout(timer);}
+  }
   products=(data||[]).map(p=>({...p,price:Number(p.price),old_price:p.old_price==null?null:Number(p.old_price),resale_enabled:p.resale_enabled===true,resale_price:p.resale_price==null?null:Number(p.resale_price),resale_min_qty:p.resale_min_qty==null?null:Number(p.resale_min_qty),resale_unit:p.resale_unit==='kg'?'kg':'un',image:typeof p.image==='string'&&p.image.startsWith('imagens/produtos/')?'./'+p.image:p.image}));
   const sameCatalogStructure=previousProducts.length===products.length&&previousProducts.every((old,index)=>{const fresh=products[index];return old.id===fresh.id&&old.name===fresh.name&&old.category===fresh.category&&old.image===fresh.image;});
   const priceFields=['price','old_price','resale_enabled','resale_price','resale_min_qty','resale_unit'];
