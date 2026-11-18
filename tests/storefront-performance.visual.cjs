@@ -87,10 +87,11 @@ async function measure(page,cdp,url) {
    assert.ok(candidateFirst.firstProductMs<2500,'first visit did not meet <2.5s target: '+candidateFirst.firstProductMs+'ms');
    assert.ok(candidateFirst.skeletonSeen,'first visit without cache did not show skeleton');
    assert.ok(saved&&saved.products.length,'first visit did not persist catalog cache');
-   const first=saved.products[0];
-   const originalPrice=Number(first.price);
    const candidateSecond=await measure(candidate,candidateCdp,url);
    assert.ok(candidateSecond.firstProductMs<1000,'cached second visit did not meet <1s target: '+candidateSecond.firstProductMs+'ms');
+   const refreshedCache=await candidate.evaluate(()=>JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')||'null'));
+   const first=refreshedCache.products[0];
+   const originalPrice=Number(first.price);
    const stalePrice=originalPrice+123.45;
    await candidate.evaluate(({id,price})=>{const cache=JSON.parse(localStorage.getItem('feira_storefront_catalog_v1'));const p=cache.products.find(x=>x.id===id);p.price=price;localStorage.setItem('feira_storefront_catalog_v1',JSON.stringify(cache));},{id:first.id,price:stalePrice});
    await candidate.evaluate(({id,price})=>localStorage.setItem('__storefront_stale_probe',JSON.stringify({id,price})),{id:first.id,price:stalePrice});
