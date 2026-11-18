@@ -192,3 +192,55 @@ Deno.test("handler: fluxo normal de pedido não cancelado continua confirmando p
   assertEquals(mock.getOrder()?.refund_pending, undefined);
   assertEquals(mock.updates, [{ status: "Pagamento Confirmado" }]);
 });
+
+
+function stalePending(): Order {
+  return { id: "ORDER-123", status: "Pagamento Pendente", total: 30, payment_id: null,
+    payment_provider: "asaas", created_at: "2026-11-13T11:00:00Z" };
+}
+function staleRequest() {
+  return new Request("https://webhook.test/asaas", { method: "POST",
+    headers: { "content-type": "application/json", "asaas-access-token": "test-webhook-token" },
+    body: JSON.stringify({ event: "PAYMENT_RECEIVED", payment: { ...validPayment } }) });
+}
+function staleDependencies(mock: ReturnType<typeof makeDb>, apiPayment: any, apiStatus = 200) {
+  const base = makeDependencies(mock);
+  base.deps.fetch = (async (input: RequestInfo | URL) => {
+    if (String(input).includes("/v3/payments?externalReference=")) {
+      return new Response(JSON.stringify({ data: apiPayment ? [apiPayment] : [] }), { status: apiStatus });
+    }
+    return new Response(JSON.stringify(apiPayment), { status: 200 });
+  }) as typeof fetch;
+  return base.deps;
+}
+Deno.test("webhook atrasado: pago vincula payment_id e confirma pedido", async () => {
+  const mock = makeDb(stalePending());
+  const response = await handleAsaasWebhook(staleRequest(), staleDependencies(mock, validPayment));
+  assertEquals(response.status, 200);
+  assertEquals(mock.getOrder()?.payment_id, "pay_123");
+  assertEquals(mock.getOrder()?.status, "Pagamento Confirmado");
+});
+Deno.test("webhook atrasado: não pago mantém pedido pendente", async () => {
+  const mock = makeDb(stalePending());
+  const response = await handleAsaasWebhook(staleRequest(), staleDependencies(mock, { ...validPayment, status: "PENDING" }));
+  assertEquals(response.status, 200);
+  assertEquals(mock.getOrder()?.payment_id, null);
+  assertEquals(mock.getOrder()?.status, "Pagamento Pendente");
+});
+Deno.test("webhook atrasado duplicado: segunda notificação é ignorada", async () => {
+  const mock = makeDb(stalePending());
+  const deps = staleDependencies(mock, validPayment);
+  const first = await handleAsaasWebhook(staleRequest(), deps);
+  const second = await handleAsaasWebhook(staleRequest(), deps);
+  assertEquals(first.status, 200);
+  assertEquals(second.status, 200);
+  assertEquals(mock.getOrder()?.payment_id, "pay_123");
+  assertEquals(mock.getOrder()?.status, "Pagamento Confirmado");
+});
+Deno.test("webhook atrasado: API Asaas fora do ar retorna erro para retry", async () => {
+  const mock = makeDb(stalePending());
+  const response = await handleAsaasWebhook(staleRequest(), staleDependencies(mock, validPayment, 503));
+  assertEquals(response.status, 503);
+  assertEquals(mock.getOrder()?.payment_id, null);
+  assertEquals(mock.getOrder()?.status, "Pagamento Pendente");
+});
