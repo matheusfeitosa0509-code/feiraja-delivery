@@ -135,6 +135,7 @@ document.body.innerHTML=mapOverlayMarkup;
    assert.deepEqual(mapOptions.center,[-60.02,-3.1]);
    await page.locator('#deliveryNumber').fill('130');
    await page.evaluate(()=>window.dragMap());
+   await page.waitForFunction(()=>document.querySelector('#deliveryMapAddress').textContent==='Mercado Teste · Rua do Mercado, 130 · Centro');
    assert.equal(await page.locator('#deliveryMapAddress').textContent(),'Mercado Teste · Rua do Mercado, 130 · Centro','map header uses the customer-entered number, not the reverse-geocoded number');
    await page.evaluate(()=>window.confirmMap());
    await page.waitForFunction(()=>document.querySelector('#deliveryMapFullscreen').hidden===true);
