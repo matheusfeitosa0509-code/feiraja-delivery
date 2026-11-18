@@ -23,7 +23,7 @@ async function pageFor(browser,width,html,refreshOutcomes=[]){
  await page.route('**/api.pwnedpasswords.com/range/**',route=>{const suffix=crypto.createHash('sha1').update('Password123').digest('hex').toUpperCase().slice(5);return route.fulfill({status:200,contentType:'text/plain',body:suffix+':42\n'});});
  await page.route('**/rest/v1/**',route=>route.fulfill({status:200,contentType:'application/json',body:'[]'}));await page.route('**/functions/v1/**',route=>route.fulfill({status:200,contentType:'application/json',body:'{}'}));
  await page.route('**/challenges.cloudflare.com/turnstile/**',async()=>new Promise(()=>{}));await page.route('**/fonts.googleapis.com/**',route=>route.fulfill({status:200,body:''}));await page.route('**/fonts.gstatic.com/**',route=>route.fulfill({status:200,body:''}));
- await page.setContent(html,{waitUntil:'domcontentloaded'});await page.waitForTimeout(350);return page;
+ await page.route('http://127.0.0.1/loja.html',route=>route.fulfill({status:200,contentType:'text/html',body:html}));await page.goto('http://127.0.0.1/loja.html',{waitUntil:'domcontentloaded'});await page.waitForTimeout(350);return page;
 }
 function clean(page,label){assert.deepEqual(page.__runtimeErrors,[],label+' console/pageerror: '+page.__runtimeErrors.join(' | '));}
 (async()=>{const browser=await chromium.launch({headless:true});let passed=0;try{for(const width of [360,412]){
