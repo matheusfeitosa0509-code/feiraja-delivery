@@ -3,6 +3,6 @@ export async function applyLalamoveWebhookEvent(db:{rpc:(name:string,args:Record
  const required:Array<keyof LalamoveWebhookRpcArgs>=["p_event_id","p_event_type","p_event_at","p_lalamove_order_id","p_status","p_ambiente"];
  const missingFields=required.filter(k=>args[k]===undefined||args[k]===null||String(args[k]).trim()==="");
  if(missingFields.length)return{missingFields,data:null,error:null};
- const result=await db.rpc("service_apply_lalamove_webhook",args as Record<string,unknown>);
+ const result=await db.rpc("service_apply_lalamove_webhook",args as unknown as Record<string,unknown>);
  return{missingFields:[],data:result?.data??null,error:result?.error??null};
 }
