@@ -40,7 +40,7 @@ async function emulate4G(page) {
 }
 async function measure(page,cdp,url) {
  let requests=0,productRequests=0,bytes=0;
- const onRequest=e=>{requests++;if(String(e.request?.url||'').includes('/rest/v1/products?'))productRequests++;};
+ const onRequest=e=>{requests++;if(e.request?.method==='GET'&&String(e.request?.url||'').includes('/rest/v1/products?'))productRequests++;};
  const onFinished=e=>{bytes+=Number(e.encodedDataLength)||0;};
  cdp.on('Network.requestWillBeSent',onRequest);
  cdp.on('Network.loadingFinished',onFinished);
