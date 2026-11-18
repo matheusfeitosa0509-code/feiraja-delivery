@@ -93,21 +93,18 @@ Deno.serve(async (req: Request) => {
     const geocodingKey = Deno.env.get("GOOGLE_GEOCODING_API_KEY") || "";
     const geocodingStarted = performance.now();
     if (!originCoordinatesPromise) originCoordinatesPromise = geocodeManausAddress(ORIGIN, geocodingKey);
-    let originCoordinates: { lat: string; lng: string };
-    let dropoffCoordinates: { lat: string; lng: string };
-    try {
-      [dropoffCoordinates, originCoordinates] = await Promise.all([
-        resolveDeliveryCoordinates(
-          dropoff,
-          body.coordinates && typeof body.coordinates === "object" ? body.coordinates : null,
-          (address) => geocodeManausAddress(address, geocodingKey),
-        ),
-        originCoordinatesPromise,
-      ]);
-    } catch (error) {
-      originCoordinatesPromise = null;
-      throw error;
-    }
+    const originPromise = originCoordinatesPromise;
+    void originPromise.catch(() => {
+      if (originCoordinatesPromise === originPromise) originCoordinatesPromise = null;
+    });
+    const [dropoffCoordinates, originCoordinates] = await Promise.all([
+      resolveDeliveryCoordinates(
+        dropoff,
+        body.coordinates && typeof body.coordinates === "object" ? body.coordinates : null,
+        (address) => geocodeManausAddress(address, geocodingKey),
+      ),
+      originPromise,
+    ]);
     timings.geocoding_ms = Math.round(performance.now() - geocodingStarted);
     const quoteFetch: typeof fetch = (input, init) => retryLalamove429(fetch, input, init);
     const scheduleAt = getStoreSchedule().scheduledFor || undefined;
