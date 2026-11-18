@@ -219,7 +219,6 @@ export function deliveryQuoteErrorMessage(status, code = "") {
     LALAMOVE_INVALID_SERVICE_TYPE: "A Lalamove não oferece o tipo de veículo selecionado para esta rota.",
     LALAMOVE_INVALID_MARKET: "A Lalamove não reconheceu a região desta rota. Confira o endereço.",
     LALAMOVE_REVERSE_GEOCODE_FAILURE: "A Lalamove não conseguiu validar a rota com as coordenadas. Tente novamente.",
-    LALAMOVE_QUOTE_FAILED: "A Lalamove está temporariamente indisponível. Tente novamente em instantes.",
     QUOTE_RATE_LIMIT: "Muitas consultas agora, tente em alguns segundos.",
     GEOCODER_NOT_CONFIGURED: "Serviço de localização não configurado. Tente novamente mais tarde.",
     GEOCODER_UNAVAILABLE: "Serviço de localização temporariamente indisponível. Tente novamente.",
