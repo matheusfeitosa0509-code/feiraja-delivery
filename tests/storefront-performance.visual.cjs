@@ -1,3 +1,4 @@
+// The stale-price probe is installed before navigation so the assertion observes the first cached paint, not the later network correction.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const http = require('node:http');
