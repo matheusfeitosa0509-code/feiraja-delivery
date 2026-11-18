@@ -134,7 +134,7 @@ Deno.test("erros da cotação diferenciam endereço, Manaus e cobertura Lalamove
   assertEquals(deliveryQuoteErrorMessage(400, "ADDRESS_NOT_FOUND").startsWith("Não encontramos esse endereço"), true);
   assertEquals(deliveryQuoteErrorMessage(422, "ADDRESS_OUTSIDE_MANAUS"), "Endereço fora da área de entrega.");
   assertEquals(deliveryQuoteErrorMessage(429, "QUOTE_RATE_LIMIT"), "Muitas consultas agora, tente em alguns segundos.");
-  assertEquals(deliveryQuoteErrorMessage(502, "LALAMOVE_QUOTE_FAILED"), "A Lalamove está temporariamente indisponível. Tente novamente em instantes.");
+  assertEquals(deliveryQuoteErrorMessage(502, "LALAMOVE_QUOTE_FAILED"), "Não foi possível calcular a entrega por um erro inesperado. Tente novamente.");
   assertEquals(deliveryQuoteErrorMessage(422, "LALAMOVE_OUT_OF_SERVICE_AREA").includes("Endereço fora da área de entrega"), true);
   assertEquals(deliveryQuoteErrorMessage(502, "LALAMOVE_INVALID_SCHEDULE_TIME"), "A Lalamove recusou o horário agendado. Tente novamente em instantes.");
   assertEquals(deliveryQuoteErrorMessage(422, "LALAMOVE_INVALID_SERVICE_TYPE"), "A Lalamove não oferece o tipo de veículo selecionado para esta rota.");
