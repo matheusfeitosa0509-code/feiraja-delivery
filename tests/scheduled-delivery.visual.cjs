@@ -71,7 +71,7 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
         headline: 'Retirada na loja',
         sublineHidden: false,
         banner: 'Av. Lourenço da Silva Braga, 700, Manaus. Retire na loja ou chame seu Uber.',
-        login: 'Tudo da feira, pronto para retirada.',
+        login: 'Tudo da feira, retire ou receba em casa.',
         visibleUber: true,
       });
       assert.equal(copyResult.noOverflow, true, 'sem overflow nos textos em ' + width + 'px');
