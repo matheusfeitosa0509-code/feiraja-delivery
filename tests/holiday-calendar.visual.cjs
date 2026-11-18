@@ -3,7 +3,6 @@ const fs = require("node:fs");
 const path = require("node:path");
 const assert = require("node:assert/strict");
 const source=fs.readFileSync(path.join(__dirname,"../supabase/functions/_shared/commercial-calendar.js"),"utf8");
-const dataUrl="data:text/javascript;base64,"+Buffer.from(source).toString("base64");
 const cases=[
  ["19/11 22h -> 20/11 6h","2026-11-20T02:00:00.000Z","2026-11-20T10:00:00.000Z",false],
  ["20/11 11h30 -> 21/11 6h","2026-11-20T15:30:00.000Z","2026-11-21T10:00:00.000Z",false],
@@ -20,7 +19,7 @@ const cases=[
    page.on("console",m=>{if(m.type()==="error")errors.push(m.text());});
    page.on("pageerror",e=>errors.push(e.message));
    await page.setContent('<main><h1>Calendário comercial</h1><p id="result"></p></main>');
-   await page.addScriptTag({type:"module",content:`import {estaAberto,proximaAbertura} from "${dataUrl}";window.calendar={estaAberto,proximaAbertura};`});
+   await page.addScriptTag({type:"module",content:source+"\nwindow.calendar={estaAberto,proximaAbertura};"});
    for(const [label,now,expected,expectedOpen] of cases){
     const actual=await page.evaluate(({now})=>({next:window.calendar.proximaAbertura(new Date(now))?.toISOString()||null,open:window.calendar.estaAberto(new Date(now))}),{now});
     assert.equal(actual.next,expected,width+"px "+label);
