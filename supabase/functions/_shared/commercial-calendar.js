@@ -1,12 +1,25 @@
 export const STORE_TIME_ZONE = "America/Manaus";
+function easterSunday(year) {
+  const a=year%19,b=Math.floor(year/100),c=year%100,d=Math.floor(b/4),e=b%4;
+  const f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30;
+  const i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451);
+  const month=Math.floor((h+l-7*m+114)/31),day=((h+l-7*m+114)%31)+1;
+  return new Date(Date.UTC(year,month-1,day));
+}
+const addDays=(date,days)=>new Date(date.getTime()+days*86400000);
+const dateKeyUTC=(date)=>date.getUTCFullYear()+"-"+String(date.getUTCMonth()+1).padStart(2,"0")+"-"+String(date.getUTCDate()).padStart(2,"0");
+const movableHolidays={};
+for(const year of [2026,2027]){
+  const easter=easterSunday(year);
+  movableHolidays[dateKeyUTC(addDays(easter,-48))]={name:"Carnaval (segunda-feira)",closed:false};
+  movableHolidays[dateKeyUTC(addDays(easter,-47))]={name:"Carnaval (terça-feira)",closed:false};
+  movableHolidays[dateKeyUTC(addDays(easter,-2))]={name:"Sexta-feira Santa",closed:false};
+  movableHolidays[dateKeyUTC(addDays(easter,60))]={name:"Corpus Christi",closed:false};
+}
 export const HOLIDAYS = Object.freeze({
   "2026-01-01": { name: "Confraternização Universal", closed: true },
-  "2026-02-16": { name: "Carnaval (segunda-feira)", closed: false },
-  "2026-02-17": { name: "Carnaval (terça-feira)", closed: false },
-  "2026-04-03": { name: "Sexta-feira Santa", closed: false },
   "2026-04-21": { name: "Tiradentes", closed: false },
   "2026-05-01": { name: "Dia do Trabalho", closed: false },
-  "2026-06-04": { name: "Corpus Christi", closed: false },
   "2026-09-05": { name: "Elevação do Amazonas à categoria de Província", closed: false },
   "2026-09-07": { name: "Independência do Brasil", closed: false },
   "2026-10-12": { name: "Nossa Senhora Aparecida", closed: false },
@@ -17,12 +30,8 @@ export const HOLIDAYS = Object.freeze({
   "2026-12-08": { name: "Nossa Senhora da Conceição", closed: false },
   "2026-12-25": { name: "Natal", closed: true },
   "2027-01-01": { name: "Confraternização Universal", closed: true },
-  "2027-02-08": { name: "Carnaval (segunda-feira)", closed: false },
-  "2027-02-09": { name: "Carnaval (terça-feira)", closed: false },
-  "2027-03-26": { name: "Sexta-feira Santa", closed: false },
   "2027-04-21": { name: "Tiradentes", closed: false },
   "2027-05-01": { name: "Dia do Trabalho", closed: false },
-  "2027-05-27": { name: "Corpus Christi", closed: false },
   "2027-09-05": { name: "Elevação do Amazonas à categoria de Província", closed: false },
   "2027-09-07": { name: "Independência do Brasil", closed: false },
   "2027-10-12": { name: "Nossa Senhora Aparecida", closed: false },
@@ -31,7 +40,8 @@ export const HOLIDAYS = Object.freeze({
   "2027-11-15": { name: "Proclamação da República", closed: false },
   "2027-11-20": { name: "Consciência Negra", closed: false },
   "2027-12-08": { name: "Nossa Senhora da Conceição", closed: false },
-  "2027-12-25": { name: "Natal", closed: true }
+  "2027-12-25": { name: "Natal", closed: true },
+  ...movableHolidays
 });
 const parts = (date) => {
   const values = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
