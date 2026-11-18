@@ -17,7 +17,7 @@ export function commercialScheduleContext(now: Date = new Date()) {
     horario_de_hoje:schedule.hours,
     proximo_dia_funcionamento:nextWorkingDay,
     horario_do_proximo_dia:nextOpeningSchedule.hours,
-    nome_do_proximo_feriado:nextHoliday?.name || null,
+    nome_do_proximo_feriado:nextHoliday || null,
     pronto_a_partir_de:schedule.within ? "hoje, até " + (schedule.hours.includes("11h")?"11h":"13h") : nextWorkingDay + " a partir das 6h",
   };
 }
