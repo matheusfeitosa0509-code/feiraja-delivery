@@ -10,7 +10,7 @@ self.addEventListener('fetch',function(event){
  const cachePromise=caches.open(STATIC_CACHE);
  const networkPromise=cachePromise.then(async cache=>{
   const response=await fetch(request);
-  if(response&&response.ok){try{await cache.put(request,response.clone());}catch(_){}}
+  if(response&&(response.ok||response.type==='opaque')){try{await cache.put(request,response.clone());}catch(_){}}
   return response;
  });
  event.waitUntil(networkPromise.then(()=>undefined).catch(()=>undefined));
