@@ -8,7 +8,7 @@ export function commercialScheduleContext(now: Date = new Date()) {
   const nextOpening=proximaAbertura(now);
   const nextOpeningSchedule=nextOpening?getCommercialSchedule(nextOpening):schedule;
   const nextOpeningKey=nextOpening?new Intl.DateTimeFormat("en-CA",{timeZone:"America/Manaus",year:"numeric",month:"2-digit",day:"2-digit"}).format(nextOpening):null;
-  const nextHoliday=nextOpeningKey?HOLIDAYS[nextOpeningKey]?.name||null:null;
+  const nextHoliday=nextOpeningKey?(HOLIDAYS as Record<string, {name:string;closed:boolean}>)[nextOpeningKey]?.name||null:null;
   const nextWorkingDay=schedule.label;
   return {
     data_hora_manaus:localDateTime,
