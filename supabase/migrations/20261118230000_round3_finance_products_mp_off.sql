@@ -35,9 +35,11 @@ BEGIN
   IF position(v_old IN v_definition) = 0 THEN
     RAISE EXCEPTION 'Trecho esperado de admin_get_cost_report não encontrado';
   END IF;
-  EXECUTE replace(v_definition, v_old, v_new);
+  v_definition := replace(v_definition, v_old, v_new);
+  v_definition := replace(v_definition, 'unit_cost IS NOT NULL', 'unit_cost > 0');
+  EXECUTE v_definition;
 END;
-$$;
+$;
 
 -- Expõe a cobertura real dos snapshots sem transformar custos ausentes em zero.
 DO $$
@@ -57,6 +59,7 @@ BEGIN
     RAISE EXCEPTION 'Trechos esperados do relatório financeiro não encontrados';
   END IF;
   v_definition := replace(v_definition, v_old_count, v_new_count);
+  v_definition := replace(v_definition, 'unit_cost is not null', 'unit_cost > 0');
   v_definition := replace(v_definition, v_old_json, v_new_json);
   EXECUTE v_definition;
 END;
