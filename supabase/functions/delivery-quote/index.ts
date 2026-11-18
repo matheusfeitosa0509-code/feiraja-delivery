@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
 import { chooseVehicle, classifyLalamoveQuoteError, estimateLoad, formatDropoff, isQuoteAllowed, parseQuotation, requestSandboxQuotation, retryLalamove429, startParallelVehicleQuotes } from "../_shared/delivery-quote.ts";
 import { geocodeManausAddress, resolveDeliveryCoordinates } from "../_shared/geocoding.ts";
-import { getStoreSchedule } from "../_shared/store-schedule.js";
+import { getCommercialSchedule } from "../_shared/commercial-calendar.js";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -107,7 +107,7 @@ Deno.serve(async (req: Request) => {
     ]);
     timings.geocoding_ms = Math.round(performance.now() - geocodingStarted);
     const quoteFetch: typeof fetch = (input, init) => retryLalamove429(fetch, input, init);
-    const scheduleAt = getStoreSchedule().scheduledFor || undefined;
+    const scheduleAt = getCommercialSchedule().scheduledFor || undefined;
     const quoteVehicle = async (requestedVehicle: "MOTO" | "CAR") => {
       const stageStarted = performance.now();
       try {
