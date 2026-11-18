@@ -91,6 +91,7 @@ async function measure(page,cdp,url) {
    const candidateCdp=await emulate4G(candidate);
    const candidateFirst=await measure(candidate,candidateCdp,url);
    await candidate.waitForFunction(()=>{const cache=JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')||'null');return !!cache&&Array.isArray(cache.products)&&cache.products.length>0;},null,{timeout:30000});
+   await candidate.waitForFunction(()=>document.querySelector('#status')?.textContent==='Catálogo atualizado.',null,{timeout:30000});
    const saved=await candidate.evaluate(()=>JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')||'null'));
    assert.ok(candidateFirst.firstProductMs<2500,'first visit did not meet <2.5s target: '+candidateFirst.firstProductMs+'ms');
    assert.ok(candidateFirst.skeletonSeen,'first visit without cache did not show skeleton');
