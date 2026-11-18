@@ -25,7 +25,8 @@ assert.doesNotMatch(worker, /api\.mercadopago\.com|MERCADO_PAGO_ACCESS_TOKEN|res
 assert.match(worker, /payment_provider: "asaas"/, 'new Pix orders are stored as Asaas payments');
 
 assert.match(assistant, /\.from\("products"\)/, 'assistant product names come from the live products table');
-assert.match(store, /\.from\(['"]products['"]\)/, 'storefront product names come from the live products table');
+assert.match(store, /\/rest\/v1\/products\?/, 'storefront product names come from the live products REST endpoint');
+assert.match(store, /select=id,name,price/, 'storefront fetches the product name from the live catalog');
 assert.doesNotMatch(store + panel + assistant, /Brócolis \(unidade\)/, 'the old broccoli label is not hardcoded in UI consumers');
 assert.match(migration, /COALESCE\(o\.is_test_order, false\) = false/, 'sales dashboard excludes test orders');
 assert.match(migration, /admin_get_cost_report_with_delivery/, 'migration extends the delivery-inclusive report');
