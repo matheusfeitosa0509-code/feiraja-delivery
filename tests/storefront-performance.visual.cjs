@@ -95,14 +95,16 @@ async function measure(page,cdp,url) {
    const staleWasPainted=await candidate.evaluate(()=>window.__stalePriceSeen===true);
    await candidate.waitForFunction(({id,price})=>{const cache=JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')||'null');const item=cache?.products?.find(p=>p.id===id);return item&&Number(item.price)!==price;},{id:first.id,price:stalePrice},{timeout:30000});
    const correctedPrice=await candidate.evaluate(id=>Number(JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')).products.find(p=>p.id===id).price),first.id);
-   const noMapOnOpen=!(await candidate.evaluate(()=>performance.getEntriesByType('resource').some(x=>/maplibre-gl|lalamove-map\.js|assistant-speech\.js/.test(x.name))));
+   const noMapOnOpen=!(await candidate.evaluate(()=>performance.getEntriesByType('resource').some(x=>/maplibre-gl|lalamove-map\.js|assistant-runtime\.js|assistant-speech\.js/.test(x.name))));
    const firstImages=await candidate.locator('#homeProductSections .product[data-product-id] img[fetchpriority="high"][width="160"][height="160"]').count();
    assert.ok(staleWasPainted,'stale cached price was not painted before server refresh');
    assert.equal(correctedPrice,originalPrice,'server refresh did not correct stale cached price');
    assert.ok(candidateSecond.firstProductMs<1000,'cached second visit did not meet <1s target: '+candidateSecond.firstProductMs+'ms');
    assert.ok(firstImages>=4,'first product row images missing high priority/dimensions');
-   assert.ok(noMapOnOpen,'MapLibre or tracking map loaded on initial open');
+   assert.ok(noMapOnOpen,'MapLibre, tracking map or assistant loaded before use');
    assert.deepEqual(candidateErrors,[],'console/page errors on candidate: '+candidateErrors.join('; '));
+   await candidate.locator('#assistantNavButton').click();
+   await candidate.waitForFunction(()=>performance.getEntriesByType('resource').some(x=>x.name.includes('assistant-runtime.js')),{timeout:10000});
    report.viewports[width]={before:{first:baselineFirst,second:baselineSecond},after:{first:candidateFirst,second:candidateSecond},stalePriceCorrected:true,noMapOnOpen,firstImagesHighPriority:firstImages,consoleErrors:candidateErrors.length};
    await candidateContext.close();
   }
