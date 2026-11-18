@@ -168,7 +168,6 @@ Deno.serve(async (req: Request) => {
         LALAMOVE_INVALID_ADDRESS: "Endereço não encontrado. Confira rua, número e bairro.",
         LALAMOVE_INVALID_REQUEST: "A Lalamove recusou os dados do endereço ou da rota. Revise rua, número e ponto do mapa.",
         LALAMOVE_RATE_LIMIT: "Muitas consultas agora, tente em alguns segundos.",
-        LALAMOVE_QUOTE_FAILED: "A Lalamove está temporariamente indisponível. Tente novamente em instantes.",
       };
       // Corpo integral: necessário para diagnosticar respostas inesperadas do provedor.
       console.error("delivery-quote", {
@@ -176,7 +175,7 @@ Deno.serve(async (req: Request) => {
         upstream_code: upstreamCode || null, upstream_detail: upstreamFailure.detail || null,
         upstream_body: responseBody, code,
       });
-      return json({ error: messages[code] || "A Lalamove recusou a cotação. Revise o endereço e tente novamente.", code },
+      return json({ error: messages[code] || "Não foi possível calcular a entrega por um erro inesperado. Tente novamente.", code },
         response.status === 429 ? 429 : response.status === 422 ? 422 : 502);
     }
     const quote = selectedQuote.quote || parseQuotation(result?.data, vehicle, load.weightKg);
