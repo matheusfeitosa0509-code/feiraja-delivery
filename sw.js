@@ -6,7 +6,8 @@ self.addEventListener('fetch',function(event){
  const request=event.request;
  if(request.method!=='GET'||request.mode==='navigate')return;
  const url=new URL(request.url);
- if(!STATIC_ORIGINS.has(url.origin)||!STATIC_ASSET.test(url.pathname+url.search))return;
+ const isGoogleFontCss=url.origin==='https://fonts.googleapis.com'&&url.pathname.startsWith('/css');
+ if(!STATIC_ORIGINS.has(url.origin)||(!STATIC_ASSET.test(url.pathname+url.search)&&!isGoogleFontCss))return;
  const cachePromise=caches.open(STATIC_CACHE);
  const networkPromise=cachePromise.then(async cache=>{
   const response=await fetch(request);
