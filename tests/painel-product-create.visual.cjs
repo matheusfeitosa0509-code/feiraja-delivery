@@ -34,7 +34,7 @@ function prepare(source){
   .replace(/<link href="https:\/\/fonts\.googleapis\.com[^>]*>/gi,"")
   .replace(/<script src="\.\/turnstile\.js" defer><\/script>/i,"")
   .replace(/<script src="\.\/lalamove-map\.js"><\/script>/i,"");
- html=html.replace(/<script type="module">([\s\S]*?)<\/script>/i,(_all,code)=>{
+ html=html.replace(/<script type="module">([\s\S]*?)<\/script>/gi,(_all,code)=>{
   code=code.replace(/^\s*import\s*\{\s*createClient\s*\}\s*from\s*['"]https:\/\/esm\.sh\/@supabase\/supabase-js@2\.117\.1['"];\s*/m,"")
    .replace(/^\s*import\s*\{\s*upcomingHolidays\s*\}\s*from\s*['"]\.\/supabase\/functions\/_shared\/commercial-calendar\.js[^'"]*['"];\s*/m,"")
    .replace(/const db=createClient\([\s\S]*?\);\s*/,"const db=window.__testDb;\n");
