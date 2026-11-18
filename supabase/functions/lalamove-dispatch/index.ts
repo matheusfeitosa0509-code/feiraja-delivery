@@ -3,7 +3,7 @@ import { readLalamoveCredentials, readLalamoveEnvironment, normalizeLalamoveEnvi
 import { formatDropoff, requestSandboxQuotation } from "../_shared/delivery-quote.ts";
 import { geocodeManausAddress } from "../_shared/geocoding.ts";
 import {
-  buildLalamoveOrderBody, canCancelLalamove, canQuoteLalamove, canStartDispatch, isLalamoveDispatchReady, cancelLalamoveOrder, createLalamoveOrder, normalizeBrazilPhone,
+  assertTestProductionDispatchConfirmation, buildLalamoveOrderBody, canCancelLalamove, canQuoteLalamove, canStartDispatch, isLalamoveDispatchReady, cancelLalamoveOrder, createLalamoveOrder, normalizeBrazilPhone,
   getLalamoveDriverDetails, getLalamoveOrderDetails, mapLalamoveStatus, priceDifference, quoteFee, requireSupabaseServiceRoleJwt, storeLalamoveQuotes,
 } from "../_shared/lalamove-dispatch.ts";
 
@@ -126,7 +126,8 @@ async function quoteBoth(db: any, order: any, userId: string) {
     car: { fee: carParsed.fee, difference: priceDifference(carParsed.fee, charged) },
   };
 }
-async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "MOTO" | "CAR", environment: "sandbox" | "producao") {
+async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "MOTO" | "CAR", environment: "sandbox" | "producao", testProductionConfirmed = false) {
+  assertTestProductionDispatchConfirmation(order.is_test_order === true, environment, testProductionConfirmed);
   const { data: settings, error: settingsError } = await db.from("delivery_settings")
     .select("moto_limite_kg").eq("singleton", true).maybeSingle();
   if (settingsError || !settings) throw new Error("DELIVERY_SETTINGS_UNAVAILABLE");
@@ -143,6 +144,7 @@ async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "M
   const recipientPhone = normalizeBrazilPhone(order.customer_phone);
   const { data: start, error: startError } = await db.rpc("service_begin_lalamove_dispatch", {
     p_order_id: order.id, p_session_id: sessionId, p_vehicle: vehicle, p_ambiente: environment,
+    p_test_production_confirmed: testProductionConfirmed,
   });
   if (startError) {
     const message = String(startError.message || "");
@@ -279,7 +281,8 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Confirme uma cotação válida e escolha moto ou carro." }, 400);
     }
     const environment = await readLalamoveEnvironment(context.db);
-    const result = await dispatchOrder(context.db, readyOrder, sessionId, vehicle, environment);
+    const testProductionConfirmed = body.test_production_confirmed === true;
+    const result = await dispatchOrder(context.db, readyOrder, sessionId, vehicle, environment, testProductionConfirmed);
     if (result.duplicate) return json({ error: "Este pedido já está sendo enviado ou já possui uma corrida.", ...result }, 409);
     if (result.pending_confirmation) return json({
       pending_confirmation: true,
@@ -294,6 +297,7 @@ Deno.serve(async (req: Request) => {
       ORDER_NOT_READY: { message: "Para confirmar e criar a corrida, o pedido precisa estar com status Preparando ou Pronto para Retirada.", status: 409 },
       ORDER_NOT_QUOTABLE: { message: "Não é possível cotar uma entrega cancelada, recusada ou reembolsada.", status: 409 },
       ORDER_NOT_PAID: { message: "Somente pedido pago ou Pix de teste pode ser despachado.", status: 409 },
+      TEST_PRODUCTION_CONFIRMATION_REQUIRED: { message: "Confirmação explícita obrigatória para corrida real de pedido de teste.", status: 403 },
       OUT_OF_SERVICE_AREA: { message: "Endereço fora da área atendida pela Lalamove.", status: 422 },
       ADDRESS_NOT_FOUND: { message: "Não foi possível localizar o endereço. Confira rua, número e bairro e tente novamente.", status: 422 },
       INVALID_ADDRESS: { message: "Endereço incompleto: informe rua, número e bairro para cotar.", status: 400 },
