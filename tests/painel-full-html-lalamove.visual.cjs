@@ -77,7 +77,8 @@ function prepareHtml(source) {
       const expectedTestWarning = "ATENÇÃO: este é um pedido de TESTE, mas a corrida será REAL e cobrada do saldo da Lalamove. Confirmar?";
       if(productionWarning!==expectedTestWarning)throw new Error("O painel não mostrou a confirmação obrigatória para pedido teste em Produção: "+productionWarning);
       await page.getByRole("dialog").getByRole("button",{name:"Confirmar?"}).click();
-      if(!window.__testDb.__state.calls.findLast(x=>x.action==="create"&&x.environment==="producao")?.testProductionConfirmed)throw new Error("A flag de confirmação de corrida real não foi enviada.");
+      const productionFlagSent=await page.evaluate(()=>window.__testDb.__state.calls.findLast(x=>x.action==="create"&&x.environment==="producao")?.testProductionConfirmed===true);
+      if(!productionFlagSent)throw new Error("A flag de confirmação de corrida real não foi enviada.");
       await page.waitForFunction(()=>document.querySelector("[data-lalamove-status-label]")?.textContent.includes("Procurando motorista"));
       if(await page.locator("[data-lalamove-map]").count()!==1)throw new Error("Status/rastreio não apareceu após criação mockada em Produção.");
 
