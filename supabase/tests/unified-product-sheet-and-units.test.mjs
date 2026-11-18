@@ -20,11 +20,14 @@ assert.match(panel,/admin_update_product_sales_rule/,'sale unit and quantity rul
 assert.match(panel,/admin_set_product_cost/,'private product cost uses the existing admin RPC');
 assert.match(panel,/db\.rpc\('admin_get_cost_report'/,'inline costs continue to come from the administrative report RPC');
 assert.match(panel,/window\.__feiraCostProducts/,'inline product cost is sourced from the administrative RPC cache');
+assert.match(panel,/unifiedCostFilter/,'products tab filters products without cost');
+assert.match(panel,/Sem custo cadastrado \(/,'missing-cost filter shows its product count');
+assert.match(panel,/Custo não cadastrado/,'missing costs are not presented as zero');
 assert.match(panel,/Custo '\+money\(cost\.unit_cost\)\+' · Lucro '\+money\(profit\)/,'product rows show cost and profit under the selling price');
 assert.match(panel,/margin\.toLocaleString\('pt-BR'/,'product row shows margin percentage');
 assert.match(panel,/unified-product-cost \'\+marginClass/,'low-margin and below-cost colors are applied to the inline cost summary');
 assert.match(panel,/unified-availability\{align-self:start/,'active switch stays aligned to the top beside name and price');
-assert.match(panel,/class="no-cost">Sem custo/,'products without cost retain the Sem custo badge');
+assert.match(panel,/class="no-cost">Custo não cadastrado/,'products without cost retain the Sem custo badge');
 assert.match(panel,/Object\.keys\(productChanges\)\.length/,'only changed public product fields are written');
 assert.match(panel,/loadCostReport\(\)/,'cost information and report are refreshed after saving');
 assert.match(panel,/@media\(max-width:412px\)/,'the product sheet has mobile layout rules');
