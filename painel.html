@@ -269,12 +269,12 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <div id="notice" class="notice hidden" role="status"></div>
 
 <div class="stats"><div class="stat"><small>Pedidos encontrados</small><strong id="count">0</strong></div><div class="stat"><small>Aguardando pagamento</small><strong id="pending">0</strong></div><div class="stat"><small>Em andamento</small><strong id="active">0</strong></div><div class="stat"><small>Vendas pagas (sem cancelados)</small><strong id="sum">R$ 0,00</strong></div></div><div class="orders-toolbar"><button type="button" id="shoppingListButton" class="secondary">Lista de compras</button><span class="muted">Pedidos pagos ainda não entregues</span></div><section class="card"><div class="filters"><input id="search" placeholder="Buscar por pedido, cliente ou telefone" aria-label="Buscar pedidos"><select id="filter" aria-label="Filtrar por status"><option value="">Todos os status</option><option>Pedido Recebido</option><option>Pagamento Pendente</option><option>Pagamento Confirmado</option><option>Preparando</option><option>Pronto para Retirada</option><option>Entregue</option><option>Cancelada</option><option value="Saiu para Entrega">Saiu para Entrega (pedido antigo)</option><option>Reembolsado</option><option>Contestado</option></select></div></section><div id="orders" class="orders"></div><div class="actions" style="justify-content:center;margin:16px 0"><button id="loadMore" class="secondary">Carregar mais pedidos</button></div>
-<details class="panel-test-tool"><summary>Ferramenta de teste · Simulação de expiração de Pix</summary><section class="card" id="pixSimulationCard"><h2>Simulação de expiração de Pix</h2><p class="muted">Somente consulta. Nenhum pedido será cancelado ou alterado.</p><button id="simulatePixExpiry" type="button">Simular expiração de Pix</button><p id="pixSimulationMessage" class="muted" role="status"></p><div id="pixSimulationResults" class="simulation-wrap"></div></section></details>
+
 </section>
 <section id="productTools" class="hidden" role="tabpanel">
 <section class="card unified-products" aria-label="Produtos">
  <div class="unified-products-head"><div><h1>Produtos</h1><p class="muted">Toque em um produto para abrir a ficha completa.</p></div><button type="button" id="openNewProduct" disabled>+ Novo produto</button></div>
- <div class="unified-product-filters"><input id="unifiedProductSearch" type="search" placeholder="Buscar produto" aria-label="Buscar produto por nome"><select id="unifiedCategoryFilter" aria-label="Filtrar por categoria"><option value="">Todas as categorias</option></select></div>
+ <div class="unified-product-filters"><input id="unifiedProductSearch" type="search" placeholder="Buscar produto" aria-label="Buscar produto por nome"><select id="unifiedCategoryFilter" aria-label="Filtrar por categoria"><option value="">Todas as categorias</option></select><select id="unifiedCostFilter" aria-label="Filtrar por cadastro de custo"><option value="">Todos os custos</option><option value="missing">Sem custo cadastrado (0)</option></select></div>
  <p id="unifiedProductCount" class="muted" aria-live="polite"></p>
  <div id="unifiedProductList" class="unified-product-list"><p class="muted">Carregando produtos…</p></div>
 </section>
@@ -760,20 +760,23 @@ function unitLabel(unit){return ({kg:'kg',un:'un',maco:'maço',pacote:'pacote',d
 function moneyInput(value){return Number(value||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function sheetNumber(id){const raw=$(id).value.trim();if(!raw)return null;const normalized=raw.includes(',')?raw.replace(/\./g,'').replace(',','.'):raw;const n=Number(normalized);return Number.isFinite(n)?n:null;}
 function getProductCost(productId){return (window.__feiraCostProducts||[]).find(row=>row.id===productId)||null;}
-function productMargin(product,cost){if(!cost||cost.unit_cost==null||Number(product.price)<=0)return null;return (Number(product.price)-Number(cost.unit_cost))/Number(product.price)*100;}
+function productMargin(product,cost){if(!cost||cost.unit_cost==null||Number(cost.unit_cost)<=0||Number(product.price)<=0)return null;return (Number(product.price)-Number(cost.unit_cost))/Number(product.price)*100;}
 function renderUnifiedProductList(){
  const host=$('unifiedProductList');if(!host)return;
- const term=normalizeProductSearch($('unifiedProductSearch').value),category=$('unifiedCategoryFilter').value;
+ const term=normalizeProductSearch($('unifiedProductSearch').value),category=$('unifiedCategoryFilter').value,costFilter=$('unifiedCostFilter')?.value||'';
  const costRows=window.__feiraCostProducts||[];
  const costs=new Map(costRows.map(row=>[row.id,row]));
- const rows=adminProducts.filter(p=>(!category||p.category===category)&&normalizeProductSearch(p.name).includes(term)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'pt-BR',{sensitivity:'base'}));
- $('unifiedProductCount').textContent=rows.length+' de '+adminProducts.length+' produtos';
+ const missingCount=costRows.filter(row=>row.unit_cost==null||Number(row.unit_cost)<=0).length;
+ const missingOption=$('unifiedCostFilter')?.querySelector('option[value="missing"]');
+ if(missingOption)missingOption.textContent='Sem custo cadastrado ('+missingCount+')';
+ const rows=adminProducts.filter(p=>(!category||p.category===category)&&(!costFilter||costFilter!=='missing'||!costs.get(p.id)||costs.get(p.id).unit_cost==null||Number(costs.get(p.id).unit_cost)<=0)&&normalizeProductSearch(p.name).includes(term)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'pt-BR',{sensitivity:'base'}));
+ $('unifiedProductCount').textContent=rows.length+' de '+adminProducts.length+' produtos · '+missingCount+' sem custo cadastrado';
  if(!rows.length){host.innerHTML='<p class="muted">Nenhum produto encontrado.</p>';return;}
  host.innerHTML=rows.map(p=>{
-  const cost=costs.get(p.id),margin=productMargin(p,cost),hasCost=!!cost&&cost.unit_cost!=null;
+  const cost=costs.get(p.id),margin=productMargin(p,cost),hasCost=!!cost&&cost.unit_cost!=null&&Number(cost.unit_cost)>0;
   const profit=hasCost?Number(p.price)-Number(cost.unit_cost):null;
   const marginClass=margin!==null&&margin<0?'below-cost':margin!==null&&margin<costMarginThreshold?'low-margin':'';
-  const badges=(p.available?[]:['<span class="unavailable">Indisponível</span>']).concat(!hasCost?['<span class="no-cost">Sem custo</span>']:[],margin!==null&&margin<0?['<span class="below-cost">Abaixo do custo</span>']:margin!==null&&margin<costMarginThreshold?['<span class="low-margin">Margem baixa</span>']:[]);
+  const badges=(p.available?[]:['<span class="unavailable">Indisponível</span>']).concat(!hasCost?['<span class="no-cost">Custo não cadastrado</span>']:[],margin!==null&&margin<0?['<span class="below-cost">Abaixo do custo</span>']:margin!==null&&margin<costMarginThreshold?['<span class="low-margin">Margem baixa</span>']:[]);
   const costLine=hasCost?'<span class="unified-product-cost '+marginClass+'">Custo '+money(cost.unit_cost)+' · Lucro '+money(profit)+' ('+margin.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%)</span>':'';
   const image=productListImage(p.image);
   return '<div class="unified-product-row" data-open-product="'+esc(p.id)+'"><img src="'+esc(image)+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'"><span class="unified-product-meta"><strong>'+esc(p.name)+'</strong><span class="unified-product-price">'+money(p.price)+' <span class="unified-product-unit">· '+unitLabel(p.sale_unit)+'</span></span>'+costLine+'<span class="unified-product-badges">'+badges.join('')+'</span></span><label class="unified-availability" title="Disponibilidade"><input type="checkbox" data-quick-availability="'+esc(p.id)+'" '+(p.available?'checked':'')+' aria-label="Disponível: '+esc(p.name)+'"><span>Ativo</span></label></div>';
@@ -859,6 +862,7 @@ async function saveProductSheet(){
   let uploadedPhoto=null,imageSaved=false;
   try{
    if(!name||!category||price===null||price<=0)throw new Error('Informe nome, categoria e preço de venda válido.');
+   if($('sheetAvailable').value==='true'&&price<0.50)throw new Error('Defina o preço de venda antes de disponibilizar');
    if(!id)throw new Error('Informe um nome válido para gerar o ID do produto.');
    if(resaleEnabled&&(!Number.isFinite(resalePrice)||resalePrice<=0||resalePrice>=price||!Number.isInteger(resaleMin)||resaleMin<1))throw new Error('Revenda exige preço menor que o preço normal e quantidade mínima inteira.');
    if(costValue!==null&&costValue<=0)throw new Error('O custo deve ser maior que zero.');
@@ -908,6 +912,7 @@ async function saveProductSheet(){
 }
 $('unifiedProductSearch').addEventListener('input',renderUnifiedProductList);
 $('unifiedCategoryFilter').addEventListener('change',renderUnifiedProductList);
+$('unifiedCostFilter').addEventListener('change',renderUnifiedProductList);
 $('openNewProduct').addEventListener('click',fillNewProductSheet);
 $('btnOut').onclick=()=>{clearPendingProductPhoto('create');$('formBox').classList.remove('product-create-open');$('formBox').classList.add('hide');};
 $('closeProductSheet').addEventListener('click',closeProductSheet);
@@ -921,7 +926,7 @@ $('imgfile').addEventListener('input',()=>{if(createPendingPhoto)clearPendingPro
 $('sheetSaleUnit').addEventListener('change',()=>{const kg=$('sheetSaleUnit').value==='kg';$('sheetMin').step=kg?'0.25':'1';$('sheetStep').step=kg?'0.25':'1';$('sheetValueMin').disabled=!kg;$('sheetValueMin').closest('label').hidden=!kg; if(kg&&Number($('sheetMin').value)<0.001)$('sheetMin').value='0.5';});
 document.addEventListener('click',async event=>{
  const row=event.target.closest('[data-open-product]');if(row&&!event.target.closest('.unified-availability')){const product=adminProducts.find(p=>p.id===row.dataset.openProduct);if(product)fillProductSheet(product);}
- const toggle=event.target.closest('[data-quick-availability]');if(toggle){event.stopPropagation();const product=adminProducts.find(p=>p.id===toggle.dataset.quickAvailability);if(!product)return;toggle.disabled=true;try{const {data,error}=await db.from('products').update({available:toggle.checked}).eq('id',product.id).select('id,available').maybeSingle();if(error)throw error;if(!data)throw new Error('Sem permissão para atualizar disponibilidade.');product.available=data.available;renderUnifiedProductList();}catch(error){toggle.checked=product.available;setSheetMessage(error?.message||'Falha ao atualizar disponibilidade.',true);}finally{toggle.disabled=false;}}
+ const toggle=event.target.closest('[data-quick-availability]');if(toggle){event.stopPropagation();const product=adminProducts.find(p=>p.id===toggle.dataset.quickAvailability);if(!product)return;if(toggle.checked&&Number(product.price)<0.50){toggle.checked=false;availabilityMessage('Defina o preço de venda antes de disponibilizar',true);return;}toggle.disabled=true;try{const {data,error}=await db.from('products').update({available:toggle.checked}).eq('id',product.id).select('id,available').maybeSingle();if(error)throw error;if(!data)throw new Error('Sem permissão para atualizar disponibilidade.');product.available=data.available;renderUnifiedProductList();}catch(error){toggle.checked=product.available;setSheetMessage(error?.message||'Falha ao atualizar disponibilidade.',true);}finally{toggle.disabled=false;}}
 });
 
 async function loadAdminProducts(){
@@ -966,10 +971,11 @@ async function toggleAvailability(){
  button.disabled=true;
  button.textContent='Atualizando…';
  try{
-  const {data:current,error:readError}=await db.from('products').select('id,name,available').eq('id',id).maybeSingle();
+  const {data:current,error:readError}=await db.from('products').select('id,name,available,price').eq('id',id).maybeSingle();
   if(readError)throw readError;
   if(!current)throw new Error('Produto não encontrado ou sem permissão para leitura.');
   const nextAvailable=!current.available;
+  if(nextAvailable&&Number(current.price)<0.50)throw new Error('Defina o preço de venda antes de disponibilizar');
   const {data,error}=await db.from('products').update({available:nextAvailable}).eq('id',id).select('id,name,available').maybeSingle();
   if(error)throw error;
   if(!data)throw new Error('Nenhuma linha foi atualizada. Confira a autorização administrativa.');
@@ -978,7 +984,8 @@ async function toggleAvailability(){
   syncAvailabilityControls();
   availabilityMessage('Disponibilidade de "'+data.name+'" alterada para '+(data.available?'disponível':'indisponível')+'.','');
  }catch(error){
-  availabilityMessage('Não foi possível alterar a disponibilidade: '+(error?.message||'erro não identificado'),true);
+  const detail=String(error?.message||'erro não identificado');
+  availabilityMessage(detail.includes('Defina o preço de venda antes de disponibilizar')?'Defina o preço de venda antes de disponibilizar':'Não foi possível alterar a disponibilidade: '+detail,true);
  }finally{
   button.disabled=false;
   syncAvailabilityControls();
@@ -1395,22 +1402,6 @@ async function markRefundDone(id,button){
  }
 }
 function escapeHtml(value){return String(value??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function formatAge(minutes){const n=Number(minutes);if(!Number.isFinite(n))return '—';const h=Math.floor(n/60),m=n%60;return h? h+' h '+m+' min':m+' min'}
-$('simulatePixExpiry').addEventListener('click',async()=>{
- const button=$('simulatePixExpiry'),message=$('pixSimulationMessage'),results=$('pixSimulationResults');
- button.disabled=true;button.textContent='Consultando…';message.textContent='Consultando pedidos e Mercado Pago…';results.innerHTML='';
- try{
-  const {data,error}=await db.functions.invoke('expire-pix',{body:{}});
-  if(error)throw error;
-  if(!data||!Array.isArray(data.results))throw new Error(data?.error||'Resposta inesperada da função.');
-  results.innerHTML='<table class="simulation-table"><thead><tr><th>Pedido</th><th>Idade</th><th>Estado no Mercado Pago</th><th>Ação simulada</th></tr></thead><tbody>'+
-   (data.results.length?data.results.map(row=>'<tr><td>'+escapeHtml(row.order_id)+'</td><td>'+escapeHtml(formatAge(row.age_minutes))+'</td><td>'+escapeHtml(row.mercado_pago||'não verificado')+'</td><td>'+escapeHtml(row.simulated_action||'não verificado')+'</td></tr>').join(''):'<tr><td colspan="4">Nenhum pedido elegível encontrado.</td></tr>')+
-   '</tbody></table>';
-  message.textContent='Modo '+escapeHtml(data.mode||'SIMULAÇÃO')+'. Pedidos encontrados: '+data.eligible_count+'. Alterações realizadas: 0.';
- }catch(error){
-  message.textContent='Não foi possível executar a simulação: '+(error?.message||'erro não identificado')+'. Nenhum pedido foi alterado.';
- }finally{button.disabled=false;button.textContent='Simular expiração de Pix'}
-});
 const adminLoginButton=$('form').querySelector('button[type="submit"]');adminLoginButton.id='formSubmit';
 const adminCaptcha=window.FeiraTurnstile.create({containerId:'adminTurnstile',buttonId:'formSubmit',messageId:'adminCaptchaMessage',retryButtonId:'adminCaptchaRetry'});
 $('form').addEventListener('focusin',()=>adminCaptcha.init());
@@ -1913,7 +1904,7 @@ async function loadCostReport(){
   const start=$('costStart').value,end=$('costEnd').value;
   if(!start||!end||end<start)throw new Error('Informe um período válido.');
   message.textContent='Consultando custos e pedidos…';
-  const {data,error}=await db.rpc('admin_get_cost_report',{
+  const {data,error}=await db.rpc('admin_get_cost_report_with_delivery',{
    p_start:costDateInManaus(start),
    p_end:costDateInManaus(end,true)
   });
@@ -1921,12 +1912,13 @@ async function loadCostReport(){
   const products=Array.isArray(data?.products)?data.products:[];
   window.__feiraCostProducts=products;
   if(typeof renderUnifiedProductList==='function')renderUnifiedProductList();
+  if(typeof renderAllSharedProductLists==='function')renderAllSharedProductLists();
   const now=Date.now();
-  $('costProductStatusList').innerHTML=products.map(product=>{const updated=product.updated_at?new Date(product.updated_at):null;const stale=updated&&now-updated.getTime()>7*24*60*60*1000;const margin=product.unit_cost==null||Number(product.price)<=0?null:(Number(product.price)-Number(product.unit_cost))/Number(product.price)*100;const below=margin!==null&&margin<0;const low=margin!==null&&!below&&margin<costMarginThreshold;const classes=[stale?'stale':'',below?'below-cost':low?'low-margin':''].filter(Boolean).join(' ');const date=updated?new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',day:'2-digit',month:'2-digit'}).format(updated):null;const costText=date?'Custo atualizado em: '+date:'Custo ainda não cadastrado';const marginText=margin===null?'Margem: sem custo':('Margem estimada: '+margin.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%');return '<article class="cost-product-row '+classes+'"><strong>'+esc(product.name)+'</strong><small>'+costText+'</small><small>'+marginText+'</small></article>';}).join('')||'<p class="muted">Nenhum produto cadastrado.</p>';
+  $('costProductStatusList').innerHTML=products.map(product=>{const updated=product.updated_at?new Date(product.updated_at):null;const stale=updated&&now-updated.getTime()>7*24*60*60*1000;const margin=product.unit_cost==null||Number(product.unit_cost)<=0||Number(product.price)<=0?null:(Number(product.price)-Number(product.unit_cost))/Number(product.price)*100;const below=margin!==null&&margin<0;const low=margin!==null&&!below&&margin<costMarginThreshold;const classes=[stale?'stale':'',below?'below-cost':low?'low-margin':''].filter(Boolean).join(' ');const date=updated?new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',day:'2-digit',month:'2-digit'}).format(updated):null;const costText=product.unit_cost==null||Number(product.unit_cost)<=0?'Custo não cadastrado':date?'Custo atualizado em: '+date:'Custo não cadastrado';const marginText=margin===null?'Margem: sem custo':('Margem estimada: '+margin.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%');return '<article class="cost-product-row '+classes+'"><strong>'+esc(product.name)+'</strong><small>'+costText+'</small><small>'+marginText+'</small></article>';}).join('')||'<p class="muted">Nenhum produto cadastrado.</p>';
   const selected=$('costProductSelect').value;
   $('costProductSelect').replaceChildren(new Option('Selecione um produto',''));
   products.forEach(product=>{
-   const label=product.name+(product.available?'':' — indisponível')+(product.unit_cost==null?' — sem custo':' — custo '+money(product.unit_cost));
+   const label=product.name+(product.available?'':' — indisponível')+(product.unit_cost==null||Number(product.unit_cost)<=0?' — sem custo':' — custo '+money(product.unit_cost));
    $('costProductSelect').add(new Option(label,product.id));
   });
   if(products.some(product=>product.id===selected))$('costProductSelect').value=selected;
@@ -1939,9 +1931,13 @@ async function loadCostReport(){
    ['Custo conhecido',money(s.known_cost)],
    ['Lucro estimado (pelo custo cadastrado)',money(s.profit)],
    ['Margem sobre itens com custo',percent],
-   ['Itens sem custo',String(s.missing_cost_items||0)]
+   ['Itens sem custo',String(s.missing_cost_items||0)],
+   ['Lucro calculado sobre itens',String(s.calculated_items||0)+' de '+String(s.total_items||0)],
+   ['Taxa Lalamove recebida',money(s.delivery_fee_revenue)],
+   ['Custo real Lalamove',money(s.delivery_actual_cost)],
+   ['Lucro após Lalamove',money(s.profit_after_delivery)]
   ].map(([label,value])=>'<div class="stat"><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>').join('');
-  message.textContent='Lucro estimado (pelo custo cadastrado). Período: '+start.split('-').reverse().join('/')+' a '+end.split('-').reverse().join('/')+'.';
+  message.textContent='Lucro calculado sobre '+String(s.calculated_items||0)+' de '+String(s.total_items||0)+' itens com custo cadastrado. Período: '+start.split('-').reverse().join('/')+' a '+end.split('-').reverse().join('/')+'.';
  }catch(error){
   console.error('Falha ao carregar resumo de custos:',error);
   message.textContent='Não foi possível carregar o resumo: '+(error?.message||'erro não identificado');
@@ -1952,7 +1948,7 @@ $('costProductSelect').addEventListener('change',()=>{
  const product=Array.from($('costProductSelect').options).map(option=>option.value).includes($('costProductSelect').value)
   ?$('costProductSelect').value:'';
  const current=(window.__feiraCostProducts||[]).find(item=>item.id===product);
- $('costUnitInput').value=current?.unit_cost==null?'':Number(current.unit_cost).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+ $('costUnitInput').value=current?.unit_cost==null||Number(current.unit_cost)<=0?'':Number(current.unit_cost).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
  $('btnSaveCost').disabled=!product;
 });
 $('btnSaveCost').addEventListener('click',async()=>{
@@ -1979,7 +1975,7 @@ let costMarginThreshold=20;
 async function loadCostMarginThreshold(){
  const message=$('costMarginThresholdMessage');
  try{
-  const {data,error}=await db.rpc('get_sales_settings');
+  const {data,error}=await db.rpc('admin_get_low_margin_percent');
   if(error)throw error;
   const value=Number(data?.low_margin_percent??20);
   if(!Number.isFinite(value)||value<0||value>100)throw new Error('Percentual inválido.');

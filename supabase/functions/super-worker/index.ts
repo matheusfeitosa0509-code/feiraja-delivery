@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { calculateLineTotalCents, calculateQuantityFromValueCents, calculateValueLineTotalCents, isValidSalesQuantity, isValueSaleEnabled, selectEffectiveUnitPriceCents, sumDecimalQuantities } from "../_shared/sales-rules.js";
-import { resolveMercadoPagoOrderStatus } from "./payment-status.ts";
+import { isLegacyMercadoPagoWebhookNotice, isAsaasPixEnabled } from "./payment-provider-policy.ts";
 import { normalizeItemPreference } from "../_shared/item-preferences.ts";
 import { formatDropoff } from "../_shared/delivery-quote.ts";
 import { readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
@@ -99,7 +99,6 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const url = new URL(req.url);
-  const earlyNoticeType = String(url.searchParams.get("type") || url.searchParams.get("topic") || "");
   let requestBody: any = {};
   if (req.method === "POST") {
     try {
@@ -112,7 +111,9 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Corpo JSON inválido." }, 400);
     }
   }
-  if (earlyNoticeType && earlyNoticeType !== "payment") return json({ received: true, ignored: true });
+  if (isLegacyMercadoPagoWebhookNotice(url, requestBody)) {
+    return json({ error: "Webhook do Mercado Pago desativado.", received: true, ignored: true }, 410);
+  }
   const earlyBody = requestBody;
   const earlyBodyType = String(earlyBody?.type || earlyBody?.topic || "");
   if (earlyBodyType && earlyBodyType !== "payment") return json({ received: true, ignored: true });
@@ -152,122 +153,12 @@ Deno.serve(async (req: Request) => {
   } | null = null;
 
   try {
-    const mpToken = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN");
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !serviceKey) return json({ error: "Configuração interna do servidor incompleta." }, 500);
     const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
     const body = requestBody;
-    const noticeType = String(url.searchParams.get("type") || url.searchParams.get("topic") || body?.type || body?.topic || "");
-    const paymentIdFromNotice = String(url.searchParams.get("data.id") || url.searchParams.get("id") || body?.data?.id || "");
-    if (noticeType && noticeType !== "payment") return json({ received: true, ignored: true });
-    if (noticeType === "payment" && !paymentIdFromNotice) return json({ received: true, ignored: true });
-    if (noticeType === "payment" && paymentIdFromNotice) {
-      // Webhooks must be signed. Never process payment notices without the configured secret.
-      const webhookSecret = Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET");
-      if (!webhookSecret) {
-        console.error("super-worker", { code: "CONFIG_MISSING", stage: "verify_mp_webhook_config" });
-        return json({ error: "Webhook não configurado." }, 503);
-      }
-      {
-        const signatureHeader = req.headers.get("x-signature") || "";
-        const requestId = req.headers.get("x-request-id") || "";
-        const parts = Object.fromEntries(signatureHeader.split(",").map((part) => {
-          const index = part.indexOf("=");
-          return index > -1 ? [part.slice(0, index).trim(), part.slice(index + 1).trim()] : ["", ""];
-        }).filter(([key]) => key));
-        const ts = parts.ts || "";
-        const suppliedSignature = (parts.v1 || "").toLowerCase();
-        if (!ts || !suppliedSignature || !requestId) {
-          return json({ error: "Assinatura do webhook ausente." }, 401);
-        }
-        const manifest = `id:${paymentIdFromNotice};request-id:${requestId};ts:${ts};`;
-        const key = await crypto.subtle.importKey(
-          "raw",
-          new TextEncoder().encode(webhookSecret),
-          { name: "HMAC", hash: "SHA-256" },
-          false,
-          ["sign"],
-        );
-        const digest = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(manifest));
-        const expectedSignature = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
-        // Constant-time comparison for equal-length hexadecimal signatures.
-        let signatureDiff = expectedSignature.length ^ suppliedSignature.length;
-        const compareLength = Math.max(expectedSignature.length, suppliedSignature.length);
-        for (let i = 0; i < compareLength; i++) {
-          signatureDiff |= (expectedSignature.charCodeAt(i) || 0) ^ (suppliedSignature.charCodeAt(i) || 0);
-        }
-        if (signatureDiff !== 0) return json({ error: "Assinatura do webhook inválida." }, 401);
-      }
-      if (!mpToken) return json({ error: "Mercado Pago não configurado." }, 503);
-      const mpCheck = await fetch("https://api.mercadopago.com/v1/payments/" + encodeURIComponent(paymentIdFromNotice), {
-        headers: { Authorization: "Bearer " + mpToken },
-      });
-      const verifiedPayment = await mpCheck.json().catch(() => ({}));
-      if (!mpCheck.ok || String(verifiedPayment?.id) !== paymentIdFromNotice || !verifiedPayment?.external_reference) {
-        return json({ received: true, ignored: true });
-      }
-      if (String(verifiedPayment.currency_id || "").toUpperCase() !== "BRL" ||
-          String(verifiedPayment.payment_method_id || "").toLowerCase() !== "pix" ||
-          !Number.isFinite(Number(verifiedPayment.transaction_amount))) {
-        return json({ received: true, ignored: true });
-      }
-      const { data: linkedOrder, error: orderReadError } = await db.from("orders")
-        .select("id,status,total,payment_id")
-        .eq("id", String(verifiedPayment.external_reference))
-        .maybeSingle();
-      if (orderReadError) return json({ error: "Falha ao conferir pedido." }, 500);
-      if (!linkedOrder || (linkedOrder.payment_id && String(linkedOrder.payment_id) !== paymentIdFromNotice)) {
-        return json({ received: true, ignored: true });
-      }
-      const paidAmount = Math.round(Number(verifiedPayment.transaction_amount) * 100);
-      const expectedAmount = Math.round(Number(linkedOrder.total) * 100);
-      if (!Number.isFinite(expectedAmount) || paidAmount !== expectedAmount) {
-        console.error("super-worker", { code: "PAYMENT_MISMATCH", stage: "verify_mp_payment" });
-        return json({ received: true, ignored: true });
-      }
-      const incomingStatus = String(verifiedPayment.status || "");
-      const normalizedOrderStatus = String(linkedOrder.status || "").trim().toLowerCase();
-      const decision = resolveMercadoPagoOrderStatus({
-        orderStatus: linkedOrder.status,
-        incomingStatus,
-        storedPaymentId: linkedOrder.payment_id ? String(linkedOrder.payment_id) : null,
-        incomingPaymentId: paymentIdFromNotice,
-      });
-      if (decision.ignored) {
-        if (decision.reason === "pedido_cancelado_pagamento_aprovado") {
-          console.warn("Mercado Pago: pagamento aprovado ignorado para pedido cancelado; revisar devolução manual do Pix.", {
-            order_id: String(linkedOrder.id),
-            reason: "approved_payment_for_cancelled_order",
-          });
-        }
-        return json({ received: true, ignored: true, reason: decision.reason });
-      }
-      const protectedAdministrativeStatuses = new Set(["saiu para entrega", "cancelada", "cancelado", "preparando", "pronto para retirada", "entregue", "preparando pedido", "concluído", "concluido", "received", "recebido"]);
-      if (incomingStatus === "approved" && protectedAdministrativeStatuses.has(normalizedOrderStatus)) {
-        return json({ received: true, ignored: true, reason: "status_administrativo_preservado" });
-      }
-      // Make repeated approval notifications idempotent.
-      if (incomingStatus === "approved" && normalizedOrderStatus === "pagamento confirmado") {
-        return json({ received: true, ignored: true, reason: "pagamento_ja_confirmado" });
-      }
-      const nextStatus = decision.nextStatus;
-      // Ignore delayed non-final events after approval, but keep refunds and chargebacks visible.
-      const nonFinalStatuses = new Set(["pending", "in_process", "rejected", "cancelled"]);
-      if (["Pagamento Confirmado", "Saiu para Entrega", "Cancelada"].includes(linkedOrder.status) && nonFinalStatuses.has(incomingStatus)) {
-        return json({ received: true, ignored: true });
-      }
-      const { error: updateError } = await db.from("orders")
-        .update({ status: nextStatus, payment_id: paymentIdFromNotice })
-        .eq("id", linkedOrder.id);
-      if (updateError) {
-        console.error("super-worker", { code: "DB_ERROR", stage: "update_order_status" });
-        return json({ error: "Falha ao atualizar pedido." }, 500);
-      }
-      return json({ received: true });
-    }
     const checkoutIdempotencyKey = String(body?.checkout_idempotency_key || "").trim().toLowerCase();
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(checkoutIdempotencyKey)) {
       return json({ error: "Chave de tentativa de checkout inválida. Atualize a página e tente novamente." }, 400);
@@ -308,12 +199,11 @@ Deno.serve(async (req: Request) => {
     const customer = body?.customer;
     const requestedItems = body?.items;
     const paymentMethod = String(body?.paymentMethod || "pix").toLowerCase();
-    if (paymentMethod === "pix_test") {
-      asaasEnabled = false;
-      asaasApiKey = "";
-    }
     const MIN_ORDER_SUBTOTAL_CENTS = 3000;
     if (!["pix", "pix_test", "cash", "card_on_delivery"].includes(paymentMethod)) return json({ error: "Forma de pagamento inválida." }, 400);
+    if (!isAsaasPixEnabled(paymentMethod, asaasEnabled)) {
+      return json({ error: "Pagamento Pix está disponível somente pelo Asaas." }, 503);
+    }
     if (!customer || !Array.isArray(requestedItems) || requestedItems.length < 1 || requestedItems.length > 50) {
       return json({ error: "Pedido inválido: informe os dados do cliente e os produtos." }, 400);
     }
@@ -342,8 +232,8 @@ Deno.serve(async (req: Request) => {
     const scheduledFor = deliveryType === "delivery"
       ? (priorOrder ? (priorOrder.scheduled_for || null) : (deliverySchedule?.scheduledFor || null))
       : null;
-    if (paymentMethod === "pix" && (asaasEnabled ? !asaasApiKey : !mpToken)) {
-      return json({ error: asaasEnabled ? "Asaas Pix ainda não está configurado." : "Pagamento Pix ainda não está configurado." }, 503);
+    if (paymentMethod === "pix" && !asaasApiKey) {
+      return json({ error: "Asaas Pix ainda não está configurado." }, 503);
     }
     let normalizedDeliveryAddress: { street: string; number: string; neighborhood: string; complement?: string; reference?: string } | null = null;
     let address = "Av. Lourenço da Silva Braga, 700 (em frente à feira)";
@@ -785,8 +675,7 @@ Deno.serve(async (req: Request) => {
       id: orderId, user_id: orderUserId, checkout_idempotency_key: checkoutIdempotencyKey, checkout_request_hash: checkoutRequestHash,
       customer_name: name, customer_phone: phone,
       customer_cpf: cpf, customer_email: email, customer_address: address,
-      delivery_type: deliveryType, pickup_code: pickupCode, payment_method: asaasEnabled ? "Asaas Pix" : "Mercado Pago Pix",
-      ...(asaasEnabled ? { payment_provider: "asaas" } : {}),
+      delivery_type: deliveryType, pickup_code: pickupCode, payment_method: "Asaas Pix", payment_provider: "asaas",
       items, subtotal, delivery_fee: deliveryFee, total, status: "Pagamento Pendente",
       market_checklist: { items: items.map((item: any) => ({ id: item.id, name: item.name, qty: item.qty, bought: false })), notes: String(body?.notes ?? "").trim().slice(0, 500) },
     };
@@ -1184,85 +1073,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    let mpResponse: Response;
-    try {
-      mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${mpToken}`,
-          "Content-Type": "application/json",
-          "X-Idempotency-Key": orderId,
-        },
-        body: JSON.stringify({
-          transaction_amount: total,
-          description: `FeiraJá - Pedido ${orderId}`,
-          payment_method_id: "pix",
-          payer: { email, first_name: name.split(" ")[0], last_name: name.split(" ").slice(1).join(" ") || name.split(" ")[0], identification: { type: "CPF", number: cpf } },
-          date_of_expiration: new Date(Date.now() + 30 * 60 * 1000 - 4 * 60 * 60 * 1000).toISOString().slice(0, -1) + "-04:00",
-          notification_url: "https://juhwdevvwstmyxyyagzh.supabase.co/functions/v1/super-worker",
-          external_reference: orderId,
-          metadata: { order_id: orderId },
-        }),
-      });
-    } catch {
-      await db.from("checkout_idempotency").update({ payment_lock_until: null })
-        .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
-      console.error("super-worker", { code: "PAYMENT_PROVIDER_INCONCLUSIVE", stage: "create_pix" });
-      return json({ error: "Não foi possível confirmar a criação do Pix no Mercado Pago. O pedido permanece pendente; tente novamente para recuperar a mesma cobrança." }, 503);
-    }
-    const payment = await mpResponse.json();
-    if (!mpResponse.ok) {
-      if (mpResponse.status === 408 || mpResponse.status === 429 || mpResponse.status >= 500) {
-        await db.from("checkout_idempotency").update({ payment_lock_until: null })
-          .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
-        console.error("super-worker", { code: "PAYMENT_PROVIDER_INCONCLUSIVE", stage: "create_pix", http_status: mpResponse.status });
-        return json({ error: "Não foi possível confirmar a criação do Pix no Mercado Pago. O pedido permanece pendente; tente novamente para recuperar a mesma cobrança." }, 503);
-      }
-      await db.from("orders").update({ status: "Cancelada" }).eq("id", orderId).eq("status", "Pagamento Pendente");
-      await db.from("checkout_idempotency").update({ payment_lock_until: null }).eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
-      console.error("super-worker", { code: "PAYMENT_PROVIDER_REJECTED", stage: "create_pix" });
-      return json({ error: "O Mercado Pago recusou a criação do Pix. O pedido foi marcado como cancelado." }, 502);
-    }
-    const tx = payment?.point_of_interaction?.transaction_data;
-    if (!payment?.id || !tx?.qr_code) {
-      await db.from("checkout_idempotency").update({ payment_lock_until: null })
-        .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
-      console.error("super-worker", { code: "PAYMENT_PROVIDER_QR_INCONCLUSIVE", stage: "read_pix_qr" });
-      return json({ error: "O Mercado Pago ainda não retornou os dados do Pix. O pedido permanece pendente; tente novamente para recuperar a mesma cobrança." }, 503);
-    }
-
-    const { data: savedOrder, error: savePaymentError } = await db.from("orders")
-      .update({
-        payment_id: String(payment.id),
-        pix_qr_code: tx.qr_code,
-        pix_qr_code_base64: tx.qr_code_base64 ?? null,
-      })
-      .eq("id", orderId)
-      .select("id,status,total")
-      .single();
-    if (savePaymentError || !savedOrder) {
-      await db.from("checkout_idempotency").update({ payment_lock_until: null })
-        .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
-      console.error("super-worker", { code: "PAYMENT_METADATA_RECONCILIATION_PENDING", stage: "reconcile_payment_metadata" });
-      return json({ error: "O Pix foi iniciado e o pedido está salvo com o código " + orderId + ". Tente novamente para recuperar a mesma cobrança." }, 503);
-    }
-    const initialStatus = payment.status === "approved" ? "Pagamento Confirmado" :
-      (["rejected", "cancelled"].includes(String(payment.status)) ? "Cancelada" : "Pagamento Pendente");
-    if (initialStatus !== "Pagamento Pendente") {
-      await db.from("orders").update({ status: initialStatus })
-        .eq("id", orderId).eq("status", "Pagamento Pendente");
-    }
-    const { data: finalOrder } = await db.from("orders").select("id,status,total").eq("id", orderId).single();
-    const responseOrder = finalOrder || savedOrder;
-    await db.from("checkout_idempotency").update({ payment_lock_until: null })
-      .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
-    return json({
-      order: { ...responseOrder, pickupCode },
-      paymentId: String(payment.id),
-      qrCode: tx.qr_code,
-      qrCodeBase64: tx.qr_code_base64 ?? null,
-      paymentStatus: payment.status,
-    });
+    return json({ error: "Pagamento Pix disponível somente pelo Asaas." }, 503);
   } catch (error) {
     if (asaasFailureContext) {
       const context = asaasFailureContext;

@@ -16,6 +16,11 @@ assert.match(panel,/below-cost/,'selling below cost has a red state');
 assert.match(panel,/low-margin/,'low margin has an orange state');
 assert.match(panel,/stale/,'stale cost has a yellow state');
 assert.match(panel,/Lucro estimado \(pelo custo cadastrado\)/,'profit summary is labeled as estimated');
+assert.match(panel,/admin_get_cost_report_with_delivery/,'panel uses the report including actual Lalamove delivery cost');
+assert.match(panel,/admin_get_low_margin_percent/,'margin threshold is fetched only through the admin RPC');
+assert.match(panel,/calculated_items/,'profit coverage is displayed as X of Y items');
+assert.match(panel,/unifiedCostFilter/,'products tab exposes the missing-cost filter');
+assert.match(panel,/Custo não cadastrado/,'missing costs are not treated as zero');
 
 assert.match(store,/aspect-ratio:1\/1/,'product image box is square');
 assert.match(store,/@media\(max-width:412px\)/,'compact cards include phone-width rules');
