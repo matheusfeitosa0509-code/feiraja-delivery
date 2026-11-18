@@ -58,6 +58,7 @@ async function measure(page,cdp,url) {
  const assistantRuntime=fs.readFileSync(path.join(root,'assistant-runtime.js'),'utf8');
  assert.match(sw,/const STATIC_CACHE='feira-static-v/,'versioned static cache missing');
  assert.match(sw,/return cached\|\|network/,'stale-while-revalidate missing');
+ assert.match(sw,/event.waitUntil\(networkPromise/,'background revalidation must stay alive');
  assert.match(sw,/request.mode==='navigate'\)return/,'HTML navigations must bypass the cache');
  assert.ok(html.includes('storefrontCacheBootstrap'),'early cache bootstrap missing');
  assert.ok(html.includes('feira_storefront_catalog_v1'),'persistent catalog cache missing');
