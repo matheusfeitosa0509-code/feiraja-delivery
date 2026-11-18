@@ -28,7 +28,7 @@ jobs:
           cp supabase/functions/_shared/commercial-calendar.js _site/supabase/functions/_shared/commercial-calendar.js
           rm -f _site/imagens/produtos/leia.txt
       - name: Configure Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
         with:
           enablement: true
       - name: Upload static site
