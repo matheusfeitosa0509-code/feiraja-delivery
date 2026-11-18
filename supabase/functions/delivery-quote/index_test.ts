@@ -1,9 +1,10 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
-  buildQuotationBody, chooseVehicle, estimateLoad, formatDropoff, isQuoteAllowed,
+  buildQuotationBody, chooseVehicle, classifyLalamoveQuoteError, estimateLoad, formatDropoff, isQuoteAllowed,
   parseQuotation, requestSandboxQuotation, retryLalamove429, startParallelVehicleQuotes,
 } from "../_shared/delivery-quote.ts";
 import { getStoreSchedule } from "../_shared/store-schedule.js";
+import { validateManausCoordinates } from "../_shared/geocoding.ts";
 
 const products = [
   { id: "unit", delivery_unit_weight_kg: 0.5, delivery_bulky: false, sale_unit: "unidade" },
@@ -30,6 +31,51 @@ Deno.test("fora do horário, scheduleAt aponta para a próxima abertura em UTC",
   const schedule = getStoreSchedule(new Date("2026-11-17T23:40:00.000Z"));
   assertEquals(schedule.within, false);
   assertEquals(schedule.scheduledFor, "2026-11-18T10:00:00.000Z");
+});
+
+Deno.test("endereço Lalamove mantém POI como referência separada e envia apenas endereço postal", () => {
+  const address = formatDropoff({ street: "Avenida Noel Nutels", number: "1762", neighborhood: "Cidade Nova",
+    reference: "Sumaúma Park Shopping" });
+  assertEquals(address, "Avenida Noel Nutels, 1762, Cidade Nova, Manaus - AM, Brasil");
+  assertEquals(address.includes("Sumaúma Park Shopping"), false);
+});
+
+Deno.test("coordenadas de mapa são normalizadas para seis casas decimais; três cotações seguidas passam", async () => {
+  const precise = {
+    origin: validateManausCoordinates(-3.119000123456789, -60.021700987654321),
+    dropoff: validateManausCoordinates(-3.123456789012345, -60.098765432109876),
+  };
+  assertEquals(precise.dropoff.lat, "-3.123457");
+  assertEquals(precise.dropoff.lng, "-60.098765");
+  let calls = 0;
+  const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
+    calls++;
+    const body = JSON.parse(String(init?.body));
+    for (const stop of body.data.stops) {
+      assertEquals(/^-?\d{1,2}(?:\.\d{1,6})?$/.test(stop.coordinates.lat), true);
+      assertEquals(/^-?\d{1,2}(?:\.\d{1,6})?$/.test(stop.coordinates.lng), true);
+    }
+    return new Response(JSON.stringify({ data: {
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      priceBreakdown: { total: "8.32", currency: "BRL" },
+    } }), { status: 201 });
+  };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const response = await requestSandboxQuotation("pk_test_demo", "sk_test_demo", "LALAGO",
+      dropoff, precise, fetcher, "sandbox");
+    assertEquals(response.status, 201);
+  }
+  assertEquals(calls, 3);
+});
+
+Deno.test("resposta 422 ERR_INVALID_FIELD da Lalamove é classificada como coordenada inválida", () => {
+  const failure = classifyLalamoveQuoteError(422, {
+    errors: [{ id: "ERR_INVALID_FIELD", message: "does not match coordinate pattern",
+      detail: "/data/stops/1/coordinates/lat" }],
+  });
+  assertEquals(failure.code, "LALAMOVE_INVALID_COORDINATES");
+  assertEquals(classifyLalamoveQuoteError(422, { message: "ERR_OUT_OF_SERVICE_AREA" }).code,
+    "LALAMOVE_OUT_OF_SERVICE_AREA");
 });
 
 Deno.test("buildQuotationBody envia scheduleAt apenas para cotação agendada", () => {
