@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
-import { chooseVehicle, estimateLoad, formatDropoff, isQuoteAllowed, parseQuotation, requestSandboxQuotation, retryLalamove429 } from "../_shared/delivery-quote.ts";
-import { geocodeManausAddress, geocodeManausCoordinates } from "../_shared/geocoding.ts";
+import { chooseVehicle, estimateLoad, formatDropoff, isQuoteAllowed, parseQuotation, requestSandboxQuotation, retryLalamove429, startParallelVehicleQuotes } from "../_shared/delivery-quote.ts";
+import { geocodeManausAddress, resolveDeliveryCoordinates } from "../_shared/geocoding.ts";
 import { getStoreSchedule } from "../_shared/store-schedule.js";
 
 const cors = {
@@ -14,6 +14,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 });
 const PATH = "/v3/quotations";
 const ORIGIN = "Av. Lourenço da Silva Braga, 700 - Centro, Manaus - AM, Brasil";
+let originCoordinatesPromise: Promise<{ lat: string; lng: string }> | null = null;
 
 async function signRequest(key: string, secret: string, body: string) {
   const timestamp = String(Date.now());
@@ -26,9 +27,13 @@ async function signRequest(key: string, secret: string, body: string) {
 }
 
 Deno.serve(async (req: Request) => {
+  const requestStarted = performance.now();
+  const timings: Record<string, number> = {};
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Método não permitido." }, 405);
   try {
+    const authStarted = performance.now();
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -40,7 +45,9 @@ Deno.serve(async (req: Request) => {
     const auth = createClient(supabaseUrl, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: authData, error: authError } = await auth.auth.getUser(accessToken);
     if (authError || !authData?.user || authData.user.is_anonymous) return json({ error: "Sessão válida necessária." }, 401);
+    timings.auth_ms = Math.round(performance.now() - authStarted);
 
+    const accessStarted = performance.now();
     const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const [{ data: adminRow, error: adminError }, { data: settings, error: settingsError }] = await Promise.all([
       db.from("admin_users").select("user_id").eq("user_id", authData.user.id).maybeSingle(),
@@ -49,6 +56,7 @@ Deno.serve(async (req: Request) => {
     if (adminError || settingsError) return json({ error: "Não foi possível validar a configuração de entrega." }, 500);
     const isAdmin = !!adminRow;
     if (!isQuoteAllowed(settings?.delivery_ativa === true, isAdmin)) return json({ error: "Entrega indisponível." }, 403);
+    timings.access_ms = Math.round(performance.now() - accessStarted);
 
     const body = await req.json();
     if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Requisição inválida." }, 400);
@@ -56,6 +64,7 @@ Deno.serve(async (req: Request) => {
     if (!Array.isArray(body.items) || body.items.length < 1 || body.items.length > 100) return json({ error: "Carrinho inválido." }, 400);
     const ids: string[] = [...new Set<string>(body.items.map((i: any) => String(i?.product_id || "")))];
     if (ids.some((id) => !id || id.length > 100)) return json({ error: "Carrinho inválido." }, 400);
+    const productsStarted = performance.now();
     const [{ data: products, error: productsError }, { data: rules, error: rulesError }] = await Promise.all([
       db.from("products").select("id,delivery_unit_weight_kg,delivery_bulky").in("id", ids),
       db.from("product_sales_rules").select("product_id,sale_unit").in("product_id", ids),
@@ -67,34 +76,70 @@ Deno.serve(async (req: Request) => {
       delivery_bulky: p.delivery_bulky === true, sale_unit: saleUnits.get(p.id) || null,
     })));
     const vehicle = chooseVehicle(load.weightKg, load.bulky, Number(settings?.moto_limite_kg || 12));
+    timings.products_weight_ms = Math.round(performance.now() - productsStarted);
+    const rateStarted = performance.now();
     const { data: allowed, error: rateError } = await db.rpc("consume_delivery_quote_rate_limit", {
       p_user_id: authData.user.id, p_max_requests: 30, p_window_seconds: 60,
     });
     if (rateError) return json({ error: "Limite de cotações temporariamente indisponível." }, 503);
     if (allowed !== true) return json({ error: "Muitas consultas agora, tente em alguns segundos.", code: "QUOTE_RATE_LIMIT" }, 429);
+    timings.rate_limit_ms = Math.round(performance.now() - rateStarted);
 
+    const environmentStarted = performance.now();
     const environment = await readLalamoveEnvironment(db);
     const credentials = readLalamoveCredentials(environment, (name) => Deno.env.get(name));
     const { apiKey, apiSecret } = credentials;
-    const serviceType = vehicle === "MOTO" ? "LALAGO" : "CAR";
+    timings.environment_ms = Math.round(performance.now() - environmentStarted);
     const geocodingKey = Deno.env.get("GOOGLE_GEOCODING_API_KEY") || "";
-    const pinnedAddress = body.coordinates && typeof body.coordinates === "object"
-      ? await geocodeManausCoordinates(body.coordinates.lat, body.coordinates.lng, geocodingKey)
-      : null;
-    const [originCoordinates, dropoffCoordinates] = await Promise.all([
-      geocodeManausAddress(ORIGIN, geocodingKey),
-      pinnedAddress ? Promise.resolve({ lat: pinnedAddress.lat, lng: pinnedAddress.lng }) :
-        geocodeManausAddress(dropoff, geocodingKey),
+    const geocodingStarted = performance.now();
+    if (!originCoordinatesPromise) originCoordinatesPromise = geocodeManausAddress(ORIGIN, geocodingKey);
+    const originPromise = originCoordinatesPromise;
+    void originPromise.catch(() => {
+      if (originCoordinatesPromise === originPromise) originCoordinatesPromise = null;
+    });
+    const [dropoffCoordinates, originCoordinates] = await Promise.all([
+      resolveDeliveryCoordinates(
+        dropoff,
+        body.coordinates && typeof body.coordinates === "object" ? body.coordinates : null,
+        (address) => geocodeManausAddress(address, geocodingKey),
+      ),
+      originPromise,
     ]);
-    const lalamoveDropoff = dropoff || pinnedAddress?.formattedAddress || "";
+    timings.geocoding_ms = Math.round(performance.now() - geocodingStarted);
     const quoteFetch: typeof fetch = (input, init) => retryLalamove429(fetch, input, init);
     const scheduleAt = getStoreSchedule().scheduledFor || undefined;
-    const response = await requestSandboxQuotation(apiKey, apiSecret, serviceType, lalamoveDropoff, {
-      origin: originCoordinates, dropoff: dropoffCoordinates,
-    }, quoteFetch, environment, scheduleAt);
-    const responseBody = await response.text();
-    let result: any = {};
-    try { result = JSON.parse(responseBody); } catch { result = {}; }
+    const quoteVehicle = async (requestedVehicle: "MOTO" | "CAR") => {
+      const stageStarted = performance.now();
+      try {
+        const response = await requestSandboxQuotation(apiKey, apiSecret,
+          requestedVehicle === "MOTO" ? "LALAGO" : "CAR", dropoff,
+          { origin: originCoordinates, dropoff: dropoffCoordinates },
+          quoteFetch, environment, scheduleAt);
+        const responseBody = await response.text();
+        let result: any = {};
+        try { result = JSON.parse(responseBody); } catch { result = {}; }
+        const elapsed = Math.round(performance.now() - stageStarted);
+        const stage = requestedVehicle === "MOTO" ? "lalamove_moto_ms" : "lalamove_car_ms";
+        timings[stage] = elapsed;
+        console.info("delivery-quote-stage", { stage, duration_ms: elapsed, status: response.status });
+        return { response, responseBody, result, quote: response.ok ? parseQuotation(result?.data, requestedVehicle, load.weightKg) : null };
+      } catch (error) {
+        const elapsed = Math.round(performance.now() - stageStarted);
+        const stage = requestedVehicle === "MOTO" ? "lalamove_moto_ms" : "lalamove_car_ms";
+        timings[stage] = elapsed;
+        console.info("delivery-quote-stage", { stage, duration_ms: elapsed, error: error instanceof Error ? error.message : "UNKNOWN" });
+        throw error;
+      }
+    };
+    const parallelQuotes = startParallelVehicleQuotes(vehicle, quoteVehicle);
+    void parallelQuotes.background.catch((error) => {
+      console.warn("delivery-quote-background-vehicle", {
+        vehicle: vehicle === "MOTO" ? "CAR" : "MOTO",
+        error: error instanceof Error ? error.message : "UNKNOWN",
+      });
+    });
+    const selectedQuote = await parallelQuotes.selected;
+    const { response, responseBody, result } = selectedQuote;
     const upstreamCode = String(result?.message || "");
     if (upstreamCode === "ERR_OUT_OF_SERVICE_AREA") {
       return json({ error: "Endereço localizado, mas a Lalamove não atende esta região.", code: "LALAMOVE_OUT_OF_SERVICE_AREA" }, 422);
@@ -120,7 +165,7 @@ Deno.serve(async (req: Request) => {
       console.error("delivery-quote", { stage: "lalamove_quote", status: response.status, upstream_message: upstreamCode.slice(0, 120) || null, upstream_body: responseBody.slice(0, 500), code });
       return json({ error: "A localização foi encontrada, mas a Lalamove não concluiu a cotação. Tente novamente.", code }, response.status === 429 ? 429 : 502);
     }
-    const quote = parseQuotation(result?.data, vehicle, load.weightKg);
+    const quote = selectedQuote.quote || parseQuotation(result?.data, vehicle, load.weightKg);
     return json({ vehicle: quote.vehicle, estimated_weight_kg: quote.weightKg, fee: quote.fee, valid_until: quote.validUntil, schedule_at: scheduleAt || null, ambiente: environment });
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
@@ -136,5 +181,7 @@ Deno.serve(async (req: Request) => {
     if (code === "INVALID_QUOTE_PRICE" || code === "INVALID_QUOTE_RESPONSE") return json({ error: "Resposta de cotação inválida." }, 502);
     console.error("delivery-quote", { stage: "request", code });
     return json({ error: "Erro interno ao calcular a entrega." }, 500);
+  } finally {
+    console.info("delivery-quote-timing", { ...timings, total_ms: Math.round(performance.now() - requestStarted) });
   }
 });

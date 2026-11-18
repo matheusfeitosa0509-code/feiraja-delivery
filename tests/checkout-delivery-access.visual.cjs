@@ -97,6 +97,7 @@ const checkoutCss = [
         const modal = document.createElement('div'); modal.id = 'modal'; document.body.append(modal);
         window.$ = selector => document.querySelector(selector);
         window.deliveryQuote = null; window.deliveryQuoteSequence = 0; window.deliveryQuoteTimer = null;
+        window.getDeliveryAddress = () => null;
         window.syncPickupPaymentOptions = () => {};
         window.updateCheckoutTotals = () => {};
         window.updateCheckoutScheduleNotice = () => {};
