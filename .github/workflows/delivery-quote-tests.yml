@@ -63,6 +63,7 @@ on:
       - feat/lalamove-delivery-stage-3
       - feat/checkout-order-tracking-map
       - fix/test-production-confirmation-and-asaas-stale-webhook
+      - fix/lalamove-round2-rpc-webhook-dispatch-diagnostics
     paths:
       - "supabase/functions/super-worker/**"
       - "supabase/functions/assistente/**"
