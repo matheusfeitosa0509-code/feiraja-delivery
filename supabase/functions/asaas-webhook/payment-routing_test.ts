@@ -194,8 +194,8 @@ Deno.test("handler: fluxo normal de pedido não cancelado continua confirmando p
 });
 
 
-function stalePending(): Order {
-  return { id: "ORDER-123", status: "Pagamento Pendente", total: 30, payment_id: null,
+function stalePending(status = "Pagamento Pendente"): Order {
+  return { id: "ORDER-123", status, total: 30, payment_id: null,
     payment_provider: "asaas", created_at: "2026-11-13T11:00:00Z" };
 }
 function staleRequest() {
@@ -243,4 +243,13 @@ Deno.test("webhook atrasado: API Asaas fora do ar retorna erro para retry", asyn
   assertEquals(response.status, 503);
   assertEquals(mock.getOrder()?.payment_id, null);
   assertEquals(mock.getOrder()?.status, "Pagamento Pendente");
+});
+
+
+Deno.test("webhook atrasado: pagamento confirmado vincula ID sem regredir status administrativo", async () => {
+  const mock = makeDb(stalePending("Preparando"));
+  const response = await handleAsaasWebhook(staleRequest(), staleDependencies(mock, validPayment));
+  assertEquals(response.status, 200);
+  assertEquals(mock.getOrder()?.payment_id, "pay_123");
+  assertEquals(mock.getOrder()?.status, "Preparando");
 });
