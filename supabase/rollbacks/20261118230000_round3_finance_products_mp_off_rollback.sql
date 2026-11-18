@@ -60,11 +60,13 @@ BEGIN
   IF position(v_old IN v_definition) = 0 THEN
     RAISE EXCEPTION 'Filtro is_test_order esperado não encontrado em admin_get_cost_report';
   END IF;
-  EXECUTE replace(v_definition, v_old, v_new);
+  v_definition := replace(v_definition, v_old, v_new);
+  v_definition := replace(v_definition, 'unit_cost > 0', 'unit_cost IS NOT NULL');
+  EXECUTE v_definition;
 END;
-$$;
+$;
 
-DO $$
+DO $
 DECLARE
   v_definition text;
   v_old_count text := 'count(*) filter(where cost_status=''missing_cost'')::integer as missing_cost_items,' || E'\n    count(*) filter(where unit_cost is not null)::integer as calculated_items,\n    count(*)::integer as total_items,';
@@ -78,6 +80,7 @@ BEGIN
     RAISE EXCEPTION 'Métricas de cobertura esperadas não encontradas no relatório financeiro';
   END IF;
   v_definition := replace(v_definition, v_old_count, v_new_count);
+  v_definition := replace(v_definition, 'unit_cost > 0', 'unit_cost is not null');
   v_definition := replace(v_definition, v_old_json, v_new_json);
   EXECUTE v_definition;
 END;
