@@ -1,11 +1,32 @@
-/* Build 2026-11-17-separacao-compartilhamento-lista: força atualização dos apps instalados; sem cache nem interceptação. */
+/* Build 2026-11-18-storefront-static-cache-v1. HTML e APIs permanecem sempre na rede. */
+const STATIC_CACHE='feira-static-v20261118-2';
+const STATIC_ORIGINS=new Set([self.location.origin,'https://fonts.googleapis.com','https://fonts.gstatic.com','https://unpkg.com']);
+const STATIC_ASSET=/\.(?:js|css|mjs|woff2?|ttf|otf|svg|png|jpe?g|webp|ico)(?:\?.*)?$/i;
+self.addEventListener('fetch',function(event){
+ const request=event.request;
+ if(request.method!=='GET'||request.mode==='navigate')return;
+ const url=new URL(request.url);
+ const isGoogleFontCss=url.origin==='https://fonts.googleapis.com'&&url.pathname.startsWith('/css');
+ if(!STATIC_ORIGINS.has(url.origin)||(!STATIC_ASSET.test(url.pathname+url.search)&&!isGoogleFontCss))return;
+ const cachePromise=caches.open(STATIC_CACHE);
+ const networkPromise=cachePromise.then(async cache=>{
+  const response=await fetch(request);
+  if(response&&(response.ok||response.type==='opaque')){try{await cache.put(request,response.clone());}catch(_){}}
+  return response;
+ });
+ event.waitUntil(networkPromise.then(()=>undefined).catch(()=>undefined));
+ event.respondWith(cachePromise.then(async cache=>{
+  const cached=await cache.match(request);
+  return cached||networkPromise;
+ }));
+});
 self.addEventListener('install', function (event) {
-  event.waitUntil(self.skipWaiting());
+  event.waitUntil((async()=>{const names=await caches.keys();await Promise.all(names.filter(name=>name.startsWith('feira-static-')&&name!==STATIC_CACHE).map(name=>caches.delete(name)));await self.skipWaiting();})());
 });
 self.addEventListener('activate', function (event) {
   event.waitUntil(self.clients.claim());
 });
-/* Intencionalmente não há handler fetch: tudo segue direto pela rede. */
+
 
 self.addEventListener('push', function (event) {
   let payload = {};

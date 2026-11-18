@@ -42,6 +42,10 @@ on:
       - "tests/loja-console-errors.visual.cjs"
       - "tests/cart-modernization.visual.cjs"
       - "loja.html"
+      - "sw.js"
+      - "tests/storefront-performance.visual.cjs"
+      - "assistant-runtime.js"
+      - "assistant-speech.js"
       - "loja-delivery-ui.js"
       - "loja-delivery-ui_test.ts"
       - "tests/scheduled-delivery.visual.cjs"
@@ -113,6 +117,8 @@ jobs:
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-full-html-lalamove.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/checkout-delivery-address.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/loja-console-errors.visual.cjs
+      # Captures production baseline and branch timings on simulated 4G at 360px/412px.
+      - run: NODE_PATH=/tmp/playwright/node_modules node tests/storefront-performance.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/cart-modernization.visual.cjs
       - run: node supabase/tests/panel-order-value-display.test.mjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/order-tracking.visual.cjs
