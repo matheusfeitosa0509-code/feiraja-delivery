@@ -29,4 +29,5 @@ Deno.test("sexta de feriado abre até 11h e domingo continua fechado", () => {
 Deno.test("Natal e Ano Novo ficam fechados", () => {
  assertEquals(getCommercialSchedule(new Date("2026-12-25T14:00:00.000Z")).hours,"fechado");
  assertEquals(getCommercialSchedule(new Date("2027-01-01T14:00:00.000Z")).hours,"fechado");
+ assertEquals(getCommercialSchedule(new Date("2026-11-15T14:00:00.000Z")).hours,"fechado");
 });
