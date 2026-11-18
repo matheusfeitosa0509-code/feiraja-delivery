@@ -44,6 +44,8 @@ on:
       - "loja.html"
       - "sw.js"
       - "tests/storefront-performance.visual.cjs"
+      - "assistant-runtime.js"
+      - "assistant-speech.js"
       - "loja-delivery-ui.js"
       - "loja-delivery-ui_test.ts"
       - "tests/scheduled-delivery.visual.cjs"
