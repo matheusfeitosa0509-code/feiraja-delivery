@@ -242,7 +242,7 @@ export async function handleAsaasWebhook(req: Request, deps: WebhookDependencies
           String(candidate?.billingType || "").toUpperCase() === "PIX"
         );
       } catch { return json({ error: "Não foi possível consultar a cobrança Asaas." }, 503); }
-      if (!reconciledPayment) return json({ received: true, ignored: true, reason: "cobranca_nao_encontrada_para_pedido" });
+      if (!reconciledPayment) return json({ error: "Cobrança ainda não localizada no Asaas; nova tentativa necessária." }, 503);
       const reconciledCents = Math.round(Number(reconciledPayment.value) * 100);
       const expectedCents = Math.round(Number(order.total) * 100);
       if (!Number.isFinite(reconciledCents) || reconciledCents !== expectedCents ||
@@ -252,8 +252,13 @@ export async function handleAsaasWebhook(req: Request, deps: WebhookDependencies
       if (!["RECEIVED", "CONFIRMED"].includes(String(reconciledPayment.status || "").toUpperCase())) {
         return json({ received: true, ignored: true, reason: "cobranca_ainda_nao_paga" });
       }
+      const preserveOrderStatus = normalizedStatus === "pagamento confirmado" ||
+        protectedAdministrativeStatuses.has(normalizedStatus);
+      const paymentLinkPatch = preserveOrderStatus
+        ? { payment_id: paymentId }
+        : { payment_id: paymentId, status: "Pagamento Confirmado" };
       const { data: linkedOrder, error: linkError } = await db.from("orders")
-        .update({ payment_id: paymentId, status: "Pagamento Confirmado" })
+        .update(paymentLinkPatch)
         .eq("id", order.id).eq("payment_provider", "asaas")
         .is("payment_id", null).eq("status", order.status)
         .select("id").maybeSingle();
@@ -262,8 +267,7 @@ export async function handleAsaasWebhook(req: Request, deps: WebhookDependencies
       const { data: currentOrder, error: currentError } = await db.from("orders")
         .select("status,payment_id").eq("id", order.id).maybeSingle();
       if (currentError) return json({ error: "Falha ao confirmar reconciliação." }, 500);
-      if (currentOrder?.payment_id === paymentId &&
-          String(currentOrder?.status || "").toLowerCase() === "pagamento confirmado") {
+      if (currentOrder?.payment_id === paymentId) {
         return json({ received: true, ignored: true, duplicate: true });
       }
       return json({ error: "Pedido alterado durante a reconciliação; solicite nova entrega." }, 503);
