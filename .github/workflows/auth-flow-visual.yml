@@ -1,0 +1,30 @@
+name: Auth account flow visual
+on:
+  pull_request:
+    paths:
+      - "loja.html"
+      - "recuperar-senha.html"
+      - "turnstile.js"
+      - "tests/auth-flow.visual.cjs"
+      - ".github/workflows/auth-flow-visual.yml"
+  push:
+    branches: [main]
+    paths:
+      - "loja.html"
+      - "recuperar-senha.html"
+      - "turnstile.js"
+      - "tests/auth-flow.visual.cjs"
+      - ".github/workflows/auth-flow-visual.yml"
+permissions:
+  contents: read
+jobs:
+  auth-mobile:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --prefix /tmp/playwright playwright@1.58.2
+      - run: /tmp/playwright/node_modules/.bin/playwright install --with-deps chromium
+      - run: NODE_PATH=/tmp/playwright/node_modules node tests/auth-flow.visual.cjs
