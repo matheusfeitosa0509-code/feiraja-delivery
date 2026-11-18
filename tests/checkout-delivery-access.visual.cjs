@@ -114,13 +114,15 @@ const checkoutCss = [
       await page.addScriptTag({ content: syncSelectionSource + '\nwindow.syncDeliverySelection = syncDeliverySelection;' });
       await page.addScriptTag({ content: "$('#delivery').addEventListener('change',()=>{syncDeliverySelection();renderCart()});" });
       await page.addScriptTag({ content: safeUberListener });
-      await page.evaluate(() => { window.pickupEstimate = () => ({ within: false, label: 'terça, 17/11' }); });
+      await page.evaluate(() => { window.pickupEstimate = () => ({ within: false, label: 'terça, 17/11', hours: '6h às 13h' }); });
       await page.addScriptTag({ content: scheduleMessageSource + '\nwindow.checkoutScheduleMessage = checkoutScheduleMessage;' });
       assert.equal(await page.evaluate(() => window.checkoutScheduleMessage(new Date(), false)), 'Estamos fechados agora. Seu pedido fica pronto para retirada na terça, 17/11 a partir das 6h.');
       assert.equal(await page.evaluate(() => window.checkoutScheduleMessage(new Date(), true)), 'Estamos fechados agora. Sua entrega sai na terça, 17/11, a partir das 6h.');
-      await page.evaluate(() => { window.pickupEstimate = () => ({ within: true, label: 'hoje' }); });
+      await page.evaluate(() => { window.pickupEstimate = () => ({ within: true, label: 'hoje', hours: '6h às 13h' }); });
       assert.equal(await page.evaluate(() => window.checkoutScheduleMessage(new Date(), false)), 'Pedidos ficam prontos ainda hoje, até 13h.');
       assert.equal(await page.evaluate(() => window.checkoutScheduleMessage(new Date(), true)), 'A entrega sai quando o pedido estiver pronto, durante o horário da loja.');
+       await page.evaluate(() => { window.pickupEstimate = () => ({ within: true, label: 'hoje', hours: '6h às 11h' }); });
+       assert.equal(await page.evaluate(() => window.checkoutScheduleMessage(new Date(), false)), 'Pedidos ficam prontos ainda hoje, até 11h.');
       assert.equal(await page.evaluate(() => typeof window.syncDeliverySelection), 'function', 'syncDeliverySelection deve estar disponível');
       const syncProbe = await page.evaluate(() => { try { window.syncDeliverySelection(); return 'ok'; } catch (error) { return error.stack || error.message; } });
       assert.equal(syncProbe, 'ok', width + 'px: falha ao sincronizar checkout sem Uber: ' + syncProbe);
