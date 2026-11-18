@@ -1,11 +1,24 @@
-/* Build 2026-11-17-separacao-compartilhamento-lista: força atualização dos apps instalados; sem cache nem interceptação. */
+/* Build 2026-11-18-storefront-static-cache-v1. HTML e APIs permanecem sempre na rede. */
+const STATIC_CACHE='feira-static-v20261118-1';
+const STATIC_ASSET=/\\.(?:js|css|mjs|woff2?|ttf|otf|svg|png|jpe?g|webp|ico)(?:\\?.*)?$/i;
+self.addEventListener('fetch',function(event){
+ const request=event.request;
+ if(request.method!=='GET'||request.mode==='navigate')return;
+ const url=new URL(request.url);
+ if(url.origin!==self.location.origin||!STATIC_ASSET.test(url.pathname+url.search))return;
+ event.respondWith(caches.open(STATIC_CACHE).then(async cache=>{
+  const cached=await cache.match(request);
+  const network=fetch(request).then(response=>{if(response&&response.ok)void cache.put(request,response.clone());return response;}).catch(error=>{if(cached)return cached;throw error;});
+  return cached||network;
+ }));
+});
 self.addEventListener('install', function (event) {
-  event.waitUntil(self.skipWaiting());
+  event.waitUntil((async()=>{const names=await caches.keys();await Promise.all(names.filter(name=>name.startsWith('feira-static-')&&name!==STATIC_CACHE).map(name=>caches.delete(name)));await self.skipWaiting();})());
 });
 self.addEventListener('activate', function (event) {
   event.waitUntil(self.clients.claim());
 });
-/* Intencionalmente não há handler fetch: tudo segue direto pela rede. */
+
 
 self.addEventListener('push', function (event) {
   let payload = {};
