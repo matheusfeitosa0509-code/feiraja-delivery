@@ -18,6 +18,7 @@ function makeBootstrap() {
 }
 
 function prepareHtml(source) {
+  const calendar=fs.readFileSync(path.join(process.cwd(),"supabase/functions/_shared/commercial-calendar.js"),"utf8").replace(/\bexport\s+/g,"");
   let html=source
     .replace(/<script>try\{if\(\"serviceWorker\"[\s\S]*?<\/script>/i,"")
     .replace(/<link rel=\"manifest\"[^>]*>/i,"")
@@ -30,7 +31,7 @@ function prepareHtml(source) {
     code=code.replace(/const db=createClient\([\s\S]*?\);\s*/,"const db=window.__testDb;\n");
     return "<script>"+code+"</script>";
   });
-  return html.replace("<body",makeBootstrap()+"<body");
+  return html.replace("<body",makeBootstrap()+"<script>"+calendar+"</script><body");
 }
 
 (async()=>{
