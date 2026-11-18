@@ -116,12 +116,26 @@ document.body.innerHTML=mapOverlayMarkup;
    await page.waitForFunction(()=>document.querySelector('#deliveryMapFullscreen').hidden===false);
    await page.waitForTimeout(850);
    assert.ok((await page.locator('#deliveryMapAddress').textContent()).includes('Mercado Teste'),'selected establishment name is displayed');
+   await page.locator('#deliveryStreet').focus();
+   const focusedSearch=await page.evaluate(()=>({
+    borderWidth:getComputedStyle(document.querySelector('#deliveryStreetSearch')).borderTopWidth,
+    borderColor:getComputedStyle(document.querySelector('#deliveryStreetSearch')).borderTopColor,
+    radius:getComputedStyle(document.querySelector('#deliveryStreetSearch')).borderTopLeftRadius,
+    outline:getComputedStyle(document.querySelector('#deliveryStreet')).outlineStyle,
+    inputHeight:document.querySelector('#deliveryStreet').getBoundingClientRect().height,
+   }));
+   assert.equal(focusedSearch.borderWidth,'2px','search focus uses one 2px border');
+   assert.equal(focusedSearch.borderColor,'rgb(23, 100, 63)','search focus uses the app green');
+   assert.equal(focusedSearch.radius,'15px','focus border follows rounded search bar');
+   assert.equal(focusedSearch.outline,'none','native black input outline is removed');
+   assert.ok(focusedSearch.inputHeight>=48,'search input has enough height for mobile selection handle');
    const mapOptions=await page.evaluate(()=>({style:window.testMap.options.style,zoom:window.testMap.options.zoom,center:window.testMap.options.center}));
    assert.equal(mapOptions.style,'https://tiles.openfreemap.org/styles/positron');
    assert.equal(mapOptions.zoom,17);
    assert.deepEqual(mapOptions.center,[-60.02,-3.1]);
    await page.locator('#deliveryNumber').fill('130');
    await page.evaluate(()=>window.dragMap());
+   assert.equal(await page.locator('#deliveryMapAddress').textContent(),'Mercado Teste · Rua do Mercado, 130 · Centro','map header uses the customer-entered number, not the reverse-geocoded number');
    await page.evaluate(()=>window.confirmMap());
    await page.waitForFunction(()=>document.querySelector('#deliveryMapFullscreen').hidden===true);
    await page.waitForTimeout(250);
