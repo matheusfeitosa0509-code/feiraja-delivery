@@ -9,8 +9,9 @@
   scriptPromise=new Promise((resolve,reject)=>{
    const script=document.createElement('script');
    script.src=SCRIPT_URL;script.async=true;script.defer=true;
-   script.onload=()=>window.turnstile?resolve(window.turnstile):reject(new Error('Turnstile indisponível.'));
-   script.onerror=()=>{scriptPromise=null;reject(new Error('Não foi possível carregar o script de verificação.'));};
+   let settled=false;const timeout=setTimeout(()=>{if(settled)return;settled=true;scriptPromise=null;reject(new Error('A verificação demorou para responder.'));},8000);
+   script.onload=()=>{if(settled)return;settled=true;clearTimeout(timeout);window.turnstile?resolve(window.turnstile):reject(new Error('Turnstile indisponível.'));};
+   script.onerror=()=>{if(settled)return;settled=true;clearTimeout(timeout);scriptPromise=null;reject(new Error('Não foi possível carregar o script de verificação.'));};
    document.head.appendChild(script);
   });
   return scriptPromise;
