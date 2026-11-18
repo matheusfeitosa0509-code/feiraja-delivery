@@ -2,7 +2,7 @@ import { assertEquals, assertThrows } from "jsr:@std/assert@1.0.14";
 import {
   buildDeliveryQuoteItems, buildDeliveryQuoteCacheKey, isCachedDeliveryQuoteValid, canShowDeliveryOption, canShowUberPickupOption, checkoutGrandTotal,
   deliveryUnavailableMessage, isDeliveryOptionDisabled, loadDeliveryAccessState,
-  deliveryPaymentOptions, deliveryQuoteErrorMessage, deliveryQuoteLabel, isAdminRpcTrue, isDeliveryOutOfArea, isValidDeliveryQuote,
+  deliveryPaymentOptions, deliveryQuoteErrorMessage, deliveryQuoteLabel, formatDeliveryMapAddressSummary, isAdminRpcTrue, isDeliveryOutOfArea, isValidDeliveryQuote,
   normalizeDeliveryAddress,
 } from "./loja-delivery-ui.js";
 
@@ -134,12 +134,22 @@ Deno.test("erros da cotação diferenciam endereço, Manaus e cobertura Lalamove
   assertEquals(deliveryQuoteErrorMessage(400, "ADDRESS_NOT_FOUND").startsWith("Não encontramos esse endereço"), true);
   assertEquals(deliveryQuoteErrorMessage(422, "ADDRESS_OUTSIDE_MANAUS"), "Endereço fora da área de entrega.");
   assertEquals(deliveryQuoteErrorMessage(429, "QUOTE_RATE_LIMIT"), "Muitas consultas agora, tente em alguns segundos.");
-  assertEquals(deliveryQuoteErrorMessage(502, "LALAMOVE_QUOTE_FAILED"), "Entrega indisponível no momento.");
+  assertEquals(deliveryQuoteErrorMessage(502, "LALAMOVE_QUOTE_FAILED"), "A Lalamove está temporariamente indisponível. Tente novamente em instantes.");
   assertEquals(deliveryQuoteErrorMessage(422, "LALAMOVE_OUT_OF_SERVICE_AREA").includes("Endereço fora da área de entrega"), true);
   assertEquals(deliveryQuoteErrorMessage(502, "LALAMOVE_INVALID_SCHEDULE_TIME"), "A Lalamove recusou o horário agendado. Tente novamente em instantes.");
   assertEquals(deliveryQuoteErrorMessage(422, "LALAMOVE_INVALID_SERVICE_TYPE"), "A Lalamove não oferece o tipo de veículo selecionado para esta rota.");
-  assertEquals(deliveryQuoteErrorMessage(503, "GEOCODER_NOT_CONFIGURED"), "Entrega indisponível no momento.");
+  assertEquals(deliveryQuoteErrorMessage(422, "LALAMOVE_INVALID_COORDINATES"), "Não foi possível validar o ponto marcado no mapa. Ajuste o pino e tente novamente.");
+  assertEquals(deliveryQuoteErrorMessage(422, "LALAMOVE_INVALID_ADDRESS"), "Endereço não encontrado. Confira rua, número e bairro.");
+  assertEquals(deliveryQuoteErrorMessage(422, "LALAMOVE_INVALID_REQUEST").includes("Lalamove recusou"), true);
+  assertEquals(deliveryQuoteErrorMessage(503, "GEOCODER_NOT_CONFIGURED"), "Serviço de localização não configurado. Tente novamente mais tarde.");
   assertEquals(deliveryQuoteErrorMessage(403, "STORE_CLOSED"), "Entrega disponível no horário de funcionamento.");
+});
+
+Deno.test("resumo do mapa usa nome do POI, rua, número digitado e bairro sem duplicar a rua", () => {
+  assertEquals(formatDeliveryMapAddressSummary("Sumaúma Park Shopping", "Avenida Noel Nutels", "1762", "Cidade Nova"),
+    "Sumaúma Park Shopping · Avenida Noel Nutels, 1762 · Cidade Nova");
+  assertEquals(formatDeliveryMapAddressSummary("Rua Japiassu", "Rua Japiassu", "140", "Cidade Nova"),
+    "Rua Japiassu, 140 · Cidade Nova");
 });
 
 Deno.test("resultado da RPC administrativa é normalizado sem falsos negativos", () => {
