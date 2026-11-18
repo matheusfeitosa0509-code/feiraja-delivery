@@ -27,8 +27,8 @@ const mockLalamove = (total = "8.32", environment: "sandbox" | "producao" = "san
   const body = JSON.parse(String(init?.body));
   assertEquals(body.data.stops[0].address.includes("Av. Lourenço da Silva Braga, 700"), true);
   assertEquals(body.data.stops[1].address.includes("Rua A, 10"), true);
-  assertEquals(body.data.stops[0].coordinates, { lat: "-3.1", lng: "-60.02" });
-  assertEquals(body.data.stops[1].coordinates, { lat: "-3.1", lng: "-60.02" });
+  assertEquals(body.data.stops[0].coordinates, { lat: "-3.100000", lng: "-60.020000" });
+  assertEquals(body.data.stops[1].coordinates, { lat: "-3.100000", lng: "-60.020000" });
   assertEquals(body.data.serviceType, "LALAGO");
   return new Response(JSON.stringify({
     data: { expiresAt: new Date(Date.now() + 60_000).toISOString(),
