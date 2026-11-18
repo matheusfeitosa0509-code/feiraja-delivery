@@ -3,6 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
+const crypto = require('node:crypto');
+const zlib = require('node:zlib');
 const { chromium } = require('playwright');
 
 const root = process.cwd();
@@ -18,7 +20,13 @@ function startServer() {
    if (!file.startsWith(root + path.sep) && file !== path.join(root,'index.html')) { res.writeHead(403).end(); return; }
    fs.readFile(file,(error,data) => {
     if(error){res.writeHead(404).end();return;}
-    res.writeHead(200,{'content-type':mime[path.extname(file)]||'application/octet-stream','cache-control':'no-store'});res.end(data);
+    const etag='"'+crypto.createHash('sha1').update(data).digest('hex')+'"';
+    const isHtml=path.extname(file)==='.html';
+    if(isHtml&&req.headers['if-none-match']===etag){res.writeHead(304,{'etag':etag,'cache-control':'no-cache'}).end();return;}
+    const compress=/^(text\/|application\/(?:javascript|json))/.test(mime[path.extname(file)]||'');
+    const gzip=compress&&String(req.headers['accept-encoding']||'').includes('gzip');
+    const body=gzip?zlib.gzipSync(data):data;
+    res.writeHead(200,{'content-type':mime[path.extname(file)]||'application/octet-stream','cache-control':isHtml?'no-cache':'no-store','etag':etag,...(gzip?{'content-encoding':'gzip','vary':'Accept-Encoding'}:{})});res.end(body);
    });
   });
   server.listen(0,'127.0.0.1',()=>resolve({server,url:'http://127.0.0.1:'+server.address().port+'/loja.html'}));
@@ -87,7 +95,9 @@ async function measure(page,cdp,url) {
    assert.ok(candidateFirst.firstProductMs<2500,'first visit did not meet <2.5s target: '+candidateFirst.firstProductMs+'ms');
    assert.ok(candidateFirst.skeletonSeen,'first visit without cache did not show skeleton');
    assert.ok(saved&&saved.products.length,'first visit did not persist catalog cache');
+   await candidate.evaluate(async()=>{if('serviceWorker'in navigator)await navigator.serviceWorker.ready;});
    const candidateSecond=await measure(candidate,candidateCdp,url);
+   assert.ok(await candidate.evaluate(()=>!!navigator.serviceWorker?.controller),'service worker did not control the cached revisit');
    assert.ok(candidateSecond.firstProductMs<1000,'cached second visit did not meet <1s target: '+candidateSecond.firstProductMs+'ms');
    const refreshedCache=await candidate.evaluate(()=>JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')||'null'));
    const first=refreshedCache.products[0];
@@ -97,6 +107,7 @@ async function measure(page,cdp,url) {
    await candidate.evaluate(({id,price})=>localStorage.setItem('__storefront_stale_probe',JSON.stringify({id,price})),{id:first.id,price:stalePrice});
    await candidate.addInitScript(()=>{try{const probe=JSON.parse(localStorage.getItem('__storefront_stale_probe')||'null');if(!probe)return;window.__stalePriceSeen=false;const check=()=>{const card=document.querySelector('#homeProductSections [data-product-id="'+CSS.escape(probe.id)+'"]');if(card&&card.querySelector('.price')?.textContent.includes(Number(probe.price).toFixed(2).replace('.',',')))window.__stalePriceSeen=true;};new MutationObserver(check).observe(document,{childList:true,subtree:true,characterData:true});document.addEventListener('DOMContentLoaded',check);}catch(_){}});
    const candidateStale=await measure(candidate,candidateCdp,url);
+   assert.ok(candidateStale.bytes<candidateSecond.bytes,'static assets were not served from the service-worker cache on the warmed visit');
    assert.ok(candidateStale.firstProductMs<1000,'cached stale-price visit did not meet <1s target: '+candidateStale.firstProductMs+'ms');
    const staleWasPainted=await candidate.evaluate(()=>window.__stalePriceSeen===true);
    await candidate.waitForFunction(({id,price})=>{const cache=JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')||'null');const item=cache?.products?.find(p=>p.id===id);return item&&Number(item.price)!==price;},{id:first.id,price:stalePrice},{timeout:30000});
