@@ -142,6 +142,8 @@ Deno.test("erros da cotação diferenciam endereço, Manaus e cobertura Lalamove
   assertEquals(deliveryQuoteErrorMessage(422, "LALAMOVE_INVALID_ADDRESS"), "Endereço não encontrado. Confira rua, número e bairro.");
   assertEquals(deliveryQuoteErrorMessage(422, "LALAMOVE_INVALID_REQUEST").includes("Lalamove recusou"), true);
   assertEquals(deliveryQuoteErrorMessage(503, "GEOCODER_NOT_CONFIGURED"), "Serviço de localização não configurado. Tente novamente mais tarde.");
+  assertEquals(deliveryQuoteErrorMessage(503, "QUOTE_RATE_LIMIT_UNAVAILABLE").includes("verificar o limite de cotações"), true);
+  assertEquals(deliveryQuoteErrorMessage(400, "INVALID_ADDRESS"), "Informe rua, número e bairro para calcular a entrega.");
   assertEquals(deliveryQuoteErrorMessage(403, "STORE_CLOSED"), "Entrega disponível no horário de funcionamento.");
 });
 
