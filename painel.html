@@ -255,6 +255,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <button type="button" id="tabProducts" role="tab" aria-selected="false">Produtos</button>
 </div>
 <section id="ordersTab" role="tabpanel">
+<section class="card" id="upcomingHolidaysCard" aria-labelledby="upcomingHolidaysTitle"><h2 id="upcomingHolidaysTitle">Próximos feriados</h2><p class="muted">Horário especial: 6h às 11h. Fechado em 25/12 e 01/01.</p><div id="upcomingHolidaysList" class="product-list"><p class="muted">Carregando calendário…</p></div></section>
 <section class="card lalamove-settings" id="lalamoveSettingsCard" aria-label="Configurações de entrega">
  <div class="lalamove-admin-head"><h2 style="margin:0">Configurações de entrega</h2><span id="lalamoveSettingsBadge" class="lalamove-env-badge sandbox">SANDBOX</span></div>
  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:14px 0;padding:14px;border:2px solid #2f6a14;border-radius:14px;background:#f1f8e6">
@@ -2088,4 +2089,19 @@ function appConfirm(message,options={}){
 </div>
 
 <!-- Modal próprio do painel: confirmações sem alert/confirm/prompt nativos. -->
+<script type="module">
+import { upcomingHolidays } from "./supabase/functions/_shared/commercial-calendar.js?v=holiday-calendar-2026-2027";
+const root=document.getElementById("upcomingHolidaysList");
+if(root){
+ const rows=upcomingHolidays(new Date(),8);
+ root.replaceChildren();
+ if(!rows.length){root.textContent="Nenhum feriado cadastrado nos próximos dias."; }
+ else for(const item of rows){
+  const row=document.createElement("div");row.className="product-row";
+  const name=document.createElement("strong");name.textContent=item.name;
+  const meta=document.createElement("span");meta.className="product-state";meta.textContent=new Date(item.date+"T12:00:00Z").toLocaleDateString("pt-BR",{timeZone:"UTC"})+" · "+item.hours;
+  row.append(name,meta);root.append(row);
+ }
+}
+</script>
 </body></html>
