@@ -1256,6 +1256,26 @@ try {
  </form> <div id="result" class="status hidden"></div></div></div></div>
 <section id="legalModal" role="dialog" aria-modal="true" aria-labelledby="legalTitle" aria-hidden="true"><div class="legal-dialog"><header class="legal-header"><button id="legalBack" class="legal-back" type="button" aria-label="Voltar">‹</button><h2 id="legalTitle">Termos de uso</h2></header><div id="legalContent" class="legal-content" tabindex="0"></div></div></section><footer class="preview-footer" aria-hidden="true"></footer><div id="deliveryMapFullscreen" class="delivery-map-fullscreen" hidden role="dialog" aria-modal="true" aria-label="Ajustar endereço no mapa"><header class="delivery-map-topbar"><button type="button" id="deliveryMapBack" aria-label="Voltar">‹</button><div id="deliveryMapSearchSlot"></div></header><div id="deliveryMap" role="application" aria-label="Mapa para ajustar o endereço"></div><div id="deliveryMapFixedPin" class="delivery-map-fixed-pin" aria-hidden="true"><span>📍</span><i></i></div><button type="button" id="deliveryMapGps" class="delivery-map-gps" aria-label="Usar minha localização">◎</button><section class="delivery-map-sheet"><div class="delivery-map-sheet-handle"></div><strong id="deliveryMapAddress" aria-live="polite">Mova o mapa para ajustar o endereço</strong><div id="deliveryMapNumberSlot"></div><div id="deliveryMapNeighborhoodSlot"></div><p id="deliveryMapNeighborhood" class="delivery-map-neighborhood"></p><button type="button" id="deliveryMapConfirm" class="delivery-map-confirm">Confirmar endereço</button></section></div>
 </body>
+<script id="storefrontCacheBootstrap">
+(()=>{try{
+ const raw=localStorage.getItem('feira_storefront_catalog_v1');
+ const cache=raw?JSON.parse(raw):null;
+ const root=document.getElementById('homeProductSections');
+ const products=document.getElementById('products');
+ const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const money=value=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(value)||0);
+ if(!root)return;
+ if(cache&&cache.version===1&&Array.isArray(cache.products)&&cache.products.length&&cache.products.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'&&Number.isFinite(Number(p.price)))){
+  const groups=[...new Set(cache.products.map(p=>String(p.category||'').trim()||'Outros'))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  root.innerHTML=groups.map(category=>'<section class="catalog-category home-catalog-category"><header class="home-category-heading"><h2>'+esc(category)+'</h2></header><div class="catalog-row">'+cache.products.filter(p=>(String(p.category||'').trim()||'Outros')===category).map((p,index)=>{const src=typeof p.image==='string'&&p.image.startsWith('./')?p.image:typeof p.image==='string'&&p.image.startsWith('imagens/produtos/')?'./'+p.image:'';return '<article class="product" data-product-id="'+esc(p.id)+'"><div class="product-media"><img width="160" height="160" loading="lazy" decoding="async" '+(index<4?'fetchpriority="high" ':'')+'src="'+esc(src)+'" alt="'+esc(p.name)+'"></div><div class="pbody"><h3>'+esc(p.name)+'</h3><div class="price">'+money(p.price)+'</div></div></article>';}).join('')+'</div></section>').join('');
+  root.dataset.storefrontCache='shown';
+ }else{
+  const skeleton='<section class="catalog-category home-catalog-category storefront-skeleton"><header class="home-category-heading"><span class="skeleton-line"></span></header><div class="catalog-row">'+Array.from({length:4},()=>'<article class="product skeleton-card"><span class="skeleton-image"></span><span class="skeleton-line"></span><span class="skeleton-line short"></span></article>').join('')+'</div></section>';
+  root.innerHTML=skeleton+skeleton;
+  if(products)products.innerHTML=Array.from({length:4},()=>'<article class="product skeleton-card"><span class="skeleton-image"></span><span class="skeleton-line"></span><span class="skeleton-line short"></span></article>').join('');
+ }
+}catch(_){}})();
+</script>
 <script src="./turnstile.js" defer></script>
 
 <script type="module">
