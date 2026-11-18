@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const {chromium}=require('playwright');
-const root=path.resolve(__dirname,'..'),helperSource=fs.readFileSync(path.join(root,'loja-delivery-ui.js'),'utf8').replace(/\\bexport\\s+/g,''),scheduleSource=fs.readFileSync(path.join(root,'supabase/functions/_shared/store-schedule.js'),'utf8').replace(/\\bexport\\s+/g,''),storeSource=fs.readFileSync(path.join(root,'loja.html'),'utf8'),recoverySource=fs.readFileSync(path.join(root,'recuperar-senha.html'),'utf8'),turnstileSource=fs.readFileSync(path.join(root,'turnstile.js'),'utf8');
+const root=path.resolve(__dirname,'..'),helperSource=fs.readFileSync(path.join(root,'loja-delivery-ui.js'),'utf8').replace(/\bexport\s+/g,''),scheduleSource=fs.readFileSync(path.join(root,'supabase/functions/_shared/store-schedule.js'),'utf8').replace(/\bexport\s+/g,''),storeSource=fs.readFileSync(path.join(root,'loja.html'),'utf8'),recoverySource=fs.readFileSync(path.join(root,'recuperar-senha.html'),'utf8'),turnstileSource=fs.readFileSync(path.join(root,'turnstile.js'),'utf8');
 const PWNED_MESSAGE='Essa senha é muito comum e já apareceu em vazamentos de outros sites pela internet (não no nosso app). Para sua segurança, escolha outra senha — ou entre com o Google, sem senha.';
 const USER={id:'user-test-1',email:'teste@example.com',user_metadata:{},is_anonymous:false};
 const SESSION={access_token:'mock-access-token',refresh_token:'mock-refresh-token',expires_at:Math.floor(Date.now()/1000)+3600,user:USER};
