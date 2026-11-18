@@ -28,6 +28,7 @@ function bootstrap(){
  <\/script>`;
 }
 function prepare(source){
+ const calendar=fs.readFileSync(path.join(process.cwd(),"supabase/functions/_shared/commercial-calendar.js"),"utf8").replace(/\\bexport\\s+/g,"");
  let html=source.replace(/<script>try\{if\("serviceWorker"[\s\S]*?<\/script>/i,"")
   .replace(/<link rel="manifest"[^>]*>/gi,"").replace(/<link rel="preconnect"[^>]*>/gi,"")
   .replace(/<link href="https:\/\/fonts\.googleapis\.com[^>]*>/gi,"")
@@ -35,10 +36,11 @@ function prepare(source){
   .replace(/<script src="\.\/lalamove-map\.js"><\/script>/i,"");
  html=html.replace(/<script type="module">([\s\S]*?)<\/script>/i,(_all,code)=>{
   code=code.replace(/^\s*import\s*\{\s*createClient\s*\}\s*from\s*['"]https:\/\/esm\.sh\/@supabase\/supabase-js@2\.117\.1['"];\s*/m,"")
+   .replace(/^\s*import\s*\{\s*upcomingHolidays\s*\}\s*from\s*['"]\.\/supabase\/functions\/_shared\/commercial-calendar\.js[^'"]*['"];\s*/m,"")
    .replace(/const db=createClient\([\s\S]*?\);\s*/,"const db=window.__testDb;\n");
   return "<script>"+code+"</script>";
  });
- return html.replace("<body",bootstrap()+"<body");
+ return html.replace("<body",bootstrap()+"<script>"+calendar+"</script><body");
 }
 (async()=>{
  const source=fs.readFileSync(path.join(process.cwd(),"painel.html"),"utf8");
