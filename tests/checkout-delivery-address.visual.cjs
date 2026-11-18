@@ -173,7 +173,7 @@ document.body.innerHTML=mapOverlayMarkup;
    assert.equal(await page.locator('#deliveryNumber').inputValue(),'130','reverse geocoding preserves the number typed by the customer');
    assert.equal(await page.locator('#deliveryNeighborhood').inputValue(),'Centro','reverse geocoding fills neighborhood before confirmation');
    assert.equal(await page.locator('#deliveryMapPreview').isVisible(),true,'confirmed map preview is shown');
-   assert.equal(await page.locator('#deliveryMapPreviewAddress').textContent(),'Rua do Mercado · 130 · Centro','confirmed street, typed number and neighborhood remain visible');
+   assert.equal(await page.locator('#deliveryMapPreviewAddress').textContent(),'Mercado Teste · Rua do Mercado, 130 · Centro','confirmed POI reference, street, typed number and neighborhood remain visible');
    assert.equal(await page.locator('#deliveryAddressSummary').isVisible(),false,'duplicate edit summary is hidden after map confirmation');
    await page.evaluate(()=>{Object.defineProperty(navigator,'geolocation',{configurable:true,value:{getCurrentPosition(success,failure){failure(new Error('denied'));}}});window.runGps();});
    await page.waitForFunction(()=>document.querySelector('#deliveryQuoteStatus').textContent.includes('Não foi possível acessar o GPS'));
