@@ -187,6 +187,7 @@ Deno.serve(async (req: Request) => {
     if (code === "ADDRESS_NOT_FOUND") return json({ error: "Endereço não encontrado. Confira a rua, o número e o bairro.", code }, 400);
     if (code === "ADDRESS_OUTSIDE_MANAUS") return json({ error: "Este endereço fica fora de Manaus - AM. Informe um endereço dentro de Manaus.", code }, 422);
     if (code === "PRODUCTION_CREDENTIALS_REQUIRED") return json({ error: "Credenciais Lalamove de produção ausentes ou inválidas. Configure LALAMOVE_PROD_API_KEY e LALAMOVE_PROD_API_SECRET no Supabase; nenhuma cobrança foi criada.", code }, 503);
+    if (code === "SANDBOX_CREDENTIALS_REQUIRED") return json({ error: "Credenciais Sandbox da Lalamove ausentes ou inválidas. Verifique LALAMOVE_SANDBOX_API_KEY e LALAMOVE_SANDBOX_API_SECRET no Supabase.", code }, 503);
     if (code === "LALAMOVE_ENVIRONMENT_UNAVAILABLE") return json({ error: "Não foi possível ler o ambiente Lalamove configurado. Tente novamente.", code }, 503);
     if (code === "INVALID_LALAMOVE_ENVIRONMENT") return json({ error: "O ambiente da Lalamove está inválido. Verifique a configuração no painel.", code }, 503);
     if (code === "GEOCODER_NOT_CONFIGURED") return json({ error: "Serviço de localização não configurado. Falta o Secret GOOGLE_GEOCODING_API_KEY no Supabase.", code }, 503);
