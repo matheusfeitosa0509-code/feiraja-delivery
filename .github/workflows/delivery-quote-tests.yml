@@ -62,6 +62,7 @@ on:
       - feat/lalamove-delivery-sandbox
       - feat/lalamove-delivery-stage-3
       - feat/checkout-order-tracking-map
+      - fix/test-production-confirmation-and-asaas-stale-webhook
     paths:
       - "supabase/functions/super-worker/**"
       - "supabase/functions/assistente/**"
@@ -70,6 +71,7 @@ on:
       - "supabase/functions/_shared/delivery-quote.ts"
       - "supabase/functions/delivery-quote/**"
       - "supabase/functions/lalamove-dispatch/**"
+      - "supabase/functions/asaas-webhook/**"
       - "supabase/functions/lalamove-webhook/**"
       - "supabase/functions/_shared/lalamove-dispatch.ts"
       - "supabase/functions/lalamove-tracking/**"
