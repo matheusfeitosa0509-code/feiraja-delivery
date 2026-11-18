@@ -69,11 +69,11 @@ export function getCommercialSchedule(data = new Date()) {
   const now=data instanceof Date?data:new Date(data), p=parts(now), k=key(p.year,p.month,p.day);
   const holiday=HOLIDAYS[k], special=specialDay(k), within=estaAberto(now), next=proximaAbertura(now);
   const label=next?new Intl.DateTimeFormat("pt-BR",{timeZone:STORE_TIME_ZONE,weekday:"long",day:"2-digit",month:"2-digit"}).format(next).replace("-feira",""):"hoje";
-  return { within, holiday:holiday?.name||((k.endsWith("-12-24")||k.endsWith("-12-31"))?"Véspera de Natal/Ano Novo":null), hours:holiday?.closed?"fechado":special?"6h às 11h":"6h às 13h", label, scheduledFor:next?.toISOString()||null };
+  return { within, holiday:holiday?.name||((k.endsWith("-12-24")||k.endsWith("-12-31"))?"Véspera de Natal/Ano Novo":null), hours:p.weekday==="Sun"||holiday?.closed?"fechado":special?"6h às 11h":"6h às 13h", label, scheduledFor:next?.toISOString()||null };
 }
 export function upcomingHolidays(from = new Date(), limit = 8) {
   const today=parts(from), todayKey=key(today.year,today.month,today.day);
   const entries=[...Object.entries(HOLIDAYS),["2026-12-24",{name:"Véspera de Natal",closed:false}],["2026-12-31",{name:"Véspera de Ano Novo",closed:false}],["2027-12-24",{name:"Véspera de Natal",closed:false}],["2027-12-31",{name:"Véspera de Ano Novo",closed:false}]];
   return entries.filter(([date])=>date>=todayKey).sort(([a],[b])=>a.localeCompare(b)).slice(0,limit)
-    .map(([date,item])=>({date,name:item.name,hours:item.closed?"Fechado":"6h às 11h"}));
+    .map(([date,item])=>({date,name:item.name,hours:item.closed||new Date(date+"T12:00:00Z").getUTCDay()===0?"Fechado":"6h às 11h"}));
 }
