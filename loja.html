@@ -1785,6 +1785,8 @@ function normalizeCartForLoadedCatalog(){
 async function load(options={}){
  const force=options===true||options?.force===true;
  const status=$('#status');
+ const previousProducts=products.map(p=>({...p}));
+ const previousRules=JSON.stringify([...salesRulesById.entries()]);
  if(!force){
   const saved=readStorefrontCache();
   const memory=saved||catalogCache;
@@ -1824,8 +1826,14 @@ async function load(options={}){
   catalogCacheAt=Date.now();
   writeStorefrontCache();
   normalizeCartForLoadedCatalog();
+  const sameCatalogStructure=previousProducts.length===products.length&&previousProducts.every((old,index)=>{const fresh=products[index];return old.id===fresh.id&&old.name===fresh.name&&old.category===fresh.category&&old.image===fresh.image;});
+  const salesRulesChanged=previousRules!==JSON.stringify([...salesRulesById.entries()]);
+  const priceFields=['price','old_price','resale_enabled','resale_price','resale_min_qty','resale_unit'];
+  if(sameCatalogStructure&&!salesRulesChanged){
+   products.forEach(product=>{const old=previousProducts.find(item=>item.id===product.id);if(old&&priceFields.some(field=>old[field]!==product[field]))updateProductCardPrice(product);});
+   renderCart();
+  }else renderStorefrontProducts();
   status.textContent=products.length?'Catálogo atualizado.':'Ainda não há produtos cadastrados.';
-  renderStorefrontProducts();
  }catch(error){
   if(products.length){
    status.textContent='Mostrando catálogo salvo. Não foi possível atualizar agora.';
@@ -1882,6 +1890,19 @@ function syncProductCardRowSlots(root=document){
 }
 function productCardMarkup(p,priority=false){return '<article class="product" data-product-id="'+esc(p.id)+'">'+productCardImageMarkup(p,priority)+'<div class="pbody"><h3>'+esc(p.name)+'</h3>'+priceBlock(p)+productCardControlsMarkup(p)+productWeightNoteMarkup(p)+'</div></article>';}
 function updateProductCard(id){const p=products.find(x=>String(x.id)===String(id));if(!p)return;document.querySelectorAll('[data-product-id]').forEach(card=>{if(String(card.dataset.productId)!==String(id))return;const qty=card.querySelector('.product-qty');if(qty)qty.innerHTML=productQtyMarkup(p);const valueRow=card.querySelector('.value-sale-row');if(valueRow)valueRow.innerHTML=valueSaleEditorMarkup(p);});}
+function updateProductCardPrice(p){
+ const markup=document.createElement('div');markup.innerHTML=priceBlock(p);
+ document.querySelectorAll('[data-product-id]').forEach(card=>{
+  if(String(card.dataset.productId)!==String(p.id))return;
+  const body=card.querySelector('.pbody');if(!body)return;
+  const currentBadge=body.querySelector('.pct-badge'),nextBadge=markup.querySelector('.pct-badge');
+  if(nextBadge){if(currentBadge)currentBadge.replaceWith(nextBadge);else{const before=body.querySelector('.price-before-slot');if(before)body.insertBefore(nextBadge,before);}}
+  else currentBadge?.remove();
+  const before=body.querySelector('.price-before-slot'),nextBefore=markup.querySelector('.price-before-slot');if(before&&nextBefore)before.innerHTML=nextBefore.innerHTML;
+  const price=body.querySelector('.price'),nextPrice=markup.querySelector('.price');if(price&&nextPrice){price.className=nextPrice.className;price.textContent=nextPrice.textContent;}
+  const resale=body.querySelector('.resale-from-slot'),nextResale=markup.querySelector('.resale-from-slot');if(resale&&nextResale)resale.innerHTML=nextResale.innerHTML;
+ });
+}
 function parseValueSaleInput(raw){const value=String(raw||'').trim().replace(/R\$\s?/gi,'').replace(/\s/g,'');const normalized=value.includes(',')?value.replace(/\./g,'').replace(',','.'):value;const amount=Number(normalized);return Number.isFinite(amount)?Math.round(amount*100):NaN;}
 function setCardValueSale(id,amountCents){const p=products.find(x=>String(x.id)===String(id));if(!p||!valueSaleEnabled(p))return false;const minimum=valueSaleMinimumAmountCents(p),calc=valueSaleCalculation(p,amountCents);if(!calc){showStoreNotice('O mínimo é '+money(minimum/100)+' para pelo menos '+valueSaleMinimumKg(p)+' kg.');return false;}cartModes[id]='value';cartValueCents[id]=amountCents;cart[id]=calc.qty;persistCart();updateProductCard(id);updateCartSummary();return true;}
 function updateCartSummary(){const t=totals(),minimumMessage=minimumOrderMessage(t),count=t.items.length;setCartEmptyState(count);const set=(id,value)=>{const el=$('#'+id);if(el)el.textContent=value;};const toggle=(id,on)=>{const el=$('#'+id);if(el)el.classList.toggle('hidden',!on);};set('tabCartCount',count);toggle('tabCartCount',count>0);set('minimumOrderNotice',minimumMessage);toggle('minimumOrderNotice',!!minimumMessage);set('minimumCheckoutNotice',minimumMessage);toggle('minimumCheckoutNotice',!!minimumMessage);const submit=$('#submitOrder');if(submit){submit.disabled=!!minimumMessage;const pix=$('#payment')?.value==='pix';submit.textContent=(pix?'Pagar com Pix · ':'Confirmar pedido · ')+money(t.total);submit.classList.toggle('pix',pix);}set('subtotal',money(t.sub));set('total',money(t.total));set('modalTotal',money(t.total));if(typeof updateCheckoutSummary==='function')updateCheckoutSummary();set('checkout','Continuar · '+money(t.total));set('cartbarCount',count+' '+(count===1?'produto':'produtos'));set('cartbarTotal',money(t.total));const bar=$('#cartbar');if(bar)bar.classList.toggle('hide',count===0);const checkout=$('#checkout');if(checkout){checkout.disabled=!count||!!minimumMessage;checkout.setAttribute('aria-disabled',String(checkout.disabled));}syncCartbarVisibility();}
