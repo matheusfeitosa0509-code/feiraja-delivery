@@ -293,3 +293,7 @@ Deno.test("pedido teste em Produção confirmado aceita criação com API mockad
   assertEquals(called, true);
   assertEquals(result.response.status, 201);
 });
+
+Deno.test("pedido real em Produção mantém fluxo atual sem flag de pedido teste", () => {
+  assertTestProductionDispatchConfirmation(false, "producao", false);
+});
