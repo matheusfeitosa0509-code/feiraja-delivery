@@ -6,7 +6,7 @@ const PWNED_MESSAGE='Essa senha é muito comum e já apareceu em vazamentos de o
 const USER={id:'user-test-1',email:'teste@example.com',user_metadata:{},is_anonymous:false};
 const SESSION={access_token:'mock-access-token',refresh_token:'mock-refresh-token',expires_at:Math.floor(Date.now()/1000)+3600,user:USER};
 function appHtml(initial={},realTurnstile=false){
- let html=storeSource.replace(/<script src="\.\/turnstile\.js" defer><\/script>/i,'').replace(/<script src="\.\/lalamove-map\.js"><\/script>/i,'').replace(/<script>\s*if\('serviceWorker'[\s\S]*?<\/script>/i,'');
+ let html=storeSource.replace(/<script id="pwaInstallScript">[\\s\\S]*?<\\/script>/i,'').replace(/<script src="\.\/turnstile\.js" defer><\/script>/i,'').replace(/<script src="\.\/lalamove-map\.js"><\/script>/i,'').replace(/<script>\s*if\('serviceWorker'[\s\S]*?<\/script>/i,'');
  html=html.replace(/<script type="module">/i,'<script>'+scheduleSource+'</script><script>'+helperSource+'</script>'+(realTurnstile?'<script>'+turnstileSource+'</script>':'')+'<script type="module">');
  html=html.replace(/<script type="module">([\s\S]*?)<\/script>/i,(_all,js)=>{
   js=js.replace(/^\s*import\s*\{\s*createClient\s*\}\s*from\s*['"][^'"]+['"];\s*/m,'').replace(/^\s*import\s*\{[^}]+\}\s*from\s*['"]\.\/loja-delivery-ui\.js[^'"]*['"];\s*/m,'').replace(/^\s*import\s*\{[^}]+\}\s*from\s*['"]\.\/supabase\/functions\/_shared\/store-schedule\.js[^'"]*['"];\s*/m,'').replace(/const supabase=createClient\([\s\S]*?\);\s*/,'const supabase=window.__mockSupabase;\n');
@@ -17,7 +17,7 @@ function appHtml(initial={},realTurnstile=false){
 }
 async function pageFor(browser,width,html,refreshOutcomes=[]){
  const page=await browser.newPage({viewport:{width,height:900},deviceScaleFactor:1}),errors=[];
- page.on('pageerror',e=>errors.push('pageerror: '+e.message));page.on('console',m=>{if(m.type()==='error')errors.push('console.error: '+m.text());});
+ page.on('pageerror',e=>errors.push('pageerror: '+e.message));page.on('console',m=>{if(m.type()==='error')errors.push('console.error: '+m.text()+' @ '+JSON.stringify(m.location()));});page.on('requestfailed',r=>errors.push('requestfailed: '+r.url()+' '+(r.failure()?.errorText||'')));
  page.__runtimeErrors=errors;page.__refreshOutcomes=refreshOutcomes;
  await page.route('**/*',route=>route.fulfill({status:200,body:''}));
  await page.route('**/auth/v1/**',async route=>{const authUrl=new URL(route.request().url());const endpoint=authUrl.pathname.split('/auth/v1/')[1]+authUrl.search;if(endpoint.startsWith('token?grant_type=refresh_token')){const result=page.__refreshOutcomes.shift()||'ok';if(result==='500')return route.fulfill({status:500,contentType:'application/json',body:'{"message":"timeout"}'});return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({session:SESSION})});}if(endpoint.startsWith('token?grant_type=password'))return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({session:SESSION})});if(endpoint==='signup'||endpoint==='user'||endpoint.startsWith('authorize'))return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({session:SESSION,user:USER})});if(endpoint==='recover')return route.fulfill({status:200,contentType:'application/json',body:'{}'});return route.fulfill({status:200,contentType:'application/json',body:'{}'});});
