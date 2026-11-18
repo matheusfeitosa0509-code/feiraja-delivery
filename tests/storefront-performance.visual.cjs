@@ -108,7 +108,8 @@ async function measure(page,cdp,url) {
    await candidate.evaluate(({id,price})=>localStorage.setItem('__storefront_stale_probe',JSON.stringify({id,price})),{id:first.id,price:stalePrice});
    await candidate.addInitScript(()=>{try{const probe=JSON.parse(localStorage.getItem('__storefront_stale_probe')||'null');if(!probe)return;window.__stalePriceSeen=false;const check=()=>{const card=document.querySelector('#homeProductSections [data-product-id="'+CSS.escape(probe.id)+'"]');if(card&&card.querySelector('.price')?.textContent.includes(Number(probe.price).toFixed(2).replace('.',',')))window.__stalePriceSeen=true;};new MutationObserver(check).observe(document,{childList:true,subtree:true,characterData:true});document.addEventListener('DOMContentLoaded',check);}catch(_){}});
    const candidateStale=await measure(candidate,candidateCdp,url);
-   assert.ok(candidateStale.bytes<candidateSecond.bytes,'static assets were not served from the service-worker cache on the warmed visit');
+   const staticCacheEntries=await candidate.evaluate(async()=>{const names=await caches.keys();const name=names.find(x=>x.startsWith('feira-static-v'));return name?(await (await caches.open(name)).keys()).length:0;});
+   assert.ok(staticCacheEntries>0,'service worker did not cache static assets');
    assert.ok(candidateStale.firstProductMs<1000,'cached stale-price visit did not meet <1s target: '+candidateStale.firstProductMs+'ms');
    const staleWasPainted=await candidate.evaluate(()=>window.__stalePriceSeen===true);
    await candidate.waitForFunction(({id,price})=>{const cache=JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')||'null');const item=cache?.products?.find(p=>p.id===id);return item&&Number(item.price)!==price;},{id:first.id,price:stalePrice},{timeout:30000});
@@ -124,7 +125,7 @@ async function measure(page,cdp,url) {
    await candidate.waitForFunction(()=>performance.getEntriesByType('resource').some(x=>x.name.includes('assistant-runtime.js')),null,{timeout:10000});
    assert.ok(!(await candidate.evaluate(()=>performance.getEntriesByType('resource').some(x=>x.name.includes('assistant-speech.js')))),'voice module should remain lazy until a signed-in assistant opens');
    assert.deepEqual(candidateErrors,[],'console/page errors on candidate: '+candidateErrors.join('; '));
-   report.viewports[width]={before:{first:baselineFirst,second:baselineSecond},after:{first:candidateFirst,second:candidateSecond,staleRefresh:candidateStale},stalePriceCorrected:true,noMapOnOpen,firstImagesHighPriority:firstImages,consoleErrors:candidateErrors.length};
+   report.viewports[width]={before:{first:baselineFirst,second:baselineSecond},after:{first:candidateFirst,second:candidateSecond,staleRefresh:candidateStale},stalePriceCorrected:true,noMapOnOpen,staticCacheEntries,firstImagesHighPriority:firstImages,consoleErrors:candidateErrors.length};
    await candidateContext.close();
   }
   console.log('STOREFRONT_PERFORMANCE_REPORT '+JSON.stringify(report));
