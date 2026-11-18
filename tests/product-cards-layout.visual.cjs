@@ -42,7 +42,7 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
     code = code.replace(/const supabase=createClient\([\s\S]*?\);\s*/, 'const supabase=window.__testSupabase;\n');
     return '<script>' + code + '</script>';
   });
-  html = html.replace('<body', bootstrap + '<script>' + schedule + '</script><script>' + helper + '</script><body');
+  html = html.replace('<body', bootstrap + '<script>' + calendar + '</script><script>' + schedule + '</script><script>' + helper + '</script><body');
 
   const browser = await chromium.launch({ headless:true });
   try {
