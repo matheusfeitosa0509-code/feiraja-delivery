@@ -28,7 +28,7 @@ function bootstrap(){
  <\/script>`;
 }
 function prepare(source){
- const calendar=fs.readFileSync(path.join(process.cwd(),"supabase/functions/_shared/commercial-calendar.js"),"utf8").replace(/\\bexport\\s+/g,"");
+ const calendar=fs.readFileSync(path.join(process.cwd(),"supabase/functions/_shared/commercial-calendar.js"),"utf8").replace(/\bexport\s+/g,"");
  let html=source.replace(/<script>try\{if\("serviceWorker"[\s\S]*?<\/script>/i,"")
   .replace(/<link rel="manifest"[^>]*>/gi,"").replace(/<link rel="preconnect"[^>]*>/gi,"")
   .replace(/<link href="https:\/\/fonts\.googleapis\.com[^>]*>/gi,"")
