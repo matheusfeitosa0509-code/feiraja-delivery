@@ -786,7 +786,7 @@ body:not(:has(#pageHome.active)) .app-header .home-search{display:none!important
 try {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
-      try { navigator.serviceWorker.register('./sw.js?v=20261116-legal-identity', { scope: './', updateViaCache: 'none' }).then(function (registration) { return registration.update(); }).catch(function () {}); } catch (_) {}
+      try { navigator.serviceWorker.register('./sw.js?v=20261118-storefront-static-cache-v2', { scope: './', updateViaCache: 'none' }).then(function (registration) { return registration.update(); }).catch(function () {}); } catch (_) {}
     });
   }
 } catch (_) {}
