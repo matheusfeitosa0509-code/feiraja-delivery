@@ -21,6 +21,10 @@ const quoteFns = storeHtml.slice(quoteFnStart, quoteFnEnd);
 const mapStyleStart = storeHtml.lastIndexOf('<style>', storeHtml.indexOf('.delivery-map-fullscreen{'));
 const mapStyleEnd = storeHtml.indexOf('</style>', mapStyleStart);
 const mapCss = storeHtml.slice(mapStyleStart + 7, mapStyleEnd);
+const mapSummaryStart = helperSource.indexOf('function formatDeliveryMapAddressSummary(');
+const mapSummaryEnd = helperSource.indexOf('\nfunction deliveryQuoteErrorMessage(', mapSummaryStart);
+if (mapSummaryStart < 0 || mapSummaryEnd < 0) throw new Error('Map address summary helper not found');
+const mapAddressSummaryFn = helperSource.slice(mapSummaryStart, mapSummaryEnd);
 
 for (const required of [
   'https://tiles.openfreemap.org/styles/positron', 'zoom:17', 'new lib.AttributionControl({compact:true})',
@@ -42,8 +46,8 @@ let deliveryPlacesSessionToken='session-123',deliveryAutocompleteTimer=null,deli
 const deliveryQuoteCache=new Map();
 const buildDeliveryQuoteCacheKey=(address,items,coordinates=null,userId='')=>JSON.stringify({user:String(userId||''),address,items,coordinates:coordinates||null});
 const isCachedDeliveryQuoteValid=(entry,now=Date.now())=>!!entry&&Number(entry.expiresAt)>Number(now)&&isValidDeliveryQuote(entry.quote,now);
-const normalizeDeliveryAddress = value => ({street:String(value.street||'').trim(),number:String(value.number||'').trim(),neighborhood:String(value.neighborhood||'').trim(),complement:'',reference:''});
-const getDeliveryAddress = () => normalizeDeliveryAddress({street:$('#deliveryStreet').value,number:$('#deliveryNumber').value,neighborhood:$('#deliveryNeighborhood').value});
+const normalizeDeliveryAddress = value => ({street:String(value.street||'').trim(),number:String(value.number||'').trim(),neighborhood:String(value.neighborhood||'').trim(),complement:String(value.complement||''),reference:String(value.reference||'')});
+const getDeliveryAddress = () => normalizeDeliveryAddress({street:$('#deliveryStreet').value,number:$('#deliveryNumber').value,neighborhood:$('#deliveryNeighborhood').value,reference:$('#deliveryReference').value});
 let quoteCalls=0,quoteMode='success';
 const currentUser=null;
 const totals=()=>({sub:39.96,items:[{p:{id:'banana'},q:1}]});
@@ -89,6 +93,7 @@ document.body.innerHTML=mapOverlayMarkup;
    await page.addStyleTag({content:mapCss});
    await page.addScriptTag({content: `
     ${harness}
+    ${mapAddressSummaryFn}
     ${syncPresentationFn}
     ${addressFns}
     ${mapFns}
@@ -116,12 +121,27 @@ document.body.innerHTML=mapOverlayMarkup;
    await page.waitForFunction(()=>document.querySelector('#deliveryMapFullscreen').hidden===false);
    await page.waitForTimeout(850);
    assert.ok((await page.locator('#deliveryMapAddress').textContent()).includes('Mercado Teste'),'selected establishment name is displayed');
+   await page.locator('#deliveryStreet').focus();
+   const focusedSearch=await page.evaluate(()=>({
+    borderWidth:getComputedStyle(document.querySelector('#deliveryStreetSearch')).borderTopWidth,
+    borderColor:getComputedStyle(document.querySelector('#deliveryStreetSearch')).borderTopColor,
+    radius:getComputedStyle(document.querySelector('#deliveryStreetSearch')).borderTopLeftRadius,
+    outline:getComputedStyle(document.querySelector('#deliveryStreet')).outlineStyle,
+    inputHeight:document.querySelector('#deliveryStreet').getBoundingClientRect().height,
+   }));
+   assert.equal(focusedSearch.borderWidth,'2px','search focus uses one 2px border');
+   assert.equal(focusedSearch.borderColor,'rgb(23, 100, 63)','search focus uses the app green');
+   assert.equal(focusedSearch.radius,'15px','focus border follows rounded search bar');
+   assert.equal(focusedSearch.outline,'none','native black input outline is removed');
+   assert.ok(focusedSearch.inputHeight>=48,'search input has enough height for mobile selection handle');
    const mapOptions=await page.evaluate(()=>({style:window.testMap.options.style,zoom:window.testMap.options.zoom,center:window.testMap.options.center}));
    assert.equal(mapOptions.style,'https://tiles.openfreemap.org/styles/positron');
    assert.equal(mapOptions.zoom,17);
    assert.deepEqual(mapOptions.center,[-60.02,-3.1]);
    await page.locator('#deliveryNumber').fill('130');
    await page.evaluate(()=>window.dragMap());
+   await page.waitForFunction(()=>document.querySelector('#deliveryMapAddress').textContent==='Mercado Teste · Rua do Mercado, 130 · Centro');
+   assert.equal(await page.locator('#deliveryMapAddress').textContent(),'Mercado Teste · Rua do Mercado, 130 · Centro','map header uses the customer-entered number, not the reverse-geocoded number');
    await page.evaluate(()=>window.confirmMap());
    await page.waitForFunction(()=>document.querySelector('#deliveryMapFullscreen').hidden===true);
    await page.waitForTimeout(250);
@@ -158,7 +178,7 @@ document.body.innerHTML=mapOverlayMarkup;
    assert.equal(await page.locator('#deliveryNumber').inputValue(),'130','reverse geocoding preserves the number typed by the customer');
    assert.equal(await page.locator('#deliveryNeighborhood').inputValue(),'Centro','reverse geocoding fills neighborhood before confirmation');
    assert.equal(await page.locator('#deliveryMapPreview').isVisible(),true,'confirmed map preview is shown');
-   assert.equal(await page.locator('#deliveryMapPreviewAddress').textContent(),'Rua do Mercado · 130 · Centro','confirmed street, typed number and neighborhood remain visible');
+   assert.equal(await page.locator('#deliveryMapPreviewAddress').textContent(),'Mercado Teste · Rua do Mercado, 130 · Centro','confirmed POI reference, street, typed number and neighborhood remain visible');
    assert.equal(await page.locator('#deliveryAddressSummary').isVisible(),false,'duplicate edit summary is hidden after map confirmation');
    await page.evaluate(()=>{Object.defineProperty(navigator,'geolocation',{configurable:true,value:{getCurrentPosition(success,failure){failure(new Error('denied'));}}});window.runGps();});
    await page.waitForFunction(()=>document.querySelector('#deliveryQuoteStatus').textContent.includes('Não foi possível acessar o GPS'));

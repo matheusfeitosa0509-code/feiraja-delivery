@@ -17,7 +17,8 @@ export function validateManausCoordinates(latitude: unknown, longitude: unknown)
       lng < MANAUS_BOUNDS.west || lng > MANAUS_BOUNDS.east) {
     throw new Error("ADDRESS_OUTSIDE_MANAUS");
   }
-  return { lat: String(lat), lng: String(lng) };
+  // Seis casas decimais mantêm precisão submétrica e evitam ERR_INVALID_FIELD na Lalamove.
+  return { lat: lat.toFixed(6), lng: lng.toFixed(6) };
 }
 
 function component(result: GoogleGeocodeResult, type: string) {
@@ -63,7 +64,7 @@ export function validateManausGeocodeResult(result: GoogleGeocodeResult): Delive
       !types.some((type) => ["street_address", "premise", "subpremise"].includes(type))) {
     throw new Error("ADDRESS_NOT_FOUND");
   }
-  return { lat: String(lat), lng: String(lng) };
+  return validateManausCoordinates(lat, lng);
 }
 
 export async function geocodeManausAddress(

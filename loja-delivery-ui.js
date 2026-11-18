@@ -191,19 +191,53 @@ export function isDeliveryOutOfArea(status, message = "") {
   return /fora da área|out.of.service.area|ERR_OUT_OF_SERVICE_AREA|LALAMOVE_OUT_OF_SERVICE_AREA|ADDRESS_OUTSIDE_MANAUS/i.test(String(message));
 }
 
+export function formatDeliveryMapAddressSummary(placeName, street, number, neighborhood) {
+  const clean = value => String(value || "").trim();
+  const normalize = value => clean(value).toLocaleLowerCase("pt-BR").normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  const place = clean(placeName), road = clean(street), houseNumber = clean(number), district = clean(neighborhood);
+  const placeKey = normalize(place);
+  const duplicatePlace = placeKey && (
+    placeKey === normalize(road) ||
+    placeKey === normalize(road + " " + houseNumber) ||
+    placeKey === normalize(road + ", " + houseNumber)
+  );
+  return [place && !duplicatePlace ? place : "", [road, houseNumber].filter(Boolean).join(", "), district]
+    .filter(Boolean).join(" · ");
+}
+
 export function deliveryQuoteErrorMessage(status, code = "") {
   const known = {
     ADDRESS_NOT_FOUND: "Não encontramos esse endereço.",
     ADDRESS_OUTSIDE_MANAUS: "Endereço fora da área de entrega.",
     LALAMOVE_OUT_OF_SERVICE_AREA: "Endereço fora da área de entrega.",
+    LALAMOVE_INVALID_COORDINATES: "Não foi possível validar o ponto marcado no mapa. Ajuste o pino e tente novamente.",
+    LALAMOVE_INVALID_ADDRESS: "Endereço não encontrado. Confira rua, número e bairro.",
+    LALAMOVE_INVALID_REQUEST: "A Lalamove recusou os dados do endereço ou da rota. Revise rua, número e ponto do mapa.",
     LALAMOVE_RATE_LIMIT: "Muitas consultas agora, tente em alguns segundos.",
     LALAMOVE_INVALID_SCHEDULE_TIME: "A Lalamove recusou o horário agendado. Tente novamente em instantes.",
     LALAMOVE_INVALID_SERVICE_TYPE: "A Lalamove não oferece o tipo de veículo selecionado para esta rota.",
     LALAMOVE_INVALID_MARKET: "A Lalamove não reconheceu a região desta rota. Confira o endereço.",
+    LALAMOVE_REVERSE_GEOCODE_FAILURE: "A Lalamove não conseguiu validar a rota com as coordenadas. Tente novamente.",
     QUOTE_RATE_LIMIT: "Muitas consultas agora, tente em alguns segundos.",
+    QUOTE_RATE_LIMIT_UNAVAILABLE: "Não foi possível verificar o limite de cotações agora. Tente novamente em instantes.",
+    INVALID_ADDRESS: "Informe rua, número e bairro para calcular a entrega.",
+    INVALID_ITEMS: "Não foi possível validar os produtos e quantidades do carrinho. Atualize o carrinho e tente novamente.",
+    INVALID_QUOTE_PRICE: "A Lalamove retornou um preço inválido. Tente calcular novamente.",
+    INVALID_QUOTE_RESPONSE: "A Lalamove retornou uma cotação inválida. Tente calcular novamente.",
+    LALAMOVE_ENVIRONMENT_UNAVAILABLE: "Não foi possível ler o ambiente da Lalamove. Tente novamente.",
+    INVALID_LALAMOVE_ENVIRONMENT: "O ambiente da Lalamove está inválido. Verifique a configuração no painel.",
+    SANDBOX_CREDENTIALS_REQUIRED: "Credenciais Sandbox da Lalamove ausentes ou inválidas.",
+    GEOCODER_NOT_CONFIGURED: "Serviço de localização não configurado. Tente novamente mais tarde.",
+    GEOCODER_UNAVAILABLE: "Serviço de localização temporariamente indisponível. Tente novamente.",
+    PRODUCTION_CREDENTIALS_REQUIRED: "Cotação indisponível: as credenciais de produção da Lalamove precisam ser verificadas.",
+    INVALID_SCHEDULE_TIME: "Não foi possível agendar a cotação para o próximo horário de funcionamento. Tente novamente.",
     STORE_CLOSED: "Entrega disponível no horário de funcionamento.",
   };
-  return known[String(code)] || (Number(status) === 422
-    ? "A Lalamove recusou esta cotação. Confira o endereço ou tente novamente."
-    : "Entrega indisponível no momento.");
+  if (known[String(code)]) return known[String(code)];
+  if (Number(status) === 429) return "Muitas consultas agora, tente em alguns segundos.";
+  if (Number(status) === 422) return "A Lalamove recusou os dados do endereço ou da rota. Revise o endereço e o ponto do mapa.";
+  if (Number(status) === 503) return "Serviço de cotação temporariamente indisponível. Tente novamente.";
+  if (Number(status) === 504) return "A cotação demorou mais que o esperado. Tente novamente.";
+  return "Não foi possível calcular a entrega por um erro inesperado. Tente novamente.";
 }
