@@ -37,7 +37,7 @@ async function measure(page,cdp,url) {
  cdp.on('Network.requestWillBeSent',onRequest);
  cdp.on('Network.loadingFinished',onFinished);
  await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
- await page.waitForFunction(()=>window.__storefrontPerf&&window.__storefrontPerf.firstProductAt!==null, {timeout:30000});
+ await page.waitForFunction(()=>window.__storefrontPerf&&window.__storefrontPerf.firstProductAt!==null,null,{timeout:30000});
  const firstProductMs=await page.evaluate(()=>window.__storefrontPerf.firstProductAt);
  const count=await page.locator('#homeProductSections .product[data-product-id]').count();
  await page.waitForTimeout(700);
