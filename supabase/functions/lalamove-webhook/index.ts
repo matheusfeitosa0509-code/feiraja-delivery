@@ -1,110 +1,18 @@
-import { createClient } from "npm:@supabase/supabase-js@2.57.4";
-import { readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
-import { getLalamoveDriverDetails, isWebhookVerificationProbe, mapLalamoveStatus, verifyWebhookSignature, requireSupabaseSecretKey, secretKeyFetch } from "../_shared/lalamove-dispatch.ts";
-
-const PATH = "/functions/v1/lalamove-webhook";
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
-  status, headers: { "Content-Type": "application/json" },
-});
-
-function safeDriver(value: any) {
-  if (!value || typeof value !== "object") return null;
-  const driver = {
-    name: String(value.name || "").slice(0, 100),
-    phone: String(value.phone || "").slice(0, 40),
-    plateNumber: String(value.plateNumber || "").slice(0, 20),
-  };
-  return Object.values(driver).some(Boolean) ? driver : null;
-}
-
-Deno.serve(async (req: Request) => {
-  // Lalamove/Partner Portal may probe the URL with GET, HEAD, OPTIONS, or an empty POST.
-  // Acknowledge these synchronously without touching credentials, parsing, or the database.
-  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) {
-    return new Response(null, { status: 200, headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "content-type, authorization, x-signature",
-    } });
-  }
-  if (req.method !== "POST") return new Response(null, { status: 200 });
-  const rawBody = await req.text();
-  if (!rawBody.trim()) return new Response(null, { status: 200 });
-  let payload: any;
-  try { payload = JSON.parse(rawBody); }
-  catch { return new Response(null, { status: 200 }); }
-  if (isWebhookVerificationProbe(payload)) {
-    return json({ received: true, verification: true });
-  }
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    let serviceKey = "";
-    try { serviceKey = requireSupabaseSecretKey(Deno.env.get("SUPABASE_SECRET_KEYS")); } catch { /* generic configuration error */ }
-    if (!supabaseUrl || !serviceKey) return json({ error: "Webhook server configuration is incomplete." }, 503);
-    const db = createClient(supabaseUrl, serviceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-      global: { fetch: secretKeyFetch(serviceKey) },
-    });
-    const configuredEnvironment = await readLalamoveEnvironment(db);
-
-    const candidates: Array<{ environment: "sandbox" | "producao"; apiKey: string; apiSecret: string }> = [];
-    for (const environment of ["sandbox", "producao"] as const) {
-      try {
-        const credentials = readLalamoveCredentials(environment, (name) => Deno.env.get(name));
-        candidates.push({ environment, apiKey: credentials.apiKey, apiSecret: credentials.apiSecret });
-      } catch { /* One environment may be intentionally unconfigured. */ }
-    }
-    if (configuredEnvironment === "producao" && !candidates.some((candidate) => candidate.environment === "producao")) {
-      return json({ error: "Credenciais Lalamove de produção ausentes ou inválidas. Configure LALAMOVE_PROD_API_KEY e LALAMOVE_PROD_API_SECRET no Supabase.", code: "PRODUCTION_CREDENTIALS_REQUIRED" }, 503);
-    }
-    if (!candidates.length) return json({ error: "No Lalamove webhook credentials are configured." }, 503);
-    const matched = (await Promise.all(candidates.map(async (candidate) => ({
-      ...candidate,
-      valid: await verifyWebhookSignature({
-        apiKey: candidate.apiKey, apiSecret: candidate.apiSecret, path: PATH, payload,
-      }),
-    })))).find((candidate) => candidate.valid);
-    // Never process an unsigned/forged event. HTTP 200 acknowledges receipt so Lalamove
-    // does not disable the configured URL; the event has no database side effects.
-    if (!matched) return json({ received: true, ignored: true });
-
-    const data = payload.data || {};
-    const order = data.order && typeof data.order === "object" ? data.order : data;
-    const orderId = String(order.orderId || order.id || data.orderId || data.id || "");
-    // V3 eventId is normally present; signature is a stable fallback for signed payload variants.
-    const eventId = String(payload.eventId || data.eventId || payload.id || payload.signature || "");
-    const eventType = String(payload.eventType || data.eventType || payload.type || "UNKNOWN");
-    const status = mapLalamoveStatus(eventType, String(order.status || data.status || ""));
-    if (!orderId || !eventId) return json({ error: "Missing event or order identifier." }, 400);
-    if (!status && eventType !== "DRIVER_ASSIGNED") return json({ received: true, ignored: true });
-    const eventDateRaw = data.updatedAt || order.updatedAt || data.createdAt || "";
-    const eventAt = eventDateRaw && Number.isFinite(Date.parse(String(eventDateRaw)))
-      ? new Date(String(eventDateRaw)).toISOString()
-      : new Date(Number(payload.timestamp) * 1000).toISOString();
-    // The signed API key identifies the event environment; current setting may have changed.
-    let driver = safeDriver(data.driver || order.driver);
-    const driverId = String(data.driverId || order.driverId || data.driver?.driverId || order.driver?.driverId || "");
-    if (!driver && driverId) {
-      try {
-        const lookup = await getLalamoveDriverDetails(matched.apiKey, matched.apiSecret, orderId, driverId, fetch, matched.environment);
-        if (lookup.response.ok) driver = safeDriver(lookup.payload);
-      } catch {
-        // Driver detail lookup is best-effort; webhook status must still be applied.
-      }
-    }
-    const trackingUrl = String(order.shareLink || data.shareLink || "");
-    const { data: result, error } = await db.rpc("service_apply_lalamove_webhook", {
-      p_event_id: eventId, p_event_type: eventType, p_event_at: eventAt,
-      p_lalamove_order_id: orderId, p_status: status || "assigned",
-      p_tracking_url: trackingUrl, p_driver: driver, p_ambiente: matched.environment,
-    });
-    if (error) {
-      console.error("lalamove-webhook", { stage: "apply", code: String(error.code || "DB_ERROR") });
-      return json({ error: "Could not apply webhook event." }, 500);
-    }
-    if (result?.unknown_order === true) return json({ error: "Order is not registered yet; retry this event." }, 503);
-    return json({ received: true, ...result });
-  } catch {
-    return json({ error: "Webhook processing failed." }, 500);
-  }
+import{createClient}from"npm:@supabase/supabase-js@2.57.4";import{readLalamoveCredentials,readLalamoveEnvironment}from"../_shared/lalamove-environment.ts";import{getLalamoveDriverDetails,isWebhookVerificationProbe,mapLalamoveStatus,verifyWebhookSignature,requireSupabaseServiceRoleJwt}from"../_shared/lalamove-dispatch.ts";import{applyLalamoveWebhookEvent}from"./webhook-event.ts";
+const PATH="/functions/v1/lalamove-webhook";const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{"Content-Type":"application/json"}});
+function safeDriver(v:any){if(!v||typeof v!=="object")return null;const d={name:String(v.name||"").slice(0,100),phone:String(v.phone||"").slice(0,40),plateNumber:String(v.plateNumber||"").slice(0,20)};return Object.values(d).some(Boolean)?d:null;}
+function webhookMetadata(p:any,env:string,missing:string[],reason:string){const d=p?.data&&typeof p.data==="object"?p.data:{};const o=d.order&&typeof d.order==="object"?d.order:d;console.warn("lalamove-webhook rejected",{reason:reason.slice(0,60),event_type:String(p?.eventType||d.eventType||p?.type||"UNKNOWN").slice(0,80),lalamove_order_id:String(o.orderId||o.id||d.orderId||d.id||"").slice(0,80)||null,missing_fields:missing.slice(0,8),environment:env==="sandbox"||env==="producao"?env:"unknown"});}
+Deno.serve(async(req:Request)=>{if(["GET","HEAD","OPTIONS"].includes(req.method))return new Response(null,{status:200,headers:{"Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"GET, HEAD, POST, OPTIONS","Access-Control-Allow-Headers":"content-type, authorization, x-signature"}});if(req.method!=="POST")return new Response(null,{status:200});const raw=await req.text();if(!raw.trim())return new Response(null,{status:200});let p:any;try{p=JSON.parse(raw);}catch{return new Response(null,{status:200});}if(isWebhookVerificationProbe(p))return json({received:true,verification:true});let configured="unknown";
+try{const url=Deno.env.get("SUPABASE_URL")||"";const key=requireSupabaseServiceRoleJwt(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"));if(!url)return json({error:"Webhook server configuration is incomplete."},503);const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});configured=await readLalamoveEnvironment(db);
+const candidates:Array<{environment:"sandbox"|"producao";apiKey:string;apiSecret:string}>=[];for(const env of ["sandbox","producao"] as const){try{const cr=readLalamoveCredentials(env,n=>Deno.env.get(n));candidates.push({environment:env,apiKey:cr.apiKey,apiSecret:cr.apiSecret});}catch{/* unconfigured */}}
+if(configured==="producao"&&!candidates.some(x=>x.environment==="producao"))return json({error:"Credenciais Lalamove de produção ausentes ou inválidas.",code:"PRODUCTION_CREDENTIALS_REQUIRED"},503);if(!candidates.length)return json({error:"No Lalamove webhook credentials are configured."},503);
+const matched=(await Promise.all(candidates.map(async x=>({...x,valid:await verifyWebhookSignature({apiKey:x.apiKey,apiSecret:x.apiSecret,path:PATH,payload:p})})))).find(x=>x.valid);const data=p.data||{};const order=data.order&&typeof data.order==="object"?data.order:data;
+if(!matched){const missing=[...(!String(p?.eventId||data.eventId||p?.id||"").trim()?["eventId"]:[]),...(!String(order.orderId||order.id||data.orderId||data.id||"").trim()?["orderId"]:[])];webhookMetadata(p,configured,missing,"signature_invalid");return json({received:true,ignored:true});}
+const orderId=String(order.orderId||order.id||data.orderId||data.id||"").trim();const eventId=String(p.eventId||data.eventId||p.id||p.signature||"").trim();const eventType=String(p.eventType||data.eventType||p.type||"UNKNOWN").slice(0,80);const status=mapLalamoveStatus(eventType,String(order.status||data.status||""))||(eventType==="DRIVER_ASSIGNED"?"assigned":"");
+const rawDate=data.updatedAt||order.updatedAt||data.createdAt||"";const ts=Number(p.timestamp);const eventAt=rawDate&&Number.isFinite(Date.parse(String(rawDate)))?new Date(String(rawDate)).toISOString():Number.isFinite(ts)&&ts>0?new Date(ts*1000).toISOString():"";
+const missing=[...(!eventId?["eventId"]:[]),...(!orderId?["orderId"]:[]),...(!eventAt?["eventAt"]:[])];if(missing.length){webhookMetadata(p,matched.environment,missing,"required_fields_missing");return json({error:"Missing required webhook fields.",missing_fields:missing},400);}if(!status){webhookMetadata(p,matched.environment,["status"],"status_unrecognized");return json({received:true,ignored:true});}
+let driver=safeDriver(data.driver||order.driver);const driverId=String(data.driverId||order.driverId||data.driver?.driverId||order.driver?.driverId||"");if(!driver&&driverId){try{const lookup=await getLalamoveDriverDetails(matched.apiKey,matched.apiSecret,orderId,driverId,fetch,matched.environment);if(lookup.response.ok)driver=safeDriver(lookup.payload);}catch{/* optional driver details */}}
+const result=await applyLalamoveWebhookEvent(db,{p_event_id:eventId,p_event_type:eventType,p_event_at:eventAt,p_lalamove_order_id:orderId,p_status:status,p_tracking_url:String(order.shareLink||data.shareLink||""),p_driver:driver,p_ambiente:matched.environment});
+if(result.missingFields.length){webhookMetadata(p,matched.environment,result.missingFields,"required_fields_missing");return json({error:"Missing required webhook fields.",missing_fields:result.missingFields},400);}if(result.error){webhookMetadata(p,matched.environment,[],"rpc_apply_failed");console.error("lalamove-webhook RPC error",{code:String(result.error.code||"DB_ERROR")});return json({error:"Could not apply webhook event."},500);}if(result.data?.unknown_order){webhookMetadata(p,matched.environment,[],"unknown_order");return json({error:"Order is not registered yet; retry this event."},503);}return json({received:true,...(result.data||{})});
+}catch(e){webhookMetadata(p,configured,[],e instanceof Error?e.message:"UNKNOWN");return json({error:"Webhook processing failed."},500);}
 });

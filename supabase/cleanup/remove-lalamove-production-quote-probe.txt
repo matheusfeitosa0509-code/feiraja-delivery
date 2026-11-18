@@ -1,1 +1,2 @@
 One-time deployment marker: remove the temporary lalamove-production-quote-probe Edge Function from production and verify its endpoint returns HTTP 404 or 410.
+Approved one-time cleanup marker for Rodada 2.

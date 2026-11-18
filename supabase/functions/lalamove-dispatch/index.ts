@@ -4,7 +4,7 @@ import { formatDropoff, requestSandboxQuotation } from "../_shared/delivery-quot
 import { geocodeManausAddress } from "../_shared/geocoding.ts";
 import {
   assertTestProductionDispatchConfirmation, buildLalamoveOrderBody, canCancelLalamove, canQuoteLalamove, canStartDispatch, isLalamoveDispatchReady, cancelLalamoveOrder, createLalamoveOrder, normalizeBrazilPhone,
-  getLalamoveDriverDetails, getLalamoveOrderDetails, mapLalamoveStatus, priceDifference, quoteFee, requireSupabaseServiceRoleJwt, storeLalamoveQuotes,
+  getLalamoveDriverDetails, getLalamoveOrderDetails, mapLalamoveStatus, priceDifference, quoteFee, requireSupabaseServiceRoleJwt, storeLalamoveQuotes, sanitizeLalamoveErrorPayload,
 } from "../_shared/lalamove-dispatch.ts";
 
 const cors = {
@@ -75,7 +75,8 @@ async function fetchQuote(apiKey: string, apiSecret: string, serviceType: "LALAG
   if (!response.ok) {
     const code = String(payload?.message || "");
     if (code === "ERR_OUT_OF_SERVICE_AREA") throw new Error("OUT_OF_SERVICE_AREA");
-    throw new Error("LALAMOVE_QUOTE_FAILED");
+    const providerBody=sanitizeLalamoveErrorPayload(payload); console.error("lalamove-dispatch failure",{stage:"quote",internal_code:"LALAMOVE_QUOTE_FAILED",http_status:response.status,provider_body:providerBody,environment});
+    const failure=new Error("LALAMOVE_QUOTE_FAILED") as Error & {httpStatus?:number;providerBody?:Record<string,string>;providerReason?:string}; failure.httpStatus=response.status;failure.providerBody=providerBody;failure.providerReason=providerBody.code||providerBody.errorCode||providerBody.message||"";throw failure;
   }
   return payload?.data;
 }
@@ -164,17 +165,19 @@ async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "M
   let result: { response: Response; payload: any };
   try {
     result = await createLalamoveOrder(key, secret, body, fetch, environment);
-  } catch {
+  } catch (error) {
     // Timeout is ambiguous: keep "creating" so a second tap cannot create another ride.
+    console.error("lalamove-dispatch failure", { stage: "create_order", internal_code: "LALAMOVE_CREATE_TIMEOUT", http_status: null, provider_body: {}, environment, transport_error: error instanceof Error ? error.name : "UNKNOWN" });
     return { pending_confirmation: true };
   }
   if (!result.response.ok) {
+    const providerBody=sanitizeLalamoveErrorPayload(result.payload); console.error("lalamove-dispatch failure",{stage:"create_order",internal_code:"LALAMOVE_CREATE_FAILED",http_status:result.response.status,provider_body:providerBody,environment});
     if (result.response.status >= 500) return { pending_confirmation: true };
     await db.rpc("service_fail_lalamove_dispatch", {
       p_order_id: order.id, p_error_code: String(result.payload?.message || "HTTP_" + result.response.status),
     });
     if (String(result.payload?.message || "") === "ERR_QUOTATION_EXPIRED") throw new Error("QUOTE_EXPIRED");
-    throw new Error("LALAMOVE_CREATE_FAILED");
+    const failure=new Error("LALAMOVE_CREATE_FAILED") as Error & {httpStatus?:number;providerBody?:Record<string,string>;providerReason?:string};failure.httpStatus=result.response.status;failure.providerBody=providerBody;failure.providerReason=providerBody.code||providerBody.errorCode||providerBody.message||"";throw failure;
   }
   const data = result.payload?.data;
   const lalamoveOrderId = String(data?.orderId || "");
@@ -182,6 +185,7 @@ async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "M
   const currency = String(data?.priceBreakdown?.currency || "").toUpperCase();
   if (!lalamoveOrderId || !Number.isFinite(rawCost) || rawCost < 0 || currency !== "BRL") {
     // The provider may already have created the order. Keep the lock for manual reconciliation.
+    console.error("lalamove-dispatch failure", { stage: "validate_create_response", internal_code: "LALAMOVE_CREATE_RESPONSE_INVALID", http_status: result.response.status, provider_body: sanitizeLalamoveErrorPayload(result.payload), environment });
     return { pending_confirmation: true };
   }
   const mapped = mapLalamoveStatus("ORDER_CREATED", String(data?.status || "ASSIGNING_DRIVER")) || "searching";
@@ -195,7 +199,7 @@ async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "M
     p_actual_cost: rawCost, p_status: mapped,
     p_tracking_url: String(data?.shareLink || ""), p_driver: driver,
   });
-  if (finishError) return { pending_confirmation: true };
+  if (finishError) { console.error("lalamove-dispatch failure", { stage: "persist_created_order", internal_code: "DISPATCH_FINISH_FAILED", http_status: null, provider_body: {}, environment, db_code: finishError.code || "DB_ERROR" }); return { pending_confirmation: true }; }
   return { created: true, status: mapped, tracking_url: String(data?.shareLink || ""), vehicle };
 }
 async function refreshOrderStatus(db: any, orderId: string) {
@@ -205,7 +209,7 @@ async function refreshOrderStatus(db: any, orderId: string) {
   const environment = normalizeLalamoveEnvironment(current.ambiente || selectedEnvironment);
   const { key, secret } = environmentCredentials(environment);
   const result = await getLalamoveOrderDetails(key, secret, String(current.lalamove_order_id), fetch, environment);
-  if (!result.response.ok) throw new Error("LALAMOVE_STATUS_FAILED");
+  if (!result.response.ok) {const providerBody=sanitizeLalamoveErrorPayload(result.payload);console.error("lalamove-dispatch failure",{stage:"refresh_status",internal_code:"LALAMOVE_STATUS_FAILED",http_status:result.response.status,provider_body:providerBody,environment});const failure=new Error("LALAMOVE_STATUS_FAILED") as Error & {httpStatus?:number;providerBody?:Record<string,string>;providerReason?:string};failure.httpStatus=result.response.status;failure.providerBody=providerBody;failure.providerReason=providerBody.code||providerBody.errorCode||providerBody.message||"";throw failure;}
   const data = result.payload || {};
   const status = mapLalamoveStatus("ORDER_STATUS_CHANGED", String(data.status || ""));
   if (!status) throw new Error("LALAMOVE_STATUS_UNKNOWN");
@@ -249,8 +253,10 @@ async function cancelOrder(db: any, orderId: string) {
     throw new Error("CANCELLATION_WINDOW_CLOSED");
   }
   const response = await cancelLalamoveOrder(key, secret, String(current.lalamove_order_id), fetch, environment);
-  if (response.status === 409) throw new Error("CANCELLATION_FORBIDDEN");
-  if (!response.ok && response.status !== 204) throw new Error("LALAMOVE_CANCEL_FAILED");
+  const cancelPayload = await response.clone().json().catch(() => ({}));
+  const cancelBody = sanitizeLalamoveErrorPayload(cancelPayload);
+  if (response.status === 409) { console.error("lalamove-dispatch failure", { stage: "cancel_order", internal_code: "CANCELLATION_FORBIDDEN", http_status: 409, provider_body: cancelBody, environment }); throw new Error("CANCELLATION_FORBIDDEN"); }
+  if (!response.ok && response.status !== 204) {console.error("lalamove-dispatch failure",{stage:"cancel_order",internal_code:"LALAMOVE_CANCEL_FAILED",http_status:response.status,provider_body:cancelBody,environment});const failure=new Error("LALAMOVE_CANCEL_FAILED") as Error & {httpStatus?:number};failure.httpStatus=response.status;throw failure;}
   const { error: updateError } = await db.rpc("service_cancel_lalamove_dispatch", { p_order_id: orderId });
   if (updateError) throw new Error("CANCEL_STATE_UPDATE_FAILED");
   return { cancelled: true };
@@ -259,6 +265,7 @@ async function cancelOrder(db: any, orderId: string) {
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Método não permitido." }, 405);
+  let currentStage="admin_context"; let currentEnvironment="unknown";
   try {
     const context = await adminContext(req);
     if (context.error) return context.error;
@@ -266,7 +273,7 @@ Deno.serve(async (req: Request) => {
     if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Requisição inválida." }, 400);
     const orderId = String(body.order_id || "").trim();
     if (!orderId || orderId.length > 100) return json({ error: "Pedido inválido." }, 400);
-    const action = String(body.action || "");
+    const action = String(body.action || ""); currentStage=action||"validate_action";
     if (!["quote", "create", "cancel", "status"].includes(action)) return json({ error: "Ação inválida." }, 400);
     if (action === "cancel") return json(await cancelOrder(context.db, orderId));
     if (action === "status") return json(await refreshOrderStatus(context.db, orderId));
@@ -281,6 +288,7 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Confirme uma cotação válida e escolha moto ou carro." }, 400);
     }
     const environment = await readLalamoveEnvironment(context.db);
+    currentEnvironment=environment;
     const testProductionConfirmed = body.test_production_confirmed === true;
     const result = await dispatchOrder(context.db, readyOrder, sessionId, vehicle, environment, testProductionConfirmed);
     if (result.duplicate) return json({ error: "Este pedido já está sendo enviado ou já possui uma corrida.", ...result }, 409);
@@ -291,6 +299,8 @@ Deno.serve(async (req: Request) => {
     return json(result);
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
+    const diagnostic=error as Error & {httpStatus?:number;providerBody?:Record<string,string>;providerReason?:string};
+    console.error("lalamove-dispatch failure",{stage:currentStage,internal_code:code,http_status:diagnostic.httpStatus??null,provider_body:diagnostic.providerBody||{},environment:currentEnvironment});
     const messages: Record<string, { message: string; status: number }> = {
       ORDER_NOT_FOUND: { message: "Pedido não encontrado.", status: 404 },
       NOT_HOME_DELIVERY: { message: "Este pedido não é uma entrega em casa.", status: 400 },
@@ -335,7 +345,7 @@ Deno.serve(async (req: Request) => {
       DISPATCH_START_FAILED: { message: "Não foi possível reservar a criação desta corrida.", status: 503 },
     };
     const mapped = messages[code];
-    if (mapped) return json({ error: mapped.message, code }, mapped.status);
+    if (mapped) {const detail=diagnostic.providerReason?` Motivo informado pela Lalamove: ${diagnostic.providerReason}${diagnostic.httpStatus?` (HTTP ${diagnostic.httpStatus})`:""}.`:"";return json({error:mapped.message+detail,code,stage:currentStage,http_status:diagnostic.httpStatus??null,provider_reason:diagnostic.providerReason||null},mapped.status);}
     console.error("lalamove-dispatch", { code });
     return json({ error: "Não foi possível concluir a operação de entrega na Lalamove.", code: "INTERNAL_ERROR" }, 500);
   }

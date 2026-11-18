@@ -142,7 +142,7 @@ export async function getLalamoveOrderDetails(
     method: "GET", headers: signed.headers, signal: AbortSignal.timeout(10000),
   });
   const payload = await response.json().catch(() => ({}));
-  return { response, payload: payload?.data || {} };
+  return { response, payload: response.ok ? (payload?.data || {}) : payload };
 }
 
 export async function getLalamoveDriverDetails(
@@ -265,4 +265,20 @@ export function secretKeyFetch(secretKey: string, fetcher: typeof fetch = fetch)
     headers.delete("Authorization");
     return fetcher(input, { ...init, headers });
   };
+}
+
+/** Allowlist-only provider diagnostics. Excludes contacts, addresses, signatures and raw payloads. */
+export function sanitizeLalamoveErrorPayload(payload: unknown): Record<string,string> {
+ const root=payload&&typeof payload==="object"?payload as Record<string,unknown>:{};
+ const nested=root.error&&typeof root.error==="object"?root.error as Record<string,unknown>:root;
+ const output:Record<string,string>={};
+ for(const key of ["code","errorCode","message","reason","status"]){
+  const value=nested[key]??(nested===root?undefined:root[key]);
+  if(typeof value!=="string"&&typeof value!=="number")continue;
+  const safe=String(value).replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,"[redacted-email]")
+   .replace(/\+?\d[\d ().-]{7,}\d/g,"[redacted-phone]").replace(/https?:\/\/\S+/gi,"[redacted-url]")
+   .replace(/[\r\n\t]+/g," ").slice(0,180);
+  if(safe)output[key]=safe;
+ }
+ return output;
 }

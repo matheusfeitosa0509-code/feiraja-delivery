@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.117.1";
-import { requireSupabaseSecretKey, secretKeyFetch } from "../_shared/lalamove-dispatch.ts";
+import { requireSupabaseServiceRoleJwt } from "../_shared/lalamove-dispatch.ts";
 import { normalizeLalamoveEnvironment, readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
 import { isTerminalTrackingStatus } from "../_shared/lalamove-tracking.ts";
 import { getProviderTracking } from "./providers/index.ts";
@@ -24,7 +24,7 @@ Deno.serve(async (req: Request) => {
   try {
     const url = requiredEnv("SUPABASE_URL");
     const anon = requiredEnv("SUPABASE_ANON_KEY");
-    const service = requireSupabaseSecretKey(Deno.env.get("SUPABASE_SECRET_KEYS"));
+    const service = requireSupabaseServiceRoleJwt(requiredEnv("SUPABASE_SERVICE_ROLE_KEY"));
     const authorization = req.headers.get("Authorization") || "";
     const token = authorization.replace(/^Bearer\s+/i, "");
     if (!token || token === authorization) return json({ error: "Sessão necessária." }, 401);
@@ -35,10 +35,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => null);
     const orderId = String(body?.order_id || "").trim();
     if (!orderId || orderId.length > 100) return json({ error: "Pedido inválido." }, 400);
-    const db = createClient(url, service, {
-      auth: { persistSession: false, autoRefreshToken: false },
-      global: { fetch: secretKeyFetch(service) },
-    });
+    const db = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
     const configuredEnvironment = await readLalamoveEnvironment(db);
     const { data: order, error: orderError } = await db.from("orders")
       .select("id,user_id,status,delivery_type,delivery_vehicle")
