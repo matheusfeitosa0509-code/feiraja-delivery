@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const loja = readFileSync('loja.html', 'utf8');
+const assistantRuntime = readFileSync('assistant-runtime.js', 'utf8');
 const worker = readFileSync('supabase/functions/super-worker/index.ts', 'utf8');
 const assistant = readFileSync('supabase/functions/assistente/index.ts', 'utf8');
 const panel = readFileSync('painel.html', 'utf8');
@@ -28,7 +29,7 @@ test('checkout envia preferências nos fluxos Pix e retirada na loja', () => {
 
 test('repetição da loja e Assistente preservam os dois campos', () => {
   assert.match(loja, /cartPreferences\[p\.id\]=\{note:String\(item\.item_note/);
-  assert.match(loja, /cartPreferences\[item\.product_id\]=\{note:String\(item\.item_note/);
+  assert.match(assistantRuntime, /api\.cartPreferences\[item\.product_id\]=\{note:String\(item\.item_note/);
   assert.match(assistant, /preferencesById\.set\(id/);
   assert.match(assistant, /item_note: String\(oldItem\?\.item_note/);
   assert.match(assistant, /substitution_preference: preference === 'remove' \? 'remove' : 'replace'/);
