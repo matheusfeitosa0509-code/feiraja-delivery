@@ -38,6 +38,8 @@ const harness = `
 const $ = selector => document.querySelector(selector);
 let deliveryPlacesSessionToken='session-123',deliveryAutocompleteTimer=null,deliveryMap=null,deliveryMapCoordinates=null,deliveryMapReverseTimer=null,deliveryMapReverseSequence=0,deliveryMapReversePromise=Promise.resolve(),deliveryMapReverseError='',deliveryAddressManualEdits={street:false,number:false,neighborhood:false},deliveryQuoteTimeoutMs=80,deliveryNeedsExplicitConfirm=true,deliveryStreetHome=null,deliveryNumberHome=null,deliveryNeighborhoodHome=null,deliveryMapPlaceName='',deliveryQuoteTimer=null,deliveryQuoteSequence=0,deliveryQuote=null,deliveryQuoteSlowTimer=null,deliveryQuoteDebounceStartedAt=0;
 const deliveryQuoteCache=new Map();
+const buildDeliveryQuoteCacheKey=(address,items,coordinates=null,userId='')=>JSON.stringify({user:String(userId||''),address,items,coordinates:coordinates||null});
+const isCachedDeliveryQuoteValid=(entry,now=Date.now())=>!!entry&&Number(entry.expiresAt)>Number(now)&&isValidDeliveryQuote(entry.quote,now);
 const normalizeDeliveryAddress = value => ({street:String(value.street||'').trim(),number:String(value.number||'').trim(),neighborhood:String(value.neighborhood||'').trim(),complement:'',reference:''});
 const getDeliveryAddress = () => normalizeDeliveryAddress({street:$('#deliveryStreet').value,number:$('#deliveryNumber').value,neighborhood:$('#deliveryNeighborhood').value});
 let quoteCalls=0,quoteMode='success';
