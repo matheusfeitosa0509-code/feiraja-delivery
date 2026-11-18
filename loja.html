@@ -2398,6 +2398,7 @@ async function openAssistantSheet(){
   const {data:{session},error}=await supabase.auth.getSession();
   if(error)throw error;
   if(!session?.user){openAccountScreen();return;}
+  void ensureAssistantSpeechRecognition();
   if(!assistantHistory.length)appendAssistantBubble('assistant','Olá! Fale, digite ou mande uma foto da sua lista ou de um produto. Vou montar uma sugestão para você conferir.');
   document.querySelector('.assistant-examples').hidden=assistantHistory.some(item=>item.role==='user');
   $('#assistantSheet').setAttribute('aria-hidden','false');
@@ -2421,24 +2422,22 @@ $('#assistantNavButton').addEventListener('click',openAssistantSheet);
 $('#assistantSheet').addEventListener('click',event=>{if(event.target===$('#assistantSheet'))closeAssistantSheet();});
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&$('#assistantSheet').classList.contains('open'))closeAssistantSheet();});
 
-const SpeechRecognitionApi=window.SpeechRecognition||window.webkitSpeechRecognition;
-if(typeof SpeechRecognitionApi==='function'){
- assistantRecognition=new SpeechRecognitionApi();
- assistantRecognition.lang='pt-BR';
- assistantRecognition.interimResults=false;
- assistantRecognition.maxAlternatives=1;
- $('#assistantMic').hidden=false;
- assistantRecognition.onstart=()=>{assistantListening=true;$('#assistantMic').textContent='■';setAssistantStatus('Ouvindo seu pedido…');};
- assistantRecognition.onresult=event=>{
-  const transcript=event.results?.[0]?.[0]?.transcript||'';
-  if(transcript){$('#assistantInput').value=transcript.slice(0,300);$('#assistantInput').focus();setAssistantStatus('Texto reconhecido. Revise e toque em Enviar.');}
- };
- assistantRecognition.onerror=()=>setAssistantStatus('Não consegui reconhecer a fala. Você pode escrever o pedido.',true);
- assistantRecognition.onend=()=>{assistantListening=false;$('#assistantMic').innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg>';};
- $('#assistantMic').addEventListener('click',()=>{
-  if(assistantListening){try{assistantRecognition.stop();}catch{}return;}
-  try{assistantRecognition.start();}catch{setAssistantStatus('O microfone não está disponível agora.',true);}
- });
+let assistantSpeechPromise=null;
+async function ensureAssistantSpeechRecognition(){
+ if(assistantRecognition)return assistantRecognition;
+ if(assistantSpeechPromise)return assistantSpeechPromise;
+ assistantSpeechPromise=import('./assistant-speech.js?v=20261118-lazy-assistant').then(({createAssistantSpeechRecognition})=>{
+  assistantRecognition=createAssistantSpeechRecognition();
+  if(!assistantRecognition)return null;
+  assistantRecognition.onstart=()=>{assistantListening=true;$('#assistantMic').textContent='■';setAssistantStatus('Ouvindo seu pedido…');};
+  assistantRecognition.onresult=event=>{const transcript=event.results?.[0]?.[0]?.transcript||'';if(transcript){$('#assistantInput').value=transcript.slice(0,300);$('#assistantInput').focus();setAssistantStatus('Texto reconhecido. Revise e toque em Enviar.');}};
+  assistantRecognition.onerror=()=>setAssistantStatus('Não consegui reconhecer a fala. Você pode escrever o pedido.',true);
+  assistantRecognition.onend=()=>{assistantListening=false;$('#assistantMic').innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg>';};
+  $('#assistantMic').hidden=false;
+  $('#assistantMic').addEventListener('click',()=>{if(assistantListening){try{assistantRecognition.stop();}catch{}return;}try{assistantRecognition.start();}catch{setAssistantStatus('O microfone não está disponível agora.',true);}});
+  return assistantRecognition;
+ }).catch(error=>{assistantSpeechPromise=null;console.warn('Voz do assistente indisponível:',error);return null;});
+ return assistantSpeechPromise;
 }
 
 document.querySelector('.assistant-examples').addEventListener('click',event=>{
