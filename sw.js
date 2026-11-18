@@ -1,6 +1,6 @@
 /* Build 2026-11-18-storefront-static-cache-v1. HTML e APIs permanecem sempre na rede. */
 const STATIC_CACHE='feira-static-v20261118-1';
-const STATIC_ASSET=/\\.(?:js|css|mjs|woff2?|ttf|otf|svg|png|jpe?g|webp|ico)(?:\\?.*)?$/i;
+const STATIC_ASSET=/\.(?:js|css|mjs|woff2?|ttf|otf|svg|png|jpe?g|webp|ico)(?:\?.*)?$/i;
 self.addEventListener('fetch',function(event){
  const request=event.request;
  if(request.method!=='GET'||request.mode==='navigate')return;
