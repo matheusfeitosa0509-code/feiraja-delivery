@@ -1,7 +1,7 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   buildQuotationBody, chooseVehicle, estimateLoad, formatDropoff, isQuoteAllowed,
-  parseQuotation, requestSandboxQuotation, retryLalamove429,
+  parseQuotation, requestSandboxQuotation, retryLalamove429, startParallelVehicleQuotes,
 } from "../_shared/delivery-quote.ts";
 import { getStoreSchedule } from "../_shared/store-schedule.js";
 
@@ -178,5 +178,43 @@ Deno.test("Lalamove HTTP 429 repete automaticamente duas vezes com espera cresce
   }, "https://rest.lalamove.com/v3/quotations", { method: "POST" }, async (ms) => { waits.push(ms); });
   assertEquals(response.status, 200);
   assertEquals(calls, 3);
-  assertEquals(waits, [1200, 2400]);
+  assertEquals(waits, [250, 500]);
+});
+
+
+Deno.test("MOTO e CAR são iniciados em paralelo; o veículo selecionado é o resultado principal", async () => {
+  const started: string[] = [];
+  const tasks = startParallelVehicleQuotes("MOTO", async (vehicle) => {
+    started.push(vehicle);
+    await Promise.resolve();
+    return vehicle;
+  });
+  const [selected, background] = await Promise.all([tasks.selected, tasks.background]);
+  assertEquals(started.sort(), ["CAR", "MOTO"]);
+  assertEquals(selected, "MOTO");
+  assertEquals(background, "CAR");
+});
+
+Deno.test("Lalamove HTTP 5xx repete com espera curta", async () => {
+  let calls = 0;
+  const waits: number[] = [];
+  const response = await retryLalamove429(async () => {
+    calls++;
+    return new Response("{}", { status: calls < 3 ? 503 : 200 });
+  }, "https://rest.lalamove.com/v3/quotations", { method: "POST" }, async (ms) => { waits.push(ms); });
+  assertEquals(response.status, 200);
+  assertEquals(calls, 3);
+  assertEquals(waits, [250, 500]);
+});
+
+Deno.test("Lalamove HTTP 4xx não repete", async () => {
+  let calls = 0;
+  const waits: number[] = [];
+  const response = await retryLalamove429(async () => {
+    calls++;
+    return new Response("{}", { status: 422 });
+  }, "https://rest.lalamove.com/v3/quotations", { method: "POST" }, async (ms) => { waits.push(ms); });
+  assertEquals(response.status, 422);
+  assertEquals(calls, 1);
+  assertEquals(waits, []);
 });
