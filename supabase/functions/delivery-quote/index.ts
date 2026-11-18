@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
 import { chooseVehicle, estimateLoad, formatDropoff, isQuoteAllowed, parseQuotation, requestSandboxQuotation, retryLalamove429, startParallelVehicleQuotes } from "../_shared/delivery-quote.ts";
-import { geocodeManausAddress, validateManausCoordinates } from "../_shared/geocoding.ts";
+import { geocodeManausAddress, resolveDeliveryCoordinates } from "../_shared/geocoding.ts";
 import { getStoreSchedule } from "../_shared/store-schedule.js";
 
 const cors = {
@@ -92,9 +92,11 @@ Deno.serve(async (req: Request) => {
     timings.environment_ms = Math.round(performance.now() - environmentStarted);
     const geocodingKey = Deno.env.get("GOOGLE_GEOCODING_API_KEY") || "";
     const geocodingStarted = performance.now();
-    const dropoffCoordinates = body.coordinates && typeof body.coordinates === "object"
-      ? validateManausCoordinates(body.coordinates.lat, body.coordinates.lng)
-      : await geocodeManausAddress(dropoff, geocodingKey);
+    const dropoffCoordinates = await resolveDeliveryCoordinates(
+      dropoff,
+      body.coordinates && typeof body.coordinates === "object" ? body.coordinates : null,
+      (address) => geocodeManausAddress(address, geocodingKey),
+    );
     if (!originCoordinatesPromise) originCoordinatesPromise = geocodeManausAddress(ORIGIN, geocodingKey);
     let originCoordinates: { lat: string; lng: string };
     try {
