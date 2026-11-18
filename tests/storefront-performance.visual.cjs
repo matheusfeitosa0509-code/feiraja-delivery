@@ -80,6 +80,7 @@ async function measure(page,cdp,url) {
    await candidate.addInitScript(()=>{window.__storefrontPerf={firstProductAt:null,skeletonSeen:false};const mark=()=>{if(window.__storefrontPerf.firstProductAt===null&&document.querySelector('#homeProductSections .product[data-product-id]'))window.__storefrontPerf.firstProductAt=performance.now();if(document.querySelector('#homeProductSections .storefront-skeleton'))window.__storefrontPerf.skeletonSeen=true;};new MutationObserver(mark).observe(document,{childList:true,subtree:true});document.addEventListener('DOMContentLoaded',mark);});
    const candidateCdp=await emulate4G(candidate);
    const candidateFirst=await measure(candidate,candidateCdp,url);
+   await candidate.waitForFunction(()=>{const cache=JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')||'null');return !!cache&&Array.isArray(cache.products)&&cache.products.length>0;},null,{timeout:30000});
    const saved=await candidate.evaluate(()=>JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')||'null'));
    assert.ok(candidateFirst.firstProductMs<2500,'first visit did not meet <2.5s target: '+candidateFirst.firstProductMs+'ms');
    assert.ok(candidateFirst.skeletonSeen,'first visit without cache did not show skeleton');
