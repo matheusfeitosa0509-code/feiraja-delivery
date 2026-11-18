@@ -73,6 +73,7 @@ export function getCommercialSchedule(data = new Date()) {
 }
 export function upcomingHolidays(from = new Date(), limit = 8) {
   const today=parts(from), todayKey=key(today.year,today.month,today.day);
-  return Object.entries(HOLIDAYS).filter(([date])=>date>=todayKey).sort(([a],[b])=>a.localeCompare(b)).slice(0,limit)
+  const entries=[...Object.entries(HOLIDAYS),["2026-12-24",{name:"Véspera de Natal",closed:false}],["2026-12-31",{name:"Véspera de Ano Novo",closed:false}],["2027-12-24",{name:"Véspera de Natal",closed:false}],["2027-12-31",{name:"Véspera de Ano Novo",closed:false}]];
+  return entries.filter(([date])=>date>=todayKey).sort(([a],[b])=>a.localeCompare(b)).slice(0,limit)
     .map(([date,item])=>({date,name:item.name,hours:item.closed?"Fechado":"6h às 11h"}));
 }
