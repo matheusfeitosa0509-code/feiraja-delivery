@@ -32,6 +32,7 @@ for (const removed of ['id="deliveryMapFallback"', 'id="deliveryMapPanel"', 'id=
   assert.ok(!storeHtml.includes(removed), 'legacy embedded map remains: ' + removed);
 }
 assert.ok(storeHtml.includes('places.googleapis.com') === false, 'Places API key must remain server-side');
+assert.ok(storeHtml.includes('#deliveryQuoteStatus.is-loading::before'), 'quote loading spinner is styled');
 assert.ok(helperSource.includes('deliveryQuoteErrorMessage'));
 
 const harness = `
@@ -124,7 +125,6 @@ document.body.innerHTML=mapOverlayMarkup;
    await page.waitForFunction(()=>document.querySelector('#deliveryMapFullscreen').hidden===true);
    await page.waitForTimeout(250);
    assert.equal(await page.evaluate(()=>window.quoteCount()),1,'map confirmation starts the quote without debounce');
-   assert.equal(await page.locator('#deliveryQuoteStatus').evaluate(el=>el.classList.contains('is-loading')),true,'loading animation appears while calculating');
    await page.waitForTimeout(1300);
    assert.equal(await page.evaluate(()=>window.quoteCount()),1,'quote runs only after explicit confirmation');
    await page.waitForFunction(()=>document.querySelector('#submitOrder').disabled===false);
@@ -140,6 +140,8 @@ document.body.innerHTML=mapOverlayMarkup;
    assert.equal(await page.evaluate(()=>window.quoteCount()),2,'quote debounce fires at 800 ms');
    await page.waitForFunction(()=>document.querySelector('#submitOrder').disabled===false);
    await page.evaluate(()=>{window.setQuoteMode('slow');window.setQuoteTimeout(8000);window.clearQuoteCache();window.runQuote();});
+   await page.waitForTimeout(200);
+   assert.equal(await page.locator('#deliveryQuoteStatus').evaluate(el=>el.classList.contains('is-loading')),true,'loading animation stays active during a slow quote');
    await page.waitForFunction(()=>document.querySelector('#deliveryQuoteStatus').textContent.includes('Ainda calculando'),{timeout:7500});
    await page.waitForFunction(()=>document.querySelector('#submitOrder').disabled===false,{timeout:3000});
    await page.evaluate(()=>{window.setQuoteMode('timeout');window.setQuoteTimeout(80);window.clearQuoteCache();window.runQuote();});
