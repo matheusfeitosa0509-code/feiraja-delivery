@@ -1283,6 +1283,7 @@ try {
   const groups=[...new Set(list.map(p=>String(p.category||'').trim()||'Outros'))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   root.innerHTML=groups.map(category=>'<section class="catalog-category home-catalog-category"><header class="home-category-heading"><h2>'+esc(category)+'</h2></header><div class="catalog-row">'+list.filter(p=>(String(p.category||'').trim()||'Outros')===category).map((p,index)=>{const src=typeof p.image==='string'&&(p.image.startsWith('./')||/^https:\/\//i.test(p.image))?p.image:typeof p.image==='string'&&p.image.startsWith('imagens/produtos/')?'./'+p.image:'';return '<article class="product" data-product-id="'+esc(p.id)+'"><div class="product-media"><img width="160" height="160" loading="lazy" decoding="async" '+(index<4?'fetchpriority="high" ':'')+'src="'+esc(src)+'" alt="'+esc(p.name)+'"></div><div class="pbody"><h3>'+esc(p.name)+'</h3><div class="price">'+money(p.price)+'</div></div></article>';}).join('')+'</div></section>').join('');
   root.dataset.storefrontCache='shown';
+  window.__storefrontBootstrapProducts=true;
   return true;
  };
  if(cache&&cache.version===1&&Array.isArray(cache.products)&&cache.products.length&&cache.products.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'&&Number.isFinite(Number(p.price)))){
@@ -1821,7 +1822,7 @@ async function load(options={}){
    renderStorefrontProducts();
   }else{
    status.textContent='Carregando produtos…';
-   renderStorefrontSkeleton();
+   if(!window.__storefrontBootstrapProducts)renderStorefrontSkeleton();
   }
  }else{
   status.textContent='Atualizando catálogo…';
