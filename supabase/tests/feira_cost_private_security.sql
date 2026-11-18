@@ -60,6 +60,17 @@ begin
     end if;
   end loop;
 
+  -- A configuração pública não deve expor o percentual de margem.
+  if has_function_privilege('anon', 'public.admin_get_low_margin_percent()', 'EXECUTE') then
+    raise exception 'anon must not execute admin_get_low_margin_percent';
+  end if;
+  if not has_function_privilege('authenticated', 'public.admin_get_low_margin_percent()', 'EXECUTE') then
+    raise exception 'authenticated must be able to call the admin margin RPC (the function itself enforces admin membership)';
+  end if;
+  if position('low_margin_percent' in pg_get_functiondef('public.get_sales_settings()'::regprocedure)) > 0 then
+    raise exception 'public get_sales_settings must not expose low_margin_percent';
+  end if;
+
   -- As RPCs administrativas continuam executáveis por authenticated, mas exigem admin.
   foreach v_def in array array[
     'public.admin_get_cost_report(timestamptz,timestamptz)',
