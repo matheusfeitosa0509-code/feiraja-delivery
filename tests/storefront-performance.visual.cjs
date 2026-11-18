@@ -42,10 +42,10 @@ async function measure(page,cdp,url) {
  const count=await page.locator('#homeProductSections .product[data-product-id]').count();
  await page.waitForTimeout(700);
  cdp.off('Network.requestWillBeSent',onRequest);cdp.off('Network.loadingFinished',onFinished);
- return {firstProductMs:Number(firstProductMs.toFixed(1)),bytes,requests,products:count};
+ return {firstProductMs:Number(firstProductMs.toFixed(1)),bytes,requests,products:count,skeletonSeen:await page.evaluate(()=>window.__storefrontPerf.skeletonSeen)};
 }
 (async()=>{
- const html=fs.readFileSync(path.join(root,'loja.html'),'utf8');
+ const html=fs.readFileSync(path.join(root,'loja.html'),'utf8');\n const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');\n assert.match(sw,/const STATIC_CACHE='feira-static-v/,'versioned static cache missing');\n assert.match(sw,/return cached\\|\\|network/,'stale-while-revalidate missing');\n assert.match(sw,/request.mode==='navigate'\\)return/,'HTML navigations must bypass the cache');
  assert.ok(html.includes('storefrontCacheBootstrap'),'early cache bootstrap missing');
  assert.ok(html.includes('feira_storefront_catalog_v1'),'persistent catalog cache missing');
  assert.ok(html.includes('select=id,name,price,old_price,category,image,available,resale_enabled,resale_price,resale_min_qty,resale_unit'),'catalog select list missing');
@@ -75,7 +75,7 @@ async function measure(page,cdp,url) {
    const candidateCdp=await emulate4G(candidate);
    const candidateFirst=await measure(candidate,candidateCdp,url);
    const saved=await candidate.evaluate(()=>JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')||'null'));
-   assert.ok(saved&&saved.products.length,'first visit did not persist catalog cache');
+   assert.ok(candidateFirst.firstProductMs<2500,'first visit did not meet <2.5s target: '+candidateFirst.firstProductMs+'ms');\n   assert.ok(candidateFirst.skeletonSeen,'first visit without cache did not show skeleton');\n   assert.ok(saved&&saved.products.length,'first visit did not persist catalog cache');
    const first=saved.products[0];
    const originalPrice=Number(first.price);
    const stalePrice=originalPrice+123.45;
