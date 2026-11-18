@@ -21,6 +21,10 @@ const quoteFns = storeHtml.slice(quoteFnStart, quoteFnEnd);
 const mapStyleStart = storeHtml.lastIndexOf('<style>', storeHtml.indexOf('.delivery-map-fullscreen{'));
 const mapStyleEnd = storeHtml.indexOf('</style>', mapStyleStart);
 const mapCss = storeHtml.slice(mapStyleStart + 7, mapStyleEnd);
+const mapSummaryStart = helperSource.indexOf('function formatDeliveryMapAddressSummary(');
+const mapSummaryEnd = helperSource.indexOf('\nfunction deliveryQuoteErrorMessage(', mapSummaryStart);
+if (mapSummaryStart < 0 || mapSummaryEnd < 0) throw new Error('Map address summary helper not found');
+const mapAddressSummaryFn = helperSource.slice(mapSummaryStart, mapSummaryEnd);
 
 for (const required of [
   'https://tiles.openfreemap.org/styles/positron', 'zoom:17', 'new lib.AttributionControl({compact:true})',
@@ -42,8 +46,8 @@ let deliveryPlacesSessionToken='session-123',deliveryAutocompleteTimer=null,deli
 const deliveryQuoteCache=new Map();
 const buildDeliveryQuoteCacheKey=(address,items,coordinates=null,userId='')=>JSON.stringify({user:String(userId||''),address,items,coordinates:coordinates||null});
 const isCachedDeliveryQuoteValid=(entry,now=Date.now())=>!!entry&&Number(entry.expiresAt)>Number(now)&&isValidDeliveryQuote(entry.quote,now);
-const normalizeDeliveryAddress = value => ({street:String(value.street||'').trim(),number:String(value.number||'').trim(),neighborhood:String(value.neighborhood||'').trim(),complement:'',reference:''});
-const getDeliveryAddress = () => normalizeDeliveryAddress({street:$('#deliveryStreet').value,number:$('#deliveryNumber').value,neighborhood:$('#deliveryNeighborhood').value});
+const normalizeDeliveryAddress = value => ({street:String(value.street||'').trim(),number:String(value.number||'').trim(),neighborhood:String(value.neighborhood||'').trim(),complement:String(value.complement||''),reference:String(value.reference||'')});
+const getDeliveryAddress = () => normalizeDeliveryAddress({street:$('#deliveryStreet').value,number:$('#deliveryNumber').value,neighborhood:$('#deliveryNeighborhood').value,reference:$('#deliveryReference').value});
 let quoteCalls=0,quoteMode='success';
 const currentUser=null;
 const totals=()=>({sub:39.96,items:[{p:{id:'banana'},q:1}]});
@@ -89,6 +93,7 @@ document.body.innerHTML=mapOverlayMarkup;
    await page.addStyleTag({content:mapCss});
    await page.addScriptTag({content: `
     ${harness}
+    ${mapAddressSummaryFn}
     ${syncPresentationFn}
     ${addressFns}
     ${mapFns}
