@@ -35,7 +35,6 @@ async function measure(page,cdp,url) {
  const onFinished=e=>{bytes+=Number(e.encodedDataLength)||0;};
  cdp.on('Network.requestWillBeSent',onRequest);
  cdp.on('Network.loadingFinished',onFinished);
- await page.goto('about:blank');
  await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
  await page.waitForFunction(()=>window.__storefrontPerf&&window.__storefrontPerf.firstProductAt!==null, {timeout:30000});
  const firstProductMs=await page.evaluate(()=>window.__storefrontPerf.firstProductAt);
@@ -89,8 +88,10 @@ async function measure(page,cdp,url) {
    const originalPrice=Number(first.price);
    const stalePrice=originalPrice+123.45;
    await candidate.evaluate(({id,price})=>{const cache=JSON.parse(localStorage.getItem('feira_storefront_catalog_v1'));const p=cache.products.find(x=>x.id===id);p.price=price;localStorage.setItem('feira_storefront_catalog_v1',JSON.stringify(cache));},{id:first.id,price:stalePrice});
+   await candidate.evaluate(({id,price})=>localStorage.setItem('__storefront_stale_probe',JSON.stringify({id,price})),{id:first.id,price:stalePrice});
+   await candidate.addInitScript(()=>{try{const probe=JSON.parse(localStorage.getItem('__storefront_stale_probe')||'null');if(!probe)return;window.__stalePriceSeen=false;const check=()=>{const card=document.querySelector('#homeProductSections [data-product-id="'+CSS.escape(probe.id)+'"]');if(card&&card.querySelector('.price')?.textContent.includes(Number(probe.price).toFixed(2).replace('.',',')))window.__stalePriceSeen=true;};new MutationObserver(check).observe(document,{childList:true,subtree:true,characterData:true});document.addEventListener('DOMContentLoaded',check);}catch(_){}});
    const candidateSecond=await measure(candidate,candidateCdp,url);
-   const staleWasPainted=await candidate.evaluate(({id,price})=>{const card=document.querySelector('#homeProductSections [data-product-id="'+CSS.escape(id)+'"]');return !!card&&card.querySelector('.price')?.textContent.includes(price.toFixed(2).replace('.',','));},{id:first.id,price:stalePrice});
+   const staleWasPainted=await candidate.evaluate(()=>window.__stalePriceSeen===true);
    await candidate.waitForFunction(({id,price})=>{const cache=JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')||'null');const item=cache?.products?.find(p=>p.id===id);return item&&Number(item.price)!==price;},{id:first.id,price:stalePrice},{timeout:30000});
    const correctedPrice=await candidate.evaluate(id=>Number(JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')).products.find(p=>p.id===id).price),first.id);
    const noMapOnOpen=!(await candidate.evaluate(()=>performance.getEntriesByType('resource').some(x=>/maplibre-gl|lalamove-map\.js|assistant-speech\.js/.test(x.name))));
