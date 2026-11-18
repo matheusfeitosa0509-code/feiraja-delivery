@@ -81,6 +81,7 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
 
       const result = await page.evaluate(({ calendarSource, scheduleSource, uiSource, checkoutScheduleSource }) => {
         const getStoreSchedule = new Function(calendarSource + '\n' + scheduleSource + '\nreturn getStoreSchedule;')();
+        const getCommercialSchedule = new Function(calendarSource + '\nreturn getCommercialSchedule;')();
         const renderDeliveryOption = new Function(uiSource + '\nreturn renderDeliveryOption;')();
         const monday = getStoreSchedule(new Date('2026-11-16T22:00:00.000Z'));
         const saturday = getStoreSchedule(new Date('2026-11-14T18:00:00.000Z'));
