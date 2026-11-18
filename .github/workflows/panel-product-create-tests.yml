@@ -9,10 +9,6 @@ on:
       - "supabase/migrations/**"
       - "supabase/rollbacks/**"
       - "supabase/functions/super-worker/**"
-      - "tests/round3-finance-products.test.mjs"
-      - "supabase/migrations/**"
-      - "supabase/rollbacks/**"
-      - "supabase/functions/super-worker/**"
   push:
     branches:
       - main
@@ -20,6 +16,10 @@ on:
       - "painel.html"
       - "cadastro-produto.html"
       - "tests/painel-product-create.visual.cjs"
+      - "tests/round3-finance-products.test.mjs"
+      - "supabase/migrations/**"
+      - "supabase/rollbacks/**"
+      - "supabase/functions/super-worker/**"
       - ".github/workflows/panel-product-create-tests.yml"
 jobs:
   test:
