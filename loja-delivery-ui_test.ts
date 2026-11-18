@@ -1,6 +1,6 @@
 import { assertEquals, assertThrows } from "jsr:@std/assert@1.0.14";
 import {
-  buildDeliveryQuoteItems, canShowDeliveryOption, canShowUberPickupOption, checkoutGrandTotal,
+  buildDeliveryQuoteItems, buildDeliveryQuoteCacheKey, isCachedDeliveryQuoteValid, canShowDeliveryOption, canShowUberPickupOption, checkoutGrandTotal,
   deliveryUnavailableMessage, isDeliveryOptionDisabled, loadDeliveryAccessState,
   deliveryPaymentOptions, deliveryQuoteErrorMessage, deliveryQuoteLabel, isAdminRpcTrue, isDeliveryOutOfArea, isValidDeliveryQuote,
   normalizeDeliveryAddress,
@@ -234,4 +234,25 @@ Deno.test("mapa usa função autenticada, rate limit e atualiza enquanto visíve
   assertEquals(panel.includes("Entrega Feira On"), true);
   assertEquals(panel.includes("data-lalamove-status-label"), true);
   assertEquals(map.includes("syncOrderUI(data)"), true);
+});
+
+
+Deno.test("cache da cotação usa endereço, carrinho, coordenadas e usuário como identidade", () => {
+  const address = { street: "Rua A", number: "10", neighborhood: "Centro" };
+  const items = [{ product_id: "banana", quantity: 2 }];
+  const point = { lat: -3.1, lng: -60.02 };
+  const base = buildDeliveryQuoteCacheKey(address, items, point, "user-1");
+  assertEquals(buildDeliveryQuoteCacheKey(address, items, point, "user-1"), base);
+  assertEquals(buildDeliveryQuoteCacheKey(address, [{ ...items[0], quantity: 3 }], point, "user-1") === base, false);
+  assertEquals(buildDeliveryQuoteCacheKey({ ...address, number: "11" }, items, point, "user-1") === base, false);
+  assertEquals(buildDeliveryQuoteCacheKey(address, items, { lat: -3.2, lng: -60.02 }, "user-1") === base, false);
+  assertEquals(buildDeliveryQuoteCacheKey(address, items, point, "user-2") === base, false);
+});
+
+Deno.test("cache da cotação expira em cinco minutos e nunca reutiliza cotação Lalamove expirada", () => {
+  const now = Date.now();
+  const quote = { vehicle: "MOTO", fee: 9, valid_until: new Date(now + 600000).toISOString() };
+  assertEquals(isCachedDeliveryQuoteValid({ quote, expiresAt: now + 300000 }, now), true);
+  assertEquals(isCachedDeliveryQuoteValid({ quote, expiresAt: now + 300000 }, now + 300001), false);
+  assertEquals(isCachedDeliveryQuoteValid({ quote: { ...quote, valid_until: new Date(now - 1).toISOString() }, expiresAt: now + 300000 }, now), false);
 });
