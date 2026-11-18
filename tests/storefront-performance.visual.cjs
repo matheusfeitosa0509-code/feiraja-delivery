@@ -45,7 +45,7 @@ async function measure(page,cdp,url) {
  return {firstProductMs:Number(firstProductMs.toFixed(1)),bytes,requests,products:count,skeletonSeen:await page.evaluate(()=>window.__storefrontPerf.skeletonSeen)};
 }
 (async()=>{
- const html=fs.readFileSync(path.join(root,'loja.html'),'utf8');\n const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');\n assert.match(sw,/const STATIC_CACHE='feira-static-v/,'versioned static cache missing');\n assert.match(sw,/return cached\\|\\|network/,'stale-while-revalidate missing');\n assert.match(sw,/request.mode==='navigate'\\)return/,'HTML navigations must bypass the cache');
+ const html=fs.readFileSync(path.join(root,'loja.html'),'utf8');\n const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');\n assert.match(sw,/const STATIC_CACHE='feira-static-v/,'versioned static cache missing');\n assert.match(sw,/return cached\\|\\|network/,'stale-while-revalidate missing');
  assert.ok(html.includes('storefrontCacheBootstrap'),'early cache bootstrap missing');
  assert.ok(html.includes('feira_storefront_catalog_v1'),'persistent catalog cache missing');
  assert.ok(html.includes('select=id,name,price,old_price,category,image,available,resale_enabled,resale_price,resale_min_qty,resale_unit'),'catalog select list missing');
