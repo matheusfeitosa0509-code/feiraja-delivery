@@ -79,7 +79,9 @@ async function measure(page,cdp,url) {
    const candidateCdp=await emulate4G(candidate);
    const candidateFirst=await measure(candidate,candidateCdp,url);
    const saved=await candidate.evaluate(()=>JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')||'null'));
-   assert.ok(candidateFirst.firstProductMs<2500,'first visit did not meet <2.5s target: '+candidateFirst.firstProductMs+'ms');\n   assert.ok(candidateFirst.skeletonSeen,'first visit without cache did not show skeleton');\n   assert.ok(saved&&saved.products.length,'first visit did not persist catalog cache');
+   assert.ok(candidateFirst.firstProductMs<2500,'first visit did not meet <2.5s target: '+candidateFirst.firstProductMs+'ms');
+   assert.ok(candidateFirst.skeletonSeen,'first visit without cache did not show skeleton');
+   assert.ok(saved&&saved.products.length,'first visit did not persist catalog cache');
    const first=saved.products[0];
    const originalPrice=Number(first.price);
    const stalePrice=originalPrice+123.45;
