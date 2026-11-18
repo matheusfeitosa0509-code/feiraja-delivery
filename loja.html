@@ -1822,17 +1822,16 @@ async function load(options={}){
  previousProducts=products.map(p=>({...p}));
  previousRules=JSON.stringify([...salesRulesById.entries()]);
  try{
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),10000);
-  let response;
-  try{
-   const prefetched=window.__storefrontProductsPromise;
+  let response,data;
+  const prefetched=window.__storefrontProductsPromise;
   if(prefetched){
    window.__storefrontProductsPromise=null;
    const result=await prefetched;
    if(result&&Array.isArray(result.data))data=result.data;
   }
   if(!Array.isArray(data)){
+   const controller=new AbortController();
+   const timer=setTimeout(()=>controller.abort(),10000);
    try{
     response=await fetch(SUPABASE_URL+'/rest/v1/products?'+(window.__FEIRA_PRODUCTS_QUERY||'select=id,name,price,old_price,category,image,available,resale_enabled,resale_price,resale_min_qty,resale_unit&available=eq.true&order=name.asc'),{
      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY},
