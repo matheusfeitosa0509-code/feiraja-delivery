@@ -20,7 +20,7 @@ Deno.test("consulta sempre completa o endereço com Manaus - AM, Brasil", () => 
 });
 
 Deno.test("aceita coordenadas de endereço em Manaus e devolve lat/lng como texto", () => {
-  assertEquals(validateManausGeocodeResult(validResult()), { lat: "-3.1", lng: "-60.02" });
+  assertEquals(validateManausGeocodeResult(validResult()), { lat: "-3.100000", lng: "-60.020000" });
 });
 
 Deno.test("rejeita resultados fora de Manaus mesmo dentro do Brasil", () => {
@@ -98,7 +98,7 @@ Deno.test("coordenadas confirmadas no mapa não chamam o geocodificador novament
     calls++;
     return { lat: "-3.2", lng: "-60.03" };
   });
-  assertEquals(coordinates, { lat: "-3.1", lng: "-60.02" });
+  assertEquals(coordinates, { lat: "-3.100000", lng: "-60.020000" });
   assertEquals(calls, 0);
 });
 
