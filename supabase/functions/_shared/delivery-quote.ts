@@ -117,6 +117,17 @@ export async function requestSandboxQuotation(
 }
 
 
+export function startParallelVehicleQuotes<T>(
+  selectedVehicle: "MOTO" | "CAR",
+  quote: (vehicle: "MOTO" | "CAR") => Promise<T>,
+): { selected: Promise<T>; background: Promise<T> } {
+  const moto = Promise.resolve().then(() => quote("MOTO"));
+  const car = Promise.resolve().then(() => quote("CAR"));
+  return selectedVehicle === "MOTO"
+    ? { selected: moto, background: car }
+    : { selected: car, background: moto };
+}
+
 export async function retryLalamove429(
   fetcher: typeof fetch,
   input: RequestInfo | URL,
@@ -126,9 +137,10 @@ export async function retryLalamove429(
 ): Promise<Response> {
   for (let attempt = 0; attempt < 3; attempt++) {
     const response = await fetcher(input, init);
-    if (response.status !== 429 || attempt === 2) return response;
+    const retryable = response.status === 429 || response.status >= 500;
+    if (!retryable || attempt === 2) return response;
     const retryAfter = Number(response.headers.get("Retry-After") || 0);
-    const delay = retryAfter > 0 ? Math.min(retryAfter * 1000, 5000) : 1200 * (attempt + 1);
+    const delay = retryAfter > 0 ? Math.min(retryAfter * 1000, 1000) : [250, 500][attempt];
     await sleep(delay);
   }
   throw new Error("LALAMOVE_RETRY_EXHAUSTED");
