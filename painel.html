@@ -984,7 +984,8 @@ async function toggleAvailability(){
   syncAvailabilityControls();
   availabilityMessage('Disponibilidade de "'+data.name+'" alterada para '+(data.available?'disponível':'indisponível')+'.','');
  }catch(error){
-  availabilityMessage('Não foi possível alterar a disponibilidade: '+(error?.message||'erro não identificado'),true);
+  const detail=String(error?.message||'erro não identificado');
+  availabilityMessage(detail.includes('Defina o preço de venda antes de disponibilizar')?'Defina o preço de venda antes de disponibilizar':'Não foi possível alterar a disponibilidade: '+detail,true);
  }finally{
   button.disabled=false;
   syncAvailabilityControls();
