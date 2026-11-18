@@ -5,7 +5,7 @@ import { normalizeItemPreference } from "../_shared/item-preferences.ts";
 import { formatDropoff } from "../_shared/delivery-quote.ts";
 import { readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
 import { calculateServerDelivery, orderTotals, validateCheckoutDelivery } from "./delivery-order.ts";
-import { getStoreSchedule } from "../_shared/store-schedule.js";
+import { getCommercialSchedule } from "../_shared/commercial-calendar.js";
 
 function isValidCpf(value: string) { const cpf = String(value || "").replace(/\D/g, ""); if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false; const calc = (base: string, factor: number) => { let sum = 0; for (const digit of base) sum += Number(digit) * factor--; const mod = (sum * 10) % 11; return mod === 10 ? 0 : mod; }; return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10]); }
 
@@ -228,7 +228,7 @@ Deno.serve(async (req: Request) => {
     });
     if (!deliveryAccess.ok) return json({ error: deliveryAccess.error }, deliveryAccess.status);
     const deliveryType = requestedDeliveryType;
-    const deliverySchedule = deliveryType === "delivery" ? getStoreSchedule() : null;
+    const deliverySchedule = deliveryType === "delivery" ? getCommercialSchedule() : null;
     const scheduledFor = deliveryType === "delivery"
       ? (priorOrder ? (priorOrder.scheduled_for || null) : (deliverySchedule?.scheduledFor || null))
       : null;
