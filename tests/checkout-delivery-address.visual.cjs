@@ -37,6 +37,7 @@ assert.ok(helperSource.includes('deliveryQuoteErrorMessage'));
 
 const harness = `
 const $ = selector => document.querySelector(selector);
+const testStorage=new Map();Object.defineProperty(window,'sessionStorage',{configurable:true,value:{getItem:key=>testStorage.get(key)??null,setItem:(key,value)=>testStorage.set(key,String(value)),removeItem:key=>testStorage.delete(key)}});
 let deliveryPlacesSessionToken='session-123',deliveryAutocompleteTimer=null,deliveryMap=null,deliveryMapCoordinates=null,deliveryMapReverseTimer=null,deliveryMapReverseSequence=0,deliveryMapReversePromise=Promise.resolve(),deliveryMapReverseError='',deliveryAddressManualEdits={street:false,number:false,neighborhood:false},deliveryQuoteTimeoutMs=1500,deliveryNeedsExplicitConfirm=true,deliveryStreetHome=null,deliveryNumberHome=null,deliveryNeighborhoodHome=null,deliveryMapPlaceName='',deliveryQuoteTimer=null,deliveryQuoteSequence=0,deliveryQuote=null,deliveryQuoteSlowTimer=null,deliveryQuoteDebounceStartedAt=0;
 const deliveryQuoteCache=new Map();
 const buildDeliveryQuoteCacheKey=(address,items,coordinates=null,userId='')=>JSON.stringify({user:String(userId||''),address,items,coordinates:coordinates||null});
