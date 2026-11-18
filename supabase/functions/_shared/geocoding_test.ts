@@ -1,6 +1,6 @@
 import { assertEquals, assertRejects, assertThrows } from "jsr:@std/assert@1.0.14";
 import {
-  formatManausGeocodeQuery, geocodeManausAddress, geocodeManausCoordinates, validateManausGeocodeResult,
+  formatManausGeocodeQuery, geocodeManausAddress, geocodeManausCoordinates, validateManausGeocodeResult, resolveDeliveryCoordinates,
 } from "./geocoding.ts";
 
 const validResult = (lat = -3.10, lng = -60.02) => ({
@@ -89,4 +89,26 @@ Deno.test("reverse geocoding rejeita coordenada fora de Manaus sem chamar Google
 Deno.test("reverse geocoding registra ZERO_RESULTS como endereço sem resultado", async () => {
   const fetcher = async () => new Response(JSON.stringify({ status: "ZERO_RESULTS", results: [] }), { status: 200 });
   await assertRejects(() => geocodeManausCoordinates(-3.1, -60.02, "google-test", fetcher), Error, "ADDRESS_NOT_FOUND");
+});
+
+
+Deno.test("coordenadas confirmadas no mapa não chamam o geocodificador novamente", async () => {
+  let calls = 0;
+  const coordinates = await resolveDeliveryCoordinates("Rua Japiassu, 140, Centro", { lat: -3.1, lng: -60.02 }, async () => {
+    calls++;
+    return { lat: "-3.2", lng: "-60.03" };
+  });
+  assertEquals(coordinates, { lat: "-3.1", lng: "-60.02" });
+  assertEquals(calls, 0);
+});
+
+Deno.test("endereço sem coordenadas confirmadas faz uma geocodificação", async () => {
+  let calls = 0;
+  const coordinates = await resolveDeliveryCoordinates("Rua Japiassu, 140, Centro", null, async (address) => {
+    calls++;
+    assertEquals(address, "Rua Japiassu, 140, Centro");
+    return { lat: "-3.1", lng: "-60.02" };
+  });
+  assertEquals(coordinates, { lat: "-3.1", lng: "-60.02" });
+  assertEquals(calls, 1);
 });
