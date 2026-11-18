@@ -5,7 +5,20 @@
 <meta property="og:title" content="Feira On Delivery - Frutas, verduras e feira para retirada em Manaus">
 <meta property="og:description" content="Peça frutas, verduras e produtos de feira pelo celular, com retirada na loja ou Entrega Feira On.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://www.feiraondelivery.com.br/loja.html"><link rel="preconnect" href="https://juhwdevvwstmyxyyagzh.supabase.co" crossorigin><link rel="preconnect" href="https://www.feiraondelivery.com.br" crossorigin><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<meta property="og:url" content="https://www.feiraondelivery.com.br/loja.html"><link rel="preconnect" href="https://juhwdevvwstmyxyyagzh.supabase.co" crossorigin><link rel="preconnect" href="https://www.feiraondelivery.com.br" crossorigin><meta name="supabase-url" content="https://juhwdevvwstmyxyyagzh.supabase.co"><meta name="supabase-publishable-key" content="sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW">
+<script id="storefrontProductsPrefetch">
+(()=>{try{
+ const url=document.querySelector('meta[name="supabase-url"]').content;
+ const key=document.querySelector('meta[name="supabase-publishable-key"]').content;
+ window.__FEIRA_PRODUCTS_QUERY='select=id,name,price,old_price,category,image,available,resale_enabled,resale_price,resale_min_qty,resale_unit&available=eq.true&order=name.asc';
+ const controller=new AbortController();
+ const timeout=setTimeout(()=>controller.abort(),10000);
+ window.__storefrontProductsPromise=fetch(url+'/rest/v1/products?'+window.__FEIRA_PRODUCTS_QUERY,{headers:{apikey:key,Authorization:'Bearer '+key},cache:'no-store',signal:controller.signal})
+  .then(async response=>response.ok?({data:await response.json()}):({error:new Error('HTTP '+response.status)}))
+  .catch(error=>({error}))
+  .finally(()=>clearTimeout(timeout));
+}catch(error){window.__storefrontProductsPromise=Promise.resolve({error});}})();
+</script><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--g:#2f6a14;--g2:#7fb237;--ink:#1d2a12;--mut:#44503a;--bg:#f6f4ea;--card:#fff;--line:#e4e7d6;--soft:#e6efd3;--warn:#c2410c;--pix:#0f8f7e}
 .home-bubbles{display:flex;flex-wrap:nowrap;gap:10px;padding:14px 12px 6px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch}
@@ -1282,7 +1295,9 @@ try {
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.1';
 import { canShowUberPickupOption, syncUberPickupOption, buildDeliveryQuoteItems, checkoutGrandTotal, deliveryQuoteErrorMessage, deliveryQuoteLabel, isDeliveryOutOfArea, isValidDeliveryQuote, normalizeDeliveryAddress, deliveryUnavailableMessage, loadDeliveryAccessState, renderDeliveryOption, syncAdminTestPaymentOption, buildDeliveryQuoteCacheKey, isCachedDeliveryQuoteValid } from './loja-delivery-ui.js?v=20261117-delivery-quote-performance';
 import { getStoreSchedule } from './supabase/functions/_shared/store-schedule.js?v=20261117-entrega-agendada';
-const supabase=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW');
+const SUPABASE_URL=document.querySelector('meta[name="supabase-url"]').content;
+const SUPABASE_ANON_KEY=document.querySelector('meta[name="supabase-publishable-key"]').content;
+const supabase=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
 const VAPID_PUBLIC_KEY = 'BJ9dTvmRGcTHYQSOOLj61AG2kC2YEMuhWMM2J6GdDdTuofeBkYJsyF5uNIhCfnV03jZBn2fFP1ZUqty0QZ_uuog'; // VAPID pública
 const PUSH_PENDING_RELEASE_KEY = 'feira_push_pending_release_v1';
@@ -1811,13 +1826,22 @@ async function load(options={}){
   const timer=setTimeout(()=>controller.abort(),10000);
   let response;
   try{
-   response=await fetch('https://juhwdevvwstmyxyyagzh.supabase.co/rest/v1/products?select=id,name,price,old_price,category,image,available,resale_enabled,resale_price,resale_min_qty,resale_unit&available=eq.true&order=name.asc',{
-    headers:{apikey:'sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',Authorization:'Bearer sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW'},
-    signal:controller.signal,cache:'no-store'
-   });
-  }finally{clearTimeout(timer);}
-  if(!response.ok)throw new Error('HTTP '+response.status);
-  const data=await response.json();
+   const prefetched=window.__storefrontProductsPromise;
+  if(prefetched){
+   window.__storefrontProductsPromise=null;
+   const result=await prefetched;
+   if(result&&Array.isArray(result.data))data=result.data;
+  }
+  if(!Array.isArray(data)){
+   try{
+    response=await fetch(SUPABASE_URL+'/rest/v1/products?'+(window.__FEIRA_PRODUCTS_QUERY||'select=id,name,price,old_price,category,image,available,resale_enabled,resale_price,resale_min_qty,resale_unit&available=eq.true&order=name.asc'),{
+     headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY},
+     signal:controller.signal,cache:'no-store'
+    });
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    data=await response.json();
+   }finally{clearTimeout(timer);}
+  }
   products=(data||[]).map(p=>({...p,price:Number(p.price),old_price:p.old_price==null?null:Number(p.old_price),resale_enabled:p.resale_enabled===true,resale_price:p.resale_price==null?null:Number(p.resale_price),resale_min_qty:p.resale_min_qty==null?null:Number(p.resale_min_qty),resale_unit:p.resale_unit==='kg'?'kg':'un',image:typeof p.image==='string'&&p.image.startsWith('imagens/produtos/')?'./'+p.image:p.image}));
   const sameCatalogStructure=previousProducts.length===products.length&&previousProducts.every((old,index)=>{const fresh=products[index];return old.id===fresh.id&&old.name===fresh.name&&old.category===fresh.category&&old.image===fresh.image;});
   const priceFields=['price','old_price','resale_enabled','resale_price','resale_min_qty','resale_unit'];
