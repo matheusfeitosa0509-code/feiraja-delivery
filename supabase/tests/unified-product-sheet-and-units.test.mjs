@@ -18,7 +18,7 @@ assert.match(panel,/admin_create_product_with_sales_rule/,'new product is create
 assert.doesNotMatch(panel,/\b(?:window\.)?(?:alert|confirm|prompt)\s*\(/,'panel must not use native browser dialogs');
 assert.match(panel,/admin_update_product_sales_rule/,'sale unit and quantity rules use the admin RPC');
 assert.match(panel,/admin_set_product_cost/,'private product cost uses the existing admin RPC');
-assert.match(panel,/db\.rpc\('admin_get_cost_report'/,'inline costs continue to come from the administrative report RPC');
+assert.match(panel,/db\.rpc\('admin_get_cost_report_with_delivery'/,'inline costs continue to come from the administrative report RPC');
 assert.match(panel,/window\.__feiraCostProducts/,'inline product cost is sourced from the administrative RPC cache');
 assert.match(panel,/unifiedCostFilter/,'products tab filters products without cost');
 assert.match(panel,/Sem custo cadastrado \(/,'missing-cost filter shows its product count');
