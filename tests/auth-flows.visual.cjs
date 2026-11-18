@@ -6,7 +6,7 @@ const PWNED_MESSAGE='Essa senha é muito comum e já apareceu em vazamentos de o
 const USER={id:'user-test-1',email:'teste@example.com',user_metadata:{},is_anonymous:false};
 const SESSION={access_token:'mock-access-token',refresh_token:'mock-refresh-token',expires_at:Math.floor(Date.now()/1000)+3600,user:USER};
 function appHtml(initial={},realTurnstile=false){
- let html=storeSource.replace(/<script id="pwaInstallScript">[\s\S]*?<\/script>/i,'').replace(/<script src="\.\/turnstile\.js" defer><\/script>/i,'').replace(/<script src="\.\/lalamove-map\.js"><\/script>/i,'').replace(/<script>\s*if\('serviceWorker'[\s\S]*?<\/script>/i,'');
+ let html=storeSource.replace(/<script id="pwaInstallScript">[\s\S]*?<\/script>/i,'').replace(/<script src="\.\/turnstile\.js" defer><\/script>/i,'').replace(/<script src="\.\/lalamove-map\.js"><\/script>/i,'').replace(/<script>\s*try\s*\{\s*if\s*\('serviceWorker' in navigator\)[\s\S]*?<\/script>/i,'').replace(/<script>\s*if\('serviceWorker'[\s\S]*?<\/script>/i,'');
  html=html.replace(/<script type="module">/i,'<script>'+scheduleSource+'</script><script>'+helperSource+'</script>'+(realTurnstile?'<script>'+turnstileSource+'</script>':'')+'<script type="module">');
  html=html.replace(/<script type="module">([\s\S]*?)<\/script>/i,(_all,js)=>{
   js=js.replace(/^\s*import\s*\{\s*createClient\s*\}\s*from\s*['"][^'"]+['"];\s*/m,'').replace(/^\s*import\s*\{[^}]+\}\s*from\s*['"]\.\/loja-delivery-ui\.js[^'"]*['"];\s*/m,'').replace(/^\s*import\s*\{[^}]+\}\s*from\s*['"]\.\/supabase\/functions\/_shared\/store-schedule\.js[^'"]*['"];\s*/m,'').replace(/const supabase=createClient\([\s\S]*?\);\s*/,'const supabase=window.__mockSupabase;\n');
