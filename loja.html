@@ -1619,7 +1619,10 @@ async function loadProfile(knownUser){
   if(data.address_reference&&!$('#deliveryReference').value.trim())$('#deliveryReference').value=data.address_reference;
   if(data.address&&!$('#address').value.trim())$('#address').value=data.address;if(data.address)$('#homeAddress').textContent=data.address;
  }
- customerPhoneReady=!!String(data?.phone||'').trim();
+ const profileName=String(data?.full_name||currentUser?.user_metadata?.full_name||currentUser?.user_metadata?.name||$('#name').value||'').trim();
+ const profilePhone=String(data?.phone||'').trim();
+ if(profileName&&!$('#name').value.trim())$('#name').value=profileName;
+ customerPhoneReady=!!profileName&&!!profilePhone;
  if(customerPhoneReady){
   $('#requiredProfileStep').classList.add('hidden');
   $('#authForm').classList.remove('hidden');
