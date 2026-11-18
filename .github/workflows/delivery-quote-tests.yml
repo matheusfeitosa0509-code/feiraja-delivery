@@ -108,6 +108,7 @@ jobs:
       - run: deno check --config supabase/functions/lalamove-dispatch/deno.json supabase/functions/lalamove-dispatch/index.ts
       - run: deno check supabase/functions/asaas-webhook/index.ts
       - run: deno check --config supabase/functions/lalamove-webhook/deno.json supabase/functions/lalamove-webhook/index.ts
+      - run: deno test --config supabase/functions/lalamove-webhook/deno.json supabase/functions/lalamove-webhook/index_test.ts
       - run: deno check --config supabase/functions/lalamove-tracking/deno.json supabase/functions/lalamove-tracking/index.ts
       - run: deno test --allow-env --allow-net --allow-read supabase/functions/asaas-webhook/payment-routing_test.ts
       - run: deno test --allow-net --allow-read supabase/functions/delivery-quote/index_test.ts supabase/functions/_shared/geocoding_test.ts supabase/functions/delivery-address/index_test.ts supabase/functions/lalamove-dispatch/index_test.ts supabase/functions/lalamove-tracking/index_test.ts supabase/functions/_shared/lalamove-environment_test.ts
