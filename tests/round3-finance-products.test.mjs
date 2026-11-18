@@ -27,6 +27,7 @@ assert.match(assistant, /\.from\("products"\)/, 'assistant product names come fr
 assert.match(migration, /COALESCE\(o\.is_test_order, false\) = false/, 'sales dashboard excludes test orders');
 assert.match(migration, /admin_get_cost_report_with_delivery/, 'migration extends the delivery-inclusive report');
 assert.match(migration, /calculated_items/, 'migration adds calculated item coverage');
+assert.match(migration, /unit_cost > 0/, 'zero or invalid costs are excluded from profit and coverage');
 assert.match(migration, /NEW\.price < 0\.50/, 'database rejects availability below R$ 0.50');
 assert.match(migration, /Defina o preço de venda antes de disponibilizar/, 'database returns the required price message');
 assert.match(migration, /Brócolis \(kg\)/, 'migration renames broccoli only');
