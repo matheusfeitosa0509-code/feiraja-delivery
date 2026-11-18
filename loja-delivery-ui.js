@@ -160,6 +160,14 @@ export function isValidDeliveryQuote(quote, now = Date.now()) {
   return Number.isFinite(fee) && fee > 0 && Number.isFinite(expiresAt) && expiresAt > Number(now);
 }
 
+export function buildDeliveryQuoteCacheKey(address, items, coordinates = null, userId = "") {
+  return JSON.stringify({ user: String(userId || ""), address, items, coordinates: coordinates || null });
+}
+
+export function isCachedDeliveryQuoteValid(entry, now = Date.now()) {
+  return !!entry && Number(entry.expiresAt) > Number(now) && isValidDeliveryQuote(entry.quote, now);
+}
+
 export function checkoutGrandTotal(subtotal, deliveryType, quote) {
   const base = Number(subtotal);
   const fee = deliveryType === "delivery" && isValidDeliveryQuote(quote) ? Number(quote.fee) : 0;
