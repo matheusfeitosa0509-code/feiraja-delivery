@@ -8,7 +8,7 @@ function easterSunday(year) {
 }
 const addDays=(date,days)=>new Date(date.getTime()+days*86400000);
 const dateKeyUTC=(date)=>date.getUTCFullYear()+"-"+String(date.getUTCMonth()+1).padStart(2,"0")+"-"+String(date.getUTCDate()).padStart(2,"0");
-const movableHolidays={};
+const movableHolidays: Record<string, { name: string; closed: boolean }> = {};
 for(const year of [2026,2027]){
   const easter=easterSunday(year);
   movableHolidays[dateKeyUTC(addDays(easter,-48))]={name:"Carnaval (segunda-feira)",closed:false};
@@ -16,7 +16,7 @@ for(const year of [2026,2027]){
   movableHolidays[dateKeyUTC(addDays(easter,-2))]={name:"Sexta-feira Santa",closed:false};
   movableHolidays[dateKeyUTC(addDays(easter,60))]={name:"Corpus Christi",closed:false};
 }
-export const HOLIDAYS = Object.freeze({
+export const HOLIDAYS: Readonly<Record<string, { name: string; closed: boolean }>> = Object.freeze({
   "2026-01-01": { name: "Confraternização Universal", closed: true },
   "2026-04-21": { name: "Tiradentes", closed: false },
   "2026-05-01": { name: "Dia do Trabalho", closed: false },
