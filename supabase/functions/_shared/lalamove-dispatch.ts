@@ -142,7 +142,7 @@ export async function getLalamoveOrderDetails(
     method: "GET", headers: signed.headers, signal: AbortSignal.timeout(10000),
   });
   const payload = await response.json().catch(() => ({}));
-  return { response, payload: payload?.data || {} };
+  return { response, payload: response.ok ? (payload?.data || {}) : payload };
 }
 
 export async function getLalamoveDriverDetails(
