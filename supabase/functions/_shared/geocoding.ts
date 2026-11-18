@@ -24,6 +24,17 @@ function component(result: GoogleGeocodeResult, type: string) {
   return result.address_components?.find((item) => item.types.includes(type));
 }
 
+export async function resolveDeliveryCoordinates(
+  address: string,
+  confirmedCoordinates: { lat: unknown; lng: unknown } | null | undefined,
+  geocodeAddress: (value: string) => Promise<DeliveryCoordinates>,
+): Promise<DeliveryCoordinates> {
+  if (confirmedCoordinates) {
+    return validateManausCoordinates(confirmedCoordinates.lat, confirmedCoordinates.lng);
+  }
+  return await geocodeAddress(address);
+}
+
 export function formatManausGeocodeQuery(address: string): string {
   const value = String(address || "").trim();
   if (!value) throw new Error("ADDRESS_NOT_FOUND");
