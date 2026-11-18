@@ -90,12 +90,13 @@ async function measure(page,cdp,url) {
    const first=saved.products[0];
    const originalPrice=Number(first.price);
    const candidateSecond=await measure(candidate,candidateCdp,url);
-   assert.ok(candidateStale.firstProductMs<1000,'cached stale-price visit did not meet <1s target: '+candidateStale.firstProductMs+'ms');
+   assert.ok(candidateSecond.firstProductMs<1000,'cached second visit did not meet <1s target: '+candidateSecond.firstProductMs+'ms');
    const stalePrice=originalPrice+123.45;
    await candidate.evaluate(({id,price})=>{const cache=JSON.parse(localStorage.getItem('feira_storefront_catalog_v1'));const p=cache.products.find(x=>x.id===id);p.price=price;localStorage.setItem('feira_storefront_catalog_v1',JSON.stringify(cache));},{id:first.id,price:stalePrice});
    await candidate.evaluate(({id,price})=>localStorage.setItem('__storefront_stale_probe',JSON.stringify({id,price})),{id:first.id,price:stalePrice});
    await candidate.addInitScript(()=>{try{const probe=JSON.parse(localStorage.getItem('__storefront_stale_probe')||'null');if(!probe)return;window.__stalePriceSeen=false;const check=()=>{const card=document.querySelector('#homeProductSections [data-product-id="'+CSS.escape(probe.id)+'"]');if(card&&card.querySelector('.price')?.textContent.includes(Number(probe.price).toFixed(2).replace('.',',')))window.__stalePriceSeen=true;};new MutationObserver(check).observe(document,{childList:true,subtree:true,characterData:true});document.addEventListener('DOMContentLoaded',check);}catch(_){}});
    const candidateStale=await measure(candidate,candidateCdp,url);
+   assert.ok(candidateStale.firstProductMs<1000,'cached stale-price visit did not meet <1s target: '+candidateStale.firstProductMs+'ms');
    const staleWasPainted=await candidate.evaluate(()=>window.__stalePriceSeen===true);
    await candidate.waitForFunction(({id,price})=>{const cache=JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')||'null');const item=cache?.products?.find(p=>p.id===id);return item&&Number(item.price)!==price;},{id:first.id,price:stalePrice},{timeout:30000});
    const correctedPrice=await candidate.evaluate(id=>Number(JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')).products.find(p=>p.id===id).price),first.id);
