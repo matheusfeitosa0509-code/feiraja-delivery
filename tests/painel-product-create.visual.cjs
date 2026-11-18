@@ -77,7 +77,7 @@ function prepare(source){
    const cheapToggle=page.locator('[data-quick-availability="seed-cheap"]');
    await cheapToggle.click();
    if(await cheapToggle.isChecked())throw new Error("Produto a R$ 0,01 foi disponibilizado.");
-   if(window.__testDb.__state.products.find(p=>p.id==="seed-cheap").available)throw new Error("O estado do produto de R$ 0,01 foi alterado.");
+   if(await page.evaluate(()=>window.__testDb.__state.products.find(p=>p.id==="seed-cheap").available))throw new Error("O estado do produto de R$ 0,01 foi alterado.");
    await page.locator('[data-open-product="seed-frutas"]').click();
    if(await page.locator("#productSheetBackdrop").isHidden())throw new Error("Editar produto não abriu a ficha.");
    if(await page.locator("#sheetCategory").inputValue()!=="Frutas")throw new Error("Editar produto não preservou a categoria existente.");
