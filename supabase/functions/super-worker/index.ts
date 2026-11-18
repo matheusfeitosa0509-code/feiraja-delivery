@@ -785,8 +785,7 @@ Deno.serve(async (req: Request) => {
       id: orderId, user_id: orderUserId, checkout_idempotency_key: checkoutIdempotencyKey, checkout_request_hash: checkoutRequestHash,
       customer_name: name, customer_phone: phone,
       customer_cpf: cpf, customer_email: email, customer_address: address,
-      delivery_type: deliveryType, pickup_code: pickupCode, payment_method: asaasEnabled ? "Asaas Pix" : "Mercado Pago Pix",
-      ...(asaasEnabled ? { payment_provider: "asaas" } : {}),
+      delivery_type: deliveryType, pickup_code: pickupCode, payment_method: "Asaas Pix", payment_provider: "asaas",
       items, subtotal, delivery_fee: deliveryFee, total, status: "Pagamento Pendente",
       market_checklist: { items: items.map((item: any) => ({ id: item.id, name: item.name, qty: item.qty, bought: false })), notes: String(body?.notes ?? "").trim().slice(0, 500) },
     };
