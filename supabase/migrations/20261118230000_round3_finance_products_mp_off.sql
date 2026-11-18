@@ -39,14 +39,14 @@ BEGIN
   v_definition := replace(v_definition, 'unit_cost IS NOT NULL', 'unit_cost > 0');
   EXECUTE v_definition;
 END;
-$;
+$$;
 
 -- Expõe a cobertura real dos snapshots sem transformar custos ausentes em zero.
 DO $$
 DECLARE
   v_definition text;
   v_old_count text := 'count(*) filter(where cost_status=''missing_cost'')::integer as missing_cost_items,';
-  v_new_count text := v_old_count || E'\n    count(*) filter(where unit_cost is not null)::integer as calculated_items,\n    count(*)::integer as total_items,';
+  v_new_count text := v_old_count || E'\n    count(*) filter(where unit_cost > 0)::integer as calculated_items,\n    count(*)::integer as total_items,';
   v_old_json text := '''missing_cost_items'',totals.missing_cost_items,';
   v_new_json text := v_old_json || '''calculated_items'',totals.calculated_items,''total_items'',totals.total_items,';
 BEGIN
