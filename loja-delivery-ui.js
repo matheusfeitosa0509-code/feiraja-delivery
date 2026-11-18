@@ -227,7 +227,7 @@ export function deliveryQuoteErrorMessage(status, code = "") {
     INVALID_QUOTE_RESPONSE: "A Lalamove retornou uma cotação inválida. Tente calcular novamente.",
     LALAMOVE_ENVIRONMENT_UNAVAILABLE: "Não foi possível ler o ambiente da Lalamove. Tente novamente.",
     INVALID_LALAMOVE_ENVIRONMENT: "O ambiente da Lalamove está inválido. Verifique a configuração no painel.",
-    SANDBOX_CREDENTIALS_REQUIRED: "As credenciais Sandbox da Lalamove estão ausentes ou inválidas.",
+    SANDBOX_CREDENTIALS_REQUIRED: "Credenciais Sandbox da Lalamove ausentes ou inválidas.",
     GEOCODER_NOT_CONFIGURED: "Serviço de localização não configurado. Tente novamente mais tarde.",
     GEOCODER_UNAVAILABLE: "Serviço de localização temporariamente indisponível. Tente novamente.",
     PRODUCTION_CREDENTIALS_REQUIRED: "Cotação indisponível: as credenciais de produção da Lalamove precisam ser verificadas.",
