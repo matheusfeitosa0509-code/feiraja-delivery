@@ -85,6 +85,9 @@ jobs:
       - name: Check super-worker
         run: deno check supabase/functions/super-worker/index.ts
 
+      - name: Test Asaas-only payment policy
+        run: deno test supabase/functions/super-worker/payment-provider-policy_test.ts
+
       - name: Test Mercado Pago cancelled-order handling
         run: deno test supabase/functions/super-worker/payment-status_test.ts
 
