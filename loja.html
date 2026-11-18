@@ -23,7 +23,7 @@
  let resolveResult;
  window.__storefrontProductsPromise=new Promise(resolve=>{resolveResult=resolve;});
  let hasCatalogCache=false;
- try{const cache=JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')||'null');hasCatalogCache=!!(cache&&cache.version===1&&Array.isArray(cache.products)&&cache.products.length);}
+ try{const cache=JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')||'null');hasCatalogCache=!!(cache&&cache.version===1&&Number.isFinite(Number(cache.updatedAt))&&Date.now()-Number(cache.updatedAt)<=86400000&&Date.now()>=Number(cache.updatedAt)&&Array.isArray(cache.products)&&cache.products.length);}
  catch(_){}
  if(hasCatalogCache){
   // Deixa o cache ser pintado antes de iniciar a revalidação em segundo plano.
