@@ -165,8 +165,9 @@ async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "M
   let result: { response: Response; payload: any };
   try {
     result = await createLalamoveOrder(key, secret, body, fetch, environment);
-  } catch {
+  } catch (error) {
     // Timeout is ambiguous: keep "creating" so a second tap cannot create another ride.
+    console.error("lalamove-dispatch failure", { stage: "create_order", internal_code: "LALAMOVE_CREATE_TIMEOUT", http_status: null, provider_body: {}, environment, transport_error: error instanceof Error ? error.name : "UNKNOWN" });
     return { pending_confirmation: true };
   }
   if (!result.response.ok) {
@@ -197,7 +198,7 @@ async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "M
     p_actual_cost: rawCost, p_status: mapped,
     p_tracking_url: String(data?.shareLink || ""), p_driver: driver,
   });
-  if (finishError) return { pending_confirmation: true };
+  if (finishError) { console.error("lalamove-dispatch failure", { stage: "persist_created_order", internal_code: "DISPATCH_FINISH_FAILED", http_status: null, provider_body: {}, environment, db_code: finishError.code || "DB_ERROR" }); return { pending_confirmation: true }; }
   return { created: true, status: mapped, tracking_url: String(data?.shareLink || ""), vehicle };
 }
 async function refreshOrderStatus(db: any, orderId: string) {
@@ -251,7 +252,7 @@ async function cancelOrder(db: any, orderId: string) {
     throw new Error("CANCELLATION_WINDOW_CLOSED");
   }
   const response = await cancelLalamoveOrder(key, secret, String(current.lalamove_order_id), fetch, environment);
-  if (response.status === 409) throw new Error("CANCELLATION_FORBIDDEN");
+  if (response.status === 409) { console.error("lalamove-dispatch failure", { stage: "cancel_order", internal_code: "CANCELLATION_FORBIDDEN", http_status: 409, provider_body: {}, environment }); throw new Error("CANCELLATION_FORBIDDEN"); }
   if (!response.ok && response.status !== 204) {console.error("lalamove-dispatch failure",{stage:"cancel_order",internal_code:"LALAMOVE_CANCEL_FAILED",http_status:response.status,provider_body:{},environment});const failure=new Error("LALAMOVE_CANCEL_FAILED") as Error & {httpStatus?:number};failure.httpStatus=response.status;throw failure;}
   const { error: updateError } = await db.rpc("service_cancel_lalamove_dispatch", { p_order_id: orderId });
   if (updateError) throw new Error("CANCEL_STATE_UPDATE_FAILED");
