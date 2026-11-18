@@ -1933,7 +1933,7 @@ async function requestDeliveryQuote(){
  const items=buildDeliveryQuoteItems(totals().items);
  if(!items.length){setDeliveryQuoteStatus('Adicione produtos ao carrinho para calcular a entrega.');return;}
  const cacheKey=deliveryQuoteCacheKey(address,items),cachedQuote=readDeliveryQuoteCache(cacheKey);
- if(cachedQuote){deliveryQuote={...cachedQuote.quote};setDeliveryQuoteStatus(deliveryQuoteLabel(deliveryQuote.vehicle,deliveryQuote.fee));updateCheckoutTotals();console.info('delivery-quote-app-timing',{stage:'cache_hit',total_ms:Math.round(performance.now()-requestStarted)});return;}
+ if(cachedQuote){deliveryQuote={...cachedQuote.quote};setDeliveryQuoteStatus(deliveryQuoteLabel(deliveryQuote.vehicle,deliveryQuote.fee));updateCheckoutTotals();const recordingStarted=performance.now();void saveDeliveryAddress(address).then(()=>console.info('delivery-quote-app-timing',{stage:'recording',duration_ms:Math.round(performance.now()-recordingStarted)})).catch(saveError=>console.warn('Falha ao salvar endereço após cotação em cache:',saveError?.message||saveError));console.info('delivery-quote-app-timing',{stage:'cache_hit',total_ms:Math.round(performance.now()-requestStarted)});return;}
  deliveryQuote=null;updateCheckoutTotals($('#minimumCheckoutNotice').classList.contains('hidden')?'':$('#minimumCheckoutNotice').textContent);
  setDeliveryQuoteStatus('Calculando a taxa…',false,false,true);
  clearTimeout(deliveryQuoteSlowTimer);
