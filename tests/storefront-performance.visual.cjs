@@ -102,9 +102,10 @@ async function measure(page,cdp,url) {
    assert.ok(candidateSecond.firstProductMs<1000,'cached second visit did not meet <1s target: '+candidateSecond.firstProductMs+'ms');
    assert.ok(firstImages>=4,'first product row images missing high priority/dimensions');
    assert.ok(noMapOnOpen,'MapLibre, tracking map or assistant loaded before use');
-   assert.deepEqual(candidateErrors,[],'console/page errors on candidate: '+candidateErrors.join('; '));
    await candidate.locator('#assistantNavButton').click();
-   await candidate.waitForFunction(()=>performance.getEntriesByType('resource').some(x=>x.name.includes('assistant-runtime.js')),{timeout:10000});
+   await candidate.waitForFunction(()=>performance.getEntriesByType('resource').some(x=>x.name.includes('assistant-runtime.js')),null,{timeout:10000});
+   assert.ok(!(await candidate.evaluate(()=>performance.getEntriesByType('resource').some(x=>x.name.includes('assistant-speech.js')))),'voice module should remain lazy until a signed-in assistant opens');
+   assert.deepEqual(candidateErrors,[],'console/page errors on candidate: '+candidateErrors.join('; '));
    report.viewports[width]={before:{first:baselineFirst,second:baselineSecond},after:{first:candidateFirst,second:candidateSecond},stalePriceCorrected:true,noMapOnOpen,firstImagesHighPriority:firstImages,consoleErrors:candidateErrors.length};
    await candidateContext.close();
   }
