@@ -160,6 +160,7 @@ export function isValidDeliveryQuote(quote, now = Date.now()) {
   return Number.isFinite(fee) && fee > 0 && Number.isFinite(expiresAt) && expiresAt > Number(now);
 }
 
+/** @param {unknown} address @param {unknown} items @param {{lat: number|string, lng: number|string}|null} coordinates @param {string} userId */
 export function buildDeliveryQuoteCacheKey(address, items, coordinates = null, userId = "") {
   return JSON.stringify({ user: String(userId || ""), address, items, coordinates: coordinates || null });
 }
