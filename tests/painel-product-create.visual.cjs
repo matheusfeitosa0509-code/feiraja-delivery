@@ -28,17 +28,19 @@ function bootstrap(){
  <\/script>`;
 }
 function prepare(source){
+ const calendar=fs.readFileSync(path.join(process.cwd(),"supabase/functions/_shared/commercial-calendar.js"),"utf8").replace(/\bexport\s+/g,"");
  let html=source.replace(/<script>try\{if\("serviceWorker"[\s\S]*?<\/script>/i,"")
   .replace(/<link rel="manifest"[^>]*>/gi,"").replace(/<link rel="preconnect"[^>]*>/gi,"")
   .replace(/<link href="https:\/\/fonts\.googleapis\.com[^>]*>/gi,"")
   .replace(/<script src="\.\/turnstile\.js" defer><\/script>/i,"")
   .replace(/<script src="\.\/lalamove-map\.js"><\/script>/i,"");
- html=html.replace(/<script type="module">([\s\S]*?)<\/script>/i,(_all,code)=>{
+ html=html.replace(/<script type="module">([\s\S]*?)<\/script>/gi,(_all,code)=>{
   code=code.replace(/^\s*import\s*\{\s*createClient\s*\}\s*from\s*['"]https:\/\/esm\.sh\/@supabase\/supabase-js@2\.117\.1['"];\s*/m,"")
+   .replace(/^\s*import\s*\{\s*upcomingHolidays\s*\}\s*from\s*['"]\.\/supabase\/functions\/_shared\/commercial-calendar\.js[^'"]*['"];\s*/m,"")
    .replace(/const db=createClient\([\s\S]*?\);\s*/,"const db=window.__testDb;\n");
   return "<script>"+code+"</script>";
  });
- return html.replace("<body",bootstrap()+"<body");
+ return html.replace("<body",bootstrap()+"<script>"+calendar+"</script><body");
 }
 (async()=>{
  const source=fs.readFileSync(path.join(process.cwd(),"painel.html"),"utf8");
@@ -51,6 +53,8 @@ function prepare(source){
    page.on("console",m=>{if(m.type()==="error")errors.push(m.text());});
    await page.setContent(prepare(source),{waitUntil:"domcontentloaded"});
    await page.waitForFunction(()=>!document.getElementById("panel")?.classList.contains("hidden"),{timeout:15000});
+   await page.waitForFunction(()=>document.getElementById("upcomingHolidaysList")?.textContent.includes("6h às 11h"),{timeout:10000});
+   if(!(await page.locator("#upcomingHolidaysCard").textContent()).includes("Próximos feriados"))throw new Error("Card de próximos feriados não foi exibido.");
    await page.locator("#tabProducts").click();
    await page.waitForFunction(()=>!document.querySelector("#openNewProduct")?.disabled,{timeout:10000});
    const categories=await page.locator("#sheetCategory option").allTextContents();

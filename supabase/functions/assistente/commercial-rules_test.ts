@@ -4,8 +4,8 @@ import { commercialScheduleContext, formatResaleLabel } from "./commercial-rules
 Deno.test("sábado após o fechamento aponta segunda-feira", () => {
   const result = commercialScheduleContext(new Date("2026-11-14T22:30:00.000Z"));
   assertEquals(result.dentro_horario, false);
-  assertEquals(result.proximo_dia_funcionamento, "segunda-feira, 16/11");
-  assertEquals(result.pronto_a_partir_de, "segunda-feira, 16/11 a partir das 6h");
+  assertEquals(result.proximo_dia_funcionamento, "segunda, 16/11");
+  assertEquals(result.pronto_a_partir_de, "segunda, 16/11 a partir das 6h");
 });
 
 Deno.test("sábado durante o funcionamento aponta hoje", () => {
@@ -19,12 +19,12 @@ Deno.test("domingo permanece fechado e aponta segunda-feira", () => {
   const result = commercialScheduleContext(new Date("2026-11-15T14:00:00.000Z"));
   assertEquals(result.dentro_horario, false);
   assertEquals(result.horario_de_hoje, "fechado");
-  assertEquals(result.proximo_dia_funcionamento, "segunda-feira, 16/11");
+  assertEquals(result.proximo_dia_funcionamento, "segunda, 16/11");
 });
 
 Deno.test("feriado de 20/11 abre até 11h", () => {
   const result = commercialScheduleContext(new Date("2026-11-20T13:30:00.000Z"));
-  assertEquals(result.feriado, "Dia Nacional de Zumbi e da Consciência Negra");
+  assertEquals(result.feriado, "Consciência Negra");
   assertEquals(result.horario_de_hoje, "6h às 11h");
   assertEquals(result.dentro_horario, true);
   assertEquals(result.pronto_a_partir_de, "hoje, até 11h");

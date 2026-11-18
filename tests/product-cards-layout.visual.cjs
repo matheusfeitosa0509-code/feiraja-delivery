@@ -17,7 +17,8 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
   const root = process.cwd();
   const source = fs.readFileSync(path.join(root, 'loja.html'), 'utf8');
   const helper = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8').replace(/\bexport\s+/g, '');
-  const schedule = fs.readFileSync(path.join(root, 'supabase/functions/_shared/store-schedule.js'), 'utf8').replace(/\bexport\s+/g, '');
+  const calendar = fs.readFileSync(path.join(root, 'supabase/functions/_shared/commercial-calendar.js'), 'utf8').replace(/\bexport\s+/g, '');
+  const schedule = fs.readFileSync(path.join(root, 'supabase/functions/_shared/store-schedule.js'), 'utf8').replace(/^import .*commercial-calendar\.js.*;\s*/m, '').replace(/\bexport\s+/g, '');
   const bootstrap = '<script>' +
     'window.__testSupabase={' +
     'auth:{getSession:async()=>({data:{session:null},error:null}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}}),signOut:async()=>({error:null})},' +
@@ -39,10 +40,11 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
     code = code.replace(/^\s*import\s*\{\s*createClient\s*\}\s*from\s*['"]https:\/\/esm\.sh\/@supabase\/supabase-js@2\.117\.1['"];\s*/m, '');
     code = code.replace(/^\s*import\s*\{[^}]+\}\s*from\s*['"]\.\/loja-delivery-ui\.js[^'"]*['"];\s*/m, '');
     code = code.replace(/^\s*import\s*\{\s*getStoreSchedule\s*\}\s*from\s*['"]\.\/supabase\/functions\/_shared\/store-schedule\.js[^'"]*['"];\s*/m, '');
+    code = code.replace(/^\s*import\s*\{\s*getCommercialSchedule\s*\}\s*from\s*['"]\.\/supabase\/functions\/_shared\/commercial-calendar\.js[^'"]*['"];\s*/m, '');
     code = code.replace(/const supabase=createClient\([\s\S]*?\);\s*/, 'const supabase=window.__testSupabase;\n');
     return '<script>' + code + '</script>';
   });
-  html = html.replace('<body', bootstrap + '<script>' + schedule + '</script><script>' + helper + '</script><body');
+  html = html.replace('<body', bootstrap + '<script>' + calendar + '</script><script>' + schedule + '</script><script>' + helper + '</script><body');
 
   const browser = await chromium.launch({ headless:true });
   try {

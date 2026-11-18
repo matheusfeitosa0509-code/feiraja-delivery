@@ -15,8 +15,10 @@ assert.ok(!storeHtml.includes('Retirada na loja</strong><small>ou com Uber</smal
 assert.ok(panelHtml.includes('Agendado para '), 'painel mostra o selo de agendamento');
 assert.ok(panelHtml.includes('!scheduledPending'), 'painel impede cotação antes da abertura');
 
+const calendarSource = fs.readFileSync(path.join(root, 'supabase/functions/_shared/commercial-calendar.js'), 'utf8').replace(/\bexport\s+/g, '');
 const scheduleSource = fs.readFileSync(path.join(root, 'supabase/functions/_shared/store-schedule.js'), 'utf8')
-  .replaceAll('export async function ', 'async function ').replaceAll('export function ', 'function ').replaceAll('export const ', 'const ');
+  .replace(/^import .*commercial-calendar\.js.*;\s*/m, '')
+  .replace(/\bexport\s+/g, '');
 const checkoutScheduleStart = storeHtml.indexOf('function checkoutScheduleMessage(');
 const checkoutScheduleEnd = storeHtml.indexOf('\nfunction updateCheckoutScheduleNotice()', checkoutScheduleStart);
 const checkoutScheduleSource = checkoutScheduleStart >= 0 && checkoutScheduleEnd > checkoutScheduleStart ? storeHtml.slice(checkoutScheduleStart, checkoutScheduleEnd) : '';
@@ -77,14 +79,15 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
       assert.equal(copyResult.noOverflow, true, 'sem overflow nos textos em ' + width + 'px');
       await page.locator('body').evaluate(el => el.insertAdjacentHTML('beforeend', '<label id="deliveryHomeOption"><input id="deliveryHome" type="radio"><span id="deliveryHomeDescription"></span><span id="deliveryStartingPrice"></span></label>'));
 
-      const result = await page.evaluate(({ scheduleSource, uiSource, checkoutScheduleSource }) => {
-        const getStoreSchedule = new Function(scheduleSource + '\nreturn getStoreSchedule;')();
+      const result = await page.evaluate(({ calendarSource, scheduleSource, uiSource, checkoutScheduleSource }) => {
+        const getStoreSchedule = new Function(calendarSource + '\n' + scheduleSource + '\nreturn getStoreSchedule;')();
+        const getCommercialSchedule = new Function(calendarSource + '\nreturn getCommercialSchedule;')();
         const renderDeliveryOption = new Function(uiSource + '\nreturn renderDeliveryOption;')();
         const monday = getStoreSchedule(new Date('2026-11-16T22:00:00.000Z'));
         const saturday = getStoreSchedule(new Date('2026-11-14T18:00:00.000Z'));
         const sunday = getStoreSchedule(new Date('2026-11-15T12:00:00.000Z'));
         const tuesdayNight = getStoreSchedule(new Date('2026-11-18T02:00:00.000Z'));
-        const checkoutScheduleMessage = new Function('pickupEstimate', checkoutScheduleSource + '\nreturn checkoutScheduleMessage;')(date => getStoreSchedule(date));
+        const checkoutScheduleMessage = new Function('pickupEstimate', calendarSource + '\n' + checkoutScheduleSource + '\nreturn checkoutScheduleMessage;')(date => getCommercialSchedule(date));
         const nightMessage = checkoutScheduleMessage(new Date('2026-11-18T02:00:00.000Z'), true);
         renderDeliveryOption({
           option: document.querySelector('#deliveryHomeOption'),
@@ -102,7 +105,7 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
           schedule: document.querySelector('#deliveryHomeDescription .checkout-delivery-schedule')?.textContent || null,
           noOverflow: document.documentElement.scrollWidth <= innerWidth,
         };
-      }, { scheduleSource, uiSource, checkoutScheduleSource });
+      }, { calendarSource, scheduleSource, uiSource, checkoutScheduleSource });
 
       assert.equal(result.monday.scheduledFor, '2026-11-17T10:00:00.000Z', 'segunda à noite → terça às 6h');
       assert.equal(result.saturday.scheduledFor, '2026-11-16T10:00:00.000Z', 'sábado 14h → segunda às 6h');

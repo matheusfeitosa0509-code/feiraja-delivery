@@ -4,6 +4,8 @@ on:
     paths:
       - "supabase/functions/_shared/store-schedule.js"
       - "supabase/functions/_shared/store-schedule_test.ts"
+      - "supabase/functions/_shared/commercial-calendar.js"
+      - "supabase/functions/_shared/commercial-calendar_test.ts"
       - "supabase/functions/_shared/delivery-quote.ts"
       - "supabase/functions/_shared/geocoding.ts"
       - "supabase/functions/_shared/geocoding_test.ts"
@@ -47,6 +49,7 @@ on:
       - "loja.html"
       - "sw.js"
       - "tests/storefront-performance.visual.cjs"
+      - "tests/holiday-calendar.visual.cjs"
       - "assistant-runtime.js"
       - "assistant-speech.js"
       - "loja-delivery-ui.js"
@@ -113,7 +116,8 @@ jobs:
       - run: deno check --config supabase/functions/lalamove-tracking/deno.json supabase/functions/lalamove-tracking/index.ts
       - run: deno test --allow-env --allow-net --allow-read supabase/functions/asaas-webhook/payment-routing_test.ts
       - run: deno test --allow-net --allow-read supabase/functions/delivery-quote/index_test.ts supabase/functions/_shared/geocoding_test.ts supabase/functions/delivery-address/index_test.ts supabase/functions/lalamove-dispatch/index_test.ts supabase/functions/lalamove-tracking/index_test.ts supabase/functions/_shared/lalamove-environment_test.ts
-      - run: deno test --allow-read loja-delivery-ui_test.ts supabase/functions/_shared/store-schedule_test.ts
+      - run: deno test --allow-read loja-delivery-ui_test.ts supabase/functions/_shared/store-schedule_test.ts supabase/functions/_shared/commercial-calendar_test.ts
+      - run: deno test --allow-read supabase/functions/assistente/commercial-rules_test.ts
       - run: deno test --allow-read supabase/functions/super-worker/delivery-order_test.ts supabase/functions/_shared/item-preferences_test.ts
       - run: node supabase/tests/cart-item-preferences.test.mjs
       - uses: actions/setup-node@v4
@@ -128,6 +132,7 @@ jobs:
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/loja-console-errors.visual.cjs
       # Captures production baseline and branch timings on simulated 4G at 360px/412px.
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/storefront-performance.visual.cjs
+      - run: NODE_PATH=/tmp/playwright/node_modules node tests/holiday-calendar.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/cart-modernization.visual.cjs
       - run: node supabase/tests/panel-order-value-display.test.mjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/order-tracking.visual.cjs
