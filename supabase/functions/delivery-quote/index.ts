@@ -81,7 +81,7 @@ Deno.serve(async (req: Request) => {
     const { data: allowed, error: rateError } = await db.rpc("consume_delivery_quote_rate_limit", {
       p_user_id: authData.user.id, p_max_requests: 30, p_window_seconds: 60,
     });
-    if (rateError) return json({ error: "Limite de cotações temporariamente indisponível." }, 503);
+    if (rateError) return json({ error: "Limite de cotações temporariamente indisponível. Tente novamente em instantes.", code: "QUOTE_RATE_LIMIT_UNAVAILABLE" }, 503);
     if (allowed !== true) return json({ error: "Muitas consultas agora, tente em alguns segundos.", code: "QUOTE_RATE_LIMIT" }, 429);
     timings.rate_limit_ms = Math.round(performance.now() - rateStarted);
 
@@ -188,10 +188,11 @@ Deno.serve(async (req: Request) => {
     if (code === "ADDRESS_OUTSIDE_MANAUS") return json({ error: "Este endereço fica fora de Manaus - AM. Informe um endereço dentro de Manaus.", code }, 422);
     if (code === "PRODUCTION_CREDENTIALS_REQUIRED") return json({ error: "Credenciais Lalamove de produção ausentes ou inválidas. Configure LALAMOVE_PROD_API_KEY e LALAMOVE_PROD_API_SECRET no Supabase; nenhuma cobrança foi criada.", code }, 503);
     if (code === "LALAMOVE_ENVIRONMENT_UNAVAILABLE") return json({ error: "Não foi possível ler o ambiente Lalamove configurado. Tente novamente.", code }, 503);
+    if (code === "INVALID_LALAMOVE_ENVIRONMENT") return json({ error: "O ambiente da Lalamove está inválido. Verifique a configuração no painel.", code }, 503);
     if (code === "GEOCODER_NOT_CONFIGURED") return json({ error: "Serviço de localização não configurado. Falta o Secret GOOGLE_GEOCODING_API_KEY no Supabase.", code }, 503);
     if (code === "GEOCODER_UNAVAILABLE") return json({ error: "Não foi possível localizar o endereço agora. Tente novamente em instantes.", code }, 503);
     if (code === "INVALID_ITEMS") return json({ error: "Itens ou quantidades inválidos.", code }, 400);
-    if (code === "INVALID_QUOTE_PRICE" || code === "INVALID_QUOTE_RESPONSE") return json({ error: "Resposta de cotação inválida." }, 502);
+    if (code === "INVALID_QUOTE_PRICE" || code === "INVALID_QUOTE_RESPONSE") return json({ error: "A Lalamove retornou um preço inválido. Tente calcular novamente.", code }, 502);
     console.error("delivery-quote", {
       stage: "request", code,
       error: error instanceof Error ? { name: error.name, message: error.message, stack: error.stack || null } : String(error),
