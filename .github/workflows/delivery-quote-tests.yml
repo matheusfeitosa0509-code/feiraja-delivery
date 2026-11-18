@@ -14,6 +14,9 @@ on:
       - "supabase/tests/cart-item-preferences.test.mjs"
       - "supabase/functions/delivery-quote/**"
       - "supabase/functions/lalamove-dispatch/**"
+      - "supabase/functions/asaas-webhook/**"
+      - "supabase/migrations/*require_test_production_confirmation*.sql"
+      - "supabase/rollback/*require_test_production_confirmation*.sql"
       - "supabase/functions/lalamove-webhook/**"
       - "supabase/functions/_shared/lalamove-dispatch.ts"
       - "supabase/functions/_shared/lalamove-environment.ts"
@@ -59,6 +62,7 @@ on:
       - feat/lalamove-delivery-sandbox
       - feat/lalamove-delivery-stage-3
       - feat/checkout-order-tracking-map
+      - fix/test-production-confirmation-and-asaas-stale-webhook
     paths:
       - "supabase/functions/super-worker/**"
       - "supabase/functions/assistente/**"
@@ -67,6 +71,7 @@ on:
       - "supabase/functions/_shared/delivery-quote.ts"
       - "supabase/functions/delivery-quote/**"
       - "supabase/functions/lalamove-dispatch/**"
+      - "supabase/functions/asaas-webhook/**"
       - "supabase/functions/lalamove-webhook/**"
       - "supabase/functions/_shared/lalamove-dispatch.ts"
       - "supabase/functions/lalamove-tracking/**"
@@ -101,8 +106,10 @@ jobs:
       - run: deno check --config supabase/functions/delivery-address/deno.json supabase/functions/delivery-address/index.ts
       - run: deno check --config supabase/functions/delivery-quote/deno.json supabase/functions/delivery-quote/index.ts
       - run: deno check --config supabase/functions/lalamove-dispatch/deno.json supabase/functions/lalamove-dispatch/index.ts
+      - run: deno check supabase/functions/asaas-webhook/index.ts
       - run: deno check --config supabase/functions/lalamove-webhook/deno.json supabase/functions/lalamove-webhook/index.ts
       - run: deno check --config supabase/functions/lalamove-tracking/deno.json supabase/functions/lalamove-tracking/index.ts
+      - run: deno test --allow-env --allow-net --allow-read supabase/functions/asaas-webhook/payment-routing_test.ts
       - run: deno test --allow-net --allow-read supabase/functions/delivery-quote/index_test.ts supabase/functions/_shared/geocoding_test.ts supabase/functions/delivery-address/index_test.ts supabase/functions/lalamove-dispatch/index_test.ts supabase/functions/lalamove-tracking/index_test.ts supabase/functions/_shared/lalamove-environment_test.ts
       - run: deno test --allow-read loja-delivery-ui_test.ts supabase/functions/_shared/store-schedule_test.ts
       - run: deno test --allow-read supabase/functions/super-worker/delivery-order_test.ts supabase/functions/_shared/item-preferences_test.ts

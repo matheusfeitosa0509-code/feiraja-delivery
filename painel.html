@@ -1324,10 +1324,12 @@ async function startLalamoveQuote(orderId,button){
 async function confirmLalamoveDispatch(orderId,sessionId,vehicle,quoteEnvironment,quotedFee,button){
  const order=allOrders.find(o=>String(o.id)===String(orderId));
  if(!['Preparando','Pronto para Retirada','Pronto'].includes(normalizeOrderStatus(order?.status))){setLalamoveFeedback(orderId,'O pedido precisa estar Preparando ou Pronto para chamar o entregador.',true);return;}
- if(quoteEnvironment==='producao'&&!(await appConfirm('Valor real: '+money(quotedFee)+' · Veículo: '+(vehicle==='MOTO'?'Moto':'Carro')+'. Esta confirmação criará uma corrida REAL e cobrará o saldo da Lalamove.',{title:'Confirmar corrida em Produção',confirmText:'Criar corrida real',danger:true})))return;
+ const testProductionOrder=order?.is_test_order===true&&quoteEnvironment==='producao';
+ if(testProductionOrder&&!(await appConfirm('ATENÇÃO: este é um pedido de TESTE, mas a corrida será REAL e cobrada do saldo da Lalamove. Confirmar?',{title:'Atenção: pedido de teste em Produção',confirmText:'Confirmar?',danger:true})))return;
+ if(!testProductionOrder&&quoteEnvironment==='producao'&&!(await appConfirm('Valor real: '+money(quotedFee)+' · Veículo: '+(vehicle==='MOTO'?'Moto':'Carro')+'. Esta confirmação criará uma corrida REAL e cobrará o saldo da Lalamove.',{title:'Confirmar corrida em Produção',confirmText:'Criar corrida real',danger:true})))return;
  button.disabled=true;button.textContent=quoteEnvironment==='producao'?'Criando corrida real…':'Criando corrida no Sandbox…';
  try{
-  const {data,error}=await db.functions.invoke('lalamove-dispatch',{body:{action:'create',order_id:orderId,quote_session_id:sessionId,vehicle}});
+  const {data,error}=await db.functions.invoke('lalamove-dispatch',{body:{action:'create',order_id:orderId,quote_session_id:sessionId,vehicle,test_production_confirmed:testProductionOrder}});
   if(error)throw error;
   if(data?.pending_confirmation){setLalamoveFeedback(orderId,data.message||'A Lalamove ainda está confirmando a criação. Não toque novamente.',true);return;}
   if(data?.created){const quoteBox=document.querySelector('[data-lalamove-quote-box="'+CSS.escape(orderId)+'"]');if(quoteBox)quoteBox.hidden=true;await load();setLalamoveFeedback(orderId,'Corrida criada na '+(quoteEnvironment==='producao'?'Produção':'Sandbox')+'. O acompanhamento já está disponível abaixo.',false);return;}

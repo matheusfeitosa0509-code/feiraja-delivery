@@ -23,6 +23,10 @@ export function priceDifference(currentFee: number, chargedFee: number): number 
   return Math.round((currentFee - chargedFee) * 100) / 100;
 }
 
+export function assertTestProductionDispatchConfirmation(isTestOrder: boolean, environment: string, confirmed: boolean): void {
+  if (isTestOrder && environment === "producao" && confirmed !== true) throw new Error("TEST_PRODUCTION_CONFIRMATION_REQUIRED");
+}
+
 export function canStartDispatch(state: string | null | undefined): boolean {
   return !["creating", "created"].includes(String(state || ""));
 }

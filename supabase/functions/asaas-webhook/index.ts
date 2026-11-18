@@ -214,12 +214,63 @@ export async function handleAsaasWebhook(req: Request, deps: WebhookDependencies
     const createdAtMs = Date.parse(String(order.created_at || ""));
     const ageMs = deps.now() - createdAtMs;
     if (Number.isFinite(createdAtMs) && ageMs >= 10 * 60 * 1000) {
-      console.warn(
-        "Pedido Asaas sem payment_id há pelo menos 10 minutos; revisão manual necessária. Pedido:",
-        "charge_id_present:",
-        Boolean(paymentId),
-      );
-      return json({ received: true, ignored: true, reason: "payment_id_missing_stale_order" });
+      const rawBaseUrl = deps.env.get("ASAAS_BASE_URL");
+      const apiKey = deps.env.get("ASAAS_API_KEY") || "";
+      if (!rawBaseUrl || !rawBaseUrl.trim() || !apiKey) return json({ error: "Não foi possível reconciliar a cobrança Asaas." }, 503);
+      let asaasBaseUrl: string;
+      try {
+        const configuredBase = new URL(rawBaseUrl);
+        if (configuredBase.protocol !== "https:" ||
+            !["api.asaas.com", "api-sandbox.asaas.com"].includes(configuredBase.hostname) ||
+            configuredBase.pathname !== "/" || configuredBase.search || configuredBase.hash) {
+          return json({ error: "Não foi possível reconciliar a cobrança Asaas." }, 503);
+        }
+        asaasBaseUrl = configuredBase.origin;
+      } catch { return json({ error: "Não foi possível reconciliar a cobrança Asaas." }, 503); }
+      let reconciledPayment: any;
+      try {
+        const response = await deps.fetch(
+          asaasBaseUrl + "/v3/payments?externalReference=" + encodeURIComponent(externalReference),
+          { method: "GET", headers: { access_token: apiKey, Accept: "application/json" } },
+        );
+        if (!response.ok) return json({ error: "Não foi possível consultar a cobrança Asaas." }, 503);
+        const payload = await response.json();
+        const candidates = Array.isArray(payload?.data) ? payload.data : [];
+        reconciledPayment = candidates.find((candidate: any) =>
+          String(candidate?.id || "") === paymentId &&
+          String(candidate?.externalReference || "") === externalReference &&
+          String(candidate?.billingType || "").toUpperCase() === "PIX"
+        );
+      } catch { return json({ error: "Não foi possível consultar a cobrança Asaas." }, 503); }
+      if (!reconciledPayment) return json({ error: "Cobrança ainda não localizada no Asaas; nova tentativa necessária." }, 503);
+      const reconciledCents = Math.round(Number(reconciledPayment.value) * 100);
+      const expectedCents = Math.round(Number(order.total) * 100);
+      if (!Number.isFinite(reconciledCents) || reconciledCents !== expectedCents ||
+          Math.round(paymentValue * 100) !== expectedCents) {
+        return json({ received: true, ignored: true, reason: "valor_divergente" });
+      }
+      if (!["RECEIVED", "CONFIRMED"].includes(String(reconciledPayment.status || "").toUpperCase())) {
+        return json({ received: true, ignored: true, reason: "cobranca_ainda_nao_paga" });
+      }
+      const preserveOrderStatus = normalizedStatus === "pagamento confirmado" ||
+        protectedAdministrativeStatuses.has(normalizedStatus);
+      const paymentLinkPatch = preserveOrderStatus
+        ? { payment_id: paymentId }
+        : { payment_id: paymentId, status: "Pagamento Confirmado" };
+      const { data: linkedOrder, error: linkError } = await db.from("orders")
+        .update(paymentLinkPatch)
+        .eq("id", order.id).eq("payment_provider", "asaas")
+        .is("payment_id", null).eq("status", order.status)
+        .select("id").maybeSingle();
+      if (linkError) return json({ error: "Falha ao registrar a confirmação do pagamento." }, 500);
+      if (linkedOrder) return json({ received: true, reconciled: true });
+      const { data: currentOrder, error: currentError } = await db.from("orders")
+        .select("status,payment_id").eq("id", order.id).maybeSingle();
+      if (currentError) return json({ error: "Falha ao confirmar reconciliação." }, 500);
+      if (currentOrder?.payment_id === paymentId) {
+        return json({ received: true, ignored: true, duplicate: true });
+      }
+      return json({ error: "Pedido alterado durante a reconciliação; solicite nova entrega." }, 503);
     }
     console.error("Cobrança Asaas ainda não vinculada; solicitando nova entrega.");
     return json({ error: "Cobrança ainda não vinculada ao pedido." }, 503);

@@ -73,7 +73,7 @@ const { chromium } = require("playwright");
             };
           },
           functions: { invoke: async (name, options) => {
-            calls.push({ name, action: options.body.action, environment: lalamoveEnvironment });
+            calls.push({ name, action: options.body.action, environment: lalamoveEnvironment, testProductionConfirmed: options.body.test_production_confirmed === true });
             if (options.body.action === "quote") {
               // Simulate the RPC ON CONFLICT update: a prior Sandbox quote is replaced by the new environment.
               storedQuote.environment = lalamoveEnvironment; storedQuote.moto.fee = 12.05; storedQuote.car.fee = 14.40;
@@ -131,8 +131,11 @@ const { chromium } = require("playwright");
       await page.locator('[data-lalamove-quote-box="' + order.id + '"] [data-lalamove-confirm]').click();
       const productionDialog = page.getByRole("dialog");
       const confirmText = await productionDialog.locator("#appDialogMessage").textContent();
-      if (!confirmText.includes("R$ 14,40") || !confirmText.includes("Carro")) throw new Error("Confirmação não mostra preço real e veículo em " + width + "px");
-      await productionDialog.getByRole("button", { name: "Criar corrida real" }).click();
+      const expectedTestWarning = "ATENÇÃO: este é um pedido de TESTE, mas a corrida será REAL e cobrada do saldo da Lalamove. Confirmar?";
+      if (confirmText !== expectedTestWarning) throw new Error("Aviso obrigatório de pedido de teste em Produção não apareceu em " + width + "px: " + confirmText);
+      await productionDialog.getByRole("button", { name: "Confirmar?" }).click();
+      const confirmedTestCall = await page.evaluate(() => window.testHooks.getCalls().findLast(x => x.action === "create" && x.environment === "producao"));
+      if (!confirmedTestCall?.testProductionConfirmed) throw new Error("Flag de confirmação do pedido teste não foi enviada ao servidor em " + width + "px");
       await page.waitForFunction(() => document.querySelector('[data-lalamove-feedback]')?.textContent.includes("Corrida criada") || document.querySelector('[data-lalamove-feedback]')?.textContent.includes("Corrida criada no Sandbox") || document.querySelector('[data-lalamove-feedback]')?.textContent.includes("Acompanhamento"));
       await page.locator("#lalamoveEnvironmentSelect").selectOption("sandbox");
       await page.waitForFunction(() => document.getElementById("lalamoveSettingsBadge").textContent === "SANDBOX");

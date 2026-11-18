@@ -1,6 +1,6 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
-  buildLalamoveOrderBody, canCancelLalamove, canQuoteLalamove, canStartDispatch, isLalamoveDispatchReady, cancelLalamoveOrder, createLalamoveOrder, getLalamoveDriverDetails,
+  assertTestProductionDispatchConfirmation, buildLalamoveOrderBody, canCancelLalamove, canQuoteLalamove, canStartDispatch, isLalamoveDispatchReady, cancelLalamoveOrder, createLalamoveOrder, getLalamoveDriverDetails,
   isWebhookVerificationProbe, makeWebhookSignature, mapLalamoveStatus, normalizeBrazilPhone, priceDifference, quoteFee, verifyWebhookSignature, requireSupabaseServiceRoleJwt, storeLalamoveQuotes, getLalamoveOrderDetails,
 } from "../_shared/lalamove-dispatch.ts";
 
@@ -270,4 +270,30 @@ Deno.test("consulta de tracking MOCKADA usa host de produção quando dispatch f
     }, "producao");
   assertEquals(result.response.status, 200);
   assertEquals(result.payload.status, "ON_GOING");
+});
+
+
+Deno.test("pedido teste em Produção sem confirmação é recusado antes da API", () => {
+  let rejected = false;
+  try { assertTestProductionDispatchConfirmation(true, "producao", false); }
+  catch (error) { rejected = error instanceof Error && error.message === "TEST_PRODUCTION_CONFIRMATION_REQUIRED"; }
+  assertEquals(rejected, true);
+});
+Deno.test("pedido teste em Produção confirmado aceita criação com API mockada; Sandbox não exige confirmação", async () => {
+  assertTestProductionDispatchConfirmation(true, "producao", true);
+  assertTestProductionDispatchConfirmation(true, "sandbox", false);
+  let called = false;
+  const result = await createLalamoveOrder("pk_prod_demo", "sk_prod_demo", {
+    data: { quotationId: "quote-test-live", sender: { stopId: "pickup" }, recipients: [{ stopId: "dropoff" }] },
+  }, async (input) => {
+    called = true;
+    assertEquals(String(input), "https://rest.lalamove.com/v3/orders");
+    return new Response(JSON.stringify({ data: { orderId: "TESTLIVE123", status: "ASSIGNING_DRIVER" } }), { status: 201 });
+  }, "producao");
+  assertEquals(called, true);
+  assertEquals(result.response.status, 201);
+});
+
+Deno.test("pedido real em Produção mantém fluxo atual sem flag de pedido teste", () => {
+  assertTestProductionDispatchConfirmation(false, "producao", false);
 });
