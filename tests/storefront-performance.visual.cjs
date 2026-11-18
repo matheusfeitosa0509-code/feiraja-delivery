@@ -92,7 +92,7 @@ async function measure(page,cdp,url) {
    const staleWasPainted=await candidate.evaluate(({id,price})=>{const card=document.querySelector('#homeProductSections [data-product-id="'+CSS.escape(id)+'"]');return !!card&&card.querySelector('.price')?.textContent.includes(price.toFixed(2).replace('.',','));},{id:first.id,price:stalePrice});
    await candidate.waitForFunction(({id,price})=>{const cache=JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')||'null');const item=cache?.products?.find(p=>p.id===id);return item&&Number(item.price)!==price;},{id:first.id,price:stalePrice},{timeout:30000});
    const correctedPrice=await candidate.evaluate(id=>Number(JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')).products.find(p=>p.id===id).price),first.id);
-   const noMapOnOpen=!(await candidate.evaluate(()=>performance.getEntriesByType('resource').some(x=>/maplibre-gl|lalamove-map\.js/.test(x.name))));
+   const noMapOnOpen=!(await candidate.evaluate(()=>performance.getEntriesByType('resource').some(x=>/maplibre-gl|lalamove-map\.js|assistant-speech\.js/.test(x.name))));
    const firstImages=await candidate.locator('#homeProductSections .product[data-product-id] img[fetchpriority="high"][width="160"][height="160"]').count();
    assert.ok(staleWasPainted,'stale cached price was not painted before server refresh');
    assert.equal(correctedPrice,originalPrice,'server refresh did not correct stale cached price');
