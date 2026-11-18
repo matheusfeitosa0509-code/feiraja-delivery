@@ -119,10 +119,15 @@ Deno.serve(async (req: Request) => {
         let result: any = {};
         try { result = JSON.parse(responseBody); } catch { result = {}; }
         const elapsed = Math.round(performance.now() - stageStarted);
-        timings[requestedVehicle === "MOTO" ? "lalamove_moto_ms" : "lalamove_car_ms"] = elapsed;
+        const stage = requestedVehicle === "MOTO" ? "lalamove_moto_ms" : "lalamove_car_ms";
+        timings[stage] = elapsed;
+        console.info("delivery-quote-stage", { stage, duration_ms: elapsed, status: response.status });
         return { response, responseBody, result, quote: response.ok ? parseQuotation(result?.data, requestedVehicle, load.weightKg) : null };
       } catch (error) {
-        timings[requestedVehicle === "MOTO" ? "lalamove_moto_ms" : "lalamove_car_ms"] = Math.round(performance.now() - stageStarted);
+        const elapsed = Math.round(performance.now() - stageStarted);
+        const stage = requestedVehicle === "MOTO" ? "lalamove_moto_ms" : "lalamove_car_ms";
+        timings[stage] = elapsed;
+        console.info("delivery-quote-stage", { stage, duration_ms: elapsed, error: error instanceof Error ? error.message : "UNKNOWN" });
         throw error;
       }
     };
