@@ -40,3 +40,12 @@ jobs:
         uses: actions/deploy-pages@v4
         with:
           artifact_name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Install Playwright Chromium for post-deploy smoke test
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Verify published storefront and panel
+        env:
+          PAGES_BASE_URL: https://www.feiraondelivery.com.br
+        run: node tests/post-deploy-pages.cjs

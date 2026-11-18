@@ -1298,7 +1298,7 @@ try {
   window.__storefrontBootstrapProducts=true;
   return true;
  };
- if(cache&&cache.version===1&&Array.isArray(cache.products)&&cache.products.length&&cache.products.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'&&Number.isFinite(Number(p.price)))){
+ if(cache&&cache.version===1&&Number.isFinite(Number(cache.updatedAt))&&Date.now()-Number(cache.updatedAt)<=86400000&&Date.now()>=Number(cache.updatedAt)&&Array.isArray(cache.products)&&cache.products.length&&cache.products.every(p=>p&&typeof p.id==='string'&&typeof p.name==='string'&&Number.isFinite(Number(p.price)))){
   renderBootstrapProducts(cache.products);
  }else{
   const skeleton='<section class="catalog-category home-catalog-category storefront-skeleton"><header class="home-category-heading"><span class="skeleton-line"></span></header><div class="catalog-row">'+Array.from({length:4},()=>'<article class="product skeleton-card"><span class="skeleton-image"></span><span class="skeleton-line"></span><span class="skeleton-line short"></span></article>').join('')+'</div></section>';
@@ -1793,10 +1793,15 @@ function readStorefrontCache(){
   const raw=localStorage.getItem(STOREFRONT_CACHE_KEY);
   if(!raw)return null;
   const value=JSON.parse(raw);
-  if(!value||value.version!==STOREFRONT_CACHE_VERSION||!Array.isArray(value.products)||!Array.isArray(value.rules))return null;
+  if(!value||value.version!==STOREFRONT_CACHE_VERSION||!Number.isFinite(Number(value.updatedAt))||Date.now()-Number(value.updatedAt)>86400000||Date.now()<Number(value.updatedAt)||!Array.isArray(value.products)||!Array.isArray(value.rules))return null;
   if(value.products.some(p=>!p||typeof p.id!=='string'||typeof p.name!=='string'||!Number.isFinite(Number(p.price))))return null;
   return value;
  }catch(_){return null;}
+}
+function showStorefrontStaleNotice(){
+ let notice=document.getElementById('catalogStaleNotice');
+ if(!notice){notice=document.createElement('div');notice.id='catalogStaleNotice';notice.setAttribute('role','status');notice.textContent='Preços podem estar desatualizados. Puxe para atualizar.';notice.style.cssText='margin:8px 16px;padding:8px 11px;border-radius:10px;background:#fff7df;color:#765516;font-size:12px;line-height:1.4;text-align:center;';const header=document.querySelector('.app-header');if(header)header.insertAdjacentElement('afterend',notice);else document.body.prepend(notice);}
+ notice.hidden=false;
 }
 function writeStorefrontCache(){
  try{
@@ -1882,7 +1887,9 @@ async function load(options={}){
   else renderCart();
   status.textContent=products.length?'Catálogo atualizado.':'Ainda não há produtos cadastrados.';
  }catch(error){
+  showStorefrontStaleNotice();
   if(products.length){
+   
    status.textContent='Mostrando catálogo salvo. Não foi possível atualizar agora.';
    console.warn('Atualização da vitrine indisponível:',error);
    return;
