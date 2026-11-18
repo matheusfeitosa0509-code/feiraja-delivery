@@ -9,6 +9,17 @@ type GoogleGeocodeResult = {
 
 const MANAUS_BOUNDS = { south: -3.55, north: -2.45, west: -60.75, east: -59.15 };
 
+export function validateManausCoordinates(latitude: unknown, longitude: unknown): DeliveryCoordinates {
+  const lat = Number(latitude);
+  const lng = Number(longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) ||
+      lat < MANAUS_BOUNDS.south || lat > MANAUS_BOUNDS.north ||
+      lng < MANAUS_BOUNDS.west || lng > MANAUS_BOUNDS.east) {
+    throw new Error("ADDRESS_OUTSIDE_MANAUS");
+  }
+  return { lat: String(lat), lng: String(lng) };
+}
+
 function component(result: GoogleGeocodeResult, type: string) {
   return result.address_components?.find((item) => item.types.includes(type));
 }
