@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
-import { chooseVehicle, estimateLoad, formatDropoff, isQuoteAllowed, parseQuotation, requestSandboxQuotation, retryLalamove429, startParallelVehicleQuotes } from "../_shared/delivery-quote.ts";
+import { chooseVehicle, classifyLalamoveQuoteError, estimateLoad, formatDropoff, isQuoteAllowed, parseQuotation, requestSandboxQuotation, retryLalamove429, startParallelVehicleQuotes } from "../_shared/delivery-quote.ts";
 import { geocodeManausAddress, resolveDeliveryCoordinates } from "../_shared/geocoding.ts";
 import { getStoreSchedule } from "../_shared/store-schedule.js";
 
@@ -140,7 +140,8 @@ Deno.serve(async (req: Request) => {
     });
     const selectedQuote = await parallelQuotes.selected;
     const { response, responseBody, result } = selectedQuote;
-    const upstreamCode = String(result?.message || "");
+    const upstreamFailure = classifyLalamoveQuoteError(response.status, result);
+    const upstreamCode = upstreamFailure.upstreamCode;
     if (upstreamCode === "ERR_OUT_OF_SERVICE_AREA") {
       return json({ error: "Endereço localizado, mas a Lalamove não atende esta região.", code: "LALAMOVE_OUT_OF_SERVICE_AREA" }, 422);
     }
@@ -161,9 +162,22 @@ Deno.serve(async (req: Request) => {
       return json({ error: "A Lalamove não conseguiu validar a rota mesmo com as coordenadas. Tente novamente.", code: "LALAMOVE_REVERSE_GEOCODE_FAILURE" }, 502);
     }
     if (!response.ok) {
-      const code = response.status === 429 ? "LALAMOVE_RATE_LIMIT" : "LALAMOVE_QUOTE_FAILED";
-      console.error("delivery-quote", { stage: "lalamove_quote", status: response.status, upstream_message: upstreamCode.slice(0, 120) || null, upstream_body: responseBody.slice(0, 500), code });
-      return json({ error: "A localização foi encontrada, mas a Lalamove não concluiu a cotação. Tente novamente.", code }, response.status === 429 ? 429 : 502);
+      const code = upstreamFailure.code;
+      const messages: Record<string, string> = {
+        LALAMOVE_INVALID_COORDINATES: "Não foi possível validar o ponto marcado no mapa. Ajuste o pino e tente novamente.",
+        LALAMOVE_INVALID_ADDRESS: "Endereço não encontrado. Confira rua, número e bairro.",
+        LALAMOVE_INVALID_REQUEST: "A Lalamove recusou os dados do endereço ou da rota. Revise rua, número e ponto do mapa.",
+        LALAMOVE_RATE_LIMIT: "Muitas consultas agora, tente em alguns segundos.",
+        LALAMOVE_QUOTE_FAILED: "A Lalamove está temporariamente indisponível. Tente novamente em instantes.",
+      };
+      // Corpo integral: necessário para diagnosticar respostas inesperadas do provedor.
+      console.error("delivery-quote", {
+        stage: "lalamove_quote", status: response.status,
+        upstream_code: upstreamCode || null, upstream_detail: upstreamFailure.detail || null,
+        upstream_body: responseBody, code,
+      });
+      return json({ error: messages[code] || "A Lalamove recusou a cotação. Revise o endereço e tente novamente.", code },
+        response.status === 429 ? 429 : response.status === 422 ? 422 : 502);
     }
     const quote = selectedQuote.quote || parseQuotation(result?.data, vehicle, load.weightKg);
     return json({ vehicle: quote.vehicle, estimated_weight_kg: quote.weightKg, fee: quote.fee, valid_until: quote.validUntil, schedule_at: scheduleAt || null, ambiente: environment });
@@ -179,7 +193,10 @@ Deno.serve(async (req: Request) => {
     if (code === "GEOCODER_UNAVAILABLE") return json({ error: "Não foi possível localizar o endereço agora. Tente novamente em instantes.", code }, 503);
     if (code === "INVALID_ITEMS") return json({ error: "Itens ou quantidades inválidos.", code }, 400);
     if (code === "INVALID_QUOTE_PRICE" || code === "INVALID_QUOTE_RESPONSE") return json({ error: "Resposta de cotação inválida." }, 502);
-    console.error("delivery-quote", { stage: "request", code });
+    console.error("delivery-quote", {
+      stage: "request", code,
+      error: error instanceof Error ? { name: error.name, message: error.message, stack: error.stack || null } : String(error),
+    });
     return json({ error: "Erro interno ao calcular a entrega." }, 500);
   } finally {
     console.info("delivery-quote-timing", { ...timings, total_ms: Math.round(performance.now() - requestStarted) });
