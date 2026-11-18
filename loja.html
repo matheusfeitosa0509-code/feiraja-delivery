@@ -1818,6 +1818,10 @@ async function load(options={}){
   if(!response.ok)throw new Error('HTTP '+response.status);
   const data=await response.json();
   products=(data||[]).map(p=>({...p,price:Number(p.price),old_price:p.old_price==null?null:Number(p.old_price),resale_enabled:p.resale_enabled===true,resale_price:p.resale_price==null?null:Number(p.resale_price),resale_min_qty:p.resale_min_qty==null?null:Number(p.resale_min_qty),resale_unit:p.resale_unit==='kg'?'kg':'un',image:typeof p.image==='string'&&p.image.startsWith('imagens/produtos/')?'./'+p.image:p.image}));
+  const sameCatalogStructure=previousProducts.length===products.length&&previousProducts.every((old,index)=>{const fresh=products[index];return old.id===fresh.id&&old.name===fresh.name&&old.category===fresh.category&&old.image===fresh.image;});
+  const priceFields=['price','old_price','resale_enabled','resale_price','resale_min_qty','resale_unit'];
+  if(sameCatalogStructure){products.forEach(product=>{const old=previousProducts.find(item=>item.id===product.id);if(old&&priceFields.some(field=>old[field]!==product[field]))updateProductCardPrice(product);});renderCart();}
+  else renderStorefrontProducts();
   salesRulesById=new Map();cartRulesWarning=false;
   try{
    const {data:rules,error}=await supabase.from('product_sales_rules').select('product_id,sale_unit,quantity_step,min_quantity,max_quantity,allow_value_sale,value_min_kg').in('product_id',products.map(p=>p.id));
@@ -1828,13 +1832,9 @@ async function load(options={}){
   catalogCacheAt=Date.now();
   writeStorefrontCache();
   normalizeCartForLoadedCatalog();
-  const sameCatalogStructure=previousProducts.length===products.length&&previousProducts.every((old,index)=>{const fresh=products[index];return old.id===fresh.id&&old.name===fresh.name&&old.category===fresh.category&&old.image===fresh.image;});
   const salesRulesChanged=previousRules!==JSON.stringify([...salesRulesById.entries()]);
-  const priceFields=['price','old_price','resale_enabled','resale_price','resale_min_qty','resale_unit'];
-  if(sameCatalogStructure&&!salesRulesChanged){
-   products.forEach(product=>{const old=previousProducts.find(item=>item.id===product.id);if(old&&priceFields.some(field=>old[field]!==product[field]))updateProductCardPrice(product);});
-   renderCart();
-  }else renderStorefrontProducts();
+  if(!sameCatalogStructure||salesRulesChanged)renderStorefrontProducts();
+  else renderCart();
   status.textContent=products.length?'Catálogo atualizado.':'Ainda não há produtos cadastrados.';
  }catch(error){
   if(products.length){
