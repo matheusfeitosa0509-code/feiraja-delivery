@@ -64,12 +64,12 @@ BEGIN
   v_definition := replace(v_definition, 'unit_cost > 0', 'unit_cost IS NOT NULL');
   EXECUTE v_definition;
 END;
-$;
+$$;
 
 DO $
 DECLARE
   v_definition text;
-  v_old_count text := 'count(*) filter(where cost_status=''missing_cost'')::integer as missing_cost_items,' || E'\n    count(*) filter(where unit_cost is not null)::integer as calculated_items,\n    count(*)::integer as total_items,';
+  v_old_count text := 'count(*) filter(where cost_status=''missing_cost'')::integer as missing_cost_items,' || E'\n    count(*) filter(where unit_cost > 0)::integer as calculated_items,\n    count(*)::integer as total_items,';
   v_new_count text := 'count(*) filter(where cost_status=''missing_cost'')::integer as missing_cost_items,';
   v_old_json text := '''missing_cost_items'',totals.missing_cost_items,''calculated_items'',totals.calculated_items,''total_items'',totals.total_items,';
   v_new_json text := '''missing_cost_items'',totals.missing_cost_items,';
