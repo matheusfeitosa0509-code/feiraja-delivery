@@ -185,6 +185,7 @@ async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "M
   const currency = String(data?.priceBreakdown?.currency || "").toUpperCase();
   if (!lalamoveOrderId || !Number.isFinite(rawCost) || rawCost < 0 || currency !== "BRL") {
     // The provider may already have created the order. Keep the lock for manual reconciliation.
+    console.error("lalamove-dispatch failure", { stage: "validate_create_response", internal_code: "LALAMOVE_CREATE_RESPONSE_INVALID", http_status: result.response.status, provider_body: sanitizeLalamoveErrorPayload(result.payload), environment });
     return { pending_confirmation: true };
   }
   const mapped = mapLalamoveStatus("ORDER_CREATED", String(data?.status || "ASSIGNING_DRIVER")) || "searching";
@@ -252,8 +253,10 @@ async function cancelOrder(db: any, orderId: string) {
     throw new Error("CANCELLATION_WINDOW_CLOSED");
   }
   const response = await cancelLalamoveOrder(key, secret, String(current.lalamove_order_id), fetch, environment);
-  if (response.status === 409) { console.error("lalamove-dispatch failure", { stage: "cancel_order", internal_code: "CANCELLATION_FORBIDDEN", http_status: 409, provider_body: {}, environment }); throw new Error("CANCELLATION_FORBIDDEN"); }
-  if (!response.ok && response.status !== 204) {console.error("lalamove-dispatch failure",{stage:"cancel_order",internal_code:"LALAMOVE_CANCEL_FAILED",http_status:response.status,provider_body:{},environment});const failure=new Error("LALAMOVE_CANCEL_FAILED") as Error & {httpStatus?:number};failure.httpStatus=response.status;throw failure;}
+  const cancelPayload = await response.clone().json().catch(() => ({}));
+  const cancelBody = sanitizeLalamoveErrorPayload(cancelPayload);
+  if (response.status === 409) { console.error("lalamove-dispatch failure", { stage: "cancel_order", internal_code: "CANCELLATION_FORBIDDEN", http_status: 409, provider_body: cancelBody, environment }); throw new Error("CANCELLATION_FORBIDDEN"); }
+  if (!response.ok && response.status !== 204) {console.error("lalamove-dispatch failure",{stage:"cancel_order",internal_code:"LALAMOVE_CANCEL_FAILED",http_status:response.status,provider_body:cancelBody,environment});const failure=new Error("LALAMOVE_CANCEL_FAILED") as Error & {httpStatus?:number};failure.httpStatus=response.status;throw failure;}
   const { error: updateError } = await db.rpc("service_cancel_lalamove_dispatch", { p_order_id: orderId });
   if (updateError) throw new Error("CANCEL_STATE_UPDATE_FAILED");
   return { cancelled: true };
