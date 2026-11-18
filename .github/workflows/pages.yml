@@ -45,7 +45,7 @@ jobs:
       - name: Install Playwright Chromium for post-deploy smoke test
         run: |
           npm install --no-save playwright
-          npx playwright install --with-deps chromium
+          npx playwright install chromium
       - name: Verify published storefront and panel
         env:
           PAGES_BASE_URL: https://www.feiraondelivery.com.br
