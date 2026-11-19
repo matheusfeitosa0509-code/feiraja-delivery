@@ -309,14 +309,14 @@ Deno.test("configuração Supabase aceita JWT antigo e sb_secret sem enviar segr
   assertEquals(legacy.key, jwt);
   assertEquals(legacy.fetcher, undefined);
 
-  let captured: Request | null = null;
+  const captured: Request[] = [];
   const secret = "sb_secret_test_example";
   const modern = readSupabaseServiceRoleConfig(
     (name) => name === "SUPABASE_SERVICE_ROLE_KEY" ? secret : undefined,
-    async (input, init) => { captured = new Request(input, init); return new Response("ok"); },
+    async (input, init) => { captured.push(new Request(input, init)); return new Response("ok"); },
   );
   assertEquals(modern.key, secret);
   await modern.fetcher!("https://example.test/rest/v1/rpc/probe", { headers: { Authorization: "Bearer must-not-leak" } });
-  assertEquals(captured?.headers.get("apikey"), secret);
+  assertEquals(captured[0]?.headers.get("apikey"), secret);
   assertEquals(captured?.headers.get("authorization"), null);
 });
