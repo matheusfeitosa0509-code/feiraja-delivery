@@ -158,7 +158,7 @@
     else{stop();if(state.map){state.map.remove();state.map=null;}container.hidden=true;}
    }finally{state.inFlight=false;}
   }
-  function start(){if(state.stopped||state.timer||document.visibilityState==='hidden'||!container.getClientRects().length)return;void refresh();state.timer=setInterval(()=>void refresh(),Math.max(15000,Math.min(15000,Number(options.pollIntervalMs)||15000)));}
+  function start(){if(state.stopped||state.timer||document.visibilityState==='hidden'||!container.getClientRects().length)return;void refresh();state.timer=setInterval(()=>void refresh(),Math.max(120000,Math.min(180000,Number(options.pollIntervalMs)||150000)));}
   function visibility(){if(document.visibilityState==='hidden'||!container.getClientRects().length)stop();else start();}
   state.refresh=refresh;state.destroy=destroy;
   if('IntersectionObserver'in window){state.observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting))start();else stop();});state.observer.observe(container);}else start();
