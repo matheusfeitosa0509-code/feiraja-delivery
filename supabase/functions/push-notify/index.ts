@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import webpush from "npm:web-push@3.6.7";
-import { CUSTOMER_PUSH_TITLE, getCustomerMessage, customerOrderUrl } from "./notification-contract.ts";
+import { CUSTOMER_PUSH_TITLE, getCustomerMessage, customerOrderUrl, shouldSkipOrderPush } from "./notification-contract.ts";
 
 type PushKind = "admin" | "customer";
 
