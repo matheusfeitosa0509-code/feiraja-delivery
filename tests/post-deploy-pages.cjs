@@ -10,7 +10,7 @@ const { chromium } = require('playwright');
       const errors = [];
       page.on('response', response => { if(response.status()===401 && !response.url().includes('/rpc/admin_get_low_margin_percent')) errors.push('HTTP 401 '+response.url()); });
       page.on('pageerror', error => errors.push(error.message));
-      page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+      page.on('console', message => { if (message.type() === 'error' && !/^Failed to load resource: the server responded with a status of 401/.test(message.text())) errors.push(message.text()); });
       const response = await page.goto(base + path, { waitUntil: 'domcontentloaded', timeout: 60000 });
       if (!response || response.status() !== 200) failures.push(path + ': HTTP ' + (response && response.status()));
       if (path === '/loja.html') {
