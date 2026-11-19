@@ -256,7 +256,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 .app-dialog-actions .app-dialog-confirm.danger{background:#b3261e;color:#fff}
 @media(max-width:380px){.app-dialog{padding:19px;border-radius:21px}.app-dialog-actions{display:grid;grid-template-columns:1fr 1fr}.app-dialog-actions button{min-width:0;width:100%}}
 
-.cost-edit-pencil{display:inline-flex;align-items:center;justify-content:center;min-width:26px;min-height:25px;margin-left:3px;padding:1px 5px;border-radius:7px;background:#e7f0e5;color:#176b3a;font-size:14px;line-height:1;vertical-align:middle}.order-cost-backdrop{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:14px;background:#10231799}.order-cost-backdrop[hidden]{display:none}.order-cost-modal{width:min(440px,100%);max-height:90dvh;overflow:auto;padding:20px;background:#fff;border-radius:20px;box-shadow:0 18px 60px #0004}.order-cost-modal h2{margin:0 0 8px}.order-cost-modal .order-cost-checkbox{display:flex;align-items:flex-start;gap:9px;margin:14px 0;font-weight:650}.order-cost-modal .order-cost-checkbox input{width:20px;min-width:20px;height:20px;min-height:20px;margin:0;accent-color:#176b3a}.order-cost-warning{min-height:1.4em;color:#a65312;font-weight:750;font-size:13px}.order-cost-modal .actions{display:grid;grid-template-columns:1fr 1fr}.order-cost-modal .actions button{width:100%}
+.cost-edit-pencil{display:inline-flex;align-items:center;justify-content:center;min-width:26px;min-height:25px;margin-left:3px;padding:1px 5px;border-radius:7px;background:#e7f0e5;color:#176b3a;font-size:14px;line-height:1;vertical-align:middle}.order-cost-backdrop{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:14px;background:#10231799}.order-cost-backdrop[hidden]{display:none}.order-cost-modal{width:min(440px,100%);max-height:90dvh;overflow:auto;padding:20px;background:#fff;border-radius:20px;box-shadow:0 18px 60px #0004}.order-cost-modal h2{margin:0 0 8px}.order-cost-modal .order-cost-checkbox{display:flex;align-items:flex-start;gap:9px;margin:14px 0;font-weight:650}.order-cost-modal .order-cost-checkbox input{width:20px;min-width:20px;height:20px;min-height:20px;margin:0;accent-color:#176b3a}.order-cost-warning{min-height:1.4em;color:#a65312;font-weight:750;font-size:13px}.order-cost-modal .actions{display:grid;grid-template-columns:1fr 1fr}.order-cost-modal .actions button{width:100%}.shopping-cost-modal{width:min(620px,100%)}.shopping-cost-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}.shopping-cost-row small{display:block;color:var(--muted);font-size:11px}.shopping-cost-row button{min-width:74px;padding:8px 10px;min-height:38px;font-size:12px}
 </style>
 </head>
 <body><main class="wrap">
@@ -279,7 +279,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <div class="hidden" aria-hidden="true"><span id="count">0</span><span id="pending">0</span><span id="active">0</span><span id="sum">R$ 0,00</span></div>
 <div id="notice" class="notice hidden" role="status"></div>
 
-<div class="orders-toolbar"><button type="button" id="shoppingListButton" class="secondary">Lista de compras</button><span class="muted">Pedidos pagos ainda não entregues</span></div><section class="card"><div class="filters"><input id="search" placeholder="Buscar por pedido, cliente ou telefone" aria-label="Buscar pedidos"><select id="filter" aria-label="Filtrar pedidos"><option value="active" selected>Ativos</option><option value="pending">Aguardando pagamento</option><option value="completed">Concluídos</option><option value="cancelled">Cancelados/Expirados</option><option value="tests">Testes</option><option value="all">Todos</option></select></div></section><div id="orders" class="orders"></div><div class="actions" style="justify-content:center;margin:16px 0"><button id="loadMore" class="secondary">Carregar mais pedidos</button></div>
+<div class="orders-toolbar"><button type="button" id="shoppingListButton" class="secondary">Lista de compras</button><button type="button" id="shoppingCostEditButton" class="secondary">Editar custos na lista</button><span class="muted">Pedidos pagos ainda não entregues</span></div><section class="card"><div class="filters"><input id="search" placeholder="Buscar por pedido, cliente ou telefone" aria-label="Buscar pedidos"><select id="filter" aria-label="Filtrar pedidos"><option value="active" selected>Ativos</option><option value="pending">Aguardando pagamento</option><option value="completed">Concluídos</option><option value="cancelled">Cancelados/Expirados</option><option value="tests">Testes</option><option value="all">Todos</option></select></div></section><div id="orders" class="orders"></div><div class="actions" style="justify-content:center;margin:16px 0"><button id="loadMore" class="secondary">Carregar mais pedidos</button></div>
 
 </section>
 <section id="settingsTab" class="hidden" role="tabpanel" aria-label="Configurações">
@@ -1171,9 +1171,10 @@ function parseOrderUnitCost(value){
  const amount=Number(normalized);
  return Number.isFinite(amount)&&amount>=0?amount:null;
 }
+let shoppingCostOrders=[],shoppingCostProfitByOrder={};
 function openOrderCostEditor(orderId,itemIndex){
- const order=allOrders.find(row=>String(row.id)===String(orderId));
- const snapshot=(profitByOrder[orderId]?.items||[]).find(row=>Number(row.item_index)===Number(itemIndex));
+ const order=allOrders.find(row=>String(row.id)===String(orderId))||shoppingCostOrders.find(row=>String(row.id)===String(orderId));
+ const snapshot=(profitByOrder[orderId]?.items||shoppingCostProfitByOrder[orderId]?.items||[]).find(row=>Number(row.item_index)===Number(itemIndex));
  if(!order||!snapshot){notice('Não foi possível carregar o custo deste item. Atualize os pedidos e tente novamente.',true);return;}
  const modal=$('orderCostBackdrop');if(!modal)return;
  $('orderCostOrderId').value=String(orderId);$('orderCostItemIndex').value=String(itemIndex);
@@ -1182,6 +1183,34 @@ function openOrderCostEditor(orderId,itemIndex){
  $('orderCostItemName').textContent=String(snapshot.product_name||order.items?.[itemIndex]?.name||'Item do pedido');
  $('orderCostBackdrop').hidden=false;$('orderCostUnitInput').focus();
 }
+async function openShoppingCostList(){
+ const modal=$('shoppingCostBackdrop'),host=$('shoppingCostRows');
+ modal.hidden=false;host.innerHTML='<p class="muted">Carregando pedidos e custos…</p>';
+ try{
+  const batchSize=200;let offset=0,orders=[];
+  while(true){const {data,error}=await fetchOrdersPage(offset,batchSize,true);if(error)throw error;const batch=Array.isArray(data)?data:[];orders.push(...batch);if(batch.length<batchSize)break;offset+=batchSize;}
+  const eligible=orders.filter(order=>order.is_test_order!==true&&['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega'].includes(normalizeOrderStatus(order.status)));
+  if(!eligible.length){host.innerHTML='<p class="muted">Não há pedidos pagos ainda não entregues.</p>';return;}
+  const range=manausDayRange();
+  const {data,error}=await db.rpc('admin_get_order_profit',{p_order_ids:eligible.map(order=>order.id),p_start:range.start,p_end:range.end});
+  if(error)throw error;
+  shoppingCostOrders=eligible;
+  shoppingCostProfitByOrder=Object.fromEntries((data?.orders||[]).map(row=>[row.order_id,row]));
+  host.innerHTML=eligible.map(order=>{
+   const snapshots=shoppingCostProfitByOrder[order.id]?.items||[];
+   return '<section><strong>Pedido '+esc(shortOrderNumber(order.id))+'</strong>'+((order.items||[]).map((item,index)=>{
+    const snap=snapshots.find(row=>Number(row.item_index)===index);
+    const cost=snap?.unit_cost==null?'Custo não cadastrado':'Custo atual: '+money(snap.unit_cost)+' / un.';
+    return '<div class="shopping-cost-row"><div>'+esc(formatOrderItemDescription(item))+'<small>'+esc(cost)+'</small></div><button type="button" class="secondary" data-edit-order-cost="'+esc(order.id)+'" data-cost-item-index="'+index+'">Editar</button></div>';
+   }).join('')||'<p class="muted">Sem itens detalhados.</p>')+'</section>';
+  }).join('');
+  host.querySelectorAll('[data-edit-order-cost]').forEach(button=>button.addEventListener('click',()=>openOrderCostEditor(button.dataset.editOrderCost,Number(button.dataset.costItemIndex))));
+ }catch(error){console.error('Falha ao carregar custos da lista de compras:',error);host.textContent='Não foi possível carregar a lista de custos. Verifique a sessão de administrador.';}
+}
+$('shoppingCostEditButton').addEventListener('click',openShoppingCostList);
+$('shoppingCostClose').addEventListener('click',()=>$('shoppingCostBackdrop').hidden=true);
+$('shoppingCostBackdrop').addEventListener('click',event=>{if(event.target===$('shoppingCostBackdrop'))$('shoppingCostBackdrop').hidden=true;});
+
 async function saveOrderItemCost(){
  const orderId=$('orderCostOrderId').value,itemIndex=Number($('orderCostItemIndex').value);
  const unitCost=parseOrderUnitCost($('orderCostUnitInput').value);
@@ -1201,6 +1230,7 @@ async function saveOrderItemCost(){
   $('orderCostBackdrop').hidden=true;
   await loadOrderProfit();
   if(data?.product_default_updated&&typeof loadCostReport==='function')await loadCostReport();
+  if(shoppingCostOrders.some(row=>String(row.id)===String(orderId))&&$('shoppingCostBackdrop')&&!$('shoppingCostBackdrop').hidden)await openShoppingCostList();
   notice('Custo do item atualizado. Lucro do pedido e do dia recalculados.');
  }catch(error){
   console.error('Falha ao atualizar custo do item:',error);
@@ -2241,6 +2271,14 @@ if(root){
  }
 }
 </script>
+<div id="shoppingCostBackdrop" class="order-cost-backdrop" hidden>
+ <section class="order-cost-modal shopping-cost-modal" role="dialog" aria-modal="true" aria-labelledby="shoppingCostTitle">
+  <h2 id="shoppingCostTitle">Custos da lista de compras</h2>
+  <p class="muted">Edite o custo pago de cada item sem alterar os pedidos anteriores.</p>
+  <div id="shoppingCostRows"><p class="muted">Carregando…</p></div>
+  <div class="actions"><button type="button" id="shoppingCostClose" class="secondary">Fechar</button></div>
+ </section>
+</div>
 <div id="orderCostBackdrop" class="order-cost-backdrop" hidden>
  <section class="order-cost-modal" role="dialog" aria-modal="true" aria-labelledby="orderCostTitle">
   <h2 id="orderCostTitle">Editar custo do item</h2>
