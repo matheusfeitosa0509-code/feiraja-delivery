@@ -318,5 +318,5 @@ Deno.test("configuração Supabase aceita JWT antigo e sb_secret sem enviar segr
   assertEquals(modern.key, secret);
   await modern.fetcher!("https://example.test/rest/v1/rpc/probe", { headers: { Authorization: "Bearer must-not-leak" } });
   assertEquals(captured[0]?.headers.get("apikey"), secret);
-  assertEquals(captured?.headers.get("authorization"), null);
+  assertEquals(captured[0]?.headers.get("authorization"), null);
 });
