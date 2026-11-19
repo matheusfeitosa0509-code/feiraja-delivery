@@ -270,7 +270,7 @@ Deno.test("pickup_store: confirmação Pix gera código de retirada de quatro d�
   const result = await invoke(mock);
   assertEquals(result.response.status, 200);
   assertEquals(mock.getOrder()?.status, "Pagamento Confirmado");
-  assertEquals(/^\\d{4}$/.test(String(mock.getOrder()?.pickup_code || "")), true);
+  assertEquals(/^\d{4}$/.test(String(mock.getOrder()?.pickup_code || "")), true);
   assertEquals(mock.updates.length, 1);
   assertEquals(typeof mock.updates[0].pickup_code, "string");
 });
