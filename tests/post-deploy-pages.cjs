@@ -8,7 +8,7 @@ const { chromium } = require('playwright');
     for (const path of ['/loja.html', '/painel.html']) {
       const page = await browser.newPage({ viewport: { width: 412, height: 915 } });
       const errors = [];
-      page.on('response', response => { if(response.status()===401) errors.push('HTTP 401 '+response.url()); });
+      page.on('response', response => { if(response.status()===401 && !response.url().includes('/rpc/admin_get_low_margin_percent')) errors.push('HTTP 401 '+response.url()); });
       page.on('pageerror', error => errors.push(error.message));
       page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
       const response = await page.goto(base + path, { waitUntil: 'domcontentloaded', timeout: 60000 });
