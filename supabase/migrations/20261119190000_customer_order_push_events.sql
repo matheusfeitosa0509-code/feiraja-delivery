@@ -33,7 +33,12 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  IF TG_OP = 'UPDATE' THEN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.status = 'Pedido Recebido'
+       AND NEW.payment_method IN ('cash', 'Dinheiro na retirada', 'Dinheiro na entrega', 'Cartão na retirada', 'Cartão na entrega') THEN
+      PERFORM public.push_orders_notify_send(NEW.id, 'admin', 'Pedido Recebido', v_secret);
+    END IF;
+  ELSIF TG_OP = 'UPDATE' THEN
     -- Start-separation is driven by the existing timestamp, not a duplicate status.
     IF NEW.user_id IS NOT NULL
        AND NEW.separation_started_at IS NOT NULL
@@ -144,7 +149,7 @@ $helper$;
 
 DROP TRIGGER IF EXISTS trg_push_orders_notify ON public.orders;
 CREATE TRIGGER trg_push_orders_notify
-AFTER UPDATE ON public.orders
+AFTER INSERT OR UPDATE ON public.orders
 FOR EACH ROW
 EXECUTE FUNCTION public.push_orders_notify();
 
