@@ -235,6 +235,29 @@ export function requireSupabaseServiceRoleJwt(value: unknown): string {
   return token;
 }
 
+/** Resolve either the legacy service_role JWT or modern sb_secret_* key without exposing it. */
+export function readSupabaseServiceRoleConfig(
+  readEnv: (name: string) => string | undefined,
+  fetcher: typeof fetch = fetch,
+): { key: string; fetcher?: typeof fetch } {
+  for (const name of ["SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SERVICE_ROLE_JWT", "SUPABASE_SECRET_KEY", "SUPABASE_SECRET_KEYS"]) {
+    const value = readEnv(name);
+    if (!value) continue;
+    try {
+      return { key: requireSupabaseServiceRoleJwt(value) };
+    } catch {
+      // Continue: newer Supabase projects may expose an opaque secret key instead of a JWT.
+    }
+    try {
+      const key = requireSupabaseSecretKey(value);
+      return { key, fetcher: secretKeyFetch(key, fetcher) };
+    } catch {
+      // Try the next supported environment name; never log the supplied value.
+    }
+  }
+  throw new Error("MISSING_SUPABASE_SERVICE_ROLE_KEY");
+}
+
 /** Keep the quote RPC call contract centralized and testable without contacting Lalamove. */
 export async function storeLalamoveQuotes(db: any, payload: Record<string, unknown>) {
   return await db.rpc("service_store_lalamove_quotes", payload);
