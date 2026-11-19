@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import webpush from "npm:web-push@3.6.7";
-import { CUSTOMER_PUSH_TITLE, getCustomerMessage, customerOrderUrl, shouldSkipOrderPush } from "./notification-contract.ts";
+import { CUSTOMER_PUSH_TITLE, getCustomerMessage, customerOrderUrl, shouldSkipOrderPush, isExpiredPushEndpointStatus } from "./notification-contract.ts";
 
 type PushKind = "admin" | "customer";
 
@@ -104,7 +104,7 @@ function getNotificationText(kind: PushKind, status: string, pickupCode = "indis
 function isGoneProviderError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const statusCode = (error as { statusCode?: unknown }).statusCode;
-  return statusCode === 404 || statusCode === 410;
+  return typeof statusCode === "number" && isExpiredPushEndpointStatus(statusCode);
 }
 
 Deno.serve(async (req: Request) => {
