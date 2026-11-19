@@ -59,6 +59,8 @@ const assert = require('node:assert/strict');
       assert.ok(await page.locator('#pageProducts.active').count(), 'Ver tudo não abriu Produtos');
     }
 
+    if (await page.locator('#pageProducts.active').count()) await page.locator('#pageProducts [data-go-page="home"]').click();
+
     const plus = page.locator('#homeProductSections .product:not(.skeleton-card) [data-card-change][data-d="1"]').first();
     await plus.click();
     assert.ok(Number((await page.locator('#tabCartCount').textContent()).trim()) > 0, '+ do produto não adicionou ao carrinho');
