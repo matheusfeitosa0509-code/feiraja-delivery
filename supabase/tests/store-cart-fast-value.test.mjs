@@ -33,7 +33,8 @@ const ui = {
   minimumCheckoutNotice:{classList:{toggle(){}}},
   submitOrder:{classList:{toggle(){}}},
   subtotal:{},total:{},modalTotal:{},
-  checkout:{setAttribute(){}},
+  checkout:{setAttribute(){},classList:{toggle(){}},textContent:'',disabled:false},
+  cartMinimumProgress:{classList:{toggle(){}}},cartMinimumProgressFill:{style:{}},
   cartbarCount:{},cartbarTotal:{},
   cartbar:{classList:{toggle(){},contains(){return false;}}},
   cartUndoToast:{hidden:true,style:{}},cartUndoMessage:{textContent:''},cartUndoAction:{hidden:true}
