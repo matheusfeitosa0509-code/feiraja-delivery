@@ -1209,7 +1209,7 @@ function render(){
   const checklist=o.market_checklist;
   const notes=Array.isArray(checklist)?'':String(checklist?.notes||'');
   const currentStatus=normalizeOrderStatus(o.status);
-  const preservedStatus=['Reembolsado','Contestado','Saiu para Entrega','Pagamento cancelado','Pagamento recusado'].includes(currentStatus);
+  const preservedStatus=['Reembolsado','Contestado','Saiu para Entrega','Pagamento cancelado','Pagamento recusado','Pagamento Expirado'].includes(currentStatus);
   const opts=statuses.map(s=>'<option value="'+esc(s)+'" '+(currentStatus===s?'selected':'')+'>'+esc(s)+'</option>').join('')+(preservedStatus?'<option value="'+esc(currentStatus)+'" selected disabled>'+esc(currentStatus)+'</option>':'');
   const refundAction=o.refund_pending?'<div class="actions" style="margin-top:8px"><button class="secondary" type="button" data-refund-done="'+esc(o.id)+'">Marcar devolução feita</button></div>':'';
   const deliveryBlock=renderLalamoveDelivery(o,currentStatus);
