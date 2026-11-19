@@ -2,6 +2,11 @@
 -- Custos permanecem no schema privado; a única porta de escrita é a RPC admin.
 BEGIN;
 
+ALTER TABLE feira_cost_private.product_costs
+  DROP CONSTRAINT IF EXISTS product_costs_unit_cost_check;
+ALTER TABLE feira_cost_private.product_costs
+  ADD CONSTRAINT product_costs_unit_cost_nonnegative CHECK (unit_cost >= 0);
+
 CREATE TABLE feira_cost_private.order_item_cost_history (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   order_id text NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
@@ -59,9 +64,6 @@ BEGIN
   v_new_cost := round(p_unit_cost, 2);
 
   IF p_update_product_cost AND v_snapshot.product_id IS NOT NULL THEN
-    IF v_new_cost <= 0 THEN
-      RAISE EXCEPTION 'Para atualizar o custo padrão do produto, informe um valor maior que zero.' USING ERRCODE = '22023';
-    END IF;
     INSERT INTO feira_cost_private.product_costs(product_id, unit_cost, updated_at, updated_by)
     VALUES (v_snapshot.product_id, v_new_cost, now(), auth.uid())
     ON CONFLICT (product_id) DO UPDATE
