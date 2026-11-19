@@ -62,8 +62,7 @@ BEGIN
            AND NEW.status IN ('Cancelada', 'Cancelado', 'Pagamento cancelado')
            AND auth.uid() IS NULL
          ) THEN
-        v_events := pg_catalog.array_append(v_events,
-          CASE WHEN NEW.status = 'Cancelado' THEN 'Cancelada' ELSE NEW.status END);
+        v_events := pg_catalog.array_append(v_events, NEW.status);
       END IF;
 
       -- Keep the existing admin alert for server-confirmed Pix payments.
