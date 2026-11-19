@@ -75,6 +75,7 @@ begin
  v_reason := nullif(left(regexp_replace(coalesce(p_cancel_reason,''),'[[:cntrl:]]+',' ','g'),180),'');
  update feira_cost_private.lalamove_dispatches
  set state=case when p_status in ('cancelled','rejected','expired') then 'failed' else state end,
+     lalamove_order_id=case when p_status in ('cancelled','rejected','expired') then null else lalamove_order_id end,
      lalamove_status=p_status,
      tracking_url=coalesce(nullif(p_tracking_url,''),tracking_url),
      driver=coalesce(p_driver,driver,'{}'::jsonb),
