@@ -43,7 +43,7 @@ const { chromium } = require("playwright");
         style[1] + '</style></head><body><main class="wrap">' + settingsMarkup +
         '<div id="orders" class="orders"></div><div id="priceEditor" class="hide"></div><div id="resaleEditor" class="hide"></div><div id="productEdit" class="hide"></div><div id="message"></div></main><div id="appDialogBackdrop" class="app-dialog-backdrop" hidden><section class="app-dialog" role="dialog" aria-modal="true" aria-labelledby="appDialogTitle" aria-describedby="appDialogMessage"><h2 id="appDialogTitle">Confirmar ação</h2><p id="appDialogMessage"></p><div class="app-dialog-actions"><button id="appDialogBack" type="button" class="app-dialog-back">Voltar</button><button id="appDialogConfirm" type="button" class="app-dialog-confirm">Confirmar</button></div></section></div></body></html>';
       await page.setContent(html, { waitUntil: "domcontentloaded" });
-      await page.evaluate(async ({ order, readyOrder, orderSource, flowSource, confirmSource, showSource }) => {
+      await page.evaluate(async ({ width, order, readyOrder, orderSource, flowSource, confirmSource, showSource }) => {
         const $ = id => document.getElementById(id);
         const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" })[c]);
         const money = value => "R$ " + Number(value || 0).toFixed(2).replace(".", ",");
@@ -98,14 +98,14 @@ const { chromium } = require("playwright");
           "let lalamoveEnvironmentReady=false,lalamoveEnvironmentLoadError='';const render=()=>{const badge=$('lalamoveSettingsBadge');badge.className='lalamove-env-badge '+lalamoveEnvironment;badge.textContent=lalamoveEnvironment==='producao'?'PRODUÇÃO':'SANDBOX';$('orders').innerHTML=new Function('order','currentStatus','lalamoveEnvironment','esc','money',orderSource+';return renderLalamoveDelivery(order,currentStatus);')(allOrders[0],'Preparando',lalamoveEnvironment,esc,money)+new Function('order','currentStatus','lalamoveEnvironment','esc','money',orderSource+';return renderLalamoveDelivery(order,currentStatus);')(allOrders[1],'Pronto para Retirada',lalamoveEnvironment,esc,money);};"+orderSource+"\n"+confirmSource+"\n"+flowSource+
           "\nreturn {changeLalamoveEnvironment,handleLalamoveQuoteClick,loadLalamoveEnvironment,renderOrder: (o,s)=>new Function('order','currentStatus','lalamoveEnvironment','esc','money',orderSource+';return renderLalamoveDelivery(order,currentStatus);')(o,s,lalamoveEnvironment,esc,money),getCalls:()=>calls,getEnvironment:()=>lalamoveEnvironment,getStoredQuote:()=>storedQuote,setEnvironmentError:(msg)=>{lalamoveEnvironmentReady=false;lalamoveEnvironmentLoadError=msg;}};"
          )(db,$,esc,money,appConfirm,normalizeOrderStatus,allOrders,async()=>{},CSS,document,lalamoveEnvironment,orderSource,flowSource,calls,storedQuote);
-        const showAdmin = new Function("db","$","setLoggedIn","initPanelPush","loadLalamoveEnvironment","load","loadAdminProducts","loadProductRequests","loadCostReport","cleanupPanelPushAndSignOut","showSource",
+        const showAdmin = new Function("db","$","setLoggedIn","initPanelPush","loadLalamoveEnvironment","load","loadAdminProducts","loadProductRequests","loadCostReport","loadCostMarginThreshold","cleanupPanelPushAndSignOut","showSource",
           "let panelCurrentUser=null;"+showSource+";return show;"
-        )(db,$,value=>{loggedIn=value;},async()=>{},flow.loadLalamoveEnvironment,async()=>{},async()=>{},async()=>{},async()=>{},async()=>{},showSource);
+        )(db,$,value=>{loggedIn=value;},async()=>{},flow.loadLalamoveEnvironment,async()=>{},async()=>{},async()=>{},async()=>{},async()=>{},async()=>{},showSource);
         await showAdmin();
         if(!loggedIn) throw new Error("Sessão autenticada não foi reconhecida como administrador em "+width+"px");
         window.testHooks = flow;
         window.testOrders = { order, readyOrder };
-      }, { order, readyOrder, orderSource, flowSource, confirmSource, showSource });
+      }, { width, order, readyOrder, orderSource, flowSource, confirmSource, showSource });
       await page.waitForFunction(() => document.getElementById("lalamoveSettingsMessage").textContent.includes("Ambiente atual"));
       await page.locator("#lalamoveEnvironmentSelect").selectOption("producao");
       await page.getByRole("dialog").getByRole("button", { name: "Confirmar Produção" }).click();

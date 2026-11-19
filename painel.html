@@ -1006,7 +1006,9 @@ async function show(){
   $('priceEditor').classList.remove('hide');
   $('resaleEditor').classList.remove('hide');
   $('productEdit').classList.remove('hide');
-  await Promise.all([load(),loadAdminProducts(),loadProductRequests(),loadCostReport()]);
+  await Promise.all([load(),loadAdminProducts(),loadProductRequests()]);
+  await loadCostMarginThreshold();
+  await loadCostReport();
  }catch(error){
   console.error('Falha ao abrir o painel:',error);
   $('message').textContent='Não foi possível carregar o painel: '+(error?.message||'erro não identificado')+'. Atualize a página e tente novamente.';
@@ -1983,7 +1985,6 @@ async function loadCostMarginThreshold(){
   costMarginThreshold=value;
   $('costMarginThreshold').value=String(value);
   message.textContent='Alerta atual: margem abaixo de '+value.toLocaleString('pt-BR')+'%.';
-  await loadCostReport();
  }catch(error){message.textContent='Não foi possível carregar o percentual de alerta.';}
 }
 $('btnSaveCostMarginThreshold').addEventListener('click',async()=>{
@@ -1999,7 +2000,6 @@ $('btnSaveCostMarginThreshold').addEventListener('click',async()=>{
  }catch(error){message.textContent='Não foi possível salvar o percentual. Confira a sessão de administrador.';}
  finally{button.disabled=false;button.textContent='Salvar percentual';}
 });
-loadCostMarginThreshold();
 async function loadProductRequests(){
  const message=$('productRequestsMessage');
  const list=$('productRequestsList');
