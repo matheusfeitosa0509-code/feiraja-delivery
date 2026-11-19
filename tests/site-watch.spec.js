@@ -18,12 +18,15 @@ for (const viewport of viewports) {
 
     try {
       await page.goto(`${BASE}/loja.html`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-      await expect(page.locator('#products')).toBeVisible({ timeout: 45000 });
-      await expect.poll(async () => page.locator('#products [data-add]').count(), { timeout: 45000 })
-        .toBeGreaterThan(0).catch(() => failAt('catálogo', 'nenhum botão de adicionar produto apareceu'));
-      if (await page.locator('#products [data-add]').count() === 0) failAt('catálogo', 'produtos não carregaram');
+      await expect(page.locator('#pageHome')).toHaveClass(/active/, { timeout: 15000 })
+        .catch(() => failAt('loja', 'a página inicial da loja não abriu'));
+      await expect(page.locator('#homeProductSections')).toBeVisible({ timeout: 45000 })
+        .catch(() => failAt('catálogo', 'as seções de produtos da página inicial não ficaram visíveis'));
+      await expect.poll(async () => page.locator('#homeProductSections [data-home-add]').count(), { timeout: 45000 })
+        .toBeGreaterThan(0).catch(() => failAt('catálogo', 'nenhum produto com botão de adicionar apareceu'));
+      if (await page.locator('#homeProductSections [data-home-add]').count() === 0) failAt('catálogo', 'produtos não carregaram');
 
-      const addButton = page.locator('#products [data-add]').first();
+      const addButton = page.locator('#homeProductSections [data-home-add]').first();
       await addButton.click();
       await expect(page.locator('#cartbar')).not.toHaveClass(/hide/, { timeout: 10000 })
         .catch(() => failAt('adicionar produto', 'o carrinho não atualizou após adicionar item'));
@@ -46,7 +49,7 @@ for (const viewport of viewports) {
         const homeTab = page.locator('.mobile-nav [data-page="Home"]');
         if (await homeTab.count()) await homeTab.click();
       });
-      const chosen = page.locator('#products [data-add]').first();
+      const chosen = page.locator('#homeProductSections [data-home-add]').first();
       for (let i = 0; i < 30; i++) {
         const current = Number((await page.locator('#cartbarTotal').innerText()).replace(/[^0-9,]/g, '').replace(',', '.'));
         if (current >= 30) break;
