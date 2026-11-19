@@ -15,8 +15,8 @@ Deno.test("received and pending payment messages stay unchanged", () => {
   assertEquals(getCustomerMessage("Pagamento Pendente"), "Aguardando a confirmação do pagamento.");
 });
 Deno.test("notification click target identifies the order", () => {
-  assertEquals(customerOrderUrl("AB12-CD34"), "/loja.html?pedido=AB12-CD34#customerOrders");
-  assertEquals(customerOrderUrl("id with space"), "/loja.html?pedido=id%20with%20space#customerOrders");
+  assertEquals(customerOrderUrl("AB12-CD34"), "./loja.html?pedido=AB12-CD34#customerOrders");
+  assertEquals(customerOrderUrl("id with space"), "./loja.html?pedido=id%20with%20space#customerOrders");
 });
 Deno.test("test orders and orders without owner are skipped", () => {
   assertEquals(shouldSkipOrderPush(true, "user-1"), true);
