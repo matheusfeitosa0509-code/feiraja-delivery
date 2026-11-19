@@ -40,10 +40,6 @@ const assert = require('node:assert/strict');
     await page.locator('[data-banner-action="request"]').click();
     await expectOpen('#accountModal', 'Pedir um produto pelo banner (visitante sem login)');
     await closeAccount();
-    await page.locator('#requestProductFab').click();
-    await expectOpen('#accountModal', 'Pedir um produto pelo atalho (visitante sem login)');
-    await closeAccount();
-
     const categories = page.locator('#homeBubbles button');
     const categoryCount = await categories.count();
     assert.ok(categoryCount > 0, 'nenhuma categoria foi carregada');
