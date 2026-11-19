@@ -58,8 +58,19 @@ const assert = require('node:assert/strict');
     const plus = page.locator('#homeProductSections .product:not(.skeleton-card) [data-card-change][data-d="1"]').first();
     await plus.click();
     assert.ok(Number((await page.locator('#tabCartCount').textContent()).trim()) > 0, '+ do produto não adicionou ao carrinho');
-    // The checkout has a R$30 minimum; fill only the isolated browser cart until Continue is enabled.
-    for (let i = 0; i < 80 && await page.locator('#checkout').evaluate(el => el.disabled); i++) await plus.click();
+    // The checkout has a R$30 minimum. Keep this browser-only smoke test resilient
+    // to low-priced first products: close the existing "Falta pouco!" sheet and add
+    // another batch until checkout actually opens its next step.
+    for (let attempt = 0; attempt < 5; attempt++) {
+      for (let i = 0; i < 100 && await page.locator('#checkout').evaluate(el => el.disabled); i++) await plus.click();
+      if (!await page.locator('#checkout').isEnabled()) continue;
+      await page.locator('#checkout').click();
+      if (await page.locator('#modal.open, #accountModal.open').count()) break;
+      if (await page.locator('#storeConfirmModal.open').count()) {
+        await page.locator('#storeConfirmAccept').click();
+        continue;
+      }
+    }
 
     const valueButton = page.locator('#homeProductSections .value-sale-open').first();
     if (await valueButton.count()) {
