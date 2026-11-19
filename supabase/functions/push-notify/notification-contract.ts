@@ -15,6 +15,7 @@ const CUSTOMER_MESSAGES: Record<string, string> = {
   "Saiu para Entrega": "Seu pedido saiu para entrega 🛵",
   "Entregue": "Pedido entregue. Obrigado por comprar na Feira On! 💚",
   "Cancelada": "Seu pedido foi cancelado. Qualquer dúvida, fale com a gente.",
+  "Cancelado": "Seu pedido foi cancelado. Qualquer dúvida, fale com a gente.",
   "Pagamento cancelado": "Seu pedido foi cancelado. Qualquer dúvida, fale com a gente.",
   "Pagamento reembolsado": "Houve uma atualização do seu pedido.",
   "Pagamento contestado": "Houve uma atualização do seu pedido.",
