@@ -1145,6 +1145,7 @@ function renderLalamoveDelivery(order,currentStatus){
 }
 
 function matchesOrderFilter(order,filter){
+ if(!filter)return true;
  const status=normalizeOrderStatus(order.status),isTest=order.is_test_order===true;
  if(filter==='tests')return isTest;
  if(filter==='all')return true;
@@ -1169,18 +1170,21 @@ function renderOrderProfitMarkup(data,totalItems){
 }
 function renderDailySummary(){
  const s=dailyProfitSummary||{};
- $('dayOrdersCount').textContent=String(s.orders_today??allOrders.filter(o=>o.is_test_order!==true&&!['Cancelada','Reembolsado','Contestado'].includes(normalizeOrderStatus(o.status))).length);
- $('dayToSeparate').textContent=String(s.to_separate??0);
- $('dayInDelivery').textContent=String(s.in_delivery??0);
- $('dayPaidSales').textContent=money(s.paid_sales||0);
- $('dayProfit').textContent=money(s.profit||0);
- $('dayProfitNote').textContent=Number(s.missing_cost_items||0)>0?'Parcial · '+s.missing_cost_items+' item(ns) sem custo':'';
- $('dayProfit').classList.toggle('profit-negative',Number(s.profit||0)<0);
  const statsOrders=allOrders.filter(o=>o.is_test_order!==true);
- $('count').textContent=String(statsOrders.length);
- $('pending').textContent=String(statsOrders.filter(o=>['Pedido Recebido','Pagamento Pendente'].includes(normalizeOrderStatus(o.status))).length);
- $('active').textContent=String(statsOrders.filter(o=>['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega'].includes(normalizeOrderStatus(o.status))).length);
- $('sum').textContent=money(s.paid_sales||0);
+ const values={
+  dayOrdersCount:String(s.orders_today??statsOrders.filter(o=>!['Cancelada','Reembolsado','Contestado'].includes(normalizeOrderStatus(o.status))).length),
+  dayToSeparate:String(s.to_separate??0),
+  dayInDelivery:String(s.in_delivery??0),
+  dayPaidSales:money(s.paid_sales||0),
+  dayProfit:money(s.profit||0),
+  dayProfitNote:Number(s.missing_cost_items||0)>0?'Parcial · '+s.missing_cost_items+' item(ns) sem custo':'',
+  count:String(statsOrders.length),
+  pending:String(statsOrders.filter(o=>['Pedido Recebido','Pagamento Pendente'].includes(normalizeOrderStatus(o.status))).length),
+  active:String(statsOrders.filter(o=>['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega'].includes(normalizeOrderStatus(o.status))).length),
+  sum:money(s.paid_sales||0)
+ };
+ for(const [id,value] of Object.entries(values)){const node=$(id);if(node)node.textContent=value;}
+ const profitNode=$('dayProfit');if(profitNode)profitNode.classList.toggle('profit-negative',Number(s.profit||0)<0);
 }
 function manausDayRange(){
  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
