@@ -303,7 +303,7 @@ Deno.test("diagnóstico Lalamove sanitiza a resposta do provedor",()=>{const saf
 Deno.test("diagnóstico Lalamove sanitiza a resposta do provedor",()=>{const safe=sanitizeLalamoveErrorPayload({code:"ERR_INVALID_ORDER",message:"cliente teste@exemplo.com +55 92 99999-0000 https://private.example.test",customerAddress:"Rua privada, 123"});assertEquals(safe.code,"ERR_INVALID_ORDER");assertEquals(safe.message.includes("teste@exemplo.com"),false);assertEquals(safe.message.includes("99999"),false);assertEquals(safe.message.includes("private.example.test"),false);assertEquals("customerAddress" in safe,false);});
 
 Deno.test("configuração Supabase aceita JWT antigo e sb_secret sem enviar segredo como Bearer", async () => {
-  const payload = btoa(JSON.stringify({ role: "service_role" })).replace(/=/g, "").replace(/\\+/g, "-").replace(/\\//g, "_");
+  const payload = btoa(JSON.stringify({ role: "service_role" })).replaceAll("=", "").replaceAll("+", "-").replaceAll("/", "_");
   const jwt = "eyJhbGciOiJIUzI1NiJ9." + payload + ".signature";
   const legacy = readSupabaseServiceRoleConfig((name) => name === "SUPABASE_SERVICE_ROLE_KEY" ? jwt : undefined);
   assertEquals(legacy.key, jwt);
