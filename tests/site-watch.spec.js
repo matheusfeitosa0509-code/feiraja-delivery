@@ -1,4 +1,7 @@
 const { test, expect } = require('@playwright/test');
+const fs = require('fs');
+const path = require('path');
+const STORE_HTML = fs.readFileSync(path.join(__dirname, '..', 'loja.html'), 'utf8');
 
 const BASE = 'https://www.feiraondelivery.com.br';
 const viewports = [{ width: 360, height: 800 }, { width: 412, height: 915 }];
@@ -154,6 +157,7 @@ async function preparePaidOrderPage(context, page, options = {}) {
   }, { user, mockPush: !!options.mockPush, mockPermission: options.mockPermission || null });
 
   let claimCalls = 0;
+  await page.route(`${BASE}/loja.html`, route => route.fulfill({ status: 200, contentType: 'text/html', body: STORE_HTML }));
   await page.route('**/rest/v1/orders**', route => route.fulfill({
     status: 200,
     contentType: 'application/json',
