@@ -62,12 +62,12 @@ const assert = require('node:assert/strict');
     // the displayed subtotal, not the checkout button's disabled state.
     for (let i = 0; i < 500; i++) {
       const subtotalText = await page.locator('#subtotal').textContent();
-      const subtotalCents = Number(String(subtotalText || '').replace(/\\D/g, ''));
+      const subtotalCents = Number(String(subtotalText || '').replace(/\D/g, ''));
       if (subtotalCents >= 3000) break;
       await plus.click();
     }
     const finalSubtotalText = await page.locator('#subtotal').textContent();
-    const finalSubtotalCents = Number(String(finalSubtotalText || '').replace(/\\D/g, ''));
+    const finalSubtotalCents = Number(String(finalSubtotalText || '').replace(/\D/g, ''));
     assert.ok(finalSubtotalCents >= 3000, `Carrinho de smoke test não atingiu R$30 (subtotal: ${finalSubtotalText})`);
 
     const valueButton = page.locator('#homeProductSections .value-sale-open').first();
