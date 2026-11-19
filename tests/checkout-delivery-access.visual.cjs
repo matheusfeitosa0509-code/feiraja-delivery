@@ -10,6 +10,8 @@ assert.equal(storeHtml.includes('id="payPixTest"'), false, 'radio de teste não 
 assert.equal(storeHtml.includes('<option value="pix_test">'), false, 'opção do select não pode existir antes da confirmação admin');
 assert.equal(storeHtml.includes('#deliveryUberOption[hidden]'), false, 'Uber não pode depender de CSS hidden');
 assert.equal(storeHtml.includes('syncUberPickupOption({'), true, 'Uber deve ser removido do DOM e do select');
+assert.equal(storeHtml.includes("if(delivery==='delivery'&&!hasConfirmedDeliveryAdmin())"), false, 'cliente comum não pode ser bloqueado por não ser administrador quando entrega está ativa');
+assert.equal(storeHtml.includes("if(v==='pix_test'&&(!hasConfirmedDeliveryAdmin()"), true, 'Pix de teste continua exclusivo de administrador');
 assert.equal(storeHtml.includes("const uberRadio=$('#deliveryUber');if(uberRadio)uberRadio.checked=delivery==='pickup_uber';"), true, 'syncDeliverySelection deve tolerar o rádio Uber ausente');
 assert.equal(storeHtml.includes("$('#deliveryUber')?.addEventListener('change'"), true, 'listener do Uber deve tolerar o card removido');
 const safeUberListener = "$('#deliveryUber')?.addEventListener('change',()=>{if($('#deliveryUber')?.checked){$('#delivery').value='pickup_uber';$('#delivery').dispatchEvent(new Event('change'));}});";
@@ -60,6 +62,15 @@ const checkoutCss = [
       await page.addStyleTag({ content: checkoutCss });
       await page.addScriptTag({ content: helperSource +
         '\nwindow.FeiraDeliveryAccess = { loadDeliveryAccessState, renderDeliveryOption, syncAdminTestPaymentOption, canShowUberPickupOption, syncUberPickupOption, deliveryQuoteErrorMessage };' });
+
+      const customerAccess = await page.evaluate(async () => {
+        const access = await window.FeiraDeliveryAccess.loadDeliveryAccessState({ id: 'customer-common-test', is_anonymous: false }, async name => ({ data: name === 'is_current_user_admin' ? false : true, error: null }));
+        const option = document.querySelector('#deliveryHomeOption');
+        const radio = document.querySelector('#deliveryHome');
+        window.FeiraDeliveryAccess.renderDeliveryOption({ option, radio, starting: document.querySelector('#deliveryStartingPrice'), description: document.querySelector('#deliveryHomeDescription'), isAdmin: access.isAdmin, adminCheckComplete: access.adminCheckComplete, deliveryActive: access.deliveryActive, withinHours: true });
+        return { isAdmin: access.isAdmin, deliveryActive: access.deliveryActive, disabled: radio.disabled, starting: document.querySelector('#deliveryStartingPrice').textContent };
+      });
+      assert.deepEqual(customerAccess, { isAdmin: false, deliveryActive: true, disabled: false, starting: 'Calcular taxa' }, width + 'px: conta comum deve poder selecionar entrega ativa');
 
       await page.evaluate(() => {
         window.__uberCard = document.querySelector('#deliveryUberOption');
