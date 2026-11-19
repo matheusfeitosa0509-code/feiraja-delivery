@@ -52,7 +52,7 @@ const { chromium } = require("playwright");
         const itemSeparationKey = (item, occurrence) => String(item.id || item.name) + ":" + occurrence;
         const formatOrderItemDescription = item => "Coco — 4 un";
         const noop = () => {};
-        const render = new Function("allOrders", "$", "statuses", "normalizeOrderStatus", "esc", "money", "shortOrderNumber", "orderItemTotal", "separatedKeysFor", "itemSeparationKey", "formatOrderItemDescription", "saveStatus", "markRefundDone", "toggleSeparatedItem", "startLalamoveQuote", "cancelLalamoveDelivery", renderSource + "\nreturn render;")(
+        const render = new Function("allOrders", "$", "statuses", "normalizeOrderStatus", "esc", "money", "shortOrderNumber", "orderItemTotal", "separatedKeysFor", "itemSeparationKey", "formatOrderItemDescription", "saveStatus", "markRefundDone", "toggleSeparatedItem", "startLalamoveQuote", "cancelLalamoveDelivery", "let profitByOrder={};let dailyProfitSummary=null;\n" + renderSource + "\nreturn render;")(
           [order], $, statuses, normalizeOrderStatus, esc, money, shortOrderNumber, orderItemTotal,
           separatedKeysFor, itemSeparationKey, formatOrderItemDescription, noop, noop, noop, noop, noop
         );
