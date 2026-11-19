@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import webpush from "npm:web-push@3.6.7";
+import { CUSTOMER_PUSH_TITLE, getCustomerMessage, customerOrderUrl } from "./notification-contract.ts";
 
 type PushKind = "admin" | "customer";
 
@@ -35,27 +36,13 @@ const KNOWN_STATUSES = new Set([
   "Pagamento reembolsado",
   "Pagamento contestado",
   "Preparando pedido",
+  "Separação iniciada",
+  "Saiu para Entrega",
   "Recebido",
   "received",
 ]);
 
-const CUSTOMER_MESSAGES: Record<string, string> = {
-  "Pedido Recebido": "Recebemos seu pedido.",
-  "Recebido": "Recebemos seu pedido.",
-  "received": "Recebemos seu pedido.",
-  "Pagamento Pendente": "Aguardando a confirmação do pagamento.",
-  "Aguardando Pagamento Pix": "Aguardando a confirmação do pagamento.",
-  "Pagamento em análise": "Aguardando a confirmação do pagamento.",
-  "Pagamento Confirmado": "Pagamento confirmado!",
-  "Preparando": "Estamos separando seu pedido.",
-  "Preparando pedido": "Estamos separando seu pedido.",
-  "Pronto para Retirada": "Seu pedido está pronto para retirada.",
-  "Entregue": "Pedido entregue. Obrigado!",
-  "Cancelada": "Seu pedido foi cancelado.",
-  "Pagamento cancelado": "Seu pedido foi cancelado.",
-  "Pagamento reembolsado": "Houve uma atualização do seu pedido.",
-  "Pagamento contestado": "Houve uma atualização do seu pedido.",
-};
+
 
 const jsonResponse = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), {
@@ -299,7 +286,7 @@ Deno.serve(async (req: Request) => {
     stage = "push_send";
     const notificationUrl = kind === "admin" ? "/painel.html" : "/loja.html";
     const notificationPayload = JSON.stringify({
-      title: "Feira On Delivery",
+      title: CUSTOMER_PUSH_TITLE,
       body: message,
       url: notificationUrl,
       tag: `feira-${kind}-${order_id}-${new_status}`,
