@@ -184,7 +184,20 @@ for (const viewport of viewports) {
     page.on('pageerror', error => consoleErrors.push(error.message));
     try {
       await preparePaidOrderPage(context, page, { mockPermission: 'default', mockPush: true });
-      await expect(page.locator('#storeConfirmModal')).toHaveClass(/open/, { timeout: 10000 });
+      await expect(page.locator('#storeConfirmModal')).toHaveClass(/open/, { timeout: 10000 }).catch(async () => {
+        const state = await page.evaluate(() => ({
+          permission: window.Notification?.permission || 'missing',
+          serviceWorker: 'serviceWorker' in navigator,
+          pushManager: 'PushManager' in window,
+          pageOrdersActive: document.querySelector('#pageOrders')?.classList.contains('active'),
+          orderCards: document.querySelectorAll('#ordersList .order-card').length,
+          userSession: !!localStorage.getItem('sb-juhwdevvwstmyxyyagzh-auth-token'),
+          dismissed: localStorage.getItem('feira_order_push_dismissed_v1:a2a00000-0000-4000-8000-000000000001'),
+          platform: navigator.platform,
+          maxTouchPoints: navigator.maxTouchPoints,
+        }));
+        throw new Error('FALHA [convite de avisos]: estado=' + JSON.stringify(state));
+      });
       await expect(page.locator('#storeConfirmTitle')).toHaveText('Quer ser avisada do seu pedido?');
       await expect(page.locator('#storeConfirmMessage')).toHaveText('Avisamos quando ele estiver pronto para retirada ou saindo para entrega.');
       await expect(page.locator('#storeConfirmAccept')).toHaveText('Ativar avisos');
