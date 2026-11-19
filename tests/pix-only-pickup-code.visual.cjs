@@ -12,8 +12,7 @@ const paymentMarkup = html.slice(start, end + '</section>'.length);
 assert.match(paymentMarkup, /Pagamento somente por Pix\. Seu pedido é separado após a confirmação do pagamento\./);
 assert.match(paymentMarkup, /id="payPix"/);
 assert.doesNotMatch(paymentMarkup, /payCash|payCard|Dinheiro na retirada|Cartão na retirada|value="cash"|value="card_on_delivery"/);
-assert.match(html, /checkoutPaymentChoices/);
-assert.match(html, /checkoutPaymentChoices/);
+assert.match(html, /class="checkout-choice-list"/);
 assert.match(html, /o\.delivery_type==='pickup_store'[^?]*o\.pickup_code/);
 
 (async () => {
