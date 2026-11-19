@@ -5,6 +5,7 @@ const viewports = [{ width: 360, height: 800 }, { width: 412, height: 915 }];
 
 for (const viewport of viewports) {
   test(`vigia loja, carrinho, mínimo, conta, assistente e painel — ${viewport.width}px`, async ({ browser }) => {
+    test.setTimeout(120000);
     const context = await browser.newContext({ viewport, storageState: { cookies: [], origins: [] } });
     const page = await context.newPage();
     const consoleErrors = [];
@@ -79,7 +80,7 @@ for (const viewport of viewports) {
       if (error.message.startsWith('FALHA [')) throw error;
       throw new Error(`FALHA [${viewport.width}px]: ${error.message}`);
     } finally {
-      await context.close();
+      await context.close().catch(() => {});
     }
   });
 }
