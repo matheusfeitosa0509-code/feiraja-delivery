@@ -1,6 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { calculateLineTotalCents, calculateQuantityFromValueCents, calculateValueLineTotalCents, isValidSalesQuantity, isValueSaleEnabled, selectEffectiveUnitPriceCents, sumDecimalQuantities } from "../_shared/sales-rules.js";
 import { isLegacyMercadoPagoWebhookNotice, isAsaasPixEnabled } from "./payment-provider-policy.ts";
+import { checkoutPaymentMethodError } from "../_shared/checkout-payment-policy.ts";
+import { generatePickupCode } from "../_shared/pickup-code.ts";
 import { normalizeItemPreference } from "../_shared/item-preferences.ts";
 import { formatDropoff } from "../_shared/delivery-quote.ts";
 import { readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
@@ -200,7 +202,8 @@ Deno.serve(async (req: Request) => {
     const requestedItems = body?.items;
     const paymentMethod = String(body?.paymentMethod || "pix").toLowerCase();
     const MIN_ORDER_SUBTOTAL_CENTS = 3000;
-    if (!["pix", "pix_test", "cash", "card_on_delivery"].includes(paymentMethod)) return json({ error: "Forma de pagamento inválida." }, 400);
+    const paymentMethodError = checkoutPaymentMethodError(paymentMethod);
+    if (paymentMethodError) return json({ error: paymentMethodError }, 400);
     if (!isAsaasPixEnabled(paymentMethod, asaasEnabled)) {
       return json({ error: "Pagamento Pix está disponível somente pelo Asaas." }, 503);
     }
@@ -252,8 +255,8 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Informe rua, número e bairro para a entrega." }, 400);
       }
     }
-    let pickupCode = priorOrder?.pickup_code || (deliveryType === "pickup_uber"
-      ? String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, "0")
+    let pickupCode = priorOrder?.pickup_code || (deliveryType === "pickup_uber" || (deliveryType === "pickup_store" && paymentMethod === "pix_test")
+      ? generatePickupCode()
       : null);
     if (!name || phone.replace(/\D/g, "").length < 8 || (paymentMethod === "pix" && (!validPixDocument || !/^\S+@\S+\.\S+$/.test(email))) || (email && !/^\S+@\S+\.\S+$/.test(email))) {
       return json({ error: "Confira nome, telefone, CPF e e-mail." }, 400);

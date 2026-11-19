@@ -9,6 +9,8 @@ type Order = {
   payment_provider: string;
   created_at: string;
   refund_pending?: boolean;
+  delivery_type?: string;
+  pickup_code?: string | null;
 };
 
 function makeDb(initialOrder: Order | null) {
@@ -252,4 +254,23 @@ Deno.test("webhook atrasado: pagamento confirmado vincula ID sem regredir status
   assertEquals(response.status, 200);
   assertEquals(mock.getOrder()?.payment_id, "pay_123");
   assertEquals(mock.getOrder()?.status, "Preparando");
+});
+
+Deno.test("pickup_store: confirmação Pix gera código de retirada de quatro dígitos", async () => {
+  const mock = makeDb({
+    id: "ORDER-123",
+    status: "Pagamento Pendente",
+    total: 30,
+    payment_id: "pay_123",
+    payment_provider: "asaas",
+    created_at: "2026-11-19T10:00:00Z",
+    delivery_type: "pickup_store",
+    pickup_code: null,
+  });
+  const result = await invoke(mock);
+  assertEquals(result.response.status, 200);
+  assertEquals(mock.getOrder()?.status, "Pagamento Confirmado");
+  assertEquals(/^\d{4}$/.test(String(mock.getOrder()?.pickup_code || "")), true);
+  assertEquals(mock.updates.length, 1);
+  assertEquals(typeof mock.updates[0].pickup_code, "string");
 });

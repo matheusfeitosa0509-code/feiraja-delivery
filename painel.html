@@ -1246,7 +1246,7 @@ function render(){
   const codeHtml=o.delivery_type==='delivery'?'':('<div class="order-extra"><small>CÓDIGO DE RETIRADA</small><strong>'+esc(o.pickup_code||'—')+'</strong></div>');
   const pickupAddress=o.delivery_type==='delivery'?'':(o.customer_address?'<div class="order-extra"><small>LOCAL DE RETIRADA</small><strong>'+esc(o.customer_address)+'</strong></div>':'');
   const contact='<div class="order-contact"><strong>'+esc(o.customer_name||'Cliente')+'</strong><span>·</span>'+phoneHtml+'<details class="order-email"><summary>E-mail</summary><span>'+esc(o.customer_email||'Não informado')+'</span></details></div>';
-  const chips='<div class="order-chips"><span class="order-chip">'+esc(mode)+'</span><span class="order-chip">'+esc(o.payment_method||'Pagamento não informado')+'</span></div>';
+  const chips='<div class="order-chips"><span class="order-chip">'+esc(mode)+'</span><span class="order-chip">'+esc(o.payment_method||'Pagamento não informado')+'</span>'+(o.pickup_code?'<span class="order-chip">Código: '+esc(o.pickup_code)+'</span>':'')+'</div>';
   const testBadge=o.is_test_order===true?'<span class="lalamove-test-badge">TESTE</span>':'';const orderProfitMarkup=renderOrderProfitMarkup(profitByOrder[o.id],items.length);
   const scheduledAt=Date.parse(String(o.scheduled_for||'')),scheduledBadge=Number.isFinite(scheduledAt)&&scheduledAt>Date.now()?'<span class="pill">Agendado para '+esc(formatStoreScheduleLabel(scheduledAt))+'</span>':'';
   const separationPill=o.separation_started_at?'<span class="pill">Separação iniciada · '+esc(new Date(o.separation_started_at).toLocaleString('pt-BR'))+'</span>':o.separation_started_legacy?'<span class="pill">Separação iniciada · pedido anterior (horário não registrado)</span>':'';
