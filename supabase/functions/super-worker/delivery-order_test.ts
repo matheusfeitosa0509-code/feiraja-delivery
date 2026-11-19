@@ -74,6 +74,12 @@ Deno.test("servidor recusa Pix de teste para não-admin em qualquer modalidade",
   }
 });
 
+Deno.test("cliente comum pode pagar com Pix quando a Entrega Feira On está ativa", () => {
+  assertEquals(validateCheckoutDelivery({
+    deliveryType: "delivery", paymentMethod: "pix", isAdmin: false, deliveryActive: true,
+  }), { ok: true });
+});
+
 Deno.test("não-admin bloqueado quando entrega está desligada", () => {
   assertEquals(validateCheckoutDelivery({
     deliveryType: "delivery", paymentMethod: "pix", isAdmin: false, deliveryActive: false,
