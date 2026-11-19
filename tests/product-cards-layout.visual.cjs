@@ -51,7 +51,7 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
     for (const width of [360, 412]) {
       const page = await browser.newPage({ viewport:{width,height:1000}, deviceScaleFactor:1 });
       const errors = [];
-      page.on('pageerror', e => errors.push('pageerror: '+e.message));
+      page.on('pageerror', e => errors.push('pageerror: '+e.message+' STACK '+e.stack));
       page.on('console', m => { if(m.type()==='error') errors.push('console.error: '+m.text()); });
       await page.route('**/*', route => route.fulfill({status:200,body:''}));
       await page.route(url => url.hostname==='juhwdevvwstmyxyyagzh.supabase.co' && url.pathname==='/rest/v1/products',
