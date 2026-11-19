@@ -86,7 +86,7 @@ async function runAdmin(browser) {
   await page.setContent('<main><div id="admin" data-order-id="TEST-ADMIN"></div></main>');
   await page.evaluate(() => {
     window.L={map:el=>({el,markers:[],setView(){return this;},fitBounds(){},invalidateSize(){},remove(){}}),tileLayer:()=>({addTo(){}}),divIcon:options=>({options}),marker:p=>({element:Object.assign(document.createElement('span'),{innerHTML:p.icon.options.html}),addTo(map){map.el.append(this.element);return this;},setLatLng(){return this;}})};
-    window.IntersectionObserver=undefined;
+    delete window.IntersectionObserver;
   });
   await page.addScriptTag({path:path.join(root,'lalamove-map.js')});
   await page.evaluate(()=>window.FeiraLalamoveMap.mount(document.querySelector('#admin'),async()=>({active:true,status:'assigned',driver_assigned:true,vehicle:'MOTO',store:{lat:-3.13,lng:-60.02},customer:{lat:-3.10,lng:-60.01},tracking_url:'https://share.lalamove.com/admin-test',driver:{name:'Carlos Silva',phone:'+5592888888888',plateNumber:'XYZ1234',coordinates:{lat:-3.12,lng:-60.015}}}),{admin:true}));
