@@ -1161,7 +1161,7 @@ function renderOrderItemProfit(snapshot,item){
  const qty=Number(snapshot?.quantity??item?.quantity??item?.qty??1),sale=Number(snapshot?.sale_total??(Number(item?.price||0)*qty));
  const edit='<button type="button" class="cost-edit-pencil" data-edit-order-cost="'+safeOrderId+'" data-cost-item-index="'+itemIndex+'" aria-label="Editar custo pago deste item" title="Editar custo">✎</button>';
  if(!snapshot||snapshot.unit_cost===null||snapshot.unit_cost===undefined)
-  return '<small class="profit-item-meta missing">Venda: '+money(sale)+' · Custo não cadastrado '+edit+'</small>';
+  return '<small class="profit-item-meta missing">Venda: '+money(sale)+' · custo não cadastrado '+edit+'</small>';
  const unitCost=Number(snapshot.unit_cost),cost=Number(snapshot.cost_total??unitCost*qty),profit=Number(snapshot.profit??(sale-cost)),percent=sale>0?profit/sale*100:0;
  return '<small class="profit-item-meta '+(profit<0?'profit-negative':'profit-positive')+'">Venda: '+money(sale)+' · Custo: '+money(cost)+' '+edit+' · Lucro: '+money(profit)+' ('+percent.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%)</small>';
 }
