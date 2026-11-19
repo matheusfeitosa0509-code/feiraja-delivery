@@ -35,6 +35,17 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Run vigia against production
         run: npx playwright test tests/site-watch.spec.js --reporter=list
+      - name: Verify health-check rejects requests without token
+        run: |
+          status="$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' "https://juhwdevvwstmyxyyagzh.supabase.co/functions/v1/health-check")" || {
+            echo "::error::health-check indisponível para teste sem token."
+            exit 1
+          }
+          if [ "$status" != "401" ]; then
+            echo "::error::Esperado HTTP 401 sem x-health-token; recebido HTTP $status."
+            exit 1
+          fi
+          echo "PASSOU | autenticação | HTTP 401 sem x-health-token."
       - name: Run server health-check
         env:
           HEALTH_TOKEN: ${{ secrets.HEALTH_TOKEN }}
