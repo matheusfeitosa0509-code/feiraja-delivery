@@ -46,6 +46,7 @@ function prepareHtml(source) {
       page.on("console",m=>{if(m.type()==="error")errors.push("console.error: "+m.text());});
       await page.setContent(prepareHtml(source),{waitUntil:"domcontentloaded"});
       await page.waitForFunction(()=>document.getElementById("lalamoveSettingsMessage")?.textContent.includes("Ambiente atual"),{timeout:15000});
+      await page.locator("#tabSettings").click();
       if(await page.locator("#deliveryActivationStatus").textContent()!=="DESLIGADA")throw new Error("A flag de entrega deveria iniciar desligada.");
       await page.locator("#deliveryActivationToggle").click();
       await page.getByRole("dialog").getByRole("button",{name:"Ligar entrega"}).click();
@@ -59,13 +60,16 @@ function prepareHtml(source) {
       if(!costStats.includes("40,00"))throw new Error("O painel deixou de exibir o lucro estimado via RPC admin: "+costStats);
       const costProducts=await page.locator("#costProductStatusList").textContent();
       if(!costProducts.includes("Banana Prata"))throw new Error("O painel deixou de exibir os custos dos produtos via RPC admin: "+costProducts);
+      await page.locator("#tabOrders").click();
       await page.waitForSelector("[data-order-toggle]");
       await page.locator('[data-order-toggle="TEST-6259DB63"]').click();
       await page.waitForSelector('[data-lalamove-quote="TEST-6259DB63"]');
 
+      await page.locator("#tabSettings").click();
       await page.locator("#lalamoveEnvironmentSelect").selectOption("producao");
       await page.getByRole("dialog").getByRole("button",{name:"Confirmar Produção"}).click();
       await page.waitForFunction(()=>document.getElementById("lalamoveSettingsBadge")?.textContent==="PRODUÇÃO");
+      await page.locator("#tabOrders").click();
       if(await page.locator('[data-order-content="TEST-6259DB63"]').isHidden())await page.locator('[data-order-toggle="TEST-6259DB63"]').click();
       await page.locator('[data-lalamove-quote="TEST-6259DB63"]').click();
       await page.getByRole("dialog").getByRole("button",{name:"Continuar"}).click();
@@ -89,8 +93,10 @@ function prepareHtml(source) {
       await page.waitForSelector("[data-order-toggle]");
       if(await page.locator('[data-order-content="TEST-6259DB63"]').isHidden())await page.locator('[data-order-toggle="TEST-6259DB63"]').click();
       await page.waitForSelector('[data-lalamove-quote="TEST-6259DB63"]');
+      await page.locator("#tabSettings").click();
       await page.locator("#lalamoveEnvironmentSelect").selectOption("sandbox");
       await page.waitForFunction(()=>document.getElementById("lalamoveSettingsBadge")?.textContent==="SANDBOX");
+      await page.locator("#tabOrders").click();
       if(await page.locator('[data-order-content="TEST-6259DB63"]').isHidden())await page.locator('[data-order-toggle="TEST-6259DB63"]').click();
       await page.locator('[data-lalamove-quote="TEST-6259DB63"]').click();
       await page.getByRole("dialog").getByRole("button",{name:"Continuar"}).click();
