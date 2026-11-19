@@ -44,7 +44,7 @@
    else{state.store.setLatLng([store.lat,store.lng]);state.home.setLatLng([home.lat,home.lng]);if(driver){if(!state.driver){state.driver=L.marker([driver.lat,driver.lng],{icon:marker(L,data.vehicle==='CAR'?'🚗':'🛵','Entregador',true),zIndexOffset:1000}).addTo(state.map);state.lastPoint={...driver};}else animateDriver(driver);}}
    if(driver){renderDriver(data.driver,data.vehicle);status.textContent=data.eta?'Previsão de chegada: '+String(data.eta):data.status==='picked_up'?'O entregador está a caminho do seu endereço.':'O entregador está a caminho da feira.';}
    else{status.textContent='Entregador atribuído. Aguardando a primeira localização.';if(data.driver?.name)renderDriver(data.driver,data.vehicle);}
-   if(options.admin){const link=actions.querySelector('a.admin');const url=String(data.tracking_url||'');if(url&&/^https:\\/\\//i.test(url)){link.href=url;link.hidden=false;}}
+   if(options.admin){const link=actions.querySelector('a.admin');const url=String(data.tracking_url||'');if(url.startsWith('https://')){link.href=url;link.hidden=false;}}
    setTimeout(()=>state.map?.invalidateSize(),80);
   }
   function syncStatus(data){
