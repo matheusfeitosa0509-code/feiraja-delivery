@@ -4,7 +4,7 @@ import { formatDropoff, requestSandboxQuotation } from "../_shared/delivery-quot
 import { geocodeManausAddress } from "../_shared/geocoding.ts";
 import {
   assertTestProductionDispatchConfirmation, buildLalamoveOrderBody, canCancelLalamove, canQuoteLalamove, canStartDispatch, isLalamoveDispatchReady, cancelLalamoveOrder, createLalamoveOrder, normalizeBrazilPhone,
-  getLalamoveDriverDetails, getLalamoveOrderDetails, mapLalamoveStatus, priceDifference, quoteFee, requireSupabaseServiceRoleJwt, storeLalamoveQuotes, sanitizeLalamoveErrorPayload,
+  getLalamoveDriverDetails, getLalamoveOrderDetails, mapLalamoveStatus, priceDifference, quoteFee, readSupabaseServiceRoleConfig, storeLalamoveQuotes, sanitizeLalamoveErrorPayload,
 } from "../_shared/lalamove-dispatch.ts";
 
 const cors = {
@@ -29,16 +29,15 @@ function environmentCredentials(environment: "sandbox" | "producao") {
 async function adminContext(req: Request): Promise<{ db: any; user: any; error?: undefined } | { error: Response; db?: undefined; user?: undefined }> {
   const url = requiredEnv("SUPABASE_URL");
   const anon = requiredEnv("SUPABASE_ANON_KEY");
-  // The quote RPC checks request.jwt.claim.role, so it must receive the service_role JWT.
-  // An opaque sb_secret_* key authenticates via apikey but does not populate that JWT claim.
-  const service = requireSupabaseServiceRoleJwt(requiredEnv("SUPABASE_SERVICE_ROLE_KEY"));
+  const service = readSupabaseServiceRoleConfig((name) => Deno.env.get(name));
   const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token || token === (req.headers.get("Authorization") || "")) return { error: json({ error: "Sessão necessária." }, 401) };
   const auth = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data, error } = await auth.auth.getUser(token);
   if (error || !data?.user || data.user.is_anonymous) return { error: json({ error: "Sessão válida necessária." }, 401) };
-  const db = createClient(url, service, {
+  const db = createClient(url, service.key, {
     auth: { persistSession: false, autoRefreshToken: false },
+    ...(service.fetcher ? { global: { fetch: service.fetcher } } : {}),
   });
   const { data: member, error: memberError } = await db.from("admin_users").select("user_id")
     .eq("user_id", data.user.id).maybeSingle();
