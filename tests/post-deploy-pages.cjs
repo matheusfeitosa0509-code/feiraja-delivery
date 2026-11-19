@@ -14,6 +14,13 @@ const { chromium } = require('playwright');
       const response = await page.goto(base + path, { waitUntil: 'domcontentloaded', timeout: 60000 });
       if (!response || response.status() !== 200) failures.push(path + ': HTTP ' + (response && response.status()));
       if (path === '/loja.html') {
+        const uberSubline = page.locator('#homeDeliverySubline');
+        if (!(await uberSubline.count())) failures.push('/loja.html: subtítulo Uber ausente');
+        else {
+          await uberSubline.evaluate(el => { el.hidden = true; });
+          const hiddenDisplay = await uberSubline.evaluate(el => getComputedStyle(el).display);
+          if (hiddenDisplay !== 'none') failures.push('/loja.html: subtítulo Uber continua visível com entrega ativa (display=' + hiddenDisplay + ')');
+        }
         try {
           await page.waitForFunction(() => {
             const root = document.querySelector('#homeProductSections');
