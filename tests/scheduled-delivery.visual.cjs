@@ -12,6 +12,7 @@ assert.ok(storeHtml.includes('schedule_at:data.schedule_at||null'), 'checkout re
 assert.ok(storeHtml.includes('get_delivery_enabled'), 'consulta a flag pública também para visitantes sem login');
 assert.ok(storeHtml.includes('homeDeliveryHeadline') && storeHtml.includes('homePickupBannerCopy') && storeHtml.includes('accountLoginSubtitle'), 'textos de entrega têm atualização dinâmica');
 assert.ok(!storeHtml.includes('Retirada na loja</strong><small>ou com Uber</small>'), 'não deixa a cópia antiga fixa no topo');
+assert.ok(storeHtml.includes('#homeDeliverySubline[hidden]{display:none!important}'), 'CSS impede que a regra de small sobrescreva o hidden do Uber');
 assert.ok(panelHtml.includes('Agendado para '), 'painel mostra o selo de agendamento');
 assert.ok(panelHtml.includes('!scheduledPending'), 'painel impede cotação antes da abertura');
 
@@ -38,7 +39,7 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
       const consoleErrors = [];
       page.on('pageerror', error => consoleErrors.push(error.message));
       page.on('console', message => { if (message.type() === 'error') consoleErrors.push(message.text()); });
-      await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:14px Arial;margin:0;padding:12px}.copy{min-width:0;overflow-wrap:anywhere}</style></head><body><div id="homeDeliveryHeadline"></div><small id="homeDeliverySubline"></small><p id="homePickupBannerCopy"></p><div id="accountLoginSubtitle"></div><label id="deliveryHomeOption"><input id="deliveryHome" type="radio"><span id="deliveryHomeDescription"></span><span id="deliveryStartingPrice"></span></label></body></html>');
+      await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:14px Arial;margin:0;padding:12px}.copy{min-width:0;overflow-wrap:anywhere}.home-info-item small{display:block}.home-info-item #homeDeliverySubline[hidden]{display:none!important}</style></head><body><div id="homeDeliveryHeadline"></div><small id="homeDeliverySubline"></small><p id="homePickupBannerCopy"></p><div id="accountLoginSubtitle"></div><label id="deliveryHomeOption"><input id="deliveryHome" type="radio"><span id="deliveryHomeDescription"></span><span id="deliveryStartingPrice"></span></label></body></html>');
 
       const copyResult = await page.evaluate(({ copySource }) => {
         const $ = selector => document.querySelector(selector);
@@ -47,6 +48,7 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
         const active = {
           headline: $('#homeDeliveryHeadline').textContent,
           sublineHidden: $('#homeDeliverySubline').hidden,
+          sublineDisplay: getComputedStyle($('#homeDeliverySubline')).display,
           banner: $('#homePickupBannerCopy').textContent,
           login: $('#accountLoginSubtitle').textContent,
           visibleUber: document.body.innerText.includes('Uber'),
@@ -65,6 +67,7 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
       assert.deepEqual(copyResult.active, {
         headline: 'Retire na loja ou receba em casa',
         sublineHidden: true,
+        sublineDisplay: 'none',
         banner: 'Av. Lourenço da Silva Braga, 700, Manaus. Retire na loja ou receba em casa com a Entrega Feira On.',
         login: 'Tudo da feira, retire ou receba em casa.',
         visibleUber: false,
