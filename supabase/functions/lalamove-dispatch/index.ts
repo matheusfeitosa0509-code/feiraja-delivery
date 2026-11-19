@@ -198,8 +198,16 @@ async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "M
     p_actual_cost: rawCost, p_status: mapped,
     p_tracking_url: String(data?.shareLink || ""), p_driver: driver,
   });
-  if (finishError) { console.error("lalamove-dispatch failure", { stage: "persist_created_order", internal_code: "DISPATCH_FINISH_FAILED", http_status: null, provider_body: {}, environment, db_code: finishError.code || "DB_ERROR" }); return { pending_confirmation: true }; }
-  return { created: true, status: mapped, tracking_url: String(data?.shareLink || ""), vehicle };
+  if (finishError) {
+    console.error("lalamove-dispatch failure", { stage: "persist_created_order", internal_code: "DISPATCH_FINISH_FAILED", http_status: null, provider_body: {}, environment, db_code: finishError.code || "DB_ERROR" });
+    return { pending_confirmation: true, lalamove_order_id: lalamoveOrderId, persistence_error: true };
+  }
+  const { data: persisted, error: verifyError } = await db.from("orders").select("lalamove_order_id").eq("id", order.id).maybeSingle();
+  if (verifyError || String(persisted?.lalamove_order_id || "") !== lalamoveOrderId) {
+    console.error("lalamove-dispatch failure", { stage: "verify_persisted_order_id", internal_code: "DISPATCH_ORDER_ID_NOT_VISIBLE", http_status: null, provider_body: {}, environment });
+    return { pending_confirmation: true, lalamove_order_id: lalamoveOrderId, persistence_error: true };
+  }
+  return { created: true, lalamove_order_id: lalamoveOrderId, status: mapped, tracking_url: String(data?.shareLink || ""), vehicle };
 }
 async function refreshOrderStatus(db: any, orderId: string) {
   const selectedEnvironment = await readLalamoveEnvironment(db);
@@ -293,7 +301,10 @@ Deno.serve(async (req: Request) => {
     if (result.duplicate) return json({ error: "Este pedido já está sendo enviado ou já possui uma corrida.", ...result }, 409);
     if (result.pending_confirmation) return json({
       pending_confirmation: true,
-      message: "A Lalamove ainda não confirmou a criação. O bloqueio contra duplicidade foi mantido; atualize o painel antes de tentar novamente.",
+      lalamove_order_id: result.lalamove_order_id || null,
+      message: result.lalamove_order_id
+        ? "A Lalamove criou a corrida " + result.lalamove_order_id + ", mas o identificador não foi confirmado no pedido. NÃO chame outra moto. Informe este ID ao suporte e reconcilie o pedido."
+        : "A Lalamove ainda não confirmou a criação. O bloqueio contra duplicidade foi mantido; atualize o painel antes de tentar novamente.",
     }, 202);
     return json(result);
   } catch (error) {
