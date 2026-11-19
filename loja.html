@@ -2678,4 +2678,57 @@ try{setupAppTabs();}catch(error){console.error('Falha isolada na navegação da 
  .product-qty>button:not(.qty-label){flex-basis:28px;width:28px;min-width:28px}
  .product .resale-from{font-size:8px}
 }
-</style></body></html>
+</style>
+<style id="storeConfirmBottomSheetFix">
+/* Bottom sheet exclusivo do aviso de pedido mínimo; não altera os demais modais. */
+#storeConfirmModal{
+  display:none;
+  align-items:flex-end;
+  justify-content:center;
+  overflow:hidden;
+  padding:0;
+  background:rgba(12,20,10,.58);
+  -webkit-backdrop-filter:blur(2px);
+  backdrop-filter:blur(2px);
+}
+#storeConfirmModal.open{display:flex}
+#storeConfirmModal .store-confirm-dialog{
+  flex:0 1 auto;
+  width:100%;
+  min-height:0;
+  height:auto;
+  max-height:45dvh;
+  overflow:auto;
+  margin:0 auto;
+  border-radius:24px 24px 0 0;
+  padding:22px 20px calc(16px + env(safe-area-inset-bottom,0px));
+  background:#fff;
+  box-shadow:0 -10px 36px rgba(0,0,0,.2);
+  animation:storeConfirmSheetIn .26s cubic-bezier(.2,.75,.25,1) both;
+}
+#storeConfirmModal .store-confirm-dialog h2{margin:0 0 9px;font-size:20px;line-height:1.25}
+#storeConfirmModal .store-confirm-dialog p{margin:0 0 17px;line-height:1.5}
+#storeConfirmModal .store-confirm-actions{display:flex;width:100%;gap:10px}
+#storeConfirmModal .store-confirm-actions button{flex:1 1 0;width:100%;min-width:0;min-height:48px;padding:0 10px}
+#storeConfirmModal #storeConfirmCancel{background:#eef1e8;color:var(--ink)}
+#storeConfirmModal #storeConfirmAccept{background:var(--g);color:#fff}
+@keyframes storeConfirmSheetIn{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@media(max-width:359px){
+  #storeConfirmModal .store-confirm-actions{flex-direction:column}
+  #storeConfirmModal .store-confirm-actions button{flex:none}
+}
+@media(prefers-reduced-motion:reduce){
+  #storeConfirmModal .store-confirm-dialog{animation:none}
+}
+</style>
+<script>
+document.addEventListener('keydown',event=>{
+  if(event.key!=='Escape')return;
+  const modal=document.getElementById('storeConfirmModal');
+  if(modal?.classList.contains('open')){
+    event.preventDefault();
+    closeStoreConfirm(false);
+  }
+});
+</script>
+</body></html>
