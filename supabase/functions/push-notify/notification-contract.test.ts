@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { CUSTOMER_PUSH_TITLE, customerOrderUrl, getCustomerMessage, shouldSkipOrderPush } from "./notification-contract.ts";
+import { CUSTOMER_PUSH_TITLE, customerOrderUrl, getCustomerMessage, shouldSkipOrderPush, isExpiredPushEndpointStatus } from "./notification-contract.ts";
 
 Deno.test("customer push title is fixed", () => assertEquals(CUSTOMER_PUSH_TITLE, "Feira On Delivery"));
 Deno.test("all requested customer status messages match", () => {
@@ -43,4 +43,10 @@ Deno.test("mocked customer send records each event once and never sends test ord
   assertEquals(sent.size, 6);
   assertEquals(sent.get("TEST-ORDER-01:customer:Pronto para Retirada"), "Seu pedido está pronto! 🎉 Código de retirada: C123");
   assertEquals(sent.has("TEST-ORDER-02:customer:Pagamento Confirmado"), false);
+});
+
+Deno.test("expired push endpoints are exactly 404 and 410", () => {
+  assertEquals(isExpiredPushEndpointStatus(404), true);
+  assertEquals(isExpiredPushEndpointStatus(410), true);
+  assertEquals(isExpiredPushEndpointStatus(500), false);
 });
