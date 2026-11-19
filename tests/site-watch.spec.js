@@ -68,9 +68,17 @@ for (const viewport of viewports) {
       await page.locator('#accountClose').click();
 
       await page.locator('#assistantNavButton').click();
-      await expect(page.locator('#assistantSheet')).toHaveClass(/open/, { timeout: 20000 })
-        .catch(() => failAt('assistente', 'o assistente não abriu'));
-      await page.locator('#assistantSheet [aria-label="Fechar"], #assistantSheet .close').first().click().catch(() => {});
+      await expect.poll(async () => {
+        const assistantOpen = await page.locator('#assistantSheet').evaluate(el => el.classList.contains('open'));
+        const loginGateOpen = await page.locator('#accountModal').evaluate(el => el.classList.contains('open'));
+        return assistantOpen || loginGateOpen;
+      }, { timeout: 20000 }).toBe(true)
+        .catch(() => failAt('assistente', 'o assistente e sua tela de autenticação não abriram'));
+      if (await page.locator('#assistantSheet').evaluate(el => el.classList.contains('open'))) {
+        await page.locator('#assistantClose').click();
+      } else {
+        await page.locator('#accountClose').click();
+      }
 
       await page.goto(`${BASE}/painel.html`, { waitUntil: 'domcontentloaded', timeout: 60000 });
       await expect(page.locator('input[type="email"], input[name="email"], input[autocomplete="username"]')).toBeVisible({ timeout: 20000 })
