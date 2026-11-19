@@ -182,7 +182,7 @@ for (const viewport of viewports) {
     page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
     page.on('pageerror', error => consoleErrors.push(error.message));
     try {
-      await preparePaidOrderPage(context, page, { mockPermission: 'default' });
+      await preparePaidOrderPage(context, page, { mockPermission: 'default', mockPush: true });
       await expect(page.locator('#storeConfirmModal')).toHaveClass(/open/, { timeout: 10000 });
       await expect(page.locator('#storeConfirmTitle')).toHaveText('Quer ser avisada do seu pedido?');
       await expect(page.locator('#storeConfirmMessage')).toHaveText('Avisamos quando ele estiver pronto para retirada ou saindo para entrega.');
