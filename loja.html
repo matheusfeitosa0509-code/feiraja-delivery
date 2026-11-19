@@ -1709,7 +1709,7 @@ async function loadProfile(knownUser){
  resumeCheckoutIfReady();
 }
 async function fetchMyOrdersWithSeparationFallback(userId){
- const baseColumns='id,created_at,items,total,status,payment_method,delivery_type,pickup_code,delivery_address,delivery_vehicle,delivery_fee,lalamove_status,lalamove_tracking_url,is_test_order';
+ const baseColumns='id,created_at,items,total,status,payment_method,delivery_type,pickup_code,delivery_address,delivery_vehicle,delivery_fee,lalamove_status,is_test_order';
  const candidates=[
   baseColumns+',separation_started_at,separation_started_legacy',
   baseColumns+',separation_started_at',
