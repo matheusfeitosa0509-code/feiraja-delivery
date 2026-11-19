@@ -60,7 +60,7 @@
    if(index===5){stop();container.hidden=true;}
   }
   async function refresh(){if(state.stopped||!container.isConnected||state.inFlight)return;state.inFlight=true;try{const data=await fetchTracking(String(container.dataset.orderId||''));syncStatus(data);if(!data||data.active===false){stop();status.textContent=data?.status==='delivered'?'Entrega concluída.':'Acompanhamento encerrado.';mapEl.hidden=true;driverCard.hidden=true;container.hidden=true;return;}if(!data.driver_assigned){status.textContent='Procurando entregador…';mapEl.hidden=true;driverCard.hidden=true;return;}await renderMap(data);}catch(_){if(options.admin){status.textContent='Acompanhamento indisponível no momento.';mapEl.hidden=true;driverCard.hidden=true;}else{stop();container.hidden=true;}}finally{state.inFlight=false;}}
-  function start(){if(state.stopped||state.timer||document.visibilityState==='hidden'||!container.getClientRects().length)return;void refresh();state.timer=setInterval(()=>void refresh(),25000);}
+  function start(){if(state.stopped||state.timer||document.visibilityState==='hidden'||!container.getClientRects().length)return;void refresh();state.timer=setInterval(()=>void refresh(),30000);}
   function visibility(){if(document.visibilityState==='hidden'||!container.getClientRects().length)stop();else start();}
   state.refresh=refresh;state.destroy=destroy;
   if('IntersectionObserver'in window){state.observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting))start();else stop();});state.observer.observe(container);}else start();
