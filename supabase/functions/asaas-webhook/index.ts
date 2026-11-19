@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { generatePickupCode } from "../_shared/pickup-code.ts";
 import webpush from "npm:web-push@3.6.7";
 import { buildCancelledPaymentPatch, isCancelledOrderStatus, isVerifiedPixPayment, shouldNotifyAdminWithoutOrder } from "./payment-routing.ts";
 
@@ -254,9 +255,12 @@ export async function handleAsaasWebhook(req: Request, deps: WebhookDependencies
       }
       const preserveOrderStatus = normalizedStatus === "pagamento confirmado" ||
         protectedAdministrativeStatuses.has(normalizedStatus);
+      const pickupCodePatch = order.delivery_type === "pickup_store" && !order.pickup_code
+        ? { pickup_code: generatePickupCode() }
+        : {};
       const paymentLinkPatch = preserveOrderStatus
-        ? { payment_id: paymentId }
-        : { payment_id: paymentId, status: "Pagamento Confirmado" };
+        ? { payment_id: paymentId, ...pickupCodePatch }
+        : { payment_id: paymentId, status: "Pagamento Confirmado", ...pickupCodePatch };
       const { data: linkedOrder, error: linkError } = await db.from("orders")
         .update(paymentLinkPatch)
         .eq("id", order.id).eq("payment_provider", "asaas")
@@ -474,8 +478,11 @@ export async function handleAsaasWebhook(req: Request, deps: WebhookDependencies
   if (protectedAdministrativeStatuses.has(normalizedStatus)) {
     return json({ received: true, ignored: true, reason: "status_administrativo_preservado" });
   }
+  const pickupCodePatch = order.delivery_type === "pickup_store" && !order.pickup_code
+    ? { pickup_code: generatePickupCode() }
+    : {};
   const { data: updatedOrder, error: updateError } = await db.from("orders")
-    .update({ status: "Pagamento Confirmado" })
+    .update({ status: "Pagamento Confirmado", ...pickupCodePatch })
     .eq("id", order.id)
     .eq("payment_provider", "asaas")
     .eq("payment_id", paymentId)
