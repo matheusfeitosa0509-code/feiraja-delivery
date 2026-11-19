@@ -275,6 +275,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
  <div class="stat"><small>Vendas pagas</small><strong id="dayPaidSales">R$ 0,00</strong></div>
  <div class="stat profit-day-stat"><small>Lucro do dia</small><strong id="dayProfit">R$ 0,00</strong><small id="dayProfitNote" class="muted"></small></div>
 </section>
+<div class="hidden" aria-hidden="true"><span id="count">0</span><span id="pending">0</span><span id="active">0</span><span id="sum">R$ 0,00</span></div>
 <div id="notice" class="notice hidden" role="status"></div>
 
 <div class="orders-toolbar"><button type="button" id="shoppingListButton" class="secondary">Lista de compras</button><span class="muted">Pedidos pagos ainda não entregues</span></div><section class="card"><div class="filters"><input id="search" placeholder="Buscar por pedido, cliente ou telefone" aria-label="Buscar pedidos"><select id="filter" aria-label="Filtrar pedidos"><option value="active" selected>Ativos</option><option value="pending">Aguardando pagamento</option><option value="completed">Concluídos</option><option value="cancelled">Cancelados/Expirados</option><option value="tests">Testes</option><option value="all">Todos</option></select></div></section><div id="orders" class="orders"></div><div class="actions" style="justify-content:center;margin:16px 0"><button id="loadMore" class="secondary">Carregar mais pedidos</button></div>
@@ -1175,6 +1176,11 @@ function renderDailySummary(){
  $('dayProfit').textContent=money(s.profit||0);
  $('dayProfitNote').textContent=Number(s.missing_cost_items||0)>0?'Parcial · '+s.missing_cost_items+' item(ns) sem custo':'';
  $('dayProfit').classList.toggle('profit-negative',Number(s.profit||0)<0);
+ const statsOrders=allOrders.filter(o=>o.is_test_order!==true);
+ $('count').textContent=String(statsOrders.length);
+ $('pending').textContent=String(statsOrders.filter(o=>['Pedido Recebido','Pagamento Pendente'].includes(normalizeOrderStatus(o.status))).length);
+ $('active').textContent=String(statsOrders.filter(o=>['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega'].includes(normalizeOrderStatus(o.status))).length);
+ $('sum').textContent=money(s.paid_sales||0);
 }
 function manausDayRange(){
  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
