@@ -1760,7 +1760,7 @@ async function loadMyOrders(knownUser){
    else if(status==='Saiu para Entrega'||deliveryStatus==='picked_up'){index=4;detail='Seu pedido saiu para entrega.';}
    else if(['assigned','enroute_pickup'].includes(deliveryStatus)){index=3;detail='Entregador a caminho da feira.';}
    else if(deliveryStatus==='searching'||status==='Pronto para Retirada'){index=2;detail='Procurando entregador…';}
-   else if(status==='Preparando'){index=1;detail='Estamos separando seu pedido.';}
+   else if(status==='Preparando'||order.separation_started_at||order.separation_started_legacy===true){index=1;detail='Estamos separando seu pedido.';}
    else if(paid){index=0;detail='Pagamento confirmado.';}
   }else{
    if(status==='Pedido Concluído'||status==='Entregue'){index=3;detail='Pedido retirado.';}
