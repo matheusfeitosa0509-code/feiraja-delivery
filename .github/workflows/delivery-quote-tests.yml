@@ -133,6 +133,7 @@ jobs:
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-full-html-lalamove.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/checkout-delivery-address.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/pix-only-pickup-code.visual.cjs
+      - run: NODE_PATH=/tmp/playwright/node_modules node tests/cart-minimum-feedback.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/loja-console-errors.visual.cjs
       # Captures production baseline and branch timings on simulated 4G at 360px/412px.
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/storefront-performance.visual.cjs
