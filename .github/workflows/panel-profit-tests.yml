@@ -1,0 +1,28 @@
+name: Admin panel profit and tabs tests
+on:
+  pull_request:
+    paths:
+      - "painel.html"
+      - "tests/painel-profit.visual.cjs"
+      - "supabase/migrations/**"
+      - "supabase/rollbacks/**"
+      - ".github/workflows/panel-profit-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "painel.html"
+      - "tests/painel-profit.visual.cjs"
+      - "supabase/migrations/**"
+      - "supabase/rollbacks/**"
+      - ".github/workflows/panel-profit-tests.yml"
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --prefix /tmp/playwright playwright@1.58.2
+      - run: /tmp/playwright/node_modules/.bin/playwright install chromium
+      - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-profit.visual.cjs
