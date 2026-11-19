@@ -46,6 +46,10 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install chromium
+      - name: Verify main storefront actions on published site
+        env:
+          PAGES_BASE_URL: https://www.feiraondelivery.com.br
+        run: node tests/post-deploy-storefront-actions.cjs
       - name: Verify published storefront and panel
         env:
           PAGES_BASE_URL: https://www.feiraondelivery.com.br
