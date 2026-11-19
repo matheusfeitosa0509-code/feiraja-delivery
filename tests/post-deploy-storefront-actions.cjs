@@ -64,6 +64,8 @@ const assert = require('node:assert/strict');
     const plus = page.locator('#homeProductSections .product:not(.skeleton-card) [data-card-change][data-d="1"]').first();
     await plus.click();
     assert.ok(Number((await page.locator('#tabCartCount').textContent()).trim()) > 0, '+ do produto não adicionou ao carrinho');
+    // The checkout has a R$30 minimum; fill only the isolated browser cart until Continue is enabled.
+    for (let i = 0; i < 80 && await page.locator('#checkout').evaluate(el => el.disabled); i++) await plus.click();
 
     const valueButton = page.locator('#homeProductSections .value-sale-open').first();
     if (await valueButton.count()) {
