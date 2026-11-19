@@ -1230,83 +1230,6 @@ async function loadOrderProfit(){
  }
 }
 
-function parseOrderUnitCost(value){
- const raw=String(value??'').trim().replace(/R\$\s?/gi,'').replace(/\s/g,'');
- if(!raw)return null;
- const normalized=raw.includes(',')?raw.replace(/\./g,'').replace(',','.'):raw;
- const amount=Number(normalized);
- return Number.isFinite(amount)&&amount>=0?amount:null;
-}
-let shoppingCostOrders=[],shoppingCostProfitByOrder={};
-function openOrderCostEditor(orderId,itemIndex){
- const order=allOrders.find(row=>String(row.id)===String(orderId))||shoppingCostOrders.find(row=>String(row.id)===String(orderId));
- const snapshot=(profitByOrder[orderId]?.items||shoppingCostProfitByOrder[orderId]?.items||[]).find(row=>Number(row.item_index)===Number(itemIndex));
- if(!order||!snapshot){notice('Não foi possível carregar o custo deste item. Atualize os pedidos e tente novamente.',true);return;}
- const modal=$('orderCostBackdrop');if(!modal)return;
- $('orderCostOrderId').value=String(orderId);$('orderCostItemIndex').value=String(itemIndex);
- $('orderCostUnitInput').value=snapshot.unit_cost==null?'':Number(snapshot.unit_cost).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
- $('orderCostUpdateProduct').checked=true;$('orderCostWarning').textContent='';
- $('orderCostItemName').textContent=String(snapshot.product_name||order.items?.[itemIndex]?.name||'Item do pedido');
- $('orderCostBackdrop').hidden=false;$('orderCostUnitInput').focus();
-}
-async function openShoppingCostList(){
- const modal=$('shoppingCostBackdrop'),host=$('shoppingCostRows');
- modal.hidden=false;host.innerHTML='<p class="muted">Carregando pedidos e custos…</p>';
- try{
-  const batchSize=200;let offset=0,orders=[];
-  while(true){const {data,error}=await fetchOrdersPage(offset,batchSize,true);if(error)throw error;const batch=Array.isArray(data)?data:[];orders.push(...batch);if(batch.length<batchSize)break;offset+=batchSize;}
-  const eligible=orders.filter(order=>order.is_test_order!==true&&['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega'].includes(normalizeOrderStatus(order.status)));
-  if(!eligible.length){host.innerHTML='<p class="muted">Não há pedidos pagos ainda não entregues.</p>';return;}
-  const range=manausDayRange();
-  const {data,error}=await db.rpc('admin_get_order_profit',{p_order_ids:eligible.map(order=>order.id),p_start:range.start,p_end:range.end});
-  if(error)throw error;
-  shoppingCostOrders=eligible;
-  shoppingCostProfitByOrder=Object.fromEntries((data?.orders||[]).map(row=>[row.order_id,row]));
-  host.innerHTML=eligible.map(order=>{
-   const snapshots=shoppingCostProfitByOrder[order.id]?.items||[];
-   return '<section><strong>Pedido '+esc(shortOrderNumber(order.id))+'</strong>'+((order.items||[]).map((item,index)=>{
-    const snap=snapshots.find(row=>Number(row.item_index)===index);
-    const cost=snap?.unit_cost==null?'Custo não cadastrado':'Custo atual: '+money(snap.unit_cost)+' / un.';
-    return '<div class="shopping-cost-row"><div>'+esc(formatOrderItemDescription(item))+'<small>'+esc(cost)+'</small></div><button type="button" class="secondary" data-edit-order-cost="'+esc(order.id)+'" data-cost-item-index="'+index+'">Editar</button></div>';
-   }).join('')||'<p class="muted">Sem itens detalhados.</p>')+'</section>';
-  }).join('');
-  host.querySelectorAll('[data-edit-order-cost]').forEach(button=>button.addEventListener('click',()=>openOrderCostEditor(button.dataset.editOrderCost,Number(button.dataset.costItemIndex))));
- }catch(error){console.error('Falha ao carregar custos da lista de compras:',error);host.textContent='Não foi possível carregar a lista de custos. Verifique a sessão de administrador.';}
-}
-$('shoppingCostEditButton').addEventListener('click',openShoppingCostList);
-$('shoppingCostClose').addEventListener('click',()=>$('shoppingCostBackdrop').hidden=true);
-$('shoppingCostBackdrop').addEventListener('click',event=>{if(event.target===$('shoppingCostBackdrop'))$('shoppingCostBackdrop').hidden=true;});
-
-async function saveOrderItemCost(){
- const orderId=$('orderCostOrderId').value,itemIndex=Number($('orderCostItemIndex').value);
- const unitCost=parseOrderUnitCost($('orderCostUnitInput').value);
- const message=$('orderCostWarning');
- if(unitCost===null){message.textContent='Informe um custo válido, usando zero ou valor positivo.';return;}
- const order=allOrders.find(row=>String(row.id)===String(orderId))||shoppingCostOrders.find(row=>String(row.id)===String(orderId));
- const item=order?.items?.[itemIndex]||{};
- const sale=Number(item.price||0);
- message.textContent=unitCost>sale?'Atenção: custo maior que a venda, prejuízo neste item':'';
- const button=$('orderCostSave');button.disabled=true;button.textContent='Salvando…';
- try{
-  const {data,error}=await db.rpc('admin_update_order_item_cost',{
-   p_order_id:orderId,p_item_index:itemIndex,p_unit_cost:unitCost,
-   p_update_product_cost:$('orderCostUpdateProduct').checked
-  });
-  if(error)throw error;
-  $('orderCostBackdrop').hidden=true;
-  await loadOrderProfit();
-  if(data?.product_default_updated&&typeof loadCostReport==='function')await loadCostReport();
-  if(shoppingCostOrders.some(row=>String(row.id)===String(orderId))&&$('shoppingCostBackdrop')&&!$('shoppingCostBackdrop').hidden)await openShoppingCostList();
-  notice('Custo do item atualizado. Lucro do pedido e do dia recalculados.');
- }catch(error){
-  console.error('Falha ao atualizar custo do item:',error);
-  message.textContent=error?.message||'Não foi possível salvar o custo. Verifique a sessão de administrador.';
- }finally{button.disabled=false;button.textContent='Salvar custo';}
-}
-$('orderCostCancel').addEventListener('click',()=>$('orderCostBackdrop').hidden=true);
-$('orderCostSave').addEventListener('click',saveOrderItemCost);
-$('orderCostBackdrop').addEventListener('click',event=>{if(event.target===$('orderCostBackdrop'))$('orderCostBackdrop').hidden=true;});
-
 
 function render(){
  const ordersRoot=$('orders'),expandedOrderIds=new Set(ordersRoot?[...ordersRoot.querySelectorAll('[data-order-content]')].filter(el=>!el.hidden).map(el=>el.dataset.orderContent):[]);
@@ -1401,6 +1324,85 @@ async function lalamoveErrorMessage(error,fallback){
  }
  return String(error?.message||fallback);
 }
+function parseOrderUnitCost(value){
+ const raw=String(value??'').trim().replace(/R\$\s?/gi,'').replace(/\s/g,'');
+ if(!raw)return null;
+ const normalized=raw.includes(',')?raw.replace(/\./g,'').replace(',','.'):raw;
+ const amount=Number(normalized);
+ return Number.isFinite(amount)&&amount>=0?amount:null;
+}
+let shoppingCostOrders=[],shoppingCostProfitByOrder={};
+function openOrderCostEditor(orderId,itemIndex){
+ const order=allOrders.find(row=>String(row.id)===String(orderId))||shoppingCostOrders.find(row=>String(row.id)===String(orderId));
+ const snapshot=(profitByOrder[orderId]?.items||shoppingCostProfitByOrder[orderId]?.items||[]).find(row=>Number(row.item_index)===Number(itemIndex));
+ if(!order||!snapshot){notice('Não foi possível carregar o custo deste item. Atualize os pedidos e tente novamente.',true);return;}
+ const modal=$('orderCostBackdrop');if(!modal)return;
+ $('orderCostOrderId').value=String(orderId);$('orderCostItemIndex').value=String(itemIndex);
+ $('orderCostUnitInput').value=snapshot.unit_cost==null?'':Number(snapshot.unit_cost).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+ $('orderCostUpdateProduct').checked=true;$('orderCostWarning').textContent='';
+ $('orderCostItemName').textContent=String(snapshot.product_name||order.items?.[itemIndex]?.name||'Item do pedido');
+ $('orderCostBackdrop').hidden=false;$('orderCostUnitInput').focus();
+}
+async function openShoppingCostList(){
+ const modal=$('shoppingCostBackdrop'),host=$('shoppingCostRows');
+ modal.hidden=false;host.innerHTML='<p class="muted">Carregando pedidos e custos…</p>';
+ try{
+  const batchSize=200;let offset=0,orders=[];
+  while(true){const {data,error}=await fetchOrdersPage(offset,batchSize,true);if(error)throw error;const batch=Array.isArray(data)?data:[];orders.push(...batch);if(batch.length<batchSize)break;offset+=batchSize;}
+  const eligible=orders.filter(order=>order.is_test_order!==true&&['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega'].includes(normalizeOrderStatus(order.status)));
+  if(!eligible.length){host.innerHTML='<p class="muted">Não há pedidos pagos ainda não entregues.</p>';return;}
+  const range=manausDayRange();
+  const {data,error}=await db.rpc('admin_get_order_profit',{p_order_ids:eligible.map(order=>order.id),p_start:range.start,p_end:range.end});
+  if(error)throw error;
+  shoppingCostOrders=eligible;
+  shoppingCostProfitByOrder=Object.fromEntries((data?.orders||[]).map(row=>[row.order_id,row]));
+  host.innerHTML=eligible.map(order=>{
+   const snapshots=shoppingCostProfitByOrder[order.id]?.items||[];
+   return '<section><strong>Pedido '+esc(shortOrderNumber(order.id))+'</strong>'+((order.items||[]).map((item,index)=>{
+    const snap=snapshots.find(row=>Number(row.item_index)===index);
+    const cost=snap?.unit_cost==null?'Custo não cadastrado':'Custo atual: '+money(snap.unit_cost)+' / un.';
+    return '<div class="shopping-cost-row"><div>'+esc(formatOrderItemDescription(item))+'<small>'+esc(cost)+'</small></div><button type="button" class="secondary" data-edit-order-cost="'+esc(order.id)+'" data-cost-item-index="'+index+'">Editar</button></div>';
+   }).join('')||'<p class="muted">Sem itens detalhados.</p>')+'</section>';
+  }).join('');
+  host.querySelectorAll('[data-edit-order-cost]').forEach(button=>button.addEventListener('click',()=>openOrderCostEditor(button.dataset.editOrderCost,Number(button.dataset.costItemIndex))));
+ }catch(error){console.error('Falha ao carregar custos da lista de compras:',error);host.textContent='Não foi possível carregar a lista de custos. Verifique a sessão de administrador.';}
+}
+$('shoppingCostEditButton').addEventListener('click',openShoppingCostList);
+$('shoppingCostClose').addEventListener('click',()=>$('shoppingCostBackdrop').hidden=true);
+$('shoppingCostBackdrop').addEventListener('click',event=>{if(event.target===$('shoppingCostBackdrop'))$('shoppingCostBackdrop').hidden=true;});
+
+async function saveOrderItemCost(){
+ const orderId=$('orderCostOrderId').value,itemIndex=Number($('orderCostItemIndex').value);
+ const unitCost=parseOrderUnitCost($('orderCostUnitInput').value);
+ const message=$('orderCostWarning');
+ if(unitCost===null){message.textContent='Informe um custo válido, usando zero ou valor positivo.';return;}
+ const order=allOrders.find(row=>String(row.id)===String(orderId))||shoppingCostOrders.find(row=>String(row.id)===String(orderId));
+ const item=order?.items?.[itemIndex]||{};
+ const sale=Number(item.price||0);
+ message.textContent=unitCost>sale?'Atenção: custo maior que a venda, prejuízo neste item':'';
+ const button=$('orderCostSave');button.disabled=true;button.textContent='Salvando…';
+ try{
+  const {data,error}=await db.rpc('admin_update_order_item_cost',{
+   p_order_id:orderId,p_item_index:itemIndex,p_unit_cost:unitCost,
+   p_update_product_cost:$('orderCostUpdateProduct').checked
+  });
+  if(error)throw error;
+  $('orderCostBackdrop').hidden=true;
+  await loadOrderProfit();
+  if(data?.product_default_updated&&typeof loadCostReport==='function')await loadCostReport();
+  if(shoppingCostOrders.some(row=>String(row.id)===String(orderId))&&$('shoppingCostBackdrop')&&!$('shoppingCostBackdrop').hidden)await openShoppingCostList();
+  notice('Custo do item atualizado. Lucro do pedido e do dia recalculados.');
+ }catch(error){
+  console.error('Falha ao atualizar custo do item:',error);
+  message.textContent=error?.message||'Não foi possível salvar o custo. Verifique a sessão de administrador.';
+ }finally{button.disabled=false;button.textContent='Salvar custo';}
+}
+$('orderCostCancel').addEventListener('click',()=>$('orderCostBackdrop').hidden=true);
+$('orderCostSave').addEventListener('click',saveOrderItemCost);
+$('orderCostBackdrop').addEventListener('click',event=>{if(event.target===$('orderCostBackdrop'))$('orderCostBackdrop').hidden=true;});
+
+
+
 function setLalamoveFeedback(orderId,message,isError=false){
  const feedback=document.querySelector('[data-lalamove-feedback="'+CSS.escape(orderId)+'"]');
  if(!feedback)return;
