@@ -28,7 +28,7 @@ export function getCustomerMessage(status: string, pickupCode = "indisponível")
 }
 
 export function customerOrderUrl(orderId: string): string {
-  return `/loja.html?pedido=${encodeURIComponent(orderId)}#customerOrders`;
+  return `./loja.html?pedido=${encodeURIComponent(orderId)}#customerOrders`;
 }
 
 export function shouldSkipOrderPush(isTestOrder: boolean | null, userId: string | null): boolean {
