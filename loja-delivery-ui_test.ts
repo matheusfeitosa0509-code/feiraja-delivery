@@ -198,21 +198,20 @@ Deno.test("cartões do checkout usam uma única grade fixa sem sobreposição de
   assertEquals(html.includes('class="s checkout-pickup-address">Av. Lourenço da Silva Braga, 700</span><span class="s checkout-pickup-hours">Segunda a sábado, 6h às 13h</span>'), true);
 });
 
-Deno.test("acompanhamento usa quatro etapas horizontais e mensagens por modalidade", async () => {
+Deno.test("acompanhamento da entrega usa seis etapas e não expõe o parceiro ao cliente", async () => {
   const html = await Deno.readTextFile("loja.html");
   for (const required of [
     "const icon=(kind)=>",
-    "['Pago',icon('card')],['Preparando',icon('bag')],['A caminho',icon('bike')],['Entregue',icon('check')]",
+    "['Pago',icon('card')],['Separando',icon('bag')],['Procurando entregador',icon('bike')],['Entregador a caminho da feira',icon('bike')],['Saiu para entrega',icon('bike')],['Entregue',icon('check')]",
     "['Pago',icon('card')],['Preparando',icon('bag')],['Pronto',icon('check')],['Retirado',icon('check')]",
-    "grid-template-columns:repeat(4,minmax(0,1fr))",
+    "grid-template-columns:repeat(6,minmax(0,1fr))",
     "white-space:nowrap",
     "Aguardando pagamento do Pix",
     "Procurando entregador…",
     "Retire na Av. Lourenço da Silva Braga, 700",
     "A solicitação expirou. Estamos chamando outro entregador.",
     "Taxa '+money(Number(o.delivery_fee||0))",
-    "Abrir rastreio",
-    "data-tracking-url",
+    "Falar com a Feira On",
     "data-lalamove-map",
   ]) assertEquals(html.includes(required), true, "missing order tracking requirement: " + required);
   const renderStart = html.indexOf("const html=data.map(o=>");
@@ -228,7 +227,7 @@ Deno.test("mapa usa função autenticada, rate limit e atualiza enquanto visíve
   const endpoint = await Deno.readTextFile("supabase/functions/lalamove-tracking/index.ts");
   const migration = await Deno.readTextFile("supabase/migrations/20261115230000_lalamove_tracking_rate_limit.sql");
   const panel = await Deno.readTextFile("painel.html");
-  for (const required of ["15000", "visibilitychange", "pagehide", "tiles.openfreemap.org/styles/positron", "maplibre-gl@5.6.2", "IntersectionObserver", "setRotation", "requestAnimationFrame"]) {
+  for (const required of ["30000", "visibilitychange", "pagehide", "tile.openstreetmap.org", "leaflet@1.9.4", "IntersectionObserver", "setLatLng", "requestAnimationFrame"]) {
     assertEquals(map.includes(required), true, "missing map lifecycle requirement: " + required);
   }
   for (const required of ['.eq("id", orderId)', '.eq("user_id", authData.user.id)', 'consume_lalamove_tracking_rate_limit', 'p_max_requests: 30', 'getProviderTracking']) {
@@ -246,7 +245,10 @@ Deno.test("mapa usa função autenticada, rate limit e atualiza enquanto visíve
   assertEquals(panel.includes("Entrega cancelada"), true);
   assertEquals(panel.includes("Entrega Feira On"), true);
   assertEquals(panel.includes("data-lalamove-status-label"), true);
-  assertEquals(map.includes("syncOrderUI(data)"), true);
+  assertEquals(map.includes("syncStatus(data)"), true);
+  assertEquals(map.includes("Abrir na Lalamove"), true, "link externo existe apenas no modo admin");
+  assertEquals(map.includes("Falar com a Feira On"), true, "cliente tem contato da loja");
+  assertEquals(map.includes("tracking_url"), true, "URL externa só é renderizada no modo admin");
 });
 
 
