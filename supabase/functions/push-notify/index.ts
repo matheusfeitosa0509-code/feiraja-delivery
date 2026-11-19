@@ -90,7 +90,7 @@ async function verifyHmac(
   return constantTimeEqual(bytesToHex(digest), suppliedSignature.toLowerCase());
 }
 
-function getNotificationText(kind: PushKind, status: string, pickupCode = "indisponível"): string | null {
+function getNotificationText(kind: PushKind, status: string, pickupCode: string | null = null): string | null {
   if (kind === "admin") {
     if (status === "Pedido Recebido") return "Novo pedido recebido";
     if (status === "Pagamento Confirmado") return "Pagamento Pix confirmado";
@@ -208,7 +208,7 @@ Deno.serve(async (req: Request) => {
     if (orderError) throw new Error("ORDER_LOOKUP_FAILED");
     if (!order) return jsonResponse(404, { error: "ORDER_NOT_FOUND" });
     if (shouldSkipOrderPush(order.is_test_order === true, kind === "customer" ? order.user_id : "admin")) return jsonResponse(200, { ok: true, skipped: "TEST_ORDER_OR_NO_OWNER" });
-    const message = getNotificationText(kind, new_status, String(order.pickup_code || "indisponível"));
+    const message = getNotificationText(kind, new_status, order.pickup_code || null);
     if (!message) return jsonResponse(400, { error: "INVALID_REQUEST" });
 
     // Eventos de devolução são códigos administrativos; exigem pedido cancelado
