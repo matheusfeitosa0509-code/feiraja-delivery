@@ -1156,9 +1156,10 @@ function matchesOrderFilter(order,filter){
  if(filter==='cancelled')return ['Cancelada','Pagamento cancelado','Pagamento recusado','Pagamento Expirado','Reembolsado','Contestado'].includes(status);
  return ['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega'].includes(status);
 }
-function renderOrderItemProfit(snapshot,item,orderId,itemIndex){
+function renderOrderItemProfit(snapshot,item){
+ const orderId=arguments[2],itemIndex=arguments[3],safeOrderId=String(orderId??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
  const qty=Number(snapshot?.quantity??item?.quantity??item?.qty??1),sale=Number(snapshot?.sale_total??(Number(item?.price||0)*qty));
- const edit='<button type="button" class="cost-edit-pencil" data-edit-order-cost="'+esc(orderId)+'" data-cost-item-index="'+itemIndex+'" aria-label="Editar custo pago deste item" title="Editar custo">✎</button>';
+ const edit='<button type="button" class="cost-edit-pencil" data-edit-order-cost="'+safeOrderId+'" data-cost-item-index="'+itemIndex+'" aria-label="Editar custo pago deste item" title="Editar custo">✎</button>';
  if(!snapshot||snapshot.unit_cost===null||snapshot.unit_cost===undefined)
   return '<small class="profit-item-meta missing">Venda: '+money(sale)+' · Custo não cadastrado '+edit+'</small>';
  const unitCost=Number(snapshot.unit_cost),cost=Number(snapshot.cost_total??unitCost*qty),profit=Number(snapshot.profit??(sale-cost)),percent=sale>0?profit/sale*100:0;
