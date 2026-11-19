@@ -36,7 +36,8 @@ self.addEventListener('push', function (event) {
     payload = { body: event.data ? event.data.text() : '' };
   }
   const requestedUrl = payload && payload.url;
-  const targetUrl = requestedUrl === '/painel.html' ? '/painel.html' : '/loja.html';
+  const safeCustomerUrl = typeof requestedUrl === 'string' && /^\.\/loja\.html\?pedido=[A-Za-z0-9_%.-]{1,384}(?:#[A-Za-z0-9_-]+)?$/.test(requestedUrl);
+  const targetUrl = requestedUrl === '/painel.html' ? '/painel.html' : safeCustomerUrl ? requestedUrl : '/loja.html';
   const body = typeof payload.body === 'string' && payload.body.trim()
     ? payload.body.trim()
     : 'Você tem uma atualização.';
@@ -59,8 +60,9 @@ self.addEventListener('notificationclick', function (event) {
   const requestedUrl = event.notification && event.notification.data
     ? event.notification.data.url
     : '/loja.html';
-  const targetUrl = requestedUrl === '/painel.html' ? '/painel.html' : '/loja.html';
-  const absoluteTarget = new URL(targetUrl, self.location.origin).href;
+  const safeCustomerUrl = typeof requestedUrl === 'string' && /^\.\/loja\.html\?pedido=[A-Za-z0-9_%.-]{1,384}(?:#[A-Za-z0-9_-]+)?$/.test(requestedUrl);
+  const targetUrl = requestedUrl === '/painel.html' ? '/painel.html' : safeCustomerUrl ? requestedUrl : '/loja.html';
+  const absoluteTarget = new URL(targetUrl, self.location.href).href;
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (windowClients) {
       for (const client of windowClients) {

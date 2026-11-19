@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import webpush from "npm:web-push@3.6.7";
+import { CUSTOMER_PUSH_TITLE, getCustomerMessage, customerOrderUrl, shouldSkipOrderPush, isExpiredPushEndpointStatus } from "./notification-contract.ts";
 
 type PushKind = "admin" | "customer";
 
@@ -28,6 +29,7 @@ const KNOWN_STATUSES = new Set([
   "Pronto para Retirada",
   "Entregue",
   "Cancelada",
+  "Cancelado",
   "Pix pago em pedido cancelado — devolver",
   "Pedido pago cancelado pelo cliente — devolver Pix",
   "Pagamento cancelado",
@@ -35,27 +37,13 @@ const KNOWN_STATUSES = new Set([
   "Pagamento reembolsado",
   "Pagamento contestado",
   "Preparando pedido",
+  "Separação iniciada",
+  "Saiu para Entrega",
   "Recebido",
   "received",
 ]);
 
-const CUSTOMER_MESSAGES: Record<string, string> = {
-  "Pedido Recebido": "Recebemos seu pedido.",
-  "Recebido": "Recebemos seu pedido.",
-  "received": "Recebemos seu pedido.",
-  "Pagamento Pendente": "Aguardando a confirmação do pagamento.",
-  "Aguardando Pagamento Pix": "Aguardando a confirmação do pagamento.",
-  "Pagamento em análise": "Aguardando a confirmação do pagamento.",
-  "Pagamento Confirmado": "Pagamento confirmado!",
-  "Preparando": "Estamos separando seu pedido.",
-  "Preparando pedido": "Estamos separando seu pedido.",
-  "Pronto para Retirada": "Seu pedido está pronto para retirada.",
-  "Entregue": "Pedido entregue. Obrigado!",
-  "Cancelada": "Seu pedido foi cancelado.",
-  "Pagamento cancelado": "Seu pedido foi cancelado.",
-  "Pagamento reembolsado": "Houve uma atualização do seu pedido.",
-  "Pagamento contestado": "Houve uma atualização do seu pedido.",
-};
+
 
 const jsonResponse = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), {
@@ -102,7 +90,7 @@ async function verifyHmac(
   return constantTimeEqual(bytesToHex(digest), suppliedSignature.toLowerCase());
 }
 
-function getNotificationText(kind: PushKind, status: string): string | null {
+function getNotificationText(kind: PushKind, status: string, pickupCode: string | null = null): string | null {
   if (kind === "admin") {
     if (status === "Pedido Recebido") return "Novo pedido recebido";
     if (status === "Pagamento Confirmado") return "Pagamento Pix confirmado";
@@ -110,13 +98,13 @@ function getNotificationText(kind: PushKind, status: string): string | null {
     if (status === "Pedido pago cancelado pelo cliente — devolver Pix") return "Pedido pago cancelado pelo cliente — devolver Pix";
     return null;
   }
-  return CUSTOMER_MESSAGES[status] ?? null;
+  return getCustomerMessage(status, pickupCode);
 }
 
 function isGoneProviderError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const statusCode = (error as { statusCode?: unknown }).statusCode;
-  return statusCode === 404 || statusCode === 410;
+  return typeof statusCode === "number" && isExpiredPushEndpointStatus(statusCode);
 }
 
 Deno.serve(async (req: Request) => {
@@ -202,16 +190,10 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(401, { error: "UNAUTHORIZED" });
   }
 
-  const message = getNotificationText(kind, new_status);
-  if (!message) {
-    return jsonResponse(400, { error: "INVALID_REQUEST" });
-  }
-
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  let eventWasInserted = false;
   let successfulSends = 0;
 
   let stage = "order_lookup";
@@ -219,12 +201,15 @@ Deno.serve(async (req: Request) => {
   try {
     const { data: order, error: orderError } = await supabase
       .from("orders")
-      .select("id,user_id,status,refund_pending,cancelled_by")
+      .select("id,user_id,status,refund_pending,cancelled_by,is_test_order,separation_started_at,pickup_code")
       .eq("id", order_id)
       .maybeSingle();
 
     if (orderError) throw new Error("ORDER_LOOKUP_FAILED");
     if (!order) return jsonResponse(404, { error: "ORDER_NOT_FOUND" });
+    if (shouldSkipOrderPush(order.is_test_order === true, kind === "customer" ? order.user_id : "admin")) return jsonResponse(200, { ok: true, skipped: "TEST_ORDER_OR_NO_OWNER" });
+    const message = getNotificationText(kind, new_status, order.pickup_code || null);
+    if (!message) return jsonResponse(400, { error: "INVALID_REQUEST" });
 
     // Eventos de devolução são códigos administrativos; exigem pedido cancelado
     // e refund_pending ativo. Os demais eventos preservam a validação de status atual.
@@ -239,14 +224,14 @@ Deno.serve(async (req: Request) => {
       if (kind !== "admin" || !cancelled || order.refund_pending !== true || new_status !== expectedNotice) {
         return jsonResponse(200, { ok: true, skipped: "STALE_EVENT" });
       }
-    } else if (order.status !== new_status) {
+    } else if (new_status === "Separação iniciada" ? !order.separation_started_at : order.status !== new_status) {
       return jsonResponse(200, { ok: true, skipped: "STALE_EVENT" });
     }
 
     stage = "event_insert";
     const { data: insertedEvent, error: eventError } = await supabase
       .from("push_events")
-      .insert({ order_id, kind, status: new_status })
+      .insert({ order_id, kind, status: new_status, message })
       .select("id")
       .single();
 
@@ -259,7 +244,6 @@ Deno.serve(async (req: Request) => {
     if (!insertedEvent) {
       return jsonResponse(500, { error: "EVENT_INSERT_FAILED" });
     }
-    eventWasInserted = true;
 
     let recipientUserIds: string[] = [];
 
@@ -297,9 +281,9 @@ Deno.serve(async (req: Request) => {
     webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
     stage = "push_send";
-    const notificationUrl = kind === "admin" ? "/painel.html" : "/loja.html";
+    const notificationUrl = kind === "admin" ? "/painel.html" : customerOrderUrl(order_id);
     const notificationPayload = JSON.stringify({
-      title: "Feira On Delivery",
+      title: CUSTOMER_PUSH_TITLE,
       body: message,
       url: notificationUrl,
       tag: `feira-${kind}-${order_id}-${new_status}`,
@@ -328,12 +312,13 @@ Deno.serve(async (req: Request) => {
         successfulSends++;
       } catch (error) {
         if (isGoneProviderError(error)) {
-          const { error: deleteError } = await supabase
-            .from("push_subscriptions")
-            .delete()
-            .eq("id", subscriptionRow.id);
-          if (deleteError) {
-            // Never log endpoint, subscription keys, provider response, or signature.
+          try {
+            const { error: deleteError } = await supabase
+              .from("push_subscriptions")
+              .delete()
+              .eq("id", subscriptionRow.id);
+            if (deleteError) console.error("push_expired_subscription_cleanup_failed");
+          } catch {
             console.error("push_expired_subscription_cleanup_failed");
           }
         } else {
@@ -343,20 +328,8 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    if (successfulSends === 0 && serverSideSendErrors) {
-      const { error: cleanupError } = await supabase
-        .from("push_events")
-        .delete()
-        .eq("order_id", order_id)
-        .eq("kind", kind)
-        .eq("status", new_status);
-
-      if (cleanupError) {
-        console.error("push_event_cleanup_failed");
-        return jsonResponse(500, { error: "PUSH_PROCESSING_FAILED" });
-      }
-      return jsonResponse(500, { error: "PUSH_DELIVERY_FAILED" });
-    }
+    if (successfulSends === 0 && serverSideSendErrors) console.error("push_delivery_incomplete");
+    await supabase.from("push_events").update({ sent_count: successfulSends }).eq("id", insertedEvent.id);
 
     return jsonResponse(200, {
       ok: true,
@@ -364,17 +337,7 @@ Deno.serve(async (req: Request) => {
       attempted: subscriptions.length,
     });
   } catch (error: unknown) {
-    // If processing failed before any delivery succeeded, release the idempotency
-    // claim so a later retry can process the event again.
-    if (eventWasInserted && successfulSends === 0) {
-      const { error: cleanupError } = await supabase
-        .from("push_events")
-        .delete()
-        .eq("order_id", order_id)
-        .eq("kind", kind)
-        .eq("status", new_status);
-      if (cleanupError) console.error("push_event_cleanup_failed");
-    }
+    // Keep the unique event claim even on delivery failures to prevent duplicates.
     // Only standard error names and exact, fixed web-push messages are logged.
     const allowedErrorNames = new Set(["Error", "TypeError", "RangeError", "URIError", "SyntaxError"]);
     const errorName = error instanceof Error && allowedErrorNames.has(error.name)
