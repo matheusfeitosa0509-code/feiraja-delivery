@@ -1217,7 +1217,7 @@ async function saveOrderItemCost(){
  const unitCost=parseOrderUnitCost($('orderCostUnitInput').value);
  const message=$('orderCostWarning');
  if(unitCost===null){message.textContent='Informe um custo válido, usando zero ou valor positivo.';return;}
- const order=allOrders.find(row=>String(row.id)===String(orderId));
+ const order=allOrders.find(row=>String(row.id)===String(orderId))||shoppingCostOrders.find(row=>String(row.id)===String(orderId));
  const item=order?.items?.[itemIndex]||{};
  const sale=Number(item.price||0);
  message.textContent=unitCost>sale?'Atenção: custo maior que a venda, prejuízo neste item':'';
