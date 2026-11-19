@@ -211,7 +211,6 @@ Deno.test("acompanhamento da entrega usa seis etapas e não expõe o parceiro ao
     "Retire na Av. Lourenço da Silva Braga, 700",
     "A solicitação expirou. Estamos chamando outro entregador.",
     "Taxa '+money(Number(o.delivery_fee||0))",
-    "Falar com a Feira On",
     "data-lalamove-map",
   ]) assertEquals(html.includes(required), true, "missing order tracking requirement: " + required);
   const renderStart = html.indexOf("const html=data.map(o=>");
@@ -219,6 +218,8 @@ Deno.test("acompanhamento da entrega usa seis etapas e não expõe o parceiro ao
   const orderRendering = html.slice(renderStart, renderEnd);
   assertEquals(renderStart >= 0 && renderEnd > renderStart, true, "customer order rendering must be present");
   assertEquals(orderRendering.includes("Peso estimado"), false, "customer tracking must not show delivery weight");
+  assertEquals(orderRendering.includes("Lalamove"), false, "customer order card must not name the delivery provider");
+  assertEquals(orderRendering.includes("data-tracking-url"), false, "customer order card must not contain provider tracking links");
   assertEquals(html.includes("delivery_weight_kg"), false, "customer order query must not fetch delivery weight");
 });
 
