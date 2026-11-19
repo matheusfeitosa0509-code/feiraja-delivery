@@ -4,29 +4,29 @@ const { chromium } = require("playwright");
 
 (async () => {
   const source = fs.readFileSync(path.join(process.cwd(), "painel.html"), "utf8");
-  const style = source.match(/<style>([\\s\\S]*?)<\\/style>/);
+  const style = source.match(/<style>([\s\S]*?)<\/style>/);
   if (!style) throw new Error("CSS do painel não encontrado");
 
   const tabsStart = source.indexOf('<div class="main-tabs"');
   const tabsEnd = source.indexOf("</div>", tabsStart) + 6;
   const ordersStart = source.indexOf('<section id="ordersTab"');
   const settingsStart = source.indexOf('<section id="settingsTab"');
-  const settingsEnd = source.indexOf('</section>\\n<section id="productTools"', settingsStart) + 10;
-  const ordersEnd = source.indexOf('</section>\\n<section id="settingsTab"', ordersStart) + 10;
+  const settingsEnd = source.indexOf('</section>\n<section id="productTools"', settingsStart) + 10;
+  const ordersEnd = source.indexOf('</section>\n<section id="settingsTab"', ordersStart) + 10;
   if ([tabsStart, tabsEnd, ordersStart, settingsStart, settingsEnd, ordersEnd].some(x => x < 0)) {
     throw new Error("Estrutura das três abas não encontrada");
   }
 
   const normalizeStart = source.indexOf("function normalizeOrderStatus(status){");
-  const normalizeEnd = source.indexOf("\\nlet allOrders=", normalizeStart);
+  const normalizeEnd = source.indexOf("\nlet allOrders=", normalizeStart);
   const filterStart = source.indexOf("function matchesOrderFilter(order,filter){");
-  const filterEnd = source.indexOf("\\nfunction renderOrderItemProfit", filterStart);
+  const filterEnd = source.indexOf("\nfunction renderOrderItemProfit", filterStart);
   const itemProfitStart = source.indexOf("function renderOrderItemProfit(snapshot,item){");
-  const itemProfitEnd = source.indexOf("\\nfunction renderOrderProfitMarkup", itemProfitStart);
+  const itemProfitEnd = source.indexOf("\nfunction renderOrderProfitMarkup", itemProfitStart);
   const orderProfitStart = source.indexOf("function renderOrderProfitMarkup(data,totalItems){");
-  const orderProfitEnd = source.indexOf("\\nfunction renderDailySummary", orderProfitStart);
+  const orderProfitEnd = source.indexOf("\nfunction renderDailySummary", orderProfitStart);
   const tabStart = source.indexOf("function selectMainTab(tab){");
-  const tabEnd = source.indexOf("\\nfunction selectProductSection", tabStart);
+  const tabEnd = source.indexOf("\nfunction selectProductSection", tabStart);
   if ([normalizeStart,normalizeEnd,filterStart,filterEnd,itemProfitStart,itemProfitEnd,orderProfitStart,orderProfitEnd,tabStart,tabEnd].some(x => x < 0)) {
     throw new Error("Helpers reais do painel não encontrados");
   }
@@ -47,10 +47,10 @@ const { chromium } = require("playwright");
   }
 
   const money = value => "R$ " + Number(value || 0).toFixed(2).replace(".", ",");
-  const normalize = new Function(normalizeSource + "\\nreturn normalizeOrderStatus;")();
-  const matches = new Function("normalizeOrderStatus", filterSource + "\\nreturn matchesOrderFilter;")(normalize);
-  const renderItem = new Function("money", itemProfitSource + "\\nreturn renderOrderItemProfit;")(money);
-  const renderOrder = new Function("money", orderProfitSource + "\\nreturn renderOrderProfitMarkup;")(money);
+  const normalize = new Function(normalizeSource + "\nreturn normalizeOrderStatus;")();
+  const matches = new Function("normalizeOrderStatus", filterSource + "\nreturn matchesOrderFilter;")(normalize);
+  const renderItem = new Function("money", itemProfitSource + "\nreturn renderOrderItemProfit;")(money);
+  const renderOrder = new Function("money", orderProfitSource + "\nreturn renderOrderProfitMarkup;")(money);
 
   const orders = [
     { status: "Pagamento Confirmado", is_test_order: false },
@@ -93,7 +93,7 @@ const { chromium } = require("playwright");
       page.on("console",message=>{if(message.type()==="error")errors.push(message.text());});
       await page.setContent('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+style[1]+'</style></head><body><main class="wrap">'+markup+'</main></body></html>');
       await page.evaluate(tabSource=>{
-        const selectMainTab = new Function("document",tabSource+"\\nreturn selectMainTab;")(document);
+        const selectMainTab = new Function("document",tabSource+"\nreturn selectMainTab;")(document);
         document.getElementById("tabOrders").addEventListener("click",()=>selectMainTab("orders"));
         document.getElementById("tabProducts").addEventListener("click",()=>selectMainTab("products"));
         document.getElementById("tabSettings").addEventListener("click",()=>selectMainTab("settings"));
