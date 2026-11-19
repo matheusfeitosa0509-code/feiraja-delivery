@@ -34,3 +34,7 @@ export function customerOrderUrl(orderId: string): string {
 export function shouldSkipOrderPush(isTestOrder: boolean | null, userId: string | null): boolean {
   return isTestOrder === true || !userId;
 }
+
+export function isExpiredPushEndpointStatus(statusCode: number): boolean {
+  return statusCode === 404 || statusCode === 410;
+}
