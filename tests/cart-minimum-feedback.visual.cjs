@@ -20,9 +20,9 @@ const handlerEnd = html.indexOf("$('#close').onclick", handlerStart);
 assert.ok(handlerStart >= 0 && handlerEnd > handlerStart);
 const handlerSource = html.slice(handlerStart, handlerEnd);
 const modalStart = html.indexOf('<div class="modal" id="storeConfirmModal"');
-const modalEnd = html.indexOf('</div></div>', modalStart);
+const modalEnd = html.indexOf('</section></div>', modalStart);
 assert.ok(modalStart >= 0 && modalEnd > modalStart);
-const modalMarkup = html.slice(modalStart, modalEnd + '</div></div>'.length);
+const modalMarkup = html.slice(modalStart, modalEnd + '</section></div>'.length);
 (async () => {
  const browser = await chromium.launch({headless:true});
  try {
