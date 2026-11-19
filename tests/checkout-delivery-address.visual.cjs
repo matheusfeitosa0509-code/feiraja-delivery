@@ -25,6 +25,16 @@ const mapSummaryStart = helperSource.indexOf('function formatDeliveryMapAddressS
 const mapSummaryEnd = helperSource.indexOf('\nfunction deliveryQuoteErrorMessage(', mapSummaryStart);
 if (mapSummaryStart < 0 || mapSummaryEnd < 0) throw new Error('Map address summary helper not found');
 const mapAddressSummaryFn = helperSource.slice(mapSummaryStart, mapSummaryEnd);
+const outOfAreaStart = helperSource.indexOf('function isDeliveryOutOfArea(');
+const outOfAreaEnd = helperSource.indexOf('\nfunction formatDeliveryMapAddressSummary(', outOfAreaStart);
+const quoteErrorStart = helperSource.indexOf('function deliveryQuoteErrorMessage(');
+const quoteErrorEnd = helperSource.indexOf('\nfunction ', quoteErrorStart + 10);
+const outOfAreaFn = helperSource.slice(outOfAreaStart, outOfAreaEnd);
+const quoteErrorFn = helperSource.slice(quoteErrorStart, quoteErrorEnd);
+const statusStart = storeHtml.indexOf('function setDeliveryQuoteStatus(');
+const statusEnd = storeHtml.indexOf('\nfunction updateCheckoutSummary(', statusStart);
+const statusFn = storeHtml.slice(statusStart, statusEnd);
+if ([outOfAreaStart,outOfAreaEnd,quoteErrorStart,quoteErrorEnd,statusStart,statusEnd].some(x => x < 0) || !outOfAreaFn || !quoteErrorFn || !statusFn) throw new Error('Delivery error/fallback functions not found');
 
 for (const required of [
   'https://tiles.openfreemap.org/styles/positron', 'zoom:17', 'new lib.AttributionControl({compact:true})',
@@ -49,19 +59,18 @@ const isCachedDeliveryQuoteValid=(entry,now=Date.now())=>!!entry&&Number(entry.e
 const normalizeDeliveryAddress = value => ({street:String(value.street||'').trim(),number:String(value.number||'').trim(),neighborhood:String(value.neighborhood||'').trim(),complement:String(value.complement||''),reference:String(value.reference||'')});
 const getDeliveryAddress = () => normalizeDeliveryAddress({street:$('#deliveryStreet').value,number:$('#deliveryNumber').value,neighborhood:$('#deliveryNeighborhood').value,reference:$('#deliveryReference').value});
 let quoteCalls=0,quoteMode='success';
-const currentUser=null;
+const currentUser={id:'customer-common-test',is_anonymous:false};
+const currentUserIsAdmin=false,deliveryActive=true;
 const totals=()=>({sub:39.96,items:[{p:{id:'banana'},q:1}]});
 const buildDeliveryQuoteItems=()=>[{product_id:'banana',quantity:1}];
 const isValidDeliveryQuote=quote=>!!quote&&['MOTO','CAR'].includes(quote.vehicle)&&Number(quote.fee)>0&&Date.parse(quote.valid_until)>Date.now();
 const deliveryQuoteLabel=(vehicle,fee)=>'Entrega de '+vehicle+': '+fee;
-const deliveryQuoteErrorMessage=()=> 'Entrega indisponível no momento.';
-const isDeliveryOutOfArea=()=>false;
+const syncDeliverySelection=()=>{$('#delivery').value='pickup_store';deliveryQuote=null;updateCheckoutTotals();};
 const money=value=>'R$ '+Number(value).toFixed(2);
 const saveDeliveryAddress=async()=>{};
-const updateCheckoutTotals=()=>{const valid=isValidDeliveryQuote(deliveryQuote);$('#submitOrder').disabled=!valid;$('#submitOrder').textContent=valid?'Pagar com Pix · R$ 39,96':'Aguardando cálculo da entrega';};
-const setDeliveryQuoteStatus=(message,isError=false,showRetry=false,isLoading=false)=>{const box=$('#deliveryQuoteStatus');box.textContent=message||'';box.hidden=!message;box.dataset.error=String(!!isError);box.classList.toggle('is-loading',!!isLoading);if(showRetry){const button=document.createElement('button');button.type='button';button.textContent='Tentar de novo';button.id='retryDeliveryQuote';button.addEventListener('click',()=>void requestDeliveryQuote());box.append(button);}};
+const updateCheckoutTotals=()=>{const delivery=$('#delivery').value,valid=delivery!=='delivery'||isValidDeliveryQuote(deliveryQuote);$('#submitOrder').disabled=!valid;$('#submitOrder').textContent=delivery==='delivery'&&!valid?'Aguardando cálculo da entrega':'Pagar com Pix · R$ 39,96'};
 const supabase={functions:{invoke:async(name,{body})=>{
- if(name==='delivery-quote'){quoteCalls++;if(quoteMode==='timeout')return await new Promise(()=>{});await new Promise(resolve=>setTimeout(resolve,quoteMode==='slow'?6200:400));return {data:{vehicle:'MOTO',fee:9,valid_until:new Date(Date.now()+60000).toISOString(),schedule_at:'2026-11-18T10:00:00.000Z'},error:null};}
+ if(name==='delivery-quote'){quoteCalls++;if(quoteMode==='timeout')return await new Promise(()=>{});if(quoteMode==='outofarea')return {data:null,error:{status:422,context:{status:422,clone:async()=>({json:async()=>({code:'LALAMOVE_OUT_OF_SERVICE_AREA'})})}}};await new Promise(resolve=>setTimeout(resolve,quoteMode==='slow'?6200:400));return {data:{vehicle:'MOTO',fee:9,valid_until:new Date(Date.now()+60000).toISOString(),schedule_at:'2026-11-18T10:00:00.000Z'},error:null};}
  if(name!=='delivery-address')throw new Error('unexpected function '+name);
  if(body.action==='autocomplete')return {data:{suggestions:[{place_id:'place-test-123',description:'Mercado Teste, Centro, Manaus - AM'}]},error:null};
  if(body.action==='details')return {data:{address:{street:'Rua do Mercado',number:'123',neighborhood:'Centro',lat:'-3.10',lng:'-60.02',reference:'Mercado Teste'}},error:null};
@@ -78,7 +87,7 @@ window.maplibregl={
  },
  NavigationControl:class{},AttributionControl:class{}
 };
-const mapOverlayMarkup = '<div id="checkout"><button id="submitOrder" disabled>Aguardando cálculo da entrega</button><div id="minimumCheckoutNotice" class="hidden"></div><div id="checkoutProductsTotal"></div><div id="checkoutSummaryTotal"></div><div id="checkoutDeliveryTotal"></div><div id="checkoutDeliveryLabel"></div><div id="checkoutDeliveryMeta"></div><div id="modalTotal"></div><div id="deliveryAddressFields"><div id="deliveryStreetSearch"><label for="deliveryStreet">Rua</label><div class="checkout-address-input"><input id="deliveryStreet"></div><div id="deliveryStreetSuggestions" hidden></div></div><div id="deliveryAddressSummary" hidden><strong id="deliveryAddressSummaryStreet"></strong><span id="deliveryAddressSummaryNeighborhood"></span></div><div id="deliveryNumberField" class="field"><label for="deliveryNumber">Número</label><input id="deliveryNumber"></div><div id="deliveryNeighborhoodField" class="field"><label for="deliveryNeighborhood">Bairro</label><input id="deliveryNeighborhood"></div><input id="deliveryReference"></div><div id="deliveryMapPreview" hidden><img id="deliveryMapPreviewImage"><small id="deliveryMapPreviewAddress"></small></div><div id="deliveryMapFullscreen" class="delivery-map-fullscreen" hidden><header class="delivery-map-topbar"><button id="deliveryMapBack"></button><div id="deliveryMapSearchSlot"></div></header><div id="deliveryMap"></div><div class="delivery-map-fixed-pin"><span>📍</span><i></i></div><button id="deliveryMapGps" class="delivery-map-gps"></button><section class="delivery-map-sheet"><div class="delivery-map-sheet-handle"></div><strong id="deliveryMapAddress"></strong><div id="deliveryMapNumberSlot"></div><div id="deliveryMapNeighborhoodSlot"></div><p id="deliveryMapNeighborhood" class="delivery-map-neighborhood"></p><button id="deliveryMapConfirm" class="delivery-map-confirm"></button></section></div><button id="deliveryMapAdjust"></button><button id="deliveryMapChange"></button><button id="deliveryUseGps"></button><select id="delivery"><option value="delivery" selected>Entrega</option></select><p id="deliveryQuoteStatus"></p></div>';
+const mapOverlayMarkup = '<div id="checkout"><button id="submitOrder" disabled>Aguardando cálculo da entrega</button><div id="minimumCheckoutNotice" class="hidden"></div><div id="checkoutProductsTotal"></div><div id="checkoutSummaryTotal"></div><div id="checkoutDeliveryTotal"></div><div id="checkoutDeliveryLabel"></div><div id="checkoutDeliveryMeta"></div><div id="modalTotal"></div><div id="deliveryAddressFields"><div id="deliveryStreetSearch"><label for="deliveryStreet">Rua</label><div class="checkout-address-input"><input id="deliveryStreet"></div><div id="deliveryStreetSuggestions" hidden></div></div><div id="deliveryAddressSummary" hidden><strong id="deliveryAddressSummaryStreet"></strong><span id="deliveryAddressSummaryNeighborhood"></span></div><div id="deliveryNumberField" class="field"><label for="deliveryNumber">Número</label><input id="deliveryNumber"></div><div id="deliveryNeighborhoodField" class="field"><label for="deliveryNeighborhood">Bairro</label><input id="deliveryNeighborhood"></div><input id="deliveryReference"></div><div id="deliveryMapPreview" hidden><img id="deliveryMapPreviewImage"><small id="deliveryMapPreviewAddress"></small></div><div id="deliveryMapFullscreen" class="delivery-map-fullscreen" hidden><header class="delivery-map-topbar"><button id="deliveryMapBack"></button><div id="deliveryMapSearchSlot"></div></header><div id="deliveryMap"></div><div class="delivery-map-fixed-pin"><span>📍</span><i></i></div><button id="deliveryMapGps" class="delivery-map-gps"></button><section class="delivery-map-sheet"><div class="delivery-map-sheet-handle"></div><strong id="deliveryMapAddress"></strong><div id="deliveryMapNumberSlot"></div><div id="deliveryMapNeighborhoodSlot"></div><p id="deliveryMapNeighborhood" class="delivery-map-neighborhood"></p><button id="deliveryMapConfirm" class="delivery-map-confirm"></button></section></div><button id="deliveryMapAdjust"></button><button id="deliveryMapChange"></button><button id="deliveryUseGps"></button><select id="delivery"><option value="delivery" selected>Entrega</option><option value="pickup_store">Retirada na feira</option></select><p id="deliveryQuoteStatus"></p></div>';
 document.body.innerHTML=mapOverlayMarkup;
 `;
 (async () => {
@@ -94,9 +103,12 @@ document.body.innerHTML=mapOverlayMarkup;
    await page.addScriptTag({content: `
     ${harness}
     ${mapAddressSummaryFn}
+    ${outOfAreaFn}
+    ${quoteErrorFn}
     ${syncPresentationFn}
     ${addressFns}
     ${mapFns}
+    ${statusFn}
     ${quoteFns}
     $('#deliveryStreetSuggestions').addEventListener('click',event=>{const button=event.target.closest('[data-place-id]');if(button)void chooseDeliveryPlace(button.dataset.placeId);});
     $('#deliveryMapBack').addEventListener('click',closeDeliveryMap);
@@ -190,6 +202,16 @@ document.body.innerHTML=mapOverlayMarkup;
    await page.evaluate(()=>window.confirmMap());
    await page.waitForTimeout(1550);
    assert.equal(await page.evaluate(()=>window.quoteCount()),6,'GPS point also requires confirmation and a fresh quote');
+   assert.equal(await page.evaluate(()=>({user:currentUser.id,isAdmin:currentUserIsAdmin,active:deliveryActive})).then(x=>x.isAdmin===false&&x.active===true),true,'cotação deve funcionar para conta comum com entrega ativa');
+   await page.evaluate(()=>{window.setQuoteMode('outofarea');window.clearQuoteCache();window.runQuote();});
+   await page.waitForFunction(()=>document.querySelector('#choosePickupAfterDeliveryFailure'));
+   assert.ok((await page.locator('#deliveryQuoteStatus').textContent()).includes('Endereço fora da área de entrega.'),'fora da área recebe mensagem específica');
+   assert.equal(await page.locator('#delivery').inputValue(),'delivery','modalidade não muda sem escolha do cliente');
+   assert.equal(await page.locator('#submitOrder').isDisabled(),true,'Pix permanece bloqueado sem cotação válida');
+   await page.locator('#choosePickupAfterDeliveryFailure').click();
+   assert.equal(await page.locator('#delivery').inputValue(),'pickup_store','botão oferece retirada em um toque');
+   assert.equal(await page.locator('#submitOrder').isDisabled(),false,'retirada libera o fluxo sem taxa de entrega');
+   assert.ok((await page.locator('#deliveryQuoteStatus').textContent()).includes('Retirada na feira selecionada.'),'confirmação de retirada exibida');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'no horizontal overflow at '+width+'px');
    assert.deepEqual(errors,[],'zero console/page errors at '+width+'px');
    await page.close();
