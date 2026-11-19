@@ -1166,9 +1166,9 @@ function renderOrderItemProfit(snapshot,item){
  return '<small class="profit-item-meta '+(profit<0?'profit-negative':'profit-positive')+'">Venda: '+money(sale)+' · Custo: '+money(cost)+' '+edit+' · Lucro: '+money(profit)+' ('+percent.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%)</small>';
 }
 function parseOrderUnitCost(value){
- const raw=String(value??'').trim().replace(/R\\$\\s?/gi,'').replace(/\\s/g,'');
+ const raw=String(value??'').trim().replace(/R\$\s?/gi,'').replace(/\s/g,'');
  if(!raw)return null;
- const normalized=raw.includes(',')?raw.replace(/\\./g,'').replace(',','.'):raw;
+ const normalized=raw.includes(',')?raw.replace(/\./g,'').replace(',','.'):raw;
  const amount=Number(normalized);
  return Number.isFinite(amount)&&amount>=0?amount:null;
 }
