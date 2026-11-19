@@ -29,6 +29,7 @@ const KNOWN_STATUSES = new Set([
   "Pronto para Retirada",
   "Entregue",
   "Cancelada",
+  "Cancelado",
   "Pix pago em pedido cancelado — devolver",
   "Pedido pago cancelado pelo cliente — devolver Pix",
   "Pagamento cancelado",
@@ -315,12 +316,13 @@ Deno.serve(async (req: Request) => {
         successfulSends++;
       } catch (error) {
         if (isGoneProviderError(error)) {
-          const { error: deleteError } = await supabase
-            .from("push_subscriptions")
-            .delete()
-            .eq("id", subscriptionRow.id);
-          if (deleteError) {
-            // Never log endpoint, subscription keys, provider response, or signature.
+          try {
+            const { error: deleteError } = await supabase
+              .from("push_subscriptions")
+              .delete()
+              .eq("id", subscriptionRow.id);
+            if (deleteError) console.error("push_expired_subscription_cleanup_failed");
+          } catch {
             console.error("push_expired_subscription_cleanup_failed");
           }
         } else {
