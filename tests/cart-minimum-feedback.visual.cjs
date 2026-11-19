@@ -39,6 +39,7 @@ const modalMarkup = html.slice(modalStart, modalEnd + '</section></div>'.length)
     const cart={item:1};
     const money=value=>'R$ '+Number(value).toFixed(2).replace('.',',');
     const totals=()=>({sub:testSubtotal,total:testSubtotal,items:[{id:'item'}]});
+    const minimumOrderMessage=t=>t.sub<MIN_ORDER_AMOUNT?'Pedido mínimo: R$ 30,00 em produtos. Faltam '+money(MIN_ORDER_AMOUNT-t.sub)+'.':'';
     const setCartEmptyState=()=>{};
     const syncCartbarVisibility=()=>{};
     const updateCheckoutSummary=()=>{};
