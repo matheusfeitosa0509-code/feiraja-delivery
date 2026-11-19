@@ -72,9 +72,9 @@ const uiSource = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8')
       assert.deepEqual(copyResult.inactive, {
         headline: 'Retirada na loja',
         sublineHidden: false,
-        banner: 'Av. Lourenço da Silva Braga, 700, Manaus. Retire na loja ou chame seu Uber.',
+        banner: 'Av. Lourenço da Silva Braga, 700, Manaus. Retire na loja ou solicite uma corrida por aplicativo.',
         login: 'Tudo da feira, retire ou receba em casa.',
-        visibleUber: true,
+        visibleUber: false,
       });
       assert.equal(copyResult.noOverflow, true, 'sem overflow nos textos em ' + width + 'px');
       await page.locator('body').evaluate(el => el.insertAdjacentHTML('beforeend', '<label id="deliveryHomeOption"><input id="deliveryHome" type="radio"><span id="deliveryHomeDescription"></span><span id="deliveryStartingPrice"></span></label>'));
