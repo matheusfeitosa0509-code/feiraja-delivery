@@ -455,6 +455,26 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 </section></main>
 <script src="./turnstile.js" defer></script>
 <script src="./lalamove-map.js"></script>
+<div id="shoppingCostBackdrop" class="order-cost-backdrop" hidden>
+ <section class="order-cost-modal shopping-cost-modal" role="dialog" aria-modal="true" aria-labelledby="shoppingCostTitle">
+  <h2 id="shoppingCostTitle">Custos da lista de compras</h2>
+  <p class="muted">Edite o custo pago de cada item sem alterar os pedidos anteriores.</p>
+  <div id="shoppingCostRows"><p class="muted">Carregando…</p></div>
+  <div class="actions"><button type="button" id="shoppingCostClose" class="secondary">Fechar</button></div>
+ </section>
+</div>
+<div id="orderCostBackdrop" class="order-cost-backdrop" hidden>
+ <section class="order-cost-modal" role="dialog" aria-modal="true" aria-labelledby="orderCostTitle">
+  <h2 id="orderCostTitle">Editar custo do item</h2>
+  <p id="orderCostItemName" class="muted"></p>
+  <input id="orderCostOrderId" type="hidden"><input id="orderCostItemIndex" type="hidden">
+  <label for="orderCostUnitInput">Custo pago hoje (por unidade/kg)</label>
+  <input id="orderCostUnitInput" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00">
+  <label class="order-cost-checkbox"><input id="orderCostUpdateProduct" type="checkbox" checked> Atualizar também o custo padrão do produto</label>
+  <p id="orderCostWarning" class="order-cost-warning" role="status"></p>
+  <div class="actions"><button type="button" id="orderCostCancel" class="secondary">Cancelar</button><button type="button" id="orderCostSave">Salvar custo</button></div>
+ </section>
+</div>
 <script type="module">
 import{createClient}from'https://esm.sh/@supabase/supabase-js@2.117.1';
 const db=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',{auth:{persistSession:true,autoRefreshToken:true}});
@@ -2274,24 +2294,4 @@ if(root){
  }
 }
 </script>
-<div id="shoppingCostBackdrop" class="order-cost-backdrop" hidden>
- <section class="order-cost-modal shopping-cost-modal" role="dialog" aria-modal="true" aria-labelledby="shoppingCostTitle">
-  <h2 id="shoppingCostTitle">Custos da lista de compras</h2>
-  <p class="muted">Edite o custo pago de cada item sem alterar os pedidos anteriores.</p>
-  <div id="shoppingCostRows"><p class="muted">Carregando…</p></div>
-  <div class="actions"><button type="button" id="shoppingCostClose" class="secondary">Fechar</button></div>
- </section>
-</div>
-<div id="orderCostBackdrop" class="order-cost-backdrop" hidden>
- <section class="order-cost-modal" role="dialog" aria-modal="true" aria-labelledby="orderCostTitle">
-  <h2 id="orderCostTitle">Editar custo do item</h2>
-  <p id="orderCostItemName" class="muted"></p>
-  <input id="orderCostOrderId" type="hidden"><input id="orderCostItemIndex" type="hidden">
-  <label for="orderCostUnitInput">Custo pago hoje (por unidade/kg)</label>
-  <input id="orderCostUnitInput" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00">
-  <label class="order-cost-checkbox"><input id="orderCostUpdateProduct" type="checkbox" checked> Atualizar também o custo padrão do produto</label>
-  <p id="orderCostWarning" class="order-cost-warning" role="status"></p>
-  <div class="actions"><button type="button" id="orderCostCancel" class="secondary">Cancelar</button><button type="button" id="orderCostSave">Salvar custo</button></div>
- </section>
-</div>
 </body></html>
