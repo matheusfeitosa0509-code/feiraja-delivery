@@ -74,7 +74,7 @@ begin
         v_updated := regexp_replace(
           v_updated,
           '(AS \$function\$.*?\mBEGIN\M)',
-          E'\1' || v_guard,
+          '\1' || v_guard,
           'is'
         );
       end if;
