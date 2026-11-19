@@ -32,7 +32,7 @@ const modalMarkup = html.slice(modalStart, modalEnd + '</div></div>'.length);
    page.on('pageerror',e=>errors.push(e.message));
    page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
    await page.setContent('<!doctype html><html lang="pt-BR"><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+style[1]+'</style></head><body><main style="max-width:520px;margin:auto;padding:12px"><section class="cart-footer"><div id="cartMinimumProgress" class="cart-minimum-progress hidden" aria-hidden="true"><span id="cartMinimumProgressFill"></span></div><button class="btn full" id="checkout" type="button">Continuar</button></section><span id="tabCartCount"></span><span id="minimumOrderNotice"></span><span id="minimumCheckoutNotice"></span><span id="subtotal"></span><span id="total"></span><span id="modalTotal"></span><span id="cartbarCount"></span><span id="cartbarTotal"></span><div id="cartbar"></div>'+modalMarkup+'<button id="addItem" type="button">Adicionar item de teste</button></main></body></html>');
-   await page.addScriptTag({content: \`
+   await page.addScriptTag({content: `
     const $=selector=>document.querySelector(selector);
     const MIN_ORDER_AMOUNT=30;
     let testSubtotal=28.95;
@@ -46,11 +46,11 @@ const modalMarkup = html.slice(modalStart, modalEnd + '</div></div>'.length);
     const openPreviewModal=id=>{const el=document.getElementById(id);el.classList.add('open');el.setAttribute('aria-hidden','false');};
     const closeStoreConfirm=()=>{const el=$('#storeConfirmModal');el.classList.remove('open');el.setAttribute('aria-hidden','true');};
     const showAppPage=page=>{document.body.dataset.page=page;};
-    \${summarySource}
-    \${handlerSource}
+    ${summarySource}
+    ${handlerSource}
     $('#addItem').onclick=()=>{testSubtotal=30;updateCartSummary();};
     updateCartSummary();
-   \`});
+   `});
    const initial=await page.evaluate(()=>({label:$('#checkout').textContent,disabled:$('#checkout').disabled,ariaDisabled:$('#checkout').getAttribute('aria-disabled'),grey:$('#checkout').classList.contains('is-below-minimum'),progressVisible:!$('#cartMinimumProgress').classList.contains('hidden'),progress:$('#cartMinimumProgressFill').style.width}));
    assert.equal(initial.label,'Faltam R$ 1,05 para o mínimo');
    assert.equal(initial.disabled,false);
