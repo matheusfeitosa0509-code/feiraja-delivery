@@ -157,6 +157,22 @@ async function preparePaidOrderPage(context, page, options = {}) {
   }, { user, mockPush: !!options.mockPush, mockPermission: options.mockPermission || null });
 
   let claimCalls = 0;
+  await page.route('**/auth/v1/**', route => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/user')) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(user) });
+    }
+    if (url.pathname.endsWith('/token')) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+        access_token: 'mock-access-token', refresh_token: 'mock-refresh-token',
+        token_type: 'bearer', expires_in: 3600, user,
+      }) });
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+  });
+  await page.route('**/rest/v1/**', route => route.fulfill({
+    status: 200, contentType: 'application/json', body: '[]',
+  }));
   await page.route(`${BASE}/loja.html`, route => route.fulfill({ status: 200, contentType: 'text/html', body: STORE_HTML }));
   await page.route('**/rest/v1/orders**', route => route.fulfill({
     status: 200,
