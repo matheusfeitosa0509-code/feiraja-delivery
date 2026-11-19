@@ -69,7 +69,7 @@ async function runCustomer(browser, width, height) {
   assert.equal(first.mapMarkers, 3, 'store, customer and driver pins');
   assert.equal(first.contact, 'Falar com a Feira On');
   assert.match(first.contactHref, /wa\.me/);
-  assert.doesNotMatch(first.text, /Lalamove|share\\.lalamove|9999999999/i, 'customer must not see provider or driver phone');
+  assert.doesNotMatch(first.text, /Lalamove|share\.lalamove|9999999999/i, 'customer must not see provider or driver phone');
   assert.equal(first.pollMs, 30000);
   assert.match(first.timeline, /Saiu para entrega/);
   await page.evaluate(() => window.__state.refresh());
