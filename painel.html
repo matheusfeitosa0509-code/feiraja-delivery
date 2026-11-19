@@ -256,6 +256,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 .app-dialog-actions .app-dialog-confirm.danger{background:#b3261e;color:#fff}
 @media(max-width:380px){.app-dialog{padding:19px;border-radius:21px}.app-dialog-actions{display:grid;grid-template-columns:1fr 1fr}.app-dialog-actions button{min-width:0;width:100%}}
 
+.cost-edit-pencil{display:inline-flex;align-items:center;justify-content:center;min-width:26px;min-height:25px;margin-left:3px;padding:1px 5px;border-radius:7px;background:#e7f0e5;color:#176b3a;font-size:14px;line-height:1;vertical-align:middle}.order-cost-backdrop{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:14px;background:#10231799}.order-cost-backdrop[hidden]{display:none}.order-cost-modal{width:min(440px,100%);max-height:90dvh;overflow:auto;padding:20px;background:#fff;border-radius:20px;box-shadow:0 18px 60px #0004}.order-cost-modal h2{margin:0 0 8px}.order-cost-modal .order-cost-checkbox{display:flex;align-items:flex-start;gap:9px;margin:14px 0;font-weight:650}.order-cost-modal .order-cost-checkbox input{width:20px;min-width:20px;height:20px;min-height:20px;margin:0;accent-color:#176b3a}.order-cost-warning{min-height:1.4em;color:#a65312;font-weight:750;font-size:13px}.order-cost-modal .actions{display:grid;grid-template-columns:1fr 1fr}.order-cost-modal .actions button{width:100%}.shopping-cost-modal{width:min(620px,100%)}.shopping-cost-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}.shopping-cost-row small{display:block;color:var(--muted);font-size:11px}.shopping-cost-row button{min-width:74px;padding:8px 10px;min-height:38px;font-size:12px}
 </style>
 </head>
 <body><main class="wrap">
@@ -278,7 +279,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <div class="hidden" aria-hidden="true"><span id="count">0</span><span id="pending">0</span><span id="active">0</span><span id="sum">R$ 0,00</span></div>
 <div id="notice" class="notice hidden" role="status"></div>
 
-<div class="orders-toolbar"><button type="button" id="shoppingListButton" class="secondary">Lista de compras</button><span class="muted">Pedidos pagos ainda não entregues</span></div><section class="card"><div class="filters"><input id="search" placeholder="Buscar por pedido, cliente ou telefone" aria-label="Buscar pedidos"><select id="filter" aria-label="Filtrar pedidos"><option value="active" selected>Ativos</option><option value="pending">Aguardando pagamento</option><option value="completed">Concluídos</option><option value="cancelled">Cancelados/Expirados</option><option value="tests">Testes</option><option value="all">Todos</option></select></div></section><div id="orders" class="orders"></div><div class="actions" style="justify-content:center;margin:16px 0"><button id="loadMore" class="secondary">Carregar mais pedidos</button></div>
+<div class="orders-toolbar"><button type="button" id="shoppingListButton" class="secondary">Lista de compras</button><button type="button" id="shoppingCostEditButton" class="secondary">Editar custos na lista</button><span class="muted">Pedidos pagos ainda não entregues</span></div><section class="card"><div class="filters"><input id="search" placeholder="Buscar por pedido, cliente ou telefone" aria-label="Buscar pedidos"><select id="filter" aria-label="Filtrar pedidos"><option value="active" selected>Ativos</option><option value="pending">Aguardando pagamento</option><option value="completed">Concluídos</option><option value="cancelled">Cancelados/Expirados</option><option value="tests">Testes</option><option value="all">Todos</option></select></div></section><div id="orders" class="orders"></div><div class="actions" style="justify-content:center;margin:16px 0"><button id="loadMore" class="secondary">Carregar mais pedidos</button></div>
 
 </section>
 <section id="settingsTab" class="hidden" role="tabpanel" aria-label="Configurações">
@@ -454,6 +455,26 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 </section></main>
 <script src="./turnstile.js" defer></script>
 <script src="./lalamove-map.js"></script>
+<div id="shoppingCostBackdrop" class="order-cost-backdrop" hidden>
+ <section class="order-cost-modal shopping-cost-modal" role="dialog" aria-modal="true" aria-labelledby="shoppingCostTitle">
+  <h2 id="shoppingCostTitle">Custos da lista de compras</h2>
+  <p class="muted">Edite o custo pago de cada item sem alterar os pedidos anteriores.</p>
+  <div id="shoppingCostRows"><p class="muted">Carregando…</p></div>
+  <div class="actions"><button type="button" id="shoppingCostClose" class="secondary">Fechar</button></div>
+ </section>
+</div>
+<div id="orderCostBackdrop" class="order-cost-backdrop" hidden>
+ <section class="order-cost-modal" role="dialog" aria-modal="true" aria-labelledby="orderCostTitle">
+  <h2 id="orderCostTitle">Editar custo do item</h2>
+  <p id="orderCostItemName" class="muted"></p>
+  <input id="orderCostOrderId" type="hidden"><input id="orderCostItemIndex" type="hidden">
+  <label for="orderCostUnitInput">Custo pago hoje (por unidade/kg)</label>
+  <input id="orderCostUnitInput" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00">
+  <label class="order-cost-checkbox"><input id="orderCostUpdateProduct" type="checkbox" checked> Atualizar também o custo padrão do produto</label>
+  <p id="orderCostWarning" class="order-cost-warning" role="status"></p>
+  <div class="actions"><button type="button" id="orderCostCancel" class="secondary">Cancelar</button><button type="button" id="orderCostSave">Salvar custo</button></div>
+ </section>
+</div>
 <script type="module">
 import{createClient}from'https://esm.sh/@supabase/supabase-js@2.117.1';
 const db=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',{auth:{persistSession:true,autoRefreshToken:true}});
@@ -1103,6 +1124,85 @@ function formatOrderItemDescription(item){
  return name+' × '+formatOrderQuantity(quantity)+(item.unit?' '+String(item.unit):'');
 }
 function orderItemTotal(price,quantity,item=null){if(item?.sale_mode==='value'){const cents=Number(item.line_total_cents??item.amount_cents);if(Number.isSafeInteger(cents)&&cents>0)return money(cents/100);}const unitPriceCents=Math.round(Number(price||0)*100);return money(Math.round(unitPriceCents*Number(quantity||1))/100);}
+function parseOrderUnitCost(value){
+ const raw=String(value??'').trim().replace(/R\$\s?/gi,'').replace(/\s/g,'');
+ if(!raw)return null;
+ const normalized=raw.includes(',')?raw.replace(/\./g,'').replace(',','.'):raw;
+ const amount=Number(normalized);
+ return Number.isFinite(amount)&&amount>=0?amount:null;
+}
+let shoppingCostOrders=[],shoppingCostProfitByOrder={};
+function openOrderCostEditor(orderId,itemIndex){
+ const order=allOrders.find(row=>String(row.id)===String(orderId))||shoppingCostOrders.find(row=>String(row.id)===String(orderId));
+ const snapshot=(profitByOrder[orderId]?.items||shoppingCostProfitByOrder[orderId]?.items||[]).find(row=>Number(row.item_index)===Number(itemIndex));
+ if(!order||!snapshot){notice('Não foi possível carregar o custo deste item. Atualize os pedidos e tente novamente.',true);return;}
+ const modal=$('orderCostBackdrop');if(!modal)return;
+ $('orderCostOrderId').value=String(orderId);$('orderCostItemIndex').value=String(itemIndex);
+ $('orderCostUnitInput').value=snapshot.unit_cost==null?'':Number(snapshot.unit_cost).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+ $('orderCostUpdateProduct').checked=true;$('orderCostWarning').textContent='';
+ $('orderCostItemName').textContent=String(snapshot.product_name||order.items?.[itemIndex]?.name||'Item do pedido');
+ $('orderCostBackdrop').hidden=false;$('orderCostUnitInput').focus();
+}
+async function openShoppingCostList(){
+ const modal=$('shoppingCostBackdrop'),host=$('shoppingCostRows');
+ modal.hidden=false;host.innerHTML='<p class="muted">Carregando pedidos e custos…</p>';
+ try{
+  const batchSize=200;let offset=0,orders=[];
+  while(true){const {data,error}=await fetchOrdersPage(offset,batchSize,true);if(error)throw error;const batch=Array.isArray(data)?data:[];orders.push(...batch);if(batch.length<batchSize)break;offset+=batchSize;}
+  const eligible=orders.filter(order=>order.is_test_order!==true&&['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega'].includes(normalizeOrderStatus(order.status)));
+  if(!eligible.length){host.innerHTML='<p class="muted">Não há pedidos pagos ainda não entregues.</p>';return;}
+  const range=manausDayRange();
+  const {data,error}=await db.rpc('admin_get_order_profit',{p_order_ids:eligible.map(order=>order.id),p_start:range.start,p_end:range.end});
+  if(error)throw error;
+  shoppingCostOrders=eligible;
+  shoppingCostProfitByOrder=Object.fromEntries((data?.orders||[]).map(row=>[row.order_id,row]));
+  host.innerHTML=eligible.map(order=>{
+   const snapshots=shoppingCostProfitByOrder[order.id]?.items||[];
+   return '<section><strong>Pedido '+esc(shortOrderNumber(order.id))+'</strong>'+((order.items||[]).map((item,index)=>{
+    const snap=snapshots.find(row=>Number(row.item_index)===index);
+    const cost=snap?.unit_cost==null?'Custo não cadastrado':'Custo atual: '+money(snap.unit_cost)+' / un.';
+    return '<div class="shopping-cost-row"><div>'+esc(formatOrderItemDescription(item))+'<small>'+esc(cost)+'</small></div><button type="button" class="secondary" data-edit-order-cost="'+esc(order.id)+'" data-cost-item-index="'+index+'">Editar</button></div>';
+   }).join('')||'<p class="muted">Sem itens detalhados.</p>')+'</section>';
+  }).join('');
+  host.querySelectorAll('[data-edit-order-cost]').forEach(button=>button.addEventListener('click',()=>openOrderCostEditor(button.dataset.editOrderCost,Number(button.dataset.costItemIndex))));
+ }catch(error){console.error('Falha ao carregar custos da lista de compras:',error);host.textContent='Não foi possível carregar a lista de custos. Verifique a sessão de administrador.';}
+}
+$('shoppingCostEditButton').addEventListener('click',openShoppingCostList);
+$('shoppingCostClose').addEventListener('click',()=>$('shoppingCostBackdrop').hidden=true);
+$('shoppingCostBackdrop').addEventListener('click',event=>{if(event.target===$('shoppingCostBackdrop'))$('shoppingCostBackdrop').hidden=true;});
+
+async function saveOrderItemCost(){
+ const orderId=$('orderCostOrderId').value,itemIndex=Number($('orderCostItemIndex').value);
+ const unitCost=parseOrderUnitCost($('orderCostUnitInput').value);
+ const message=$('orderCostWarning');
+ if(unitCost===null){message.textContent='Informe um custo válido, usando zero ou valor positivo.';return;}
+ const order=allOrders.find(row=>String(row.id)===String(orderId))||shoppingCostOrders.find(row=>String(row.id)===String(orderId));
+ const item=order?.items?.[itemIndex]||{};
+ const sale=Number(item.price||0);
+ message.textContent=unitCost>sale?'Atenção: custo maior que a venda, prejuízo neste item':'';
+ const button=$('orderCostSave');button.disabled=true;button.textContent='Salvando…';
+ try{
+  const {data,error}=await db.rpc('admin_update_order_item_cost',{
+   p_order_id:orderId,p_item_index:itemIndex,p_unit_cost:unitCost,
+   p_update_product_cost:$('orderCostUpdateProduct').checked
+  });
+  if(error)throw error;
+  $('orderCostBackdrop').hidden=true;
+  await loadOrderProfit();
+  if(data?.product_default_updated&&typeof loadCostReport==='function')await loadCostReport();
+  if(shoppingCostOrders.some(row=>String(row.id)===String(orderId))&&$('shoppingCostBackdrop')&&!$('shoppingCostBackdrop').hidden)await openShoppingCostList();
+  notice('Custo do item atualizado. Lucro do pedido e do dia recalculados.');
+ }catch(error){
+  console.error('Falha ao atualizar custo do item:',error);
+  message.textContent=error?.message||'Não foi possível salvar o custo. Verifique a sessão de administrador.';
+ }finally{button.disabled=false;button.textContent='Salvar custo';}
+}
+$('orderCostCancel').addEventListener('click',()=>$('orderCostBackdrop').hidden=true);
+$('orderCostSave').addEventListener('click',saveOrderItemCost);
+$('orderCostBackdrop').addEventListener('click',event=>{if(event.target===$('orderCostBackdrop'))$('orderCostBackdrop').hidden=true;});
+
+
+
 function lalamoveStatusLabel(status){
  const labels={pending:'Confirmando criação',searching:'Procurando motorista',assigned:'A caminho',enroute_pickup:'A caminho',picked_up:'Coletado',delivered:'Entregue',cancelled:'Entrega cancelada',rejected:'Entrega recusada',expired:'Nenhum motorista aceitou — chame de novo'};
  return labels[String(status||'')]||'Aguardando chamada do entregador';
@@ -1156,12 +1256,15 @@ function matchesOrderFilter(order,filter){
  return ['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega'].includes(status);
 }
 function renderOrderItemProfit(snapshot,item){
+ const orderId=arguments[2],itemIndex=arguments[3],safeOrderId=String(orderId??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
  const qty=Number(snapshot?.quantity??item?.quantity??item?.qty??1),sale=Number(snapshot?.sale_total??(Number(item?.price||0)*qty));
- if(!snapshot||snapshot.cost_status!=='ok'||snapshot.unit_cost===null||snapshot.unit_cost===undefined)
-  return '<small class="profit-item-meta missing">Venda: '+money(sale)+' · custo não cadastrado</small>';
- const cost=Number(snapshot.cost_total??Number(snapshot.unit_cost)*qty),profit=Number(snapshot.profit??(sale-cost)),percent=sale>0?profit/sale*100:0;
- return '<small class="profit-item-meta '+(profit<0?'profit-negative':'profit-positive')+'">Venda: '+money(sale)+' · Custo: '+money(cost)+' · Lucro: '+money(profit)+' ('+percent.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%)</small>';
+ const edit='<button type="button" class="cost-edit-pencil" data-edit-order-cost="'+safeOrderId+'" data-cost-item-index="'+itemIndex+'" aria-label="Editar custo pago deste item" title="Editar custo">✎</button>';
+ if(!snapshot||snapshot.unit_cost===null||snapshot.unit_cost===undefined)
+  return '<small class="profit-item-meta missing">Venda: '+money(sale)+' · custo não cadastrado '+edit+'</small>';
+ const unitCost=Number(snapshot.unit_cost),cost=Number(snapshot.cost_total??unitCost*qty),profit=Number(snapshot.profit??(sale-cost)),percent=sale>0?profit/sale*100:0;
+ return '<small class="profit-item-meta '+(profit<0?'profit-negative':'profit-positive')+'">Venda: '+money(sale)+' · Custo: '+money(cost)+' '+edit+' · Lucro: '+money(profit)+' ('+percent.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%)</small>';
 }
+
 function renderOrderProfitMarkup(data,totalItems){
  if(!data)return '<strong class="order-profit-summary profit-positive">Lucro parcial (0 de '+totalItems+' itens): R$ 0,00</strong>';
  const calculated=Number(data.calculated_items||0),total=Number(data.total_items??totalItems),profit=Number(data.profit||0),covered=Number(data.delivery_covered||0),partial=calculated<total;
@@ -1206,6 +1309,7 @@ async function loadOrderProfit(){
  }
 }
 
+
 function render(){
  const ordersRoot=$('orders'),expandedOrderIds=new Set(ordersRoot?[...ordersRoot.querySelectorAll('[data-order-content]')].filter(el=>!el.hidden).map(el=>el.dataset.orderContent):[]);
  const savedWindowScrollY=window.scrollY||window.pageYOffset||0,savedOrdersScrollTop=ordersRoot?.scrollTop||0;
@@ -1229,7 +1333,7 @@ function render(){
    const occurrence=itemOccurrences.get(fingerprint)||0;itemOccurrences.set(fingerprint,occurrence+1);
    const key=itemSeparationKey(i,occurrence),marked=separatedKeys.includes(key);
    const preference=({replace:'substituir por similar',remove:'não substituir',call:'me chamar'})[i.substitution_preference]||'me chamar';
-   const profitMeta=renderOrderItemProfit((profitByOrder[o.id]?.items||[]).find(row=>Number(row.item_index)===index),i);
+   const profitMeta=renderOrderItemProfit((profitByOrder[o.id]?.items||[]).find(row=>Number(row.item_index)===index),i,o.id,index);
    return '<div class="separation-item '+(marked?'is-separated':'')+'"><button type="button" class="separation-check" data-separate-order="'+esc(o.id)+'" data-separate-key="'+esc(key)+'" aria-label="'+(marked?'Desmarcar item separado':'Marcar item como separado')+'" aria-pressed="'+String(marked)+'" '+(currentStatus==='Cancelada'?'disabled':'')+'><span class="separation-check-mark">'+(marked?'✓':'')+'</span></button><div class="separation-detail"><span class="separation-name">'+esc(formatOrderItemDescription(i))+'</span>'+(i.item_note?'<small class="separation-preference">'+esc(i.item_note)+'</small>':'')+ '<small class="separation-preference">Se faltar: '+esc(preference)+'</small>'+profitMeta+'</div><strong>'+orderItemTotal(i.price,i.quantity??i.qty??1,i)+'</strong></div>';
   }).join('');
   const separatedCount=items.filter((i,index)=>{
@@ -1267,6 +1371,7 @@ function render(){
   if(!content)return;
   content.hidden=!content.hidden;b.setAttribute('aria-expanded',String(!content.hidden));b.textContent=content.hidden?'Expandir':'Recolher';
  }));
+ document.querySelectorAll('[data-edit-order-cost]').forEach(b=>b.addEventListener('click',()=>openOrderCostEditor(b.dataset.editOrderCost,Number(b.dataset.costItemIndex))));
  document.querySelectorAll('[data-save]').forEach(b=>b.addEventListener('click',()=>saveStatus(b.dataset.save,b)));
  document.querySelectorAll('[data-refund-done]').forEach(b=>b.addEventListener('click',()=>markRefundDone(b.dataset.refundDone,b)));
  document.querySelectorAll('[data-separate-order]').forEach(b=>b.addEventListener('click',()=>toggleSeparatedItem(b.dataset.separateOrder,b.dataset.separateKey)));
@@ -1298,6 +1403,7 @@ async function lalamoveErrorMessage(error,fallback){
  }
  return String(error?.message||fallback);
 }
+
 function setLalamoveFeedback(orderId,message,isError=false){
  const feedback=document.querySelector('[data-lalamove-feedback="'+CSS.escape(orderId)+'"]');
  if(!feedback)return;
