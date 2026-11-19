@@ -139,6 +139,7 @@ async function preparePaidOrderPage(context, page, options = {}) {
       Object.defineProperty(window, 'Notification', { configurable: true, value: { permission: mockPermission, requestPermission: async () => mockPermission } });
     }
     if (mockPush) {
+      if (!('PushManager' in window)) Object.defineProperty(window, 'PushManager', { configurable: true, value: class PushManager {} });
       const subscription = {
         endpoint: 'https://push.example.invalid/subscription',
         toJSON: () => ({ keys: { p256dh: 'mock-p256dh', auth: 'mock-auth' } }),
