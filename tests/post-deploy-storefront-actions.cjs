@@ -77,8 +77,9 @@ const assert = require('node:assert/strict');
     await page.locator('.mobile-nav [data-page="Cart"]').click();
     assert.ok(await page.locator('#pageCart.active').count(), 'Carrinho não abriu');
     await page.locator('#checkout').click();
-    await expectOpen('#modal', 'Continuar do carrinho');
-    await page.locator('#close').click();
+    await expectOpen('#modal.open, #accountModal.open', 'Continuar do carrinho (checkout ou login)');
+    if (await page.locator('#modal.open').count()) await page.locator('#close').click();
+    else await closeAccount();
 
     await page.locator('.mobile-nav [data-page="Orders"]').click();
     assert.ok(await page.locator('#pageOrders.active').count(), 'Pedidos não abriu');
