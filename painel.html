@@ -1228,7 +1228,7 @@ function renderLalamoveDelivery(order,currentStatus){
  const vehicle=order.delivery_vehicle==='MOTO'?'Moto':order.delivery_vehicle==='CAR'?'Carro':'Não informado';
  const weight=Number(order.delivery_weight_kg);
  const weightText=Number.isFinite(weight)&&weight>0?weight.toLocaleString('pt-BR',{maximumFractionDigits:3})+' kg':'Não informado';
- const tracking=order.lalamove_tracking_url?'<p class="lalamove-admin-open"><small>ID / ACOMPANHAMENTO LALAMOVE</small><br><a href="'+esc(order.lalamove_tracking_url)+'" target="_blank" rel="noopener noreferrer">Abrir na Lalamove</a></p>':'';
+ const trackingUrl=String(order.lalamove_tracking_url||'');const trackingId=String(driver.lalamove_order_id||driver.order_id||driver.orderId||(()=>{try{const u=new URL(trackingUrl);return u.searchParams.get('id')||u.searchParams.get('orderId')||u.pathname.split('/').filter(Boolean).pop()||'';}catch{return '';}})());const tracking=trackingUrl?'<p class="lalamove-admin-open"><small>'+ (trackingId?'ID LALAMOVE · '+esc(trackingId):'ACOMPANHAMENTO LALAMOVE')+'</small><br><a href="'+esc(trackingUrl)+'" target="_blank" rel="noopener noreferrer">Abrir na Lalamove</a></p>':'';
  const driverParts=[driver.name,driver.phone?'Telefone '+driver.phone:'',driver.plateNumber?'Placa '+driver.plateNumber:'',driver.lalamove_order_id?'ID Lalamove '+driver.lalamove_order_id:''].filter(Boolean);
  const driverHtml=driverParts.length?'<p class="lalamove-driver"><small>MOTORISTA</small><strong>'+driverParts.map(esc).join(' · ')+'</strong></p>':'';
  const callButton=(canQuote||canRetryLalamove)?'<button type="button" data-lalamove-quote="'+esc(order.id)+'">'+(canRetryLalamove?'Chamar entregador de novo':'Chamar entregador')+'</button>':'';
