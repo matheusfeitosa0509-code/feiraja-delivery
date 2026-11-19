@@ -35,6 +35,47 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Run vigia against production
         run: npx playwright test tests/site-watch.spec.js --reporter=list
+      - name: Verify health-check rejects requests without token
+        run: |
+          status="$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' "https://juhwdevvwstmyxyyagzh.supabase.co/functions/v1/health-check")" || {
+            echo "::error::health-check indisponível para teste sem token."
+            exit 1
+          }
+          if [ "$status" != "401" ]; then
+            echo "::error::Esperado HTTP 401 sem x-health-token; recebido HTTP $status."
+            exit 1
+          fi
+          echo "PASSOU | autenticação | HTTP 401 sem x-health-token."
+      - name: Run server health-check
+        env:
+          HEALTH_TOKEN: ${{ secrets.HEALTH_TOKEN }}
+        run: |
+          if [ -z "$HEALTH_TOKEN" ]; then
+            echo "::error::GitHub secret HEALTH_TOKEN ausente."
+            exit 1
+          fi
+          response="$(curl -sS --max-time 90 -H "x-health-token: $HEALTH_TOKEN" "https://juhwdevvwstmyxyyagzh.supabase.co/functions/v1/health-check")" || {
+            echo "::error::health-check indisponível ou sem resposta HTTP."
+            exit 1
+          }
+          printf '%s' "$response" | node -e '
+            let raw = "";
+            process.stdin.on("data", chunk => raw += chunk);
+            process.stdin.on("end", () => {
+              let data;
+              try { data = JSON.parse(raw); } catch {
+                console.error("health-check: resposta JSON inválida");
+                process.exit(1);
+              }
+              for (const check of (data.checks || [])) {
+                console.log((check.ok ? "PASSOU" : "FALHOU") + " | " + check.item + " | " + check.message);
+              }
+              if (data.ok !== true || !Array.isArray(data.checks) || data.checks.some(check => check.ok !== true)) {
+                console.error("health-check: um ou mais exames falharam.");
+                process.exit(1);
+              }
+            });
+          '
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4
