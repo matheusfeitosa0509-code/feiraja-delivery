@@ -23,3 +23,24 @@ Deno.test("test orders and orders without owner are skipped", () => {
   assertEquals(shouldSkipOrderPush(false, null), true);
   assertEquals(shouldSkipOrderPush(false, "user-1"), false);
 });
+
+Deno.test("mocked customer send records each event once and never sends test orders", () => {
+  const sent = new Map<string, string>();
+  const mockSend = (orderId: string, status: string, isTestOrder: boolean, userId: string | null, pickupCode = "C123") => {
+    if (shouldSkipOrderPush(isTestOrder, userId)) return;
+    const key = `${orderId}:customer:${status}`;
+    if (sent.has(key)) return;
+    const body = getCustomerMessage(status, pickupCode);
+    if (body) sent.set(key, body);
+  };
+  const orderId = "TEST-ORDER-01";
+  const events = ["Pagamento Confirmado", "Separação iniciada", "Pronto para Retirada", "Saiu para Entrega", "Entregue", "Cancelada"];
+  for (const event of events) {
+    mockSend(orderId, event, false, "owner-1");
+    mockSend(orderId, event, false, "owner-1");
+  }
+  mockSend("TEST-ORDER-02", "Pagamento Confirmado", true, "owner-1");
+  assertEquals(sent.size, 6);
+  assertEquals(sent.get("TEST-ORDER-01:customer:Pronto para Retirada"), "Seu pedido está pronto! 🎉 Código de retirada: C123");
+  assertEquals(sent.has("TEST-ORDER-02:customer:Pagamento Confirmado"), false);
+});
