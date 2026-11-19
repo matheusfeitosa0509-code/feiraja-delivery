@@ -61,6 +61,7 @@ function prepareHtml(source) {
       const costProducts=await page.locator("#costProductStatusList").textContent();
       if(!costProducts.includes("Banana Prata"))throw new Error("O painel deixou de exibir os custos dos produtos via RPC admin: "+costProducts);
       await page.locator("#tabOrders").click();
+      await page.locator("#filter").selectOption("tests");
       await page.waitForSelector("[data-order-toggle]");
       await page.locator('[data-order-toggle="TEST-6259DB63"]').click();
       await page.waitForSelector('[data-lalamove-quote="TEST-6259DB63"]');
@@ -108,6 +109,8 @@ function prepareHtml(source) {
       await page.waitForFunction(()=>document.querySelector("[data-lalamove-status-label]")?.textContent.includes("Procurando motorista"));
       if(await page.locator("[data-lalamove-map]").count()!==1)throw new Error("Status/rastreio não apareceu após criação mockada em Sandbox.");
 
+      // Retorna ao filtro padrão: pedidos reais ativos aparecem; o pedido de teste fica fora da lista.
+      await page.locator("#filter").selectOption("active");
       // Três marcações consecutivas no pedido do meio: o card permanece aberto e a rolagem não salta.
       await page.evaluate(()=>Object.defineProperty(navigator,'share',{configurable:true,value:async payload=>{window.__sharedPayload=payload;}}));
       const middleToggle=page.locator('[data-order-toggle="ORDER-MIDDLE-002"]');
