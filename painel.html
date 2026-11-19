@@ -1113,7 +1113,8 @@ function formatOrderItemDescription(item){
  const mode=normalizeUnit(item.sale_mode);
  const modeUnit=mode==='unit'?'un':mode;
  // A unidade explícita no nome/catálogo prevalece sobre snapshots antigos de sale_mode.
- const unit=normalizeUnit(suffix?.[1])||declared||(['un','unidade'].includes(modeUnit)?'un':stored||modeUnit);
+ const packagedTapiocaUnit=/^farinha de tapioca\\s*\\(500\\s*g\\)$/i.test(rawName.trim())?'un':'';
+ const unit=packagedTapiocaUnit||normalizeUnit(suffix?.[1])||declared||(['un','unidade'].includes(modeUnit)?'un':stored||modeUnit);
  if(mode==='value'){
   const cents=Number(item.line_total_cents??item.amount_cents);
   const amount=Number.isSafeInteger(cents)&&cents>0?money(cents/100):money(Number(item.price||0)*Number(quantity||1));
