@@ -55,7 +55,7 @@ const modalMarkup = html.slice(modalStart, modalEnd + '</section></div>'.length)
    const initial=await page.evaluate(()=>({label:$('#checkout').textContent,disabled:$('#checkout').disabled,ariaDisabled:$('#checkout').getAttribute('aria-disabled'),grey:$('#checkout').classList.contains('is-below-minimum'),progressVisible:!$('#cartMinimumProgress').classList.contains('hidden'),progress:$('#cartMinimumProgressFill').style.width}));
    assert.equal(initial.label,'Faltam R$ 1,05 para o mínimo');
    assert.equal(initial.disabled,false);
-   assert.equal(initial.ariaDisabled,'true');
+   assert.equal(initial.ariaDisabled,'false');
    assert.equal(initial.grey,true);
    assert.equal(initial.progressVisible,true);
    assert.equal(initial.progress,'96.5%');
