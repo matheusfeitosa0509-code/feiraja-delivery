@@ -81,12 +81,16 @@ BEGIN
         ON s.order_id = o.id AND s.item_index = (item.ordinality - 1)::integer
     ) AS i ON true
   ),
-  day_orders AS (
+  today_orders AS (
     SELECT *
     FROM order_finance
     WHERE created_at >= p_start AND created_at < p_end
       AND is_test_order = false
-      AND lower(btrim(COALESCE(status, ''))) NOT IN (
+  ),
+  day_orders AS (
+    SELECT *
+    FROM today_orders
+    WHERE lower(btrim(COALESCE(status, ''))) NOT IN (
         'cancelada', 'cancelado', 'pagamento cancelado',
         'pagamento recusado', 'pagamento reembolsado', 'pagamento contestado'
       )
@@ -126,7 +130,7 @@ BEGIN
       FROM order_finance AS f
     ), '[]'::jsonb),
     'summary', jsonb_build_object(
-      'orders_today', (SELECT count(*)::integer FROM day_orders),
+      'orders_today', (SELECT count(*)::integer FROM today_orders),
       'to_separate', (
         SELECT count(*)::integer FROM day_orders
         WHERE lower(btrim(COALESCE(status, ''))) IN ('pagamento confirmado', 'preparando')
