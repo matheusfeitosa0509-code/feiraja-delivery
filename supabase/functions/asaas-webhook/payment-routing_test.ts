@@ -258,7 +258,7 @@ Deno.test("webhook atrasado: pagamento confirmado vincula ID sem regredir status
 
 Deno.test("pickup_store: confirmação Pix gera código de retirada de quatro dígitos", async () => {
   const mock = makeDb({
-    id: "ORDER-STORE-123",
+    id: "ORDER-123",
     status: "Pagamento Pendente",
     total: 30,
     payment_id: "pay_123",
