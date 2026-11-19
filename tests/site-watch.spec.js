@@ -126,7 +126,7 @@ async function preparePaidOrderPage(context, page, options = {}) {
     user_metadata: { full_name: 'Cliente de teste' },
     created_at: '2026-01-01T00:00:00.000Z',
   };
-  await context.addInitScript(({ user, mockPush }) => {
+  await context.addInitScript(({ user, mockPush, mockPermission }) => {
     localStorage.setItem('sb-juhwdevvwstmyxyyagzh-auth-token', JSON.stringify({
       access_token: 'mock-access-token',
       refresh_token: 'mock-refresh-token',
@@ -135,6 +135,9 @@ async function preparePaidOrderPage(context, page, options = {}) {
       expires_at: Math.floor(Date.now() / 1000) + 3600,
       user,
     }));
+    if (mockPermission) {
+      Object.defineProperty(window, 'Notification', { configurable: true, value: { permission: mockPermission, requestPermission: async () => mockPermission } });
+    }
     if (mockPush) {
       const subscription = {
         endpoint: 'https://push.example.invalid/subscription',
@@ -147,7 +150,7 @@ async function preparePaidOrderPage(context, page, options = {}) {
         value: { ready: Promise.resolve(registration), register: async () => ({ update: async () => {} }) },
       });
     }
-  }, { user, mockPush: !!options.mockPush });
+  }, { user, mockPush: !!options.mockPush, mockPermission: options.mockPermission || null });
 
   let claimCalls = 0;
   await page.route('**/rest/v1/orders**', route => route.fulfill({
@@ -179,7 +182,7 @@ for (const viewport of viewports) {
     page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
     page.on('pageerror', error => consoleErrors.push(error.message));
     try {
-      await preparePaidOrderPage(context, page);
+      await preparePaidOrderPage(context, page, { mockPermission: 'default' });
       await expect(page.locator('#storeConfirmModal')).toHaveClass(/open/, { timeout: 10000 });
       await expect(page.locator('#storeConfirmTitle')).toHaveText('Quer ser avisada do seu pedido?');
       await expect(page.locator('#storeConfirmMessage')).toHaveText('Avisamos quando ele estiver pronto para retirada ou saindo para entrega.');
