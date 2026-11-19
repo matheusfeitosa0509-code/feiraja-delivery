@@ -58,19 +58,17 @@ const assert = require('node:assert/strict');
     const plus = page.locator('#homeProductSections .product:not(.skeleton-card) [data-card-change][data-d="1"]').first();
     await plus.click();
     assert.ok(Number((await page.locator('#tabCartCount').textContent()).trim()) > 0, '+ do produto não adicionou ao carrinho');
-    // The checkout has a R$30 minimum. Keep this browser-only smoke test resilient
-    // to low-priced first products: close the existing "Falta pouco!" sheet and add
-    // another batch until checkout actually opens its next step.
-    for (let attempt = 0; attempt < 5; attempt++) {
-      for (let i = 0; i < 100 && await page.locator('#checkout').evaluate(el => el.disabled); i++) await plus.click();
-      if (!await page.locator('#checkout').isEnabled()) continue;
-      await page.locator('#checkout').click();
-      if (await page.locator('#modal.open, #accountModal.open').count()) break;
-      if (await page.locator('#storeConfirmModal.open').count()) {
-        await page.locator('#storeConfirmAccept').click();
-        continue;
-      }
+    // The checkout has a R$30 minimum. Fill the isolated browser cart based on
+    // the displayed subtotal, not the checkout button's disabled state.
+    for (let i = 0; i < 500; i++) {
+      const subtotalText = await page.locator('#subtotal').textContent();
+      const subtotalCents = Number(String(subtotalText || '').replace(/\\D/g, ''));
+      if (subtotalCents >= 3000) break;
+      await plus.click();
     }
+    const finalSubtotalText = await page.locator('#subtotal').textContent();
+    const finalSubtotalCents = Number(String(finalSubtotalText || '').replace(/\\D/g, ''));
+    assert.ok(finalSubtotalCents >= 3000, `Carrinho de smoke test não atingiu R$30 (subtotal: ${finalSubtotalText})`);
 
     const valueButton = page.locator('#homeProductSections .value-sale-open').first();
     if (await valueButton.count()) {
