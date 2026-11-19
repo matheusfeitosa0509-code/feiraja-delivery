@@ -196,7 +196,7 @@ export async function handleAsaasWebhook(req: Request, deps: WebhookDependencies
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data: order, error: orderReadError } = await db.from("orders")
-    .select("id,status,total,payment_id,payment_provider,created_at")
+    .select("id,status,total,payment_id,payment_provider,created_at,delivery_type,pickup_code")
     .eq("id", externalReference)
     .maybeSingle();
 
