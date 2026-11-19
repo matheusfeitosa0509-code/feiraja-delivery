@@ -6,3 +6,7 @@ export async function applyLalamoveWebhookEvent(db:{rpc:(name:string,args:Record
  const result=await db.rpc("service_apply_lalamove_webhook",args as unknown as Record<string,unknown>);
  return{missingFields:[],data:result?.data??null,error:result?.error??null};
 }
+
+export function isSupportedLalamoveOrderEvent(eventType: unknown): boolean {
+ return ["ORDER_STATUS_CHANGED","DRIVER_ASSIGNED"].includes(String(eventType || "").trim().toUpperCase());
+}
