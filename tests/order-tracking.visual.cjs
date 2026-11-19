@@ -91,7 +91,7 @@ async function runViewport(browser, width, height, vehicle) {
   assert.match(initial.fallback, /tracking\.lalamove\.com/);
   assert.match(initial.searching, /Procurando entregador/);
   assert.equal(initial.searchingMapHidden, true, 'map stays hidden until a driver is assigned');
-  assert.equal(initial.pollMs, 15000, 'tracking polls every 15 seconds');
+  assert.equal(initial.pollMs, 150000, 'tracking fallback polls every 2.5 minutes');
   assert.equal(initial.noHorizontalScroll, true);
   assert.equal(initial.cameraIncludesThreePoints, true, 'initial camera fits driver, destination and store');
   await page.waitForFunction(() => window.__tracking && !window.__tracking.inFlight);

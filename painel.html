@@ -1219,8 +1219,9 @@ function renderLalamoveDelivery(order,currentStatus){
  const paidOrTest=order.is_test_order===true||(pix&&['Pagamento Confirmado','Preparando','Pronto para Retirada','Pronto'].includes(currentStatus));
  const terminal=['Cancelada','Reembolsado','Contestado','Pagamento cancelado','Pagamento recusado'].includes(currentStatus);
  const scheduledAt=Date.parse(String(order.scheduled_for||'')),scheduledPending=Number.isFinite(scheduledAt)&&scheduledAt>Date.now();
- const canQuote=paidOrTest&&!terminal&&!order.lalamove_status&&!scheduledPending;
  const cancelStatus=String(order.lalamove_status||'');
+ const canRetryLalamove=['cancelled','rejected','expired'].includes(cancelStatus)&&paidOrTest&&!terminal&&!scheduledPending;
+ const canQuote=paidOrTest&&!terminal&&(!order.lalamove_status||canRetryLalamove)&&!scheduledPending;
  const matchedAt=Date.parse(String(order.lalamove_status_updated_at||''));
  const canCancel=cancelStatus==='searching'||(['assigned','enroute_pickup'].includes(cancelStatus)&&Number.isFinite(matchedAt)&&Date.now()>=matchedAt&&Date.now()-matchedAt<5*60*1000);
  const driver=order.lalamove_driver&&typeof order.lalamove_driver==='object'?order.lalamove_driver:{};
@@ -1230,7 +1231,8 @@ function renderLalamoveDelivery(order,currentStatus){
  const tracking='';
  const driverParts=[driver.name,driver.phone,driver.plateNumber?'Placa '+driver.plateNumber:''].filter(Boolean);
  const driverHtml=driverParts.length?'<p class="lalamove-driver"><small>MOTORISTA</small><strong>'+driverParts.map(esc).join(' · ')+'</strong></p>':'';
- const callButton=canQuote?'<button type="button" data-lalamove-quote="'+esc(order.id)+'">Chamar entregador</button>':'';
+ const callButton=(canQuote||canRetryLalamove)?'<button type="button" data-lalamove-quote="'+esc(order.id)+'">'+(canRetryLalamove?'Chamar entregador de novo':'Chamar entregador')+'</button>':'';
+ const retryWarning=canRetryLalamove?'<div class="lalamove-retry-warning" role="alert" style="background:#fff0f0;border:1px solid #dc2626;color:#991b1b;border-radius:10px;padding:10px 12px;margin:10px 0;font-weight:750">⚠️ Nenhum motorista aceitou o pedido. Chame outro entregador.</div>':'';
  const refreshButton=order.lalamove_status?'<button type="button" class="secondary" data-lalamove-refresh="'+esc(order.id)+'">Atualizar status</button>':'';
  const cancelButton=canCancel?'<button type="button" class="danger" data-lalamove-cancel="'+esc(order.id)+'">Cancelar entrega</button>':'';
  const trackingActive=['searching','assigned','enroute_pickup','picked_up'].includes(cancelStatus);
@@ -1240,7 +1242,7 @@ function renderLalamoveDelivery(order,currentStatus){
   +'<div class="lalamove-address"><small>ENDEREÇO</small><strong>'+esc(fullAddress||order.customer_address||'Endereço não informado')+'</strong><a href="'+esc(mapUrl)+'" target="_blank" rel="noopener noreferrer">Abrir no mapa</a></div>'
   +'<div class="lalamove-facts"><span>Veículo: <b>'+esc(vehicle)+'</b></span><span>Peso: <b>'+esc(weightText)+'</b></span><span>Taxa: <b>'+money(order.delivery_fee)+'</b></span></div>'
   +(order.lalamove_status?'<p class="lalamove-state"><small>STATUS DA ENTREGA</small><strong data-lalamove-status-label>'+esc(lalamoveStatusLabel(order.lalamove_status))+'</strong></p>':'')
-  +driverHtml+mapHtml+(tracking?'<p>'+tracking+'</p>':'')+'<div class="actions">'+callButton+refreshButton+cancelButton+'</div>'
+  +retryWarning+driverHtml+mapHtml+(tracking?'<p>'+tracking+'</p>':'')+'<div class="actions">'+callButton+refreshButton+cancelButton+'</div>'
   +'<p class="lalamove-feedback" data-lalamove-feedback="'+esc(order.id)+'" role="status" aria-live="polite" hidden></p>'
   +(canQuote?'<div class="lalamove-quote-box" data-lalamove-quote-box="'+esc(order.id)+'" hidden></div>':'')+'</section>';
 }

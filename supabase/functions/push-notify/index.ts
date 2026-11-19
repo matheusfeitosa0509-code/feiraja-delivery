@@ -90,12 +90,13 @@ async function verifyHmac(
   return constantTimeEqual(bytesToHex(digest), suppliedSignature.toLowerCase());
 }
 
-function getNotificationText(kind: PushKind, status: string, pickupCode: string | null = null): string | null {
+function getNotificationText(kind: PushKind, status: string, pickupCode: string | null = null, orderId = ""): string | null {
   if (kind === "admin") {
     if (status === "Pedido Recebido") return "Novo pedido recebido";
     if (status === "Pagamento Confirmado") return "Pagamento Pix confirmado";
     if (status === "Pix pago em pedido cancelado — devolver") return "Pix pago em pedido cancelado — devolver";
     if (status === "Pedido pago cancelado pelo cliente — devolver Pix") return "Pedido pago cancelado pelo cliente — devolver Pix";
+    if (/^Lalamove sem motorista@[0-9]{10}$/.test(status)) return `⚠️ Nenhum motorista aceitou o pedido ${orderId} – chame de novo`;
     return null;
   }
   return getCustomerMessage(status, pickupCode);
@@ -153,7 +154,7 @@ Deno.serve(async (req: Request) => {
     typeof kind !== "string" ||
     (kind !== "admin" && kind !== "customer") ||
     typeof new_status !== "string" ||
-    !KNOWN_STATUSES.has(new_status) ||
+    !(KNOWN_STATUSES.has(new_status) || /^Lalamove sem motorista@[0-9]{10}$/.test(new_status)) ||
     (new_status.startsWith("Pix pago em pedido cancelado") ||
       new_status.startsWith("Pedido pago cancelado pelo cliente")) && kind !== "admin"
   ) {
@@ -201,14 +202,15 @@ Deno.serve(async (req: Request) => {
   try {
     const { data: order, error: orderError } = await supabase
       .from("orders")
-      .select("id,user_id,status,refund_pending,cancelled_by,is_test_order,separation_started_at,pickup_code")
+      .select("id,user_id,status,refund_pending,cancelled_by,is_test_order,separation_started_at,pickup_code,lalamove_status")
       .eq("id", order_id)
       .maybeSingle();
 
     if (orderError) throw new Error("ORDER_LOOKUP_FAILED");
     if (!order) return jsonResponse(404, { error: "ORDER_NOT_FOUND" });
     if (shouldSkipOrderPush(order.is_test_order === true, kind === "customer" ? order.user_id : "admin")) return jsonResponse(200, { ok: true, skipped: "TEST_ORDER_OR_NO_OWNER" });
-    const message = getNotificationText(kind, new_status, order.pickup_code || null);
+    const isLalamoveNoDriverNotice = /^Lalamove sem motorista@[0-9]{10}$/.test(new_status);
+    const message = getNotificationText(kind, new_status, order.pickup_code || null, order.id);
     if (!message) return jsonResponse(400, { error: "INVALID_REQUEST" });
 
     // Eventos de devolução são códigos administrativos; exigem pedido cancelado
@@ -216,7 +218,11 @@ Deno.serve(async (req: Request) => {
     const isRefundNotice =
       new_status === "Pix pago em pedido cancelado — devolver" ||
       new_status === "Pedido pago cancelado pelo cliente — devolver Pix";
-    if (isRefundNotice) {
+    if (isLalamoveNoDriverNotice) {
+      if (kind !== "admin" || !["cancelled", "rejected", "expired"].includes(String(order.lalamove_status || ""))) {
+        return jsonResponse(200, { ok: true, skipped: "STALE_EVENT" });
+      }
+    } else if (isRefundNotice) {
       const cancelled = ["Cancelada", "Cancelado"].includes(String(order.status || ""));
       const expectedNotice = order.cancelled_by === "cliente"
         ? "Pedido pago cancelado pelo cliente — devolver Pix"
