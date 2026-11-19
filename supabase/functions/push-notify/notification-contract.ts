@@ -22,10 +22,11 @@ const CUSTOMER_MESSAGES: Record<string, string> = {
   "Pagamento contestado": "Houve uma atualização do seu pedido.",
 };
 
-export function getCustomerMessage(status: string, pickupCode = "indisponível"): string | null {
+export function getCustomerMessage(status: string, pickupCode: string | null = null): string | null {
   const message = CUSTOMER_MESSAGES[status];
   if (message === undefined) return null;
-  return status === "Pronto para Retirada" ? message + pickupCode : message;
+  if (status === "Pronto para Retirada") return pickupCode ? message + pickupCode : "Seu pedido está pronto! 🎉";
+  return message;
 }
 
 export function customerOrderUrl(orderId: string): string {
