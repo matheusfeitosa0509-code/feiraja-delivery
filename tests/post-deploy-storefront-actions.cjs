@@ -48,14 +48,12 @@ const assert = require('node:assert/strict');
     const verTodos = page.getByRole('button', { name: /ver tudo|ver todos/i }).first();
     if (await verTodos.isVisible().catch(() => false)) {
       await verTodos.click();
-      assert.ok(await page.locator('#pageProducts.active').count(), 'Ver todos não abriu Produtos');
+      assert.ok(await page.locator('#pageHome.active').count() && await page.locator('#homeProductSections .product:not(.skeleton-card)').count() > 0, 'Ver todos não manteve a vitrine completa aberta');
     } else {
       // The legacy link is hidden by the current storefront layout; still exercise its registered navigation handler.
       await verTodos.evaluate(button => button.click());
-      assert.ok(await page.locator('#pageProducts.active').count(), 'Ver tudo não abriu Produtos');
+      assert.ok(await page.locator('#pageHome.active').count() && await page.locator('#homeProductSections .product:not(.skeleton-card)').count() > 0, 'Ver tudo não manteve a vitrine completa aberta');
     }
-
-    if (await page.locator('#pageProducts.active').count()) await page.locator('#pageProducts [data-go-page="home"]').click();
 
     const plus = page.locator('#homeProductSections .product:not(.skeleton-card) [data-card-change][data-d="1"]').first();
     await plus.click();
