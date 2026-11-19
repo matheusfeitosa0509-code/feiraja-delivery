@@ -1,3 +1,4 @@
+// Customer-facing notification contract; keep messages and deep links covered by unit tests.
 export const CUSTOMER_PUSH_TITLE = "Feira On Delivery";
 
 const CUSTOMER_MESSAGES: Record<string, string> = {
