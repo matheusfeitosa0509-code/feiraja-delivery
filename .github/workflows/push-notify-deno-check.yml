@@ -30,3 +30,5 @@ jobs:
           deno-version: v2.x
       - name: Type check (no deploy, no secrets)
         run: deno check --no-lock supabase/functions/push-notify/index.ts
+      - name: Unit tests (mocked notification contract)
+        run: deno test --no-lock supabase/functions/push-notify/notification-contract.test.ts
