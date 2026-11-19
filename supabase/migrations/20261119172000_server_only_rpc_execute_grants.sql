@@ -38,7 +38,7 @@ begin
     v_updated := regexp_replace(
       v_definition,
       E'\\s*if not feira_cost_private\\.is_lalamove_service_request\\(\\) then\\s*raise exception ''service role required'' using errcode\\s*=\\s*''42501'';\\s*end if;\\s*',
-      E'\\n',
+      E'\n',
       'gi'
     );
 
