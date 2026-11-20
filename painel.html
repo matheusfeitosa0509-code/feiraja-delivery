@@ -1156,6 +1156,7 @@ function parseOrderUnitCost(value){
  return Number.isFinite(amount)&&amount>=0?amount:null;
 }
 let shoppingCostOrders=[],shoppingCostProfitByOrder={};
+let orderCostFieldsDirty={balcony:false,paid:false};
 function openOrderCostEditor(orderId,itemIndex){
  const order=allOrders.find(row=>String(row.id)===String(orderId))||shoppingCostOrders.find(row=>String(row.id)===String(orderId));
  const snapshot=(profitByOrder[orderId]?.items||shoppingCostProfitByOrder[orderId]?.items||[]).find(row=>Number(row.item_index)===Number(itemIndex));
@@ -1164,6 +1165,7 @@ function openOrderCostEditor(orderId,itemIndex){
  $('orderCostOrderId').value=String(orderId);$('orderCostItemIndex').value=String(itemIndex);
  $('orderCostBalconyInput').value=snapshot.preco_balcao==null?'':Number(snapshot.preco_balcao).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
  $('orderCostPaidInput').value=snapshot.preco_pago==null?'':Number(snapshot.preco_pago).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+ orderCostFieldsDirty={balcony:false,paid:false};
  $('orderCostUpdateProduct').checked=Boolean(snapshot.product_id);$('orderCostUpdateProduct').disabled=!snapshot.product_id;$('orderCostWarning').textContent='';
  $('orderCostItemName').textContent=String(snapshot.product_name||order.items?.[itemIndex]?.name||'Item do pedido');
  $('orderCostBackdrop').hidden=false;$('orderCostBalconyInput').focus();
@@ -1199,7 +1201,7 @@ $('shoppingCostBackdrop').addEventListener('click',event=>{if(event.target===$('
 
 async function saveOrderItemCost(){
  const orderId=$('orderCostOrderId').value,itemIndex=Number($('orderCostItemIndex').value);
- const balconyRaw=$('orderCostBalconyInput').value.trim(),paidRaw=$('orderCostPaidInput').value.trim();
+ const balconyRaw=orderCostFieldsDirty.balcony?$('orderCostBalconyInput').value.trim():'',paidRaw=orderCostFieldsDirty.paid?$('orderCostPaidInput').value.trim():'';
  const balconyCost=balconyRaw?parseOrderUnitCost(balconyRaw):null,paidCost=paidRaw?parseOrderUnitCost(paidRaw):null;
  const message=$('orderCostWarning');
  if((balconyRaw&&balconyCost===null)||(paidRaw&&paidCost===null)){message.textContent='Informe valores válidos, usando zero ou valor positivo.';return;}
@@ -1225,6 +1227,8 @@ async function saveOrderItemCost(){
   message.textContent=error?.message||'Não foi possível salvar o custo. Verifique a sessão de administrador.';
  }finally{button.disabled=false;button.textContent='Salvar preços';}
 }
+$('orderCostBalconyInput').addEventListener('input',()=>{orderCostFieldsDirty.balcony=true;});
+$('orderCostPaidInput').addEventListener('input',()=>{orderCostFieldsDirty.paid=true;});
 $('orderCostCancel').addEventListener('click',()=>$('orderCostBackdrop').hidden=true);
 $('orderCostSave').addEventListener('click',saveOrderItemCost);
 $('orderCostBackdrop').addEventListener('click',event=>{if(event.target===$('orderCostBackdrop'))$('orderCostBackdrop').hidden=true;});
