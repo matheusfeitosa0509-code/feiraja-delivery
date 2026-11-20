@@ -234,7 +234,7 @@ Deno.test("mapa usa função autenticada, rate limit e atualiza enquanto visíve
   const endpoint = await Deno.readTextFile("supabase/functions/lalamove-tracking/index.ts");
   const migration = await Deno.readTextFile("supabase/migrations/20261115230000_lalamove_tracking_rate_limit.sql");
   const panel = await Deno.readTextFile("painel.html");
-  for (const required of ["30000", "visibilitychange", "pagehide", "tile.openstreetmap.org", "leaflet@1.9.4", "IntersectionObserver", "setLatLng", "requestAnimationFrame"]) {
+  for (const required of ["30000", "visibilitychange", "pagehide", "basemaps.cartocdn.com/light_all", "leaflet@1.9.4", "IntersectionObserver", "setLatLng", "requestAnimationFrame"]) {
     assertEquals(map.includes(required), true, "missing map lifecycle requirement: " + required);
   }
   for (const required of ['.eq("id", orderId)', '.eq("user_id", authData.user.id)', 'consume_lalamove_tracking_rate_limit', 'p_max_requests: 30', 'getProviderTracking']) {
