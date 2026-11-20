@@ -321,3 +321,18 @@ Deno.test("handler: token inválido não cria alerta", async () => {
   assertEquals(response.status, 401);
   assertEquals(mock.alerts.length, 0);
 });
+
+Deno.test("handler: divergência de valor gera exatamente um alerta administrativo", async () => {
+  const mock = makeDb({
+    id: "ORDER-123", status: "Pagamento Pendente", total: 30,
+    payment_id: "pay_123", payment_provider: "asaas",
+    created_at: "2026-11-13T11:55:00Z", is_test_order: false,
+  });
+  const result = await invoke(mock, { ...validPayment, value: 31 });
+  assertEquals(result.response.status, 200);
+  assertEquals(result.body.reason, "divergencia_permanente");
+  assertEquals(mock.alerts.length, 1);
+  assertEquals(mock.alerts[0].tipo, "asaas_pagamento_erro");
+  assertEquals(mock.alerts[0].order_id, "ORDER-123");
+  assertEquals(mock.getOrder()?.status, "Pagamento Pendente");
+});
