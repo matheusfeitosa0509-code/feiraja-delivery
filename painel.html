@@ -1164,7 +1164,8 @@ function openOrderCostEditor(orderId,itemIndex){
  if(!order||!snapshot){notice('Não foi possível carregar o custo deste item. Atualize os pedidos e tente novamente.',true);return;}
  const modal=$('orderCostBackdrop');if(!modal)return;
  $('orderCostOrderId').value=String(orderId);$('orderCostItemIndex').value=String(itemIndex);
- $('orderCostBalconyInput').value=snapshot.preco_balcao==null?'':Number(snapshot.preco_balcao).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+ const snapshotBalcony=snapshot.preco_balcao??(snapshot.preco_pago==null?snapshot.unit_cost:null);
+ $('orderCostBalconyInput').value=snapshotBalcony==null?'':Number(snapshotBalcony).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
  $('orderCostPaidInput').value=snapshot.preco_pago==null?'':Number(snapshot.preco_pago).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
  orderCostFieldsDirty={balcony:false,paid:false};
  $('orderCostUpdateProduct').checked=Boolean(snapshot.product_id);$('orderCostUpdateProduct').disabled=!snapshot.product_id;$('orderCostWarning').textContent='';
