@@ -16,13 +16,14 @@ UPDATE public.products p
 SET resale_enabled = false,
     resale_price = NULL,
     resale_min_qty = 10,
-    resale_unit = CASE WHEN r.sale_unit = 'kg' THEN 'kg' ELSE 'un' END
-FROM public.product_sales_rules r
-WHERE r.product_id = p.id
-  AND NOT EXISTS (
-    SELECT 1 FROM feira_cost_private.product_costs pc
-    WHERE pc.product_id = p.id AND pc.preco_balcao IS NOT NULL
-  );
+    resale_unit = COALESCE((
+      SELECT CASE WHEN r.sale_unit = 'kg' THEN 'kg' ELSE 'un' END
+      FROM public.product_sales_rules r WHERE r.product_id = p.id
+    ), 'un')
+WHERE NOT EXISTS (
+  SELECT 1 FROM feira_cost_private.product_costs pc
+  WHERE pc.product_id = p.id AND pc.preco_balcao IS NOT NULL
+);
 
 CREATE OR REPLACE FUNCTION feira_cost_private.sync_product_resale_from_balcony()
 RETURNS trigger
