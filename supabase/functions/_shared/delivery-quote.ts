@@ -14,7 +14,7 @@ export type QuoteResult = { vehicle: "MOTO" | "CAR"; weightKg: number; fee: numb
 
 export function hasMultipleDeliveryAddresses(input: unknown): boolean {
   const value = input && typeof input === "object" ? input as Record<string, unknown> : {};
-  const pattern = /(?:\\b(?:rua|avenida|travessa|alameda|rodovia|estrada)\\b|\\b(?:r|av|tv)\\.)[\\s\\S]{0,80}\\b\\d{1,5}\\b/i;
+  const pattern = /(?:\b(?:rua|avenida|travessa|alameda|rodovia|estrada)\b|\b(?:r|av|tv)\.)[\s\S]{0,80}\b\d{1,5}\b/i;
   return pattern.test(String(value.complement || "")) || pattern.test(String(value.reference || ""));
 }
 
