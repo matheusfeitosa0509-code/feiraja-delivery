@@ -862,7 +862,7 @@ function renderUnifiedProductList(){
   const profit=effectiveCost==null?null:Number(p.price)-Number(effectiveCost);
   const counterProfit=counterCost==null?null:Number(p.price)-Number(counterCost);
   const marginClass=margin!==null&&margin<0?'below-cost':margin!==null&&margin<costMarginThreshold?'low-margin':'';
-  const resaleBlocked=counterCost!=null&&Number(counterCost)>=Number(p.price);
+  const resaleBlocked=cost?.preco_balcao!=null&&Number(cost.preco_balcao)>=Number(p.price);
   const badges=(p.available?[]:['<span class="unavailable">Indisponível</span>']).concat(!hasCost?['<span class="no-cost">Custo não cadastrado</span>']:[],margin!==null&&margin<0?['<span class="below-cost">Abaixo do custo</span>']:margin!==null&&margin<costMarginThreshold?['<span class="low-margin">Margem baixa</span>']:[],resaleBlocked?['<span class="below-cost">Revenda indisponível: balcão ≥ venda</span>']:[]);
   const costLine=effectiveCost!=null?'<span class="unified-product-cost '+marginClass+'">Lucro real '+money(profit)+(margin===null?'':' · Margem '+margin.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%')+(counterProfit==null?'':' · <small>Sobre balcão '+money(counterProfit)+'</small>')+'</span>':'';
   const image=productListImage(p.image);
@@ -905,7 +905,7 @@ function fillProductSheet(product){
  const counterCost=cost?.preco_balcao??(cost?.preco_pago==null?cost?.unit_cost:null);
  const counterProfit=counterCost==null?null:Number(product.price)-Number(counterCost);
  const updated=cost?.updated_at?new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',dateStyle:'short',timeStyle:'short'}).format(new Date(cost.updated_at)):'Ainda não atualizado';
- const resaleWarning=counterCost!=null&&Number(counterCost)>=Number(product.price)?'<br><strong class="below-cost">Revenda indisponível: o preço de balcão não é menor que o preço de venda.</strong>':'';
+ const resaleWarning=cost?.preco_balcao!=null&&Number(cost.preco_balcao)>=Number(product.price)?'<br><strong class="below-cost">Revenda indisponível: o preço de balcão não é menor que o preço de venda.</strong>':'';
  $('sheetProfit').innerHTML=(effectiveCost==null?'Sem preço de custo cadastrado.':('Lucro real: <strong>'+money(profit)+'</strong> por unidade comercial'+(counterProfit==null?'':'<br><small>Lucro sobre balcão: '+money(counterProfit)+'</small>')+'<br><small>Última atualização: '+esc(updated)+'</small>'))+resaleWarning;
  setSheetMessage('Altere os campos necessários e salve.');
  $('productSheetBackdrop').hidden=false;
