@@ -708,6 +708,7 @@ Deno.serve(async (req: Request) => {
     if (deliveryType === "delivery") {
       const { error: deliveryMetadataError } = await db.from("orders").update({
         delivery_address: normalizedDeliveryAddress,
+        delivery_coordinates: normalizedDeliveryCoordinates,
         delivery_vehicle: deliveryQuote?.vehicle,
         delivery_weight_kg: deliveryQuote?.weightKg,
         scheduled_for: scheduledFor,
