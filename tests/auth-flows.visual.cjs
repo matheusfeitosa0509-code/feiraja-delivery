@@ -17,6 +17,7 @@ function appHtml(initial={},realTurnstile=false){
 }
 async function pageFor(browser,width,html,refreshOutcomes=[]){
  const page=await browser.newPage({viewport:{width,height:900},deviceScaleFactor:1}),errors=[];
+ await page.addInitScript(()=>{try{localStorage.setItem('feira_cookie_consent_v1','accepted');}catch(_){}});
  page.on('pageerror',e=>errors.push('pageerror: '+e.message+' STACK '+e.stack));page.on('console',m=>{if(m.type()==='error')errors.push('console.error: '+m.text()+' @ '+JSON.stringify(m.location()));});page.on('requestfailed',r=>errors.push('requestfailed: '+r.url()+' '+(r.failure()?.errorText||'')));
  page.__runtimeErrors=errors;page.__refreshOutcomes=refreshOutcomes;
  await page.route('**/*',route=>route.fulfill({status:200,body:''}));
