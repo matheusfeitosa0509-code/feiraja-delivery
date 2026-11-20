@@ -55,7 +55,7 @@ async function customer(browser,width,height) {
   await page.waitForFunction(()=>window.__state?.map?.polylines?.length===2);
   const searching=await page.evaluate(()=>({markers:window.__state.map.markers.length,zoom:window.__mapOptions.zoomControl,tile:window.__tileUrl,fit:window.__state.map.fitOptions,bounds:window.__state.map.bounds,html:document.querySelector('#map').innerText,height:getComputedStyle(document.querySelector('.feira-delivery-map')).height,attribution:document.querySelector('.feira-delivery-map')?.getAttribute('aria-label')}));
   assert.equal(searching.markers,2,'without driver, show only store and customer');
-  assert.match(mapSource,/\.feira-delivery-map\\{height:45vh/,'customer map uses about 45 percent of viewport height');
+  assert.match(mapSource,/\.feira-delivery-map\{height:45vh/,'customer map uses about 45 percent of viewport height');
   assert.equal(searching.zoom,false,'customer map hides zoom controls');
   assert.match(searching.tile,/basemaps\.cartocdn\.com\/light_all/,'light CARTO tiles replace standard OSM');
   assert.equal(searching.bounds.length,2,'fit bounds only store and customer when driver is absent');
