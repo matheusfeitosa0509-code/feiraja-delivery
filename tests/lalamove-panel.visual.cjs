@@ -4,7 +4,7 @@ const { chromium } = require("playwright");
 
 (async () => {
   const source = fs.readFileSync(path.join(process.cwd(), "painel.html"), "utf8");
-  const displayStatusLine = source.match(/function displayOrderStatusLabel[^\\n]+/);
+  const displayStatusLine = source.match(/function displayOrderStatusLabel[^\r\n]+/);
   if (!displayStatusLine) throw new Error("Rótulo de status de entrega não encontrado");
   const displayOrderStatusLabel = new Function(displayStatusLine[0] + "; return displayOrderStatusLabel;")();
   if (displayOrderStatusLabel({ delivery_type: "delivery" }, "Pronto para Retirada") !== "Pronto para envio") throw new Error("Entrega deve exibir Pronto para envio");
@@ -101,7 +101,7 @@ const { chromium } = require("playwright");
         if (!renderOrder.includes("query=-3.123456%2C-60.987654")) throw new Error("Abrir no mapa deve usar as coordenadas confirmadas do pino");
         if (renderOrder.includes("Belford Roxo")) throw new Error("Referência que contém outro endereço não deve ser exibida");
         if (!renderOrder.includes("Bairro: Lago Azul") || !renderOrder.includes("Apto 12")) throw new Error("Endereço deve aparecer em linhas separadas com complemento");
-        const renderDelivery = (o,s) => new Function("order","currentStatus","lalamoveEnvironment","esc","money",renderSource+"\\nreturn renderLalamoveDelivery(order,currentStatus);")(o,s,lalamoveEnvironment,esc,money);
+        const renderDelivery = (o,s) => new Function("order","currentStatus","lalamoveEnvironment","esc","money",renderSource+"\nreturn renderLalamoveDelivery(order,currentStatus);")(o,s,lalamoveEnvironment,esc,money);
         const adminCancelled = renderDelivery({ ...order, lalamove_status: "cancelled", cancelled_by: "admin" }, "Cancelada");
         const noDriver = renderDelivery({ ...order, lalamove_status: "expired", cancelled_by: "lalamove: no_driver" }, "Preparando");
         const driverCancelled = renderDelivery({ ...order, lalamove_status: "cancelled", cancelled_by: "lalamove: driver_cancelled" }, "Preparando");
