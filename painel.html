@@ -1381,7 +1381,7 @@ function periodBounds(period){
  if(period==='week'||period==='month'){end.setUTCDate(period==='week'?start.getUTCDate()+7:1);if(period==='month')end.setUTCMonth(start.getUTCMonth()+1);}
  return {start:start.getTime(),end:end.getTime()};
 }
-function ordersForSelectedPeriod(rows){const b=periodBounds(selectedPeriod);return rows.filter(o=>{const t=new Date(o.created_at||0).getTime();return t>=b.start&&t<b.end;});}
+function ordersForSelectedPeriod(rows){const b=periodBounds(selectedPeriod);return rows.filter(o=>{if(!o.created_at)return true;const t=new Date(o.created_at).getTime();return t>=b.start&&t<b.end;});}
 function orderGroupKey(order){
  const st=normalizeOrderStatus(order.status);
  if(['Cancelada','Pagamento cancelado','Pagamento recusado','Pagamento Expirado','Reembolsado','Contestado'].includes(st))return 'cancelled';
