@@ -103,7 +103,8 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
         assert.equal(data[0].text.weight,'Peso aproximado',width+'px '+label+': kg mostra peso');
         assert.equal(data[1].text.weight,'',width+'px '+label+': unidade não mostra peso');
         assert.equal(data[0].text.wholesale,'',width+'px '+label+': sem atacado reserva espaço vazio');
-        assert.match(data[1].text.wholesale,/Revenda a partir de 10 un: R\$ 10,00/,width+'px '+label+': revenda com unidade');
+        assert.match(data[1].text.wholesale,/Revenda \\(10\\+ un\\)R\\$ 10,00/,width+'px '+label+': revenda com unidade em duas linhas');
+        assert.match(data[2].text.wholesale,/Revenda \\(10\\+ kg\\)R\\$ 7,50/,width+'px '+label+': revenda por kg em duas linhas');
         assert.equal(data[0].text.old,'',width+'px '+label+': sem promoção reserva espaço vazio');
         assert.notEqual(data[1].text.old,'',width+'px '+label+': promoção exibe preço riscado');
         assert.ok(data[1].text.value.includes('Pedir por valor R$'),width+'px '+label+': botão de valor');
