@@ -1228,8 +1228,8 @@ function renderLalamoveDelivery(order,currentStatus){
  const vehicle=order.delivery_vehicle==='MOTO'?'Moto':order.delivery_vehicle==='CAR'?'Carro':'Não informado';
  const weight=Number(order.delivery_weight_kg);
  const weightText=Number.isFinite(weight)&&weight>0?weight.toLocaleString('pt-BR',{maximumFractionDigits:3})+' kg':'Não informado';
- const tracking='';
- const driverParts=[driver.name,driver.phone,driver.plateNumber?'Placa '+driver.plateNumber:''].filter(Boolean);
+ const trackingUrl=String(order.lalamove_tracking_url||'');const trackingId=String(driver.lalamove_order_id||driver.order_id||driver.orderId||(()=>{try{const u=new URL(trackingUrl);return u.searchParams.get('id')||u.searchParams.get('orderId')||u.pathname.split('/').filter(Boolean).pop()||'';}catch{return '';}})());const tracking=trackingUrl?'<p class="lalamove-admin-open"><small>'+ (trackingId?'ID LALAMOVE · '+esc(trackingId):'ACOMPANHAMENTO LALAMOVE')+'</small><br><a href="'+esc(trackingUrl)+'" target="_blank" rel="noopener noreferrer">Abrir na Lalamove</a></p>':'';
+ const driverParts=[driver.name,driver.phone?'Telefone '+driver.phone:'',driver.plateNumber?'Placa '+driver.plateNumber:'',driver.lalamove_order_id?'ID Lalamove '+driver.lalamove_order_id:''].filter(Boolean);
  const driverHtml=driverParts.length?'<p class="lalamove-driver"><small>MOTORISTA</small><strong>'+driverParts.map(esc).join(' · ')+'</strong></p>':'';
  const callButton=(canQuote||canRetryLalamove)?'<button type="button" data-lalamove-quote="'+esc(order.id)+'">'+(canRetryLalamove?'Chamar entregador de novo':'Chamar entregador')+'</button>':'';
  const retryWarning=canRetryLalamove?'<div class="lalamove-retry-warning" role="alert" style="background:#fff0f0;border:1px solid #dc2626;color:#991b1b;border-radius:10px;padding:10px 12px;margin:10px 0;font-weight:750">⚠️ Nenhum motorista aceitou o pedido. Chame outro entregador.</div>':'';
@@ -1383,7 +1383,7 @@ function render(){
 
  document.querySelectorAll('[data-lalamove-cancel]').forEach(b=>b.addEventListener('click',()=>cancelLalamoveDelivery(b.dataset.lalamoveCancel,b)));
  document.querySelectorAll('[data-lalamove-refresh]').forEach(b=>b.addEventListener('click',()=>refreshLalamoveStatus(b.dataset.lalamoveRefresh,b)));
- if(window.FeiraLalamoveMap)window.FeiraLalamoveMap.mountAll('[data-lalamove-map]',async orderId=>{const {data,error}=await db.functions.invoke('lalamove-tracking',{body:{order_id:orderId}});if(error)throw error;return data;},{admin:true});
+ if(window.FeiraLalamoveMap)window.FeiraLalamoveMap.mountAll('[data-lalamove-map]',async orderId=>{const {data,error}=await db.functions.invoke('lalamove-tracking',{body:{order_id:orderId}});if(error)throw error;return data;},{admin:true,pollIntervalMs:25000});
  if(ordersRoot){
   ordersRoot.querySelectorAll('[data-order-content]').forEach(content=>{
    const expanded=expandedOrderIds.has(content.dataset.orderContent);content.hidden=!expanded;

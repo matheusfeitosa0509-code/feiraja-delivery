@@ -45,10 +45,11 @@ async function runCase(label,existing,expectedSelection,expectedAttempts,isAdmin
  console.log('PASS:',label);
 }
 
-const base='id,created_at,items,total,status,payment_method,delivery_type,pickup_code,delivery_address,delivery_vehicle,delivery_fee,lalamove_status,lalamove_tracking_url,is_test_order';
+const base='id,created_at,items,total,status,payment_method,delivery_type,pickup_code,delivery_address,delivery_vehicle,delivery_fee,lalamove_status,is_test_order';
 const both=base+',separation_started_at,separation_started_legacy';
 const timestamp=base+',separation_started_at';
 const legacy=base+',separation_started_legacy';
+assert.equal(base.includes('lalamove_tracking_url'),false,'customer order query must not fetch the external provider tracking URL');
 
 await runCase('1. as duas colunas existem',['separation_started_at','separation_started_legacy'],both,[both]);
 await runCase('2. somente separation_started_at existe',['separation_started_at'],timestamp,[both,timestamp]);

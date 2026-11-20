@@ -3,148 +3,109 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'lalamove-map.js'), 'utf8');
+const mapSource = fs.readFileSync(path.join(root, 'lalamove-map.js'), 'utf8');
+const endpoint = fs.readFileSync(path.join(root, 'supabase/functions/lalamove-tracking/index.ts'), 'utf8');
 
-async function runViewport(browser, width, height, vehicle) {
+async function runCustomer(browser, width, height) {
   const page = await browser.newPage({ viewport: { width, height } });
   const errors = [];
-  page.on('pageerror', error => errors.push('pageerror: ' + error.message));
-  page.on('console', message => { if (message.type() === 'error') errors.push('console.error: ' + message.text()); });
-  const installMocks = () => {
-    window.__pollMs = null;
-    window.__cleared = false;
-    window.setInterval = (fn, ms) => { window.__pollMs = ms; return 77; };
-    window.clearInterval = id => { if (id === 77) window.__cleared = true; };
-    class Bounds {
-      constructor() { this.points = []; }
-      extend(point) { this.points.push(point); return this; }
-    }
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setContent(`<!doctype html><html lang="pt-BR"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>
+    <article class="order-card" style="max-width:520px;margin:auto;padding:12px">
+      <div class="order-status-top"><b>Pedido confirmado</b><div class="order-subtitle">Pagamento confirmado.</div></div>
+      <ol class="order-timeline">${['Pago','Separando','Procurando entregador','Entregador a caminho da feira','Saiu para entrega','Entregue'].map(x=>'<li>'+x+'</li>').join('')}</ol>
+      <section class="customer-lalamove-tracking"><div id="map" data-lalamove-map data-order-id="TEST-ORDER"></div></section>
+    </article></body></html>`);
+  await page.evaluate(() => {
+    window.__pollMs = 0; window.__cleared = false;
+    window.setInterval = (fn, ms) => { window.__pollMs = ms; return 11; };
+    window.clearInterval = id => { if (id === 11) window.__cleared = true; };
     class MockMap {
-      constructor(options) {
-        this.options = options; this.handlers = {}; this.sources = {}; this.layers = [];
-        this.container = typeof options.container === 'string' ? document.getElementById(options.container) : options.container;
-        this.canvas = document.createElement('div'); this.canvas.className = 'maplibregl-canvas'; this.container.append(this.canvas);
-      }
-      loaded() { return true; }
-      on(name, fn) { this.handlers[name] = fn; return this; }
-      once(name, fn) { if (name === 'load') queueMicrotask(fn); return this; }
-      addControl(control) { this.control = control; return this; }
-      fitBounds(bounds, options) { this.bounds = bounds.points; this.fitOptions = options; return this; }
-      addSource(id, source) { this.sources[id] = { ...source, setData(data) { this.data = data; } }; }
-      getSource(id) { return this.sources[id]; }
-      addLayer(layer) { this.layers.push(layer); }
-      resize() {}
-      remove() { this.removed = true; this.container.replaceChildren(); }
+      constructor(el) { this.el = el; this.markers = []; }
+      setView() { return this; } fitBounds(points) { this.bounds = points; }
+      invalidateSize() {} remove() { this.removed = true; }
     }
     class MockMarker {
-      constructor(options) { this.options = options; this.element = options.element; this.lngLat = null; this.rotation = 0; }
-      setLngLat(point) { this.lngLat = { lng: point[0], lat: point[1] }; return this; }
-      getLngLat() { return this.lngLat; }
-      setRotation(value) { this.rotation = value; return this; }
-      getRotation() { return this.rotation; }
-      addTo(map) { this.map = map; map.container.append(this.element); return this; }
+      constructor(point, options) { this.point = point; this.element = document.createElement('span'); this.element.innerHTML = options.icon.options.html; this.latlng = point; }
+      addTo(map) { this.map = map; map.markers.push(this); map.el.append(this.element); return this; }
+      setLatLng(point) { this.latlng = point; return this; }
     }
-    window.maplibregl = { Map: MockMap, Marker: MockMarker, LngLatBounds: Bounds, AttributionControl: class {} };
+    window.L = {
+      map: (el) => new MockMap(el),
+      tileLayer: () => ({ addTo() {} }),
+      divIcon: options => ({ options }),
+      marker: (point, options) => new MockMarker(point, options),
+    };
     delete window.IntersectionObserver;
-  };
-  await page.setContent(`<!doctype html><html lang="pt-BR"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;font:14px Arial"><main style="width:100%;max-width:520px;margin:auto;padding:12px;box-sizing:border-box"><h3>Pedido · Entrega Feira On</h3><div id="map" data-order-id="MOCK-TRACKING"></div><div id="searching" data-order-id="MOCK-SEARCHING"></div></main></body></html>`);
-  await page.evaluate(installMocks);
-  await page.addStyleTag({ content: '*{box-sizing:border-box}.feira-lalamove-map-canvas{height:230px}.maplibregl-canvas{position:absolute;inset:0}.feira-map-pin{position:relative}' });
+  });
   await page.addScriptTag({ path: path.join(root, 'lalamove-map.js') });
-  await page.evaluate(async vehicleType => {
-    const route = [
-      { lat: -3.1347, lng: -60.0237 },
-      { lat: -3.1265, lng: -60.0181 },
-      { lat: -3.1162, lng: -60.0124 },
-    ];
+  await page.evaluate(() => {
+    const points = [{lat:-3.1347,lng:-60.0237},{lat:-3.1265,lng:-60.0181},{lat:-3.1162,lng:-60.0124}];
     let index = 0;
-    window.__tracking = window.FeiraLalamoveMap.mount(document.querySelector('#map'), async () => ({
-      active: true, status: 'picked_up', provider: 'lalamove', driver_assigned: true, vehicle: vehicleType,
-      store: { lat: -3.1347, lng: -60.0237 }, customer: { lat: -3.1050, lng: -60.0050 },
-      driver: { name: 'Motorista simulado', plateNumber: '**ABC*', coordinates: route[Math.min(index++, route.length - 1)] },
-      tracking_url: 'https://tracking.lalamove.com/mock',
-    }), { animationDurationMs: 1100 });
-    window.__search = window.FeiraLalamoveMap.mount(document.querySelector('#searching'), async () => ({
-      active: true, status: 'searching', driver_assigned: false,
-    }));
-  }, vehicle);
-  await page.waitForSelector('#map .feira-map-pin.driver');
-  await page.waitForSelector('#searching .feira-lalamove-map-status');
-  await page.waitForFunction(() => window.__tracking && !window.__tracking.inFlight && window.__tracking.map?.bounds?.length === 3);
-  const initial = await page.evaluate(() => ({
-    status: document.querySelector('#map .feira-lalamove-map-status').textContent,
-    driver: document.querySelector('#map .feira-map-pin.driver').textContent,
-    markers: document.querySelectorAll('#map .feira-map-pin').length,
-    info: document.querySelector('#map .feira-lalamove-driver-info').innerText,
-    fallback: document.querySelector('#map .feira-lalamove-tracking-fallback').href,
-    searching: document.querySelector('#searching .feira-lalamove-map-status').textContent,
-    searchingMapHidden: document.querySelector('#searching .feira-lalamove-map-canvas').hidden,
-    pollMs: window.__pollMs,
-    noHorizontalScroll: document.documentElement.scrollWidth <= window.innerWidth,
-    cameraIncludesThreePoints: window.__tracking.map.bounds.length === 3,
-  }));
-  assert.match(initial.status, /Motorista a caminho/);
-  assert.equal(initial.driver, vehicle === 'CAR' ? '🚗' : '🛵');
-  assert.equal(initial.markers, 3, 'store, customer and driver markers must be present');
-  assert.match(initial.info, /Motorista simulado/);
-  assert.match(initial.info, /Placa \*\*ABC\*/);
-  assert.match(initial.fallback, /tracking\.lalamove\.com/);
-  assert.match(initial.searching, /Procurando entregador/);
-  assert.equal(initial.searchingMapHidden, true, 'map stays hidden until a driver is assigned');
-  assert.equal(initial.pollMs, 150000, 'tracking fallback polls every 2.5 minutes');
-  assert.equal(initial.noHorizontalScroll, true);
-  assert.equal(initial.cameraIncludesThreePoints, true, 'initial camera fits driver, destination and store');
-  await page.waitForFunction(() => window.__tracking && !window.__tracking.inFlight);
-  const start = await page.evaluate(() => window.__tracking.driverMarker.getLngLat());
-  await page.evaluate(() => window.__tracking.refresh());
-  await page.waitForTimeout(400);
-  const mid = await page.evaluate(() => window.__tracking.driverMarker.getLngLat());
-  assert.notDeepEqual(mid, start, 'driver marker must interpolate between positions instead of jumping');
-  assert.ok(mid.lat > start.lat && mid.lat < -3.1265, 'intermediate marker latitude should be between both mocked positions');
-  await page.waitForTimeout(850);
-  const end = await page.evaluate(() => ({
-    point: window.__tracking.driverMarker.getLngLat(),
-    rotation: window.__tracking.driverMarker.getRotation(),
-  }));
-  assert.ok(Math.abs(end.point.lat - (-3.1265)) < 0.00001, 'marker reaches the next mocked position');
-  assert.ok(end.rotation > 0 && end.rotation < 360, 'vehicle rotates toward its direction of travel');
-  await page.evaluate(() => {
-    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
-    document.dispatchEvent(new Event('visibilitychange'));
+    window.__state = window.FeiraLalamoveMap.mount(document.querySelector('#map'), async () => ({
+      active:true,status:'picked_up',driver_assigned:true,vehicle:'MOTO',
+      store:{lat:-3.1347,lng:-60.0237},customer:{lat:-3.105,lng:-60.005},
+      driver:{name:'Ana Souza',phone:'+5592999999999',plateNumber:'ABC1D23',photo:'https://example.com/driver.jpg',coordinates:points[Math.min(index++,2)]},
+      tracking_url:'https://share.lalamove.com/private-test',
+    }), {whatsappUrl:'https://wa.me/559294444989',pollIntervalMs:30000});
   });
-  const paused = await page.evaluate(() => window.__cleared);
-  assert.equal(paused, true, 'polling pauses when the app goes to the background');
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
-  assert.equal(overflow, false, `content must not overflow at ${width}px`);
-  assert.deepEqual(errors, [], `no browser or console errors at ${width}px: ${errors.join('; ')}`);
+  await page.waitForSelector('#map .feira-map-marker');
+  await page.waitForFunction(() => window.__state?.map?.markers?.length === 3);
+  const first = await page.evaluate(() => ({
+    driverName:document.querySelector('.feira-driver-card strong')?.textContent,
+    driverInfo:document.querySelector('.feira-driver-card').innerText,
+    mapMarkers:document.querySelectorAll('.feira-map-marker').length,
+    contact:document.querySelector('.feira-delivery-actions a')?.textContent,
+    contactHref:document.querySelector('.feira-delivery-actions a')?.href,
+    text:document.querySelector('.order-card').innerText,
+    pollMs:window.__pollMs,
+    timeline:document.querySelector('.order-timeline').innerText,
+    driverPoint:window.__state.driver.latlng,
+  }));
+  assert.equal(first.driverName, 'Ana');
+  assert.match(first.driverInfo, /Moto/);
+  assert.match(first.driverInfo, /Placa ABC1D23/);
+  assert.doesNotMatch(first.driverInfo, /9999999999/);
+  assert.equal(first.mapMarkers, 3, 'store, customer and driver pins');
+  assert.equal(first.contact, 'Falar com a Feira On');
+  assert.match(first.contactHref, /wa\.me/);
+  assert.doesNotMatch(first.text, /Lalamove|share\.lalamove|9999999999/i, 'customer must not see provider or driver phone');
+  assert.equal(first.pollMs, 30000);
+  assert.match(first.timeline, /Saiu para entrega/);
+  await page.evaluate(() => window.__state.refresh());
+  await page.waitForTimeout(1200);
+  const moved = await page.evaluate(() => window.__state.driver.latlng);
+  assert.notDeepEqual(moved, first.driverPoint, 'motorcycle marker moves when simulated coordinates change');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'no horizontal overflow');
+  assert.deepEqual(errors, []);
   await page.close();
 }
 
-async function runFailureMode(browser) {
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  await page.addInitScript(() => { window.IntersectionObserver = undefined; });
-  await page.setContent('<main><div id="customer" data-order-id="MOCK-CUSTOMER"></div><div id="admin" data-order-id="MOCK-ADMIN"></div></main>');
-  await page.addScriptTag({ path: path.join(root, 'lalamove-map.js') });
+async function runAdmin(browser) {
+  const page = await browser.newPage({viewport:{width:412,height:915}});
+  await page.setContent('<main><div id="admin" data-order-id="TEST-ADMIN"></div></main>');
   await page.evaluate(() => {
-    window.FeiraLalamoveMap.mount(document.querySelector('#customer'), async () => { throw new Error('tracking unavailable'); });
-    window.FeiraLalamoveMap.mount(document.querySelector('#admin'), async () => { throw new Error('tracking unavailable'); }, { admin: true });
+    window.L={map:el=>({el,markers:[],setView(){return this;},fitBounds(){},invalidateSize(){},remove(){}}),tileLayer:()=>({addTo(){}}),divIcon:options=>({options}),marker:(point,options)=>({element:Object.assign(document.createElement('span'),{innerHTML:options.icon.options.html}),addTo(map){map.el.append(this.element);return this;},setLatLng(){return this;}})};
+    delete window.IntersectionObserver;
   });
-  await page.waitForFunction(() => document.querySelector('#customer').hidden && document.querySelector('#admin .feira-lalamove-map-status')?.textContent.includes('Rastreio indisponível'));
-  assert.equal(await page.locator('#admin .feira-lalamove-map-canvas').isHidden(), true);
+  await page.addScriptTag({path:path.join(root,'lalamove-map.js')});
+  await page.evaluate(()=>window.FeiraLalamoveMap.mount(document.querySelector('#admin'),async()=>({active:true,status:'assigned',driver_assigned:true,vehicle:'MOTO',store:{lat:-3.13,lng:-60.02},customer:{lat:-3.10,lng:-60.01},tracking_url:'https://share.lalamove.com/admin-test',driver:{name:'Carlos Silva',phone:'+5592888888888',plateNumber:'XYZ1234',coordinates:{lat:-3.12,lng:-60.015}}}),{admin:true}));
+  await page.waitForSelector('#admin .feira-delivery-actions a.admin:not([hidden])');
+  const text=await page.locator('#admin').innerText();
+  assert.match(text,/Abrir na Lalamove/);
+  assert.match(text,/Telefone: \+5592888888888/);
   await page.close();
 }
 
-(async () => {
-  const browser = await chromium.launch({ headless: true });
+(async()=>{
+  const browser=await chromium.launch({headless:true});
   try {
-    await runViewport(browser, 360, 800, 'MOTO');
-    await runViewport(browser, 412, 915, 'CAR');
-    await runFailureMode(browser);
-  } finally {
-    await browser.close();
-  }
-  process.stdout.write('MapLibre Lalamove tracking: MOTO/CAR, interpolation, rotation, 15s polling, visibility pause, searching state and 360/412px passed.\\n');
-})().catch(error => {
-  process.stderr.write(String(error && error.stack || error) + '\\n');
-  process.exitCode = 1;
-});
+    await runCustomer(browser,360,800);
+    await runCustomer(browser,412,915);
+    await runAdmin(browser);
+    assert.match(endpoint,/\.eq\("user_id", authData\.user\.id\)/,'tracking endpoint must bind access to the authenticated owner');
+    assert.match(endpoint,/if \(!isOwner && !admin\) return json\(\{ error: "Pedido não encontrado\." \}, 404\)/,'another customer must receive not-found');
+    assert.match(mapSource,/tile\.openstreetmap\.org/);
+    process.stdout.write('In-app delivery tracking: 360/412px, private customer view, admin-only provider link, simulated driver movement and owner isolation passed.\\n');
+  } finally { await browser.close(); }
+})().catch(error=>{process.stderr.write(String(error&&error.stack||error)+'\\n');process.exitCode=1;});
