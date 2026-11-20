@@ -100,6 +100,53 @@ for (const viewport of viewports) {
 }
 
 
+
+for (const viewport of viewports) {
+  test(`consentimento de cookies e Clarity restrito à loja — ${viewport.width}px`, async ({ browser }) => {
+    const context = await browser.newContext({ viewport, storageState: { cookies: [], origins: [] } });
+    const page = await context.newPage();
+    await context.addInitScript(base => { if (location.origin === base && !sessionStorage.getItem('__cookieConsentTestClean')) { try { localStorage.removeItem('feira_cookie_consent_v1'); } catch (_) {} sessionStorage.setItem('__cookieConsentTestClean', '1'); } }, BASE);
+    const clarityRequests = [];
+    await page.route('**://www.clarity.ms/**', route => route.fulfill({status:200,contentType:'application/javascript',body:'window.__clarityTestLoaded = true;'}));
+    page.on('request', request => { if (new URL(request.url()).hostname === 'www.clarity.ms') clarityRequests.push(request.url()); });
+    try {
+      await page.route(`${BASE}/loja.html`, route => route.fulfill({status:200,contentType:'text/html',body:STORE_HTML}));
+      await page.goto(`${BASE}/loja.html`, {waitUntil:'domcontentloaded'});
+      await expect(page.locator('#cookieConsent')).toBeVisible();
+      expect(clarityRequests).toHaveLength(0);
+      await page.locator('#cookieAccept').click();
+      await expect(page.locator('#cookieConsent')).toBeHidden();
+      expect(await page.evaluate(() => localStorage.getItem('feira_cookie_consent_v1'))).toBe('accepted');
+      await expect.poll(() => clarityRequests.some(url => url.includes('/tag/zgjh3nd5ao'))).toBe(true);
+      await expect(page.locator('#modal')).toHaveAttribute('data-clarity-mask','true');
+      await expect(page.locator('#accountModal')).toHaveAttribute('data-clarity-mask','true');
+      await page.reload({waitUntil:'domcontentloaded'});
+      await expect(page.locator('#cookieConsent')).toBeHidden();
+      const beforePanel=clarityRequests.length;
+      await page.goto(`${BASE}/painel.html`, {waitUntil:'domcontentloaded'});
+      await expect.poll(() => page.evaluate(() => ![...document.scripts].some(script => script.src.includes('clarity.ms')))).toBe(true);
+      expect(clarityRequests).toHaveLength(beforePanel);
+    } finally { await context.close().catch(() => {}); }
+
+    const rejectContext=await browser.newContext({viewport,storageState:{cookies:[],origins:[]}});
+    const rejectPage=await rejectContext.newPage(), rejectedRequests=[];
+    await rejectContext.addInitScript(base => { if (location.origin === base && !sessionStorage.getItem('__cookieConsentTestClean')) { try { localStorage.removeItem('feira_cookie_consent_v1'); } catch (_) {} sessionStorage.setItem('__cookieConsentTestClean', '1'); } }, BASE);
+    await rejectPage.route('**://www.clarity.ms/**',route=>route.fulfill({status:200,body:''}));
+    rejectPage.on('request',request=>{if(new URL(request.url()).hostname==='www.clarity.ms')rejectedRequests.push(request.url());});
+    try {
+      await rejectPage.route(`${BASE}/loja.html`,route=>route.fulfill({status:200,contentType:'text/html',body:STORE_HTML}));
+      await rejectPage.goto(`${BASE}/loja.html`,{waitUntil:'domcontentloaded'});
+      await expect(rejectPage.locator('#cookieConsent')).toBeVisible();
+      await rejectPage.locator('#cookieReject').click();
+      await expect(rejectPage.locator('#cookieConsent')).toBeHidden();
+      expect(await rejectPage.evaluate(() => localStorage.getItem('feira_cookie_consent_v1'))).toBe('rejected');
+      await rejectPage.reload({waitUntil:'domcontentloaded'});
+      await expect(rejectPage.locator('#cookieConsent')).toBeHidden();
+      expect(rejectedRequests).toHaveLength(0);
+    } finally { await rejectContext.close().catch(() => {}); }
+  });
+}
+
 const paidOrderFixture = {
   id: 'a2a00000-0000-4000-8000-000000000001',
   created_at: '2026-11-19T12:00:00.000Z',
