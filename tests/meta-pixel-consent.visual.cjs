@@ -52,8 +52,10 @@ const fixture = `<!doctype html><html><body>
    assert.equal(consentGeometry.rejectHit,true,'Recusar recebe o toque');
    await page.screenshot({path:path.join(root,'artifacts','painel-cookie-consent-'+width+'.png'),fullPage:true}).catch(()=>{});
    assert.equal(await page.locator('script[src*="connect.facebook.net"]').count(),0,'Pixel não pode carregar antes do consentimento');
+   assert.equal(await page.locator('script[src*="clarity.ms"]').count(),0,'Clarity não pode carregar antes do consentimento');
    checks++;
    await page.locator('#cookieAccept').click();
+   await page.waitForSelector('script[src*="clarity.ms"]',{state:'attached'});
    assert.notEqual(await page.locator('#cartbar').evaluate(el=>getComputedStyle(el).visibility),'hidden','barra do carrinho volta após a escolha');
    await page.waitForSelector('script[src*="connect.facebook.net"]',{state:'attached'});
    await page.waitForFunction(()=>typeof window.fbq==='function'&&window.fbq.queue?.some(x=>x[0]==='track'&&x[1]==='PageView'));
@@ -93,9 +95,11 @@ const fixture = `<!doctype html><html><body>
    await rejectPage.goto('https://pixel-test.local/fixture.html');
    await rejectPage.locator('#cookieReject').click();
    assert.equal(await rejectPage.locator('script[src*="connect.facebook.net"]').count(),0);
+   assert.equal(await rejectPage.locator('script[src*="clarity.ms"]').count(),0);
    await rejectPage.reload();
    assert.equal(await rejectPage.locator('#cookieConsent').isVisible(),false,'recusa deve ficar salva e não perguntar de novo');
    assert.equal(await rejectPage.locator('script[src*="connect.facebook.net"]').count(),0);
+   assert.equal(await rejectPage.locator('script[src*="clarity.ms"]').count(),0);
    checks++;
    await rejected.close();
 
