@@ -4,6 +4,7 @@ on:
     paths:
       - "painel.html"
       - "tests/painel-profit.visual.cjs"
+      - "tests/automatic-margin-price-review.test.mjs"
       - "supabase/migrations/**"
       - "supabase/rollbacks/**"
       - ".github/workflows/panel-profit-tests.yml"
@@ -26,3 +27,4 @@ jobs:
       - run: npm install --prefix /tmp/playwright playwright@1.58.2
       - run: /tmp/playwright/node_modules/.bin/playwright install chromium
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-profit.visual.cjs
+      - run: node --test tests/automatic-margin-price-review.test.mjs
