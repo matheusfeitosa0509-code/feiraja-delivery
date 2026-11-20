@@ -259,6 +259,8 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 .cost-edit-pencil{display:inline-flex;align-items:center;justify-content:center;min-width:26px;min-height:25px;margin-left:3px;padding:1px 5px;border-radius:7px;background:#e7f0e5;color:#176b3a;font-size:14px;line-height:1;vertical-align:middle}.order-cost-backdrop{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:14px;background:#10231799}.order-cost-backdrop[hidden]{display:none}.order-cost-modal{width:min(440px,100%);max-height:90dvh;overflow:auto;padding:20px;background:#fff;border-radius:20px;box-shadow:0 18px 60px #0004}.order-cost-modal h2{margin:0 0 8px}.order-cost-modal .order-cost-checkbox{display:flex;align-items:flex-start;gap:9px;margin:14px 0;font-weight:650}.order-cost-modal .order-cost-checkbox input{width:20px;min-width:20px;height:20px;min-height:20px;margin:0;accent-color:#176b3a}.order-cost-warning{min-height:1.4em;color:#a65312;font-weight:750;font-size:13px}.order-cost-modal .actions{display:grid;grid-template-columns:1fr 1fr}.order-cost-modal .actions button{width:100%}.shopping-cost-modal{width:min(620px,100%)}.shopping-cost-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}.shopping-cost-row small{display:block;color:var(--muted);font-size:11px}.shopping-cost-row button{min-width:74px;padding:8px 10px;min-height:38px;font-size:12px}
 
 .admin-alerts-trigger{min-width:46px;padding:8px 12px;font-size:19px}.admin-alerts-count{display:inline-grid;place-items:center;min-width:19px;height:19px;margin-left:5px;padding:0 5px;border-radius:999px;background:#fff;color:#176b3a;font-size:11px;font-weight:900}.admin-alerts-panel{margin:12px 0 16px}.admin-alerts-list{display:grid;gap:8px}.admin-alert-item{display:block;width:100%;padding:12px;text-align:left;background:#f7faf5;color:var(--ink);border:1px solid var(--line);border-radius:12px}.admin-alert-item.unread{border-left:4px solid #176b3a}.admin-alert-item small{display:block;color:var(--muted);margin-top:5px}.admin-alerts-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.admin-alerts-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:12px 0;padding:13px 15px;border:1px solid #b9d9b9;border-radius:14px;background:#edf7e9}.admin-alerts-banner p{margin:0;font-weight:750}.admin-alerts-banner[hidden]{display:none!important}
+
+.automatic-margin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.automatic-margin-toggle{display:flex;align-items:center;gap:10px;margin:16px 0}.automatic-margin-toggle input{width:22px;min-height:22px}.automatic-price-row{padding:12px;border:1px solid var(--line);border-radius:14px;background:#fbfdf9}.automatic-price-row .price-review-values{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0}.automatic-price-row small{display:block;color:var(--muted)}.automatic-price-row button{margin-top:8px;width:100%}@media(max-width:480px){.automatic-margin-grid{grid-template-columns:1fr}.automatic-price-row .price-review-values{grid-template-columns:1fr}}
 </style>
 </head>
 <body><main class="wrap">
@@ -286,6 +288,30 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 </section>
 <section id="settingsTab" class="hidden" role="tabpanel" aria-label="Configurações">
 <section class="card" id="upcomingHolidaysCard" aria-labelledby="upcomingHolidaysTitle"><h2 id="upcomingHolidaysTitle">Próximos feriados</h2><p class="muted">Horário especial: 6h às 11h. Fechado em 25/12 e 01/01.</p><div id="upcomingHolidaysList" class="product-list"><p class="muted">Carregando calendário…</p></div></section>
+
+<section class="card" id="automaticMarginSettings" aria-labelledby="automaticMarginTitle">
+ <h2 id="automaticMarginTitle">Margem automática</h2>
+ <p class="muted">A margem é somada ao preço de balcão. A venda sugerida sempre termina em ,99. Alterar esta configuração não muda preços existentes.</p>
+ <div class="automatic-margin-grid">
+  <label>Balcão até R$ 25,00<input id="marginUpTo25" type="number" min="0" step="0.01" value="2"></label>
+  <label>R$ 25,01 a R$ 50,00<input id="margin25To50" type="number" min="0" step="0.01" value="4"></label>
+  <label>R$ 50,01 a R$ 100,00<input id="margin50To100" type="number" min="0" step="0.01" value="8"></label>
+  <label>Acima de R$ 100,00<input id="marginAbove100" type="number" min="0" step="0.01" value="12"></label>
+ </div>
+ <label class="automatic-margin-toggle"><input id="marginAutoApply" type="checkbox"> Aplicar automaticamente sem perguntar</label>
+ <button type="button" id="saveAutomaticMargin">Salvar margem automática</button>
+ <p id="automaticMarginMessage" class="muted" role="status" aria-live="polite"></p>
+</section>
+<section class="card" id="automaticPriceReview" aria-labelledby="automaticPriceReviewTitle">
+ <h2 id="automaticPriceReviewTitle">Revisar preços</h2>
+ <p class="muted">Compare o preço de balcão, o preço atual e a sugestão. Nenhum preço muda até você aplicar.</p>
+ <button type="button" class="secondary" id="refreshAutomaticPriceReview">Atualizar lista</button>
+ <p id="automaticPriceReviewMessage" class="muted" role="status" aria-live="polite">Carregando…</p>
+ <div id="automaticPriceReviewRows" class="product-list"></div>
+ <div id="automaticPriceReviewMissing"></div>
+ <button type="button" id="applyAllAutomaticPrices">Aplicar a todos</button>
+</section>
+
 <section class="card lalamove-settings" id="lalamoveSettingsCard" aria-label="Configurações de entrega">
  <div class="lalamove-admin-head"><h2 style="margin:0">Configurações de entrega</h2><span id="lalamoveSettingsBadge" class="lalamove-env-badge sandbox">SANDBOX</span></div>
  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:14px 0;padding:14px;border:2px solid #2f6a14;border-radius:14px;background:#f1f8e6">
@@ -948,7 +974,7 @@ async function saveProductSheet(){
     if(updateError)throw updateError;
     const {error:ruleError}=await db.rpc('admin_update_product_sales_rule',{p_product_id:id,p_sale_unit:saleUnit,p_min_quantity:min,p_quantity_step:step,p_allow_value_sale:valueEnabled,p_value_min_kg:saleUnit==='kg'?valueMin:1});
     if(ruleError)throw ruleError;
-    if(balconyValue!==null||paidValue!==null){const {error:costError}=await db.rpc('admin_set_product_prices',{p_product_id:id,p_preco_balcao:balconyValue,p_preco_pago:paidValue});if(costError)throw costError;}
+    if(balconyValue!==null||paidValue!==null){const {error:costError}=await db.rpc('admin_set_product_prices',{p_product_id:id,p_preco_balcao:balconyValue,p_preco_pago:paidValue});if(costError)throw costError;if(balconyValue!==null)await afterBalconyPriceSaved(id);}
     clearPendingProductPhoto('sheet');
     await Promise.all([loadAdminProducts(),loadCostReport()]);
     closeProductSheet();renderUnifiedProductList();
@@ -971,7 +997,7 @@ async function saveProductSheet(){
    const oldCost=getProductCost(id)||{};
    const changedBalcony=balconyValue!==null&&(oldCost.preco_balcao==null||Math.round(balconyValue*100)!==Math.round(Number(oldCost.preco_balcao)*100));
    const changedPaid=paidValue!==null&&(oldCost.preco_pago==null||Math.round(paidValue*100)!==Math.round(Number(oldCost.preco_pago)*100));
-   if(changedBalcony||changedPaid){const {error}=await db.rpc('admin_set_product_prices',{p_product_id:id,p_preco_balcao:changedBalcony?balconyValue:null,p_preco_pago:changedPaid?paidValue:null});if(error)throw error;}
+   if(changedBalcony||changedPaid){const {error}=await db.rpc('admin_set_product_prices',{p_product_id:id,p_preco_balcao:changedBalcony?balconyValue:null,p_preco_pago:changedPaid?paidValue:null});if(error)throw error;if(changedBalcony)await afterBalconyPriceSaved(id);}
    if(product.image&&image!==product.image)await deleteOldProductPhotoIfUnused(product.image,id);
    await Promise.all([loadAdminProducts(),loadCostReport()]);
    closeProductSheet();renderUnifiedProductList();$('unifiedProductList').scrollTop=0;
@@ -1219,6 +1245,7 @@ async function saveOrderItemCost(){
    p_order_id:orderId,p_item_index:itemIndex,p_update_product:$('orderCostUpdateProduct').checked
   });
   if(error)throw error;
+  if($('orderCostUpdateProduct').checked&&balconyCost!==null)await afterBalconyPriceSaved(snapshotProductId(orderId,itemIndex));
   $('orderCostBackdrop').hidden=true;
   await loadOrderProfit();
   if($('orderCostUpdateProduct').checked&&typeof loadCostReport==='function')await loadCostReport();
@@ -2124,6 +2151,88 @@ function parseCostInput(value){
  const amount=Number(normalized);
  return Number.isFinite(amount)&&amount>=0?amount:null;
 }
+
+const automaticMarginDefaults={up_to_25:2,from_25_to_50:4,from_50_to_100:8,above_100:12};
+function automaticMarginFormValues(){
+ return {up_to_25:Number($('marginUpTo25').value),from_25_to_50:Number($('margin25To50').value),from_50_to_100:Number($('margin50To100').value),above_100:Number($('marginAbove100').value)};
+}
+async function loadAutomaticMarginSettings(){
+ const msg=$('automaticMarginMessage');
+ try{
+  const {data,error}=await db.rpc('admin_get_automatic_margin_settings');if(error)throw error;
+  const t={...automaticMarginDefaults,...(data?.tiers||{})};
+  $('marginUpTo25').value=t.up_to_25;$('margin25To50').value=t.from_25_to_50;$('margin50To100').value=t.from_50_to_100;$('marginAbove100').value=t.above_100;
+  $('marginAutoApply').checked=data?.auto_apply===true;
+  msg.textContent='Configuração carregada. Aplicação automática '+(data?.auto_apply?'ligada':'desligada')+'.';
+ }catch(e){msg.textContent='Não foi possível carregar as margens. Confira o acesso administrativo.';}
+}
+$('saveAutomaticMargin').addEventListener('click',async()=>{
+ const tiers=automaticMarginFormValues(),msg=$('automaticMarginMessage');
+ if(Object.values(tiers).some(v=>!Number.isFinite(v)||v<0||v>100000)){msg.textContent='Informe margens válidas, iguais ou maiores que zero.';return;}
+ const b=$('saveAutomaticMargin');b.disabled=true;
+ try{const {error}=await db.rpc('admin_save_automatic_margin_settings',{p_tiers:tiers,p_auto_apply:$('marginAutoApply').checked});if(error)throw error;msg.textContent='Margens salvas. Nenhum preço de venda foi alterado.';await loadAutomaticPriceReview();}
+ catch(e){msg.textContent='Não foi possível salvar as margens. Confira a sessão administrativa.';}
+ finally{b.disabled=false;}
+});
+function moneyAutomatic(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
+async function loadAutomaticPriceReview(){
+ const msg=$('automaticPriceReviewMessage'),host=$('automaticPriceReviewRows'),missing=$('automaticPriceReviewMissing');
+ msg.textContent='Consultando produtos…';host.replaceChildren();missing.replaceChildren();
+ try{
+  const {data,error}=await db.rpc('admin_get_automatic_price_review');if(error)throw error;
+  const rows=Array.isArray(data?.products)?data.products:[];
+  host.innerHTML=rows.map(p=>{
+   const promo=p.is_promo===true;
+   const suggested=p.suggested_price==null?'Promoção — venda preservada':moneyAutomatic(p.suggested_price);
+   const diff=p.difference==null?'—':(Number(p.difference)>0?'+':'')+moneyAutomatic(p.difference);
+   return '<article class="automatic-price-row"><strong>'+esc(p.name)+'</strong><div class="price-review-values"><span><small>Balcão</small>'+moneyAutomatic(p.balcony)+'</span><span><small>Venda atual</small>'+moneyAutomatic(p.current_price)+'</span><span><small>Venda sugerida</small>'+suggested+'</span></div><small>Diferença: '+diff+(p.real_profit==null?'':' · lucro real estimado: '+moneyAutomatic(p.real_profit))+'</small>'+(promo?'<p class="muted">Produto em promoção: não será alterado.</p>':Number(p.difference)===0?'<p class="muted">Preço atual já corresponde à sugestão.</p>':'<button type="button" data-apply-auto-price="'+esc(p.id)+'">Aplicar novo preço</button>')+'</article>';
+  }).join('')||'<p class="muted">Nenhum produto com preço de balcão.</p>';
+  const noBalcony=Array.isArray(data?.without_balcony)?data.without_balcony:[];
+  missing.innerHTML='<h3>Sem preço de balcão ('+noBalcony.length+')</h3>'+(noBalcony.map(p=>'<div class="product-row"><strong>'+esc(p.name)+'</strong><span class="muted">'+moneyAutomatic(p.current_price)+'</span></div>').join('')||'<p class="muted">Todos os produtos têm preço de balcão.</p>');
+  msg.textContent=rows.length+' produto(s) com balcão. Preços só mudam após aplicação.';
+ }catch(e){msg.textContent='Não foi possível carregar a revisão de preços.';}
+}
+async function applyOneAutomaticPrice(id,ask=true){
+ const row=Array.from(document.querySelectorAll('[data-apply-auto-price]')).find(x=>x.getAttribute('data-apply-auto-price')===id)?.closest('.automatic-price-row');
+ if(ask&&row&&!await appConfirm(row.innerText,{title:'Aplicar novo preço?',confirmText:'Aplicar novo preço',cancelText:'Manter atual'}))return false;
+ const {error}=await db.rpc('admin_apply_automatic_price',{p_product_id:id});if(error)throw error;
+ await Promise.all([loadAutomaticPriceReview(),loadCostReport()]);
+ return true;
+}
+$('automaticPriceReviewRows').addEventListener('click',async e=>{
+ const b=e.target.closest('[data-apply-auto-price]');if(!b)return;
+ b.disabled=true;try{await applyOneAutomaticPrice(b.getAttribute('data-apply-auto-price'),false);$('automaticPriceReviewMessage').textContent='Preço aplicado e histórico registrado.';}catch(err){$('automaticPriceReviewMessage').textContent=err?.message||'Não foi possível aplicar o preço.';}finally{b.disabled=false;}
+});
+$('refreshAutomaticPriceReview').addEventListener('click',loadAutomaticPriceReview);
+$('applyAllAutomaticPrices').addEventListener('click',async()=>{
+ if(!await appConfirm('Aplicar o preço sugerido a todos os produtos com balcão? Produtos em promoção serão preservados.',{title:'Aplicar a todos?',confirmText:'Aplicar a todos',cancelText:'Manter atuais'}))return;
+ const b=$('applyAllAutomaticPrices');b.disabled=true;
+ try{const {data,error}=await db.rpc('admin_apply_all_automatic_prices');if(error)throw error;$('automaticPriceReviewMessage').textContent='Aplicados: '+data.applied+' · Promoções preservadas: '+data.skipped_promo+' · Sem alteração: '+data.unchanged+'.';await Promise.all([loadAutomaticPriceReview(),loadCostReport()]);}
+ catch(e){$('automaticPriceReviewMessage').textContent=e?.message||'Não foi possível aplicar a todos.';}
+ finally{b.disabled=false;}
+});
+async function afterBalconyPriceSaved(productId){
+ if(!productId)return;
+ const {data,error}=await db.rpc('admin_get_automatic_price_review');if(error)throw error;
+ const p=(data?.products||[]).find(x=>x.id===productId);if(!p)return;
+ if(p.is_promo){$('automaticPriceReviewMessage').textContent='Preço de balcão atualizado. Produto em promoção: preço de venda mantido.';return;}
+ const text='Venda: '+moneyAutomatic(p.current_price)+' → '+moneyAutomatic(p.suggested_price)+' (lucro real '+moneyAutomatic(p.real_profit)+').';
+ const {data:settings,error:settingsError}=await db.rpc('admin_get_automatic_margin_settings');if(settingsError)throw settingsError;
+ if(settings?.auto_apply===true){
+  await db.rpc('admin_apply_automatic_price',{p_product_id:productId}).then(({error})=>{if(error)throw error;});
+  $('automaticPriceReviewMessage').textContent=text+' Preço sugerido aplicado automaticamente.';
+  await loadCostReport();
+ }else if(Number(p.difference)!==0){
+  if(await appConfirm(text,{title:'Novo preço sugerido',confirmText:'Aplicar novo preço',cancelText:'Manter atual'})){
+   const {error:applyError}=await db.rpc('admin_apply_automatic_price',{p_product_id:productId});if(applyError)throw applyError;
+   $('automaticPriceReviewMessage').textContent='Novo preço aplicado.';
+   await loadCostReport();
+  }else $('automaticPriceReviewMessage').textContent=text+' Preço atual mantido.';
+ }else $('automaticPriceReviewMessage').textContent=text+' Preço atual já está correto.';
+ await loadAutomaticPriceReview();
+}
+$('tabSettings').addEventListener('click',()=>{void loadAutomaticMarginSettings();void loadAutomaticPriceReview();});
+
 function costDateInManaus(value,addDay=false){
  const date=new Date(value+'T00:00:00-04:00');
  if(addDay)date.setUTCDate(date.getUTCDate()+1);
@@ -2199,10 +2308,12 @@ $('btnSaveCost').addEventListener('click',async()=>{
  if(!productId||(!balconyRaw&&!paidRaw)||(balconyRaw&&balcony===null)||(paidRaw&&paid===null)){message.textContent='Selecione um produto e informe ao menos um preço válido (zero ou positivo).';return;}
  const button=$('btnSaveCost');button.disabled=true;button.textContent='Salvando…';
  try{
+  const previousBalcony=window.__feiraCostProducts?.find(p=>p.id===productId)?.preco_balcao??null;
   const {error}=await db.rpc('admin_set_product_prices',{p_product_id:productId,p_preco_balcao:balconyRaw?balcony:null,p_preco_pago:paidRaw?paid:null});
   if(error)throw error;
   message.textContent='Preço de balcão/pago salvo. Pedidos antigos mantêm seus snapshots.';
   await loadCostReport();
+  if(balconyRaw&&balcony!==null&&Number(previousBalcony)!==Number(balcony))await afterBalconyPriceSaved(productId);
  }catch(error){
   console.error('Falha ao salvar preço de custo:',error);
   message.textContent='Não foi possível salvar o custo. Verifique a sessão de administrador e tente novamente.';
