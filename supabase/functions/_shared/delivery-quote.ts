@@ -12,6 +12,12 @@ export type ProductWeight = {
 };
 export type QuoteResult = { vehicle: "MOTO" | "CAR"; weightKg: number; fee: number; validUntil: string };
 
+export function hasMultipleDeliveryAddresses(input: unknown): boolean {
+  const value = input && typeof input === "object" ? input as Record<string, unknown> : {};
+  const pattern = /(?:\\b(?:rua|avenida|travessa|alameda|rodovia|estrada)\\b|\\b(?:r|av|tv)\\.)[\\s\\S]{0,80}\\b\\d{1,5}\\b/i;
+  return pattern.test(String(value.complement || "")) || pattern.test(String(value.reference || ""));
+}
+
 export function normalizeConfirmedDeliveryCoordinates(input: unknown): DeliveryCoordinates | null {
   if (!input || typeof input !== "object") return null;
   const value = input as Record<string, unknown>;
