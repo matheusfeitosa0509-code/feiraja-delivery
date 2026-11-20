@@ -7,7 +7,7 @@ const panel=fs.readFileSync(new URL('../../painel.html',import.meta.url),'utf8')
 const worker=fs.readFileSync(new URL('../functions/super-worker/index.ts',import.meta.url),'utf8');
 const migration=fs.readFileSync(new URL('../migrations/20261120193000_resale_uses_private_balcony_price.sql',import.meta.url),'utf8');
 
-assert.match(migration,/SET resale_price = pc\.preco_balcao/);
+assert.match(migration,/resale_price = pc\.preco_balcao/);
 assert.match(migration,/resale_enabled = \(pc\.preco_balcao < p\.price\)/);
 assert.match(migration,/resale_min_qty = 10/);
 assert.match(migration,/service_get_product_resale_prices/);
