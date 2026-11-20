@@ -191,3 +191,5 @@ function prepareHtml(source) {
   }finally{await browser.close();}
   console.log("HTML integral do painel: sessão admin simulada, clique real, cotação/confirmação/criação/rastreio mockados em Produção e Sandbox; zero pageerror/console.error em 360/412px.");
 })().catch(error=>{console.error(error);process.exit(1);});
+
+// Parte 2b: cobertura de abertura das quatro sub-abas de Produtos e limpeza da busca.
