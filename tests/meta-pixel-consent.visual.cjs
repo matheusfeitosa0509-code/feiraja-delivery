@@ -6,7 +6,7 @@ const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
 const store = fs.readFileSync(path.join(root, 'loja.html'), 'utf8');
 const panel = fs.readFileSync(path.join(root, 'painel.html'), 'utf8');
-const consentScript = store.match(/<script id="cookieConsentAndClarity">([\\s\\S]*?)<\\/script>/)?.[1];
+const consentScript = store.match(/<script id="cookieConsentAndClarity">([\s\S]*?)<\/script>/)?.[1];
 assert.ok(consentScript, 'script de consentimento não encontrado');
 assert.ok(store.includes("increaseCart(b.dataset.cardChange)"), 'botão + do produto não rastreia AddToCart');
 assert.ok(store.includes("increaseCart(b.dataset.homeCardChange)"), 'botão + da vitrine não rastreia AddToCart');
@@ -44,6 +44,8 @@ const fixture = `<!doctype html><html><body>
    });
    const firstPurchase=await page.evaluate(()=>window.__feiraMetaPixelPurchase({id:'PEDIDO-PIX-1',status:'Pagamento Confirmado',payment_method:'pix',total:49.9,is_test_order:false}));
    assert.equal(firstPurchase,true,'Purchase válido deve ser enviado');
+   const testPurchase=await page.evaluate(()=>window.__feiraMetaPixelPurchase({id:'PEDIDO-TESTE',status:'Pagamento Confirmado',payment_method:'pix',total:12,is_test_order:true}));
+   assert.equal(testPurchase,false,'pedido de teste não pode gerar Purchase');
    const secondPurchase=await page.evaluate(()=>window.__feiraMetaPixelPurchase({id:'PEDIDO-PIX-1',status:'Pagamento Confirmado',payment_method:'pix',total:49.9,is_test_order:false}));
    assert.equal(secondPurchase,false,'Purchase não pode repetir no mesmo carregamento');
    const events=await page.evaluate(()=>window.fbq.queue.filter(x=>x[0]==='track').map(x=>({name:x[1],params:x[2],options:x[3]})));
