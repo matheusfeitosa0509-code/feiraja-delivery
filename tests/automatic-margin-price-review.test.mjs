@@ -58,4 +58,5 @@ test('aplicação automática é chamada após salvar balcão nos editores de pr
   assert.match(panel, /btnSaveCost[\s\S]*afterBalconyPriceSaved\(productId\)/);
   assert.match(panel, /changedBalcony[\s\S]*afterBalconyPriceSaved\(id\)/);
   assert.match(panel, /orderCostUpdateProduct[\s\S]*afterBalconyPriceSaved\(snapshotProductId\(orderId,itemIndex\)\)/);
+  assert.match(panel, /INITIAL_SESSION[\s\S]*loadAutomaticMarginSettings\(\);loadAutomaticPriceReview\(\)/);
 });
