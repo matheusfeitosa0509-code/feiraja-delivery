@@ -22,6 +22,17 @@ const assert = require('node:assert/strict');
   try {
     const response = await page.goto(base + '/loja.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
     assert.equal(response && response.status(), 200, 'loja publicada não retornou HTTP 200');
+    await page.route('**/www.clarity.ms/**', route => route.fulfill({ status: 200, contentType: 'application/javascript', body: 'window.__clarityPostDeployLoaded = true;' }));
+    await page.route('**/connect.facebook.net/**', route => route.fulfill({ status: 200, contentType: 'application/javascript', body: 'window.__pixelPostDeployLoaded = true;' }));
+    await page.waitForFunction(() => !!document.querySelector('#cookieConsent') && !document.querySelector('#cookieConsent').hidden, null, { timeout: 15000 });
+    assert.equal(await page.locator('#cartbar').evaluate(el => getComputedStyle(el).visibility), 'hidden', 'barra do carrinho deve ficar oculta enquanto o consentimento está aberto');
+    assert.equal(await page.locator('#cookieAccept').isVisible(), true, 'botão Aceitar deve estar visível');
+    assert.equal(await page.locator('#cookieReject').isVisible(), true, 'botão Recusar deve estar visível');
+    await page.locator('#cookieAccept').click();
+    await page.waitForFunction(() => document.querySelector('#cookieConsent')?.hidden === true, null, { timeout: 5000 });
+    await page.waitForFunction(() => !!document.querySelector('script[src*="clarity.ms"]') && !!document.querySelector('script[src*="connect.facebook.net"]'), null, { timeout: 15000 });
+    assert.notEqual(await page.locator('#cartbar').evaluate(el => getComputedStyle(el).visibility), 'hidden', 'barra do carrinho deve voltar após aceitar');
+
     await page.waitForFunction(() => document.querySelectorAll('#homeProductSections .product:not(.skeleton-card)').length > 0, { timeout: 45000 });
 
     // O bundle separado precisa existir no Pages: antes desta correção, a importação dinâmica retornava 404.
