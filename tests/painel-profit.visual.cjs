@@ -69,14 +69,14 @@ const { chromium } = require("playwright");
     throw new Error("Um dos filtros de pedidos não corresponde ao status");
   }
   if (orders.some(order => !matches(order,"all"))) throw new Error("Filtro Todos omitiu pedido");
-  const positive = renderItem({quantity:2,sale_total:20,unit_cost:8,cost_total:16,profit:4,cost_status:"ok"},{price:10,qty:2});
-  const missing = renderItem({quantity:1,sale_total:5,unit_cost:null,cost_status:"missing_cost"},{price:5,qty:1});
-  const negative = renderItem({quantity:1,sale_total:10,unit_cost:12,cost_total:12,profit:-2,cost_status:"ok"},{price:10,qty:1});
-  if (!positive.includes("Lucro: R$ 4,00") || !positive.includes("20,0%") || !positive.includes("profit-positive")) throw new Error("Lucro positivo/percentual não foi renderizado");
-  if (!missing.includes("custo não cadastrado") || !missing.includes("missing")) throw new Error("Item sem custo não foi sinalizado em cinza");
-  if (!negative.includes("Lucro: R$ -2,00") || !negative.includes("profit-negative")) throw new Error("Prejuízo não foi renderizado em vermelho");
+  const positive = renderItem({quantity:2,sale_total:20,unit_cost:8,preco_balcao:8,preco_pago:6,cost_total:12,profit:8,profit_on_counter:4,cost_status:"ok"},{price:10,qty:2});
+  const missing = renderItem({quantity:1,sale_total:5,unit_cost:null,preco_balcao:null,preco_pago:null,cost_status:"missing_cost"},{price:5,qty:1});
+  const negative = renderItem({quantity:1,sale_total:10,unit_cost:12,preco_balcao:12,preco_pago:12,cost_total:12,profit:-2,cost_status:"ok"},{price:10,qty:1});
+  if (!positive.includes("Lucro real: R$ 8,00") || !positive.includes("Lucro sobre balcão: R$ 4,00") || !positive.includes("profit-positive")) throw new Error("Lucro real e sobre balcão não foram renderizados");
+  if (!missing.includes("sem preço de custo") || !missing.includes("missing")) throw new Error("Item sem preço de custo não foi sinalizado em cinza");
+  if (!negative.includes("Lucro real: R$ -2,00") || !negative.includes("Lucro sobre balcão: R$ -2,00") || !negative.includes("profit-negative")) throw new Error("Prejuízo real e sobre balcão não foram renderizados em vermelho");
   const partial = renderOrder({calculated_items:1,total_items:2,profit:4,delivery_covered:3},2);
-  if (!partial.includes("Lucro parcial (1 de 2 itens)") || !partial.includes("R$ 3,00 de entrega coberta")) {
+  if (!partial.includes("Lucro real parcial (1 de 2 itens)") || !partial.includes("Inclui R$ 3,00 de entrega coberta") || !partial.includes("Lucro sobre balcão")) {
     throw new Error("Lucro parcial ou abatimento da entrega coberta não foi exibido");
   }
 
