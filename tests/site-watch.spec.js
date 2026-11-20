@@ -105,6 +105,7 @@ for (const viewport of viewports) {
   test(`consentimento de cookies e Clarity restrito à loja — ${viewport.width}px`, async ({ browser }) => {
     const context = await browser.newContext({ viewport, storageState: { cookies: [], origins: [] } });
     const page = await context.newPage();
+    await context.addInitScript(base => { if (location.origin === base && !sessionStorage.getItem('__cookieConsentTestClean')) { try { localStorage.removeItem('feira_cookie_consent_v1'); } catch (_) {} sessionStorage.setItem('__cookieConsentTestClean', '1'); } }, BASE);
     const clarityRequests = [];
     await page.route('**://www.clarity.ms/**', route => route.fulfill({status:200,contentType:'application/javascript',body:'window.__clarityTestLoaded = true;'}));
     page.on('request', request => { if (new URL(request.url()).hostname === 'www.clarity.ms') clarityRequests.push(request.url()); });
@@ -115,6 +116,7 @@ for (const viewport of viewports) {
       expect(clarityRequests).toHaveLength(0);
       await page.locator('#cookieAccept').click();
       await expect(page.locator('#cookieConsent')).toBeHidden();
+      expect(await page.evaluate(() => localStorage.getItem('feira_cookie_consent_v1'))).toBe('accepted');
       await expect.poll(() => clarityRequests.some(url => url.includes('/tag/zgjh3nd5ao'))).toBe(true);
       await expect(page.locator('#modal')).toHaveAttribute('data-clarity-mask','true');
       await expect(page.locator('#accountModal')).toHaveAttribute('data-clarity-mask','true');
@@ -128,6 +130,7 @@ for (const viewport of viewports) {
 
     const rejectContext=await browser.newContext({viewport,storageState:{cookies:[],origins:[]}});
     const rejectPage=await rejectContext.newPage(), rejectedRequests=[];
+    await rejectContext.addInitScript(base => { if (location.origin === base && !sessionStorage.getItem('__cookieConsentTestClean')) { try { localStorage.removeItem('feira_cookie_consent_v1'); } catch (_) {} sessionStorage.setItem('__cookieConsentTestClean', '1'); } }, BASE);
     await rejectPage.route('**://www.clarity.ms/**',route=>route.fulfill({status:200,body:''}));
     rejectPage.on('request',request=>{if(new URL(request.url()).hostname==='www.clarity.ms')rejectedRequests.push(request.url());});
     try {
@@ -136,6 +139,7 @@ for (const viewport of viewports) {
       await expect(rejectPage.locator('#cookieConsent')).toBeVisible();
       await rejectPage.locator('#cookieReject').click();
       await expect(rejectPage.locator('#cookieConsent')).toBeHidden();
+      expect(await rejectPage.evaluate(() => localStorage.getItem('feira_cookie_consent_v1'))).toBe('rejected');
       await rejectPage.reload({waitUntil:'domcontentloaded'});
       await expect(rejectPage.locator('#cookieConsent')).toBeHidden();
       expect(rejectedRequests).toHaveLength(0);
