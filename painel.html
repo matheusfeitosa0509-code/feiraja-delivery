@@ -2381,7 +2381,7 @@ $('refreshProductRequests').addEventListener('click',loadProductRequests);
 db.auth.onAuthStateChange((event,session)=>{
   if(event==='SIGNED_OUT')panelPushUserSynced='';
   if(event==='SIGNED_IN'&&session?.user)void initPanelPush(session.user);
-  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){loadPriceProducts();loadEditableProducts();loadResaleProducts();}
+  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){loadPriceProducts();loadEditableProducts();loadResaleProducts();loadAutomaticMarginSettings();loadAutomaticPriceReview();}
   if(event==='SIGNED_OUT'){$('priceEditor').classList.add('hide');priceProducts=[];$('priceProduct').replaceChildren(new Option('Entre como administrador',''));$('btnUpdatePrice').disabled=true;$('productEdit').classList.add('hide');editableProducts=[];$('resaleEditor').classList.add('hide');resaleProducts=[];$('resaleProduct').replaceChildren(new Option('Entre como administrador',''));$('btnPreviewResale').disabled=true;}
 });
 
