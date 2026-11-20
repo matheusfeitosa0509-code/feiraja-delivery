@@ -982,7 +982,6 @@ async function saveProductSheet(){
    if(image!==(product.image||''))productChanges.image=image||null;
    if(Math.round(price*100)!==Math.round(Number(product.price)*100)){const priceChange=calculatePriceChange(Number(product.price),product.old_price==null?null:Number(product.old_price),price);productChanges.price=price;if(priceChange.oldPrice!==product.old_price)productChanges.old_price=priceChange.oldPrice;}
    if(($('sheetAvailable').value==='true')!==product.available)productChanges.available=$('sheetAvailable').value==='true';
-   if(resaleEnabled!==product.resale_enabled)productChanges.resale_enabled=resaleEnabled;
    if(Object.keys(productChanges).length){const {data,error}=await db.from('products').update(productChanges).eq('id',id).select('id').maybeSingle();if(error)throw error;if(!data)throw new Error('O produto não foi atualizado. Confira a sessão administrativa.');if(uploadedPhoto&&productChanges.image===uploadedPhoto.url)imageSaved=true;}
    const salesChanged=saleUnit!==product.sale_unit||min!==product.min_quantity||step!==product.quantity_step||valueEnabled!==product.allow_value_sale||(saleUnit==='kg'&&valueMin!==product.value_min_kg);
    if(salesChanged){const {error}=await db.rpc('admin_update_product_sales_rule',{p_product_id:id,p_sale_unit:saleUnit,p_min_quantity:min,p_quantity_step:step,p_allow_value_sale:valueEnabled,p_value_min_kg:saleUnit==='kg'?valueMin:1});if(error)throw error;}
@@ -990,6 +989,7 @@ async function saveProductSheet(){
    const changedBalcony=balconyValue!==null&&(oldCost.preco_balcao==null||Math.round(balconyValue*100)!==Math.round(Number(oldCost.preco_balcao)*100));
    const changedPaid=paidValue!==null&&(oldCost.preco_pago==null||Math.round(paidValue*100)!==Math.round(Number(oldCost.preco_pago)*100));
    if(changedBalcony||changedPaid){const {error}=await db.rpc('admin_set_product_prices',{p_product_id:id,p_preco_balcao:changedBalcony?balconyValue:null,p_preco_pago:changedPaid?paidValue:null});if(error)throw error;if(changedBalcony)await afterBalconyPriceSaved(id);}
+   if(resaleEnabled!==product.resale_enabled){const {error:resaleToggleError}=await db.from('products').update({resale_enabled:resaleEnabled}).eq('id',id);if(resaleToggleError)throw resaleToggleError;}
    if(product.image&&image!==product.image)await deleteOldProductPhotoIfUnused(product.image,id);
    await Promise.all([loadAdminProducts(),loadCostReport()]);
    closeProductSheet();renderUnifiedProductList();$('unifiedProductList').scrollTop=0;
