@@ -917,7 +917,7 @@ function renderUnifiedProductList(){
   const marginClass=margin!==null&&margin<0?'below-cost':margin!==null&&margin<costMarginThreshold?'low-margin':'';
   const resaleBlocked=cost?.preco_balcao!=null&&Number(cost.preco_balcao)>=Number(p.price);
   const badges=(p.available?[]:['<span class="unavailable">Indisponível</span>']).concat(cost?.preco_balcao==null?['<span class="no-balcony">Sem balcão</span>']:[],!hasCost?['<span class="no-cost">Custo não cadastrado</span>']:[],margin!==null&&margin<0?['<span class="below-cost">Abaixo do custo</span>']:margin!==null&&margin<costMarginThreshold?['<span class="low-margin">Margem baixa</span>']:[],resaleBlocked?['<span class="below-cost">Revenda indisponível: balcão ≥ venda</span>']:[]);
-  const costLine=effectiveCost!=null?'<span class="unified-product-cost '+marginClass+'">'+(margin===null?'':'Margem '+margin.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%')+'</span>':'';
+  const costLine=effectiveCost!=null?'<span class="unified-product-cost '+marginClass+'">Lucro real '+money(profit)+(margin===null?'':' · Margem '+margin.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%')+(counterProfit==null?'':' · <small>Sobre balcão '+money(counterProfit)+'</small>')+'</span>':'';
   const balconyLine=cost?.preco_balcao==null?'Sem balcão':'Balcão '+money(cost.preco_balcao);
   const resaleLine=p.resale_enabled===true&&cost?.preco_balcao!=null&&Number(cost.preco_balcao)<Number(p.price)?'Revenda '+money(cost.preco_balcao):null;
   const profitLine=profit==null?'Lucro —':'Lucro '+money(profit)+'/'+unitLabel(p.sale_unit);
