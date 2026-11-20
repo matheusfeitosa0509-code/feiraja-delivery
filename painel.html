@@ -54,9 +54,21 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 @media(max-width:600px){.daily-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.daily-stats .stat{padding:10px 9px}.daily-stats .profit-day-stat{grid-column:span 2}.main-tabs button{font-size:12px;padding:9px 4px}}
 
 .main-tabs button[aria-selected="true"],.product-tabs button[aria-pressed="true"]{background:#cfe8cf;color:#155b32;box-shadow:0 2px 7px rgba(23,53,37,.08)}
-.product-tabs{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:8px}
+.product-tabs{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:8px}
 #productTools.product-missing-mode>:not(#productSubtabs):not(#missingBalconySection){display:none!important}
+#productTools.product-review-mode>:not(#productSubtabs):not(#automaticPriceReview){display:none!important}
+#productTools.product-requests-mode>:not(#productSubtabs):not(#productRequests){display:none!important}
+#productTools.product-catalog-mode>:is(#missingBalconySection,#automaticPriceReview,#productRequests){display:none!important}
 #missingBalconySection[hidden]{display:none!important}
+.unified-search-wrap{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;min-width:0}
+.unified-search-wrap button{min-width:74px;padding:9px 12px}
+.unified-product-details{font-size:11px!important;color:var(--muted);font-weight:650;line-height:1.35}
+.unified-product-badges .no-balcony{background:#fff3c4;color:#806300}
+.product-request-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#fbfdf9}
+.product-request-copy{display:grid;gap:5px;min-width:0}.product-request-copy strong{overflow-wrap:anywhere}.product-request-copy small{font-size:11px}.product-request-note{white-space:pre-wrap;margin:0;overflow-wrap:anywhere}
+.product-request-actions{display:flex;gap:7px;flex-wrap:wrap;flex:none}.product-request-actions button{min-height:38px;padding:8px 11px;font-size:12px}
+@media(max-width:720px){.product-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.product-request-row{align-items:stretch;flex-direction:column}.product-request-actions button{flex:1}}
+@media(max-width:380px){.unified-search-wrap{grid-template-columns:minmax(0,1fr) auto}.unified-search-wrap button{min-width:64px;padding:8px}}
 .missing-balcony-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(110px,.65fr) auto;gap:9px;align-items:end;padding:12px 0;border-bottom:1px solid var(--line)}
 .missing-balcony-row strong{overflow-wrap:anywhere}.missing-balcony-row label{margin:0}.missing-balcony-row button{white-space:nowrap}
 @media(max-width:480px){.missing-balcony-row{grid-template-columns:minmax(0,1fr) minmax(100px,.7fr)}.missing-balcony-row button{grid-column:1/-1;width:100%}}
@@ -341,15 +353,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
  <button type="button" id="saveAutomaticMargin">Salvar margem automática</button>
  <p id="automaticMarginMessage" class="muted" role="status" aria-live="polite"></p>
 </section>
-<section class="card" id="automaticPriceReview" aria-labelledby="automaticPriceReviewTitle">
- <h2 id="automaticPriceReviewTitle">Revisar preços</h2>
- <p class="muted">Compare o preço de balcão, o preço atual e a sugestão. Nenhum preço muda até você aplicar.</p>
- <button type="button" class="secondary" id="refreshAutomaticPriceReview">Atualizar lista</button>
- <p id="automaticPriceReviewMessage" class="muted" role="status" aria-live="polite">Carregando…</p>
- <div id="automaticPriceReviewRows" class="product-list"></div>
- <div id="automaticPriceReviewMissing"></div>
- <button type="button" id="applyAllAutomaticPrices">Aplicar a todos</button>
-</section>
+
 
 <section class="card lalamove-settings" id="lalamoveSettingsCard" aria-label="Configurações de entrega">
  <div class="lalamove-admin-head"><h2 style="margin:0">Configurações de entrega</h2><span id="lalamoveSettingsBadge" class="lalamove-env-badge sandbox">SANDBOX</span></div>
@@ -364,11 +368,20 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 </section>
 </section>
 <section id="productTools" class="hidden" role="tabpanel">
-<div id="productSubtabs" class="product-tabs" role="group" aria-label="Sub-abas de produtos"><button type="button" id="productsMainTab" aria-pressed="true">Produtos</button><button type="button" id="productsMissingBalconyTab" aria-pressed="false">Sem preço de balcão (<span id="missingBalconyCount">0</span>)</button></div>
+<div id="productSubtabs" class="product-tabs" role="group" aria-label="Sub-abas de produtos"><button type="button" id="productsMainTab" aria-pressed="true">Catálogo (<span id="catalogCount">0</span>)</button><button type="button" id="productsMissingBalconyTab" aria-pressed="false">Sem preço de balcão (<span id="missingBalconyCount">0</span>)</button><button type="button" id="productsReviewTab" aria-pressed="false">Revisar preços (<span id="reviewProductsCount">0</span>)</button><button type="button" id="productsRequestsTab" aria-pressed="false">Pedidos de produto (<span id="requestsCount">0</span>)</button></div>
 <section id="missingBalconySection" class="card" hidden aria-labelledby="missingBalconyTitle"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 id="missingBalconyTitle" style="margin:0">Produtos sem preço de balcão</h2><button type="button" id="refreshMissingBalcony" class="secondary">Atualizar lista</button></div><p id="missingBalconyMessage" class="muted" role="status" aria-live="polite">Carregando produtos…</p><div id="missingBalconyList" class="product-list"></div></section>
+<section class="card" id="automaticPriceReview" aria-labelledby="automaticPriceReviewTitle">
+ <h2 id="automaticPriceReviewTitle">Revisar preços</h2>
+ <p class="muted">Compare o preço de balcão, o preço atual e a sugestão. Nenhum preço muda até você aplicar.</p>
+ <button type="button" class="secondary" id="refreshAutomaticPriceReview">Atualizar lista</button>
+ <p id="automaticPriceReviewMessage" class="muted" role="status" aria-live="polite">Carregando…</p>
+ <div id="automaticPriceReviewRows" class="product-list"></div>
+ <div id="automaticPriceReviewMissing"></div>
+ <button type="button" id="applyAllAutomaticPrices">Aplicar a todos</button>
+</section>
 <section class="card unified-products" aria-label="Produtos">
  <div class="unified-products-head"><div><h1>Produtos</h1><p class="muted">Toque em um produto para abrir a ficha completa.</p></div><button type="button" id="openNewProduct" disabled>+ Novo produto</button></div>
- <div class="unified-product-filters"><input id="unifiedProductSearch" type="search" placeholder="Buscar produto" aria-label="Buscar produto por nome"><select id="unifiedCategoryFilter" aria-label="Filtrar por categoria"><option value="">Todas as categorias</option></select><select id="unifiedCostFilter" aria-label="Filtrar por cadastro de custo"><option value="">Todos os custos</option><option value="missing">Sem custo cadastrado (0)</option></select></div>
+ <div class="unified-product-filters"><div class="unified-search-wrap"><input id="unifiedProductSearch" type="search" placeholder="Buscar produto" aria-label="Buscar produto por nome"><button type="button" id="clearUnifiedProductSearch" class="secondary">Limpar</button></div><select id="unifiedCategoryFilter" aria-label="Filtrar por categoria"><option value="">Todas as categorias</option></select><select id="unifiedCostFilter" aria-label="Filtrar por cadastro de custo"><option value="">Todos os custos</option><option value="missing">Sem custo cadastrado (0)</option></select></div>
  <p id="unifiedProductCount" class="muted" aria-live="polite"></p>
  <div id="unifiedProductList" class="unified-product-list"><p class="muted">Carregando produtos…</p></div>
 </section>
@@ -885,6 +898,7 @@ function getProductCost(productId){return (window.__feiraCostProducts||[]).find(
 function productMargin(product,cost){const effective=cost?.preco_pago??cost?.preco_balcao??cost?.unit_cost;if(effective==null||Number(effective)<=0||Number(product.price)<=0)return null;return (Number(product.price)-Number(effective))/Number(product.price)*100;}
 function renderUnifiedProductList(){
  const host=$('unifiedProductList');if(!host)return;
+ $('catalogCount').textContent=String(adminProducts.length);
  const term=normalizeProductSearch($('unifiedProductSearch').value),category=$('unifiedCategoryFilter').value,costFilter=$('unifiedCostFilter')?.value||'';
  const costRows=window.__feiraCostProducts||[];
  const costs=new Map(costRows.map(row=>[row.id,row]));
@@ -902,10 +916,14 @@ function renderUnifiedProductList(){
   const counterProfit=counterCost==null?null:Number(p.price)-Number(counterCost);
   const marginClass=margin!==null&&margin<0?'below-cost':margin!==null&&margin<costMarginThreshold?'low-margin':'';
   const resaleBlocked=cost?.preco_balcao!=null&&Number(cost.preco_balcao)>=Number(p.price);
-  const badges=(p.available?[]:['<span class="unavailable">Indisponível</span>']).concat(!hasCost?['<span class="no-cost">Custo não cadastrado</span>']:[],margin!==null&&margin<0?['<span class="below-cost">Abaixo do custo</span>']:margin!==null&&margin<costMarginThreshold?['<span class="low-margin">Margem baixa</span>']:[],resaleBlocked?['<span class="below-cost">Revenda indisponível: balcão ≥ venda</span>']:[]);
+  const badges=(p.available?[]:['<span class="unavailable">Indisponível</span>']).concat(cost?.preco_balcao==null?['<span class="no-balcony">Sem balcão</span>']:[],!hasCost?['<span class="no-cost">Custo não cadastrado</span>']:[],margin!==null&&margin<0?['<span class="below-cost">Abaixo do custo</span>']:margin!==null&&margin<costMarginThreshold?['<span class="low-margin">Margem baixa</span>']:[],resaleBlocked?['<span class="below-cost">Revenda indisponível: balcão ≥ venda</span>']:[]);
   const costLine=effectiveCost!=null?'<span class="unified-product-cost '+marginClass+'">Lucro real '+money(profit)+(margin===null?'':' · Margem '+margin.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%')+(counterProfit==null?'':' · <small>Sobre balcão '+money(counterProfit)+'</small>')+'</span>':'';
+  const balconyLine=cost?.preco_balcao==null?'Sem balcão':'Balcão '+money(cost.preco_balcao);
+  const resaleLine=p.resale_enabled===true&&cost?.preco_balcao!=null&&Number(cost.preco_balcao)<Number(p.price)?'Revenda '+money(cost.preco_balcao):null;
+  const profitLine=profit==null?'Lucro —':'Lucro '+money(profit)+'/'+unitLabel(p.sale_unit);
+  const detailLine=[resaleLine,balconyLine,profitLine].filter(Boolean).join(' · ');
   const image=productListImage(p.image);
-  return '<div class="unified-product-row" data-open-product="'+esc(p.id)+'"><img src="'+esc(image)+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'"><span class="unified-product-meta"><strong>'+esc(p.name)+'</strong><span class="unified-product-price">'+money(p.price)+' <span class="unified-product-unit">· '+unitLabel(p.sale_unit)+'</span></span>'+costLine+'<span class="unified-product-badges">'+badges.join('')+'</span></span><label class="unified-availability" title="Disponibilidade"><input type="checkbox" data-quick-availability="'+esc(p.id)+'" '+(p.available?'checked':'')+' aria-label="Disponível: '+esc(p.name)+'"><span>Ativo</span></label></div>';
+  return '<div class="unified-product-row" data-open-product="'+esc(p.id)+'"><img src="'+esc(image)+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'"><span class="unified-product-meta"><strong>'+esc(p.name)+'</strong><span class="unified-product-price">'+money(p.price)+' <span class="unified-product-unit">· '+unitLabel(p.sale_unit)+'</span></span><small class="unified-product-details">'+esc(detailLine)+'</small>'+costLine+'<span class="unified-product-badges">'+badges.join('')+'</span></span><label class="unified-availability" title="Disponibilidade"><input type="checkbox" data-quick-availability="'+esc(p.id)+'" '+(p.available?'checked':'')+' aria-label="Disponível: '+esc(p.name)+'"><span>'+(p.available?'Disponível':'Indisponível')+'</span></label></div>';
  }).join('');
 }
 function populateUnifiedCategory(){
@@ -1040,6 +1058,7 @@ async function saveProductSheet(){
   finally{button.disabled=false;button.textContent='Salvar';}
 }
 $('unifiedProductSearch').addEventListener('input',renderUnifiedProductList);
+$('clearUnifiedProductSearch').addEventListener('click',()=>{$('unifiedProductSearch').value='';renderUnifiedProductList();$('unifiedProductSearch').focus();});
 $('unifiedCategoryFilter').addEventListener('change',renderUnifiedProductList);
 $('unifiedCostFilter').addEventListener('change',renderUnifiedProductList);
 $('openNewProduct').addEventListener('click',fillNewProductSheet);
@@ -2212,6 +2231,7 @@ async function loadAutomaticPriceReview(){
  try{
   const {data,error}=await db.rpc('admin_get_automatic_price_review');if(error)throw error;
   const rows=Array.isArray(data?.products)?data.products:[];
+  $('reviewProductsCount').textContent=String(rows.length);
   host.innerHTML=rows.map(p=>{
    const promo=p.is_promo===true;
    const suggested=p.suggested_price==null?'Promoção — venda preservada':moneyAutomatic(p.suggested_price);
@@ -2245,14 +2265,24 @@ $('missingBalconyList').addEventListener('click',async e=>{
  finally{button.disabled=false;button.textContent='Salvar';}
 });
 $('refreshMissingBalcony').addEventListener('click',loadAutomaticPriceReview);
-$('productsMainTab').addEventListener('click',()=>setProductSubtab(false));
-$('productsMissingBalconyTab').addEventListener('click',()=>{setProductSubtab(true);void loadAutomaticPriceReview();});
-function setProductSubtab(missing){
- $('productTools').classList.toggle('product-missing-mode',missing);
- $('missingBalconySection').hidden=!missing;
- $('productsMainTab').setAttribute('aria-pressed',String(!missing));
- $('productsMissingBalconyTab').setAttribute('aria-pressed',String(missing));
+$('productsMainTab').addEventListener('click',()=>setProductSubtab('catalog'));
+$('productsMissingBalconyTab').addEventListener('click',()=>setProductSubtab('missing'));
+$('productsReviewTab').addEventListener('click',()=>setProductSubtab('review'));
+$('productsRequestsTab').addEventListener('click',()=>setProductSubtab('requests'));
+function setProductSubtab(mode){
+ const root=$('productTools');
+ root.classList.remove('product-catalog-mode','product-missing-mode','product-review-mode','product-requests-mode');
+ root.classList.add('product-'+mode+'-mode');
+ $('missingBalconySection').hidden=mode!=='missing';
+ $('productsMainTab').setAttribute('aria-pressed',String(mode==='catalog'));
+ $('productsMissingBalconyTab').setAttribute('aria-pressed',String(mode==='missing'));
+ $('productsReviewTab').setAttribute('aria-pressed',String(mode==='review'));
+ $('productsRequestsTab').setAttribute('aria-pressed',String(mode==='requests'));
+ if($('unifiedProductSearch').value){$('unifiedProductSearch').value='';renderUnifiedProductList();}
+ if(mode==='missing'||mode==='review')void loadAutomaticPriceReview();
+ if(mode==='requests')void loadProductRequests();
 }
+setProductSubtab('catalog');
 $('automaticPriceReviewRows').addEventListener('click',async e=>{
  const b=e.target.closest('[data-apply-auto-price]');if(!b)return;
  b.disabled=true;try{await applyOneAutomaticPrice(b.getAttribute('data-apply-auto-price'),false);$('automaticPriceReviewMessage').textContent='Preço aplicado e histórico registrado.';}catch(err){$('automaticPriceReviewMessage').textContent=err?.message||'Não foi possível aplicar o preço.';}finally{b.disabled=false;}
@@ -2405,32 +2435,42 @@ $('btnSaveCostMarginThreshold').addEventListener('click',async()=>{
  finally{button.disabled=false;button.textContent='Salvar percentual';}
 });
 async function loadProductRequests(){
- const message=$('productRequestsMessage');
- const list=$('productRequestsList');
+ const message=$('productRequestsMessage'),list=$('productRequestsList');
  if(!message||!list)return;
  message.textContent='Carregando solicitações…';
  try{
-  const {data,error}=await db.from('product_requests')
-   .select('id,product_name,note,created_at')
-   .order('created_at',{ascending:false})
-   .limit(200);
+  const {data,error}=await db.rpc('admin_list_product_requests');
   if(error)throw error;
-  const rows=data||[];
+  const rows=Array.isArray(data)?data:[];
+  $('requestsCount').textContent=String(rows.length);
   list.innerHTML=rows.map(row=>{
    const date=row.created_at?new Date(row.created_at).toLocaleString('pt-BR'):'Data não informada';
-   return '<article class="product-row" style="display:block;margin:10px 0;padding:12px;border:1px solid var(--line);border-radius:12px">'
-    +'<strong>'+esc(row.product_name)+'</strong>'
-    +(row.note?'<p class="muted" style="margin:6px 0 0;white-space:pre-wrap">'+esc(row.note)+'</p>':'')
-    +'<small class="muted" style="display:block;margin-top:8px">'+esc(date)+'</small>'
-    +'</article>';
+   const customer=row.customer_name?'<small class="muted product-request-customer">Cliente: '+esc(row.customer_name)+'</small>':'';
+   return '<article class="product-request-row"><div class="product-request-copy"><strong>'+esc(row.product_name)+'</strong>'
+    +(row.note?'<p class="muted product-request-note">'+esc(row.note)+'</p>':'')
+    +customer+'<small class="muted">'+esc(date)+'</small></div>'
+    +'<div class="product-request-actions"><button type="button" data-archive-product-request="'+esc(row.id)+'">Já cadastrei</button><button type="button" class="danger" data-delete-product-request="'+esc(row.id)+'">Apagar</button></div></article>';
   }).join('')||'<p class="muted">Nenhum produto pedido até agora.</p>';
-  message.textContent=rows.length+' solicitação(ões) mais recentes. Exibindo até 200.';
+  message.textContent=rows.length+' solicitação(ões) ativas.';
  }catch(error){
   console.error('Falha ao carregar produtos pedidos:',error);
   message.textContent='Não foi possível carregar os produtos pedidos. Verifique a permissão de administrador e tente novamente.';
-  list.replaceChildren();
+  list.replaceChildren();$('requestsCount').textContent='0';
  }
 }
+$('productRequestsList').addEventListener('click',async event=>{
+ const archive=event.target.closest('[data-archive-product-request]'),remove=event.target.closest('[data-delete-product-request]');
+ if(!archive&&!remove)return;
+ const id=(archive||remove).getAttribute(archive?'data-archive-product-request':'data-delete-product-request');
+ if(remove&&!await appConfirm('Esta solicitação será apagada permanentemente.',{title:'Apagar solicitação?',confirmText:'Apagar',cancelText:'Cancelar',danger:true}))return;
+ const button=archive||remove;button.disabled=true;
+ try{
+  const {data,error}=await db.rpc(archive?'admin_archive_product_request':'admin_delete_product_request',{p_request_id:id});
+  if(error)throw error;
+  if(data===false)throw new Error('A solicitação não foi encontrada ou já foi processada.');
+  await loadProductRequests();
+ }catch(error){$('productRequestsMessage').textContent=error?.message||'Não foi possível atualizar a solicitação.';button.disabled=false;}
+});
 $('refreshProductRequests').addEventListener('click',loadProductRequests);
 
 db.auth.onAuthStateChange((event,session)=>{

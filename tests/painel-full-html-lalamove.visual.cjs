@@ -60,6 +60,23 @@ function prepareHtml(source) {
       if(!costStats.includes("40,00"))throw new Error("O painel deixou de exibir o lucro estimado via RPC admin: "+costStats);
       const costProducts=await page.locator("#costProductStatusList").textContent();
       if(!costProducts.includes("Banana Prata"))throw new Error("O painel deixou de exibir os custos dos produtos via RPC admin: "+costProducts);
+      await page.locator("#tabProducts").click();
+      const productSubtabs=[
+        ["#productsMainTab",".unified-products"],
+        ["#productsMissingBalconyTab","#missingBalconySection"],
+        ["#productsReviewTab","#automaticPriceReview"],
+        ["#productsRequestsTab","#productRequests"]
+      ];
+      await page.locator("#productsMainTab").click();
+      await page.locator("#unifiedProductSearch").fill("banana");
+      await page.locator("#clearUnifiedProductSearch").click();
+      if(await page.locator("#unifiedProductSearch").inputValue()!=="")throw new Error("O botão Limpar não limpou a busca do catálogo.");
+      for(const [tab,section] of productSubtabs){
+        await page.locator(tab).click();
+        if(await page.locator(section).isHidden())throw new Error("Sub-aba de Produtos não abriu: "+tab);
+      }
+      if(errors.length)throw new Error("Erros JS/console ao abrir as quatro sub-abas de Produtos: "+errors.join("\\n"));
+      await page.locator("#productsMainTab").click();
       await page.locator("#tabOrders").click();
       await page.locator("#filter").selectOption("tests");
       await page.waitForSelector("[data-order-toggle]");
@@ -174,3 +191,5 @@ function prepareHtml(source) {
   }finally{await browser.close();}
   console.log("HTML integral do painel: sessão admin simulada, clique real, cotação/confirmação/criação/rastreio mockados em Produção e Sandbox; zero pageerror/console.error em 360/412px.");
 })().catch(error=>{console.error(error);process.exit(1);});
+
+// Parte 2b: cobertura de abertura das quatro sub-abas de Produtos e limpeza da busca.
