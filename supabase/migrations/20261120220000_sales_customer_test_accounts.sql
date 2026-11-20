@@ -62,7 +62,9 @@ DECLARE v_definition text;
 v_old text := 'WHERE COALESCE(o.is_test_order, false) = false';
 v_new text := v_old || E'
       AND NOT EXISTS (SELECT 1 FROM public.admin_users au WHERE au.user_id = o.user_id)
-      AND NOT EXISTS (SELECT 1 FROM feira_cost_private.customer_test_accounts ta WHERE ta.user_id = o.user_id)';
+      AND NOT EXISTS (SELECT 1 FROM feira_cost_private.customer_test_accounts ta WHERE ta.user_id = o.user_id)
+      AND NOT EXISTS (SELECT 1 FROM auth.users au JOIN public.admin_users admin_account ON admin_account.user_id = au.id WHERE lower(au.email) = lower(o.customer_email))
+      AND NOT EXISTS (SELECT 1 FROM auth.users tu JOIN feira_cost_private.customer_test_accounts test_account ON test_account.user_id = tu.id WHERE lower(tu.email) = lower(o.customer_email))';
 BEGIN
  SELECT pg_get_functiondef('public.admin_sales_dashboard(timestamptz,timestamptz)'::regprocedure) INTO v_definition;
  IF position('customer_test_accounts' IN v_definition)>0 THEN RAISE EXCEPTION 'Filtro de contas de teste já existe.'; END IF;
