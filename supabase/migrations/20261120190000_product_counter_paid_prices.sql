@@ -27,6 +27,7 @@ CREATE INDEX IF NOT EXISTS product_price_history_product_changed_idx
 
 REVOKE ALL ON TABLE feira_cost_private.product_price_history FROM PUBLIC, anon, authenticated;
 GRANT ALL ON TABLE feira_cost_private.product_price_history TO service_role;
+REVOKE ALL ON SEQUENCE feira_cost_private.product_price_history_id_seq FROM PUBLIC, anon, authenticated;
 GRANT USAGE, SELECT ON SEQUENCE feira_cost_private.product_price_history_id_seq TO service_role;
 
 CREATE OR REPLACE FUNCTION public.admin_set_product_prices(
