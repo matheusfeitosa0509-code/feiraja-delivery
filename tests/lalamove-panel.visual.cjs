@@ -4,6 +4,11 @@ const { chromium } = require("playwright");
 
 (async () => {
   const source = fs.readFileSync(path.join(process.cwd(), "painel.html"), "utf8");
+  const displayStatusLine = source.match(/function displayOrderStatusLabel[^\\n]+/);
+  if (!displayStatusLine) throw new Error("Rótulo de status de entrega não encontrado");
+  const displayOrderStatusLabel = new Function(displayStatusLine[0] + "; return displayOrderStatusLabel;")();
+  if (displayOrderStatusLabel({ delivery_type: "delivery" }, "Pronto para Retirada") !== "Pronto para envio") throw new Error("Entrega deve exibir Pronto para envio");
+  if (displayOrderStatusLabel({ delivery_type: "pickup_store" }, "Pronto para Retirada") !== "Pronto para Retirada") throw new Error("Retirada deve preservar Pronto para Retirada");
   const style = source.match(/<style>([\s\S]*?)<\/style>/);
   if (!style) throw new Error("CSS do painel não encontrado");
   const orderStart = source.indexOf("function lalamoveStatusLabel(status){");
@@ -33,7 +38,8 @@ const { chromium } = require("playwright");
       page.on("console", message => { if (message.type() === "error") runtimeErrors.push("console.error: " + message.text()); });
       const order = {
         id: "TEST-LALAMOVE-" + width, is_test_order: true, status: "Preparando",
-        delivery_type: "delivery", delivery_address: { street: "Rua Japiassu", number: "140", neighborhood: "Lago Azul" },
+        delivery_type: "delivery", delivery_address: { street: "Rua Japiassu", number: "140", complement: "Apto 12", neighborhood: "Lago Azul", reference: "R. Belford Roxo, 203" },
+        delivery_coordinates: { lat: "-3.123456", lng: "-60.987654" },
         customer_address: "Rua Japiassu, 140, Lago Azul, Manaus", customer_name: "Cliente de teste",
         customer_phone: "(92) 99999-0000", payment_method: "Pix", delivery_vehicle: "MOTO",
         delivery_weight_kg: 3, delivery_fee: 15, items: []
@@ -92,6 +98,16 @@ const { chromium } = require("playwright");
           "\nreturn renderLalamoveDelivery(order,currentStatus);")(order,"Preparando",lalamoveEnvironment,esc,money);
         const renderReady = new Function("order","currentStatus","lalamoveEnvironment","esc","money",renderSource+
           "\nreturn renderLalamoveDelivery(order,currentStatus);")(readyOrder,"Pronto para Retirada",lalamoveEnvironment,esc,money);
+        if (!renderOrder.includes("query=-3.123456%2C-60.987654")) throw new Error("Abrir no mapa deve usar as coordenadas confirmadas do pino");
+        if (renderOrder.includes("Belford Roxo")) throw new Error("Referência que contém outro endereço não deve ser exibida");
+        if (!renderOrder.includes("Bairro: Lago Azul") || !renderOrder.includes("Apto 12")) throw new Error("Endereço deve aparecer em linhas separadas com complemento");
+        const renderDelivery = (o,s) => new Function("order","currentStatus","lalamoveEnvironment","esc","money",renderSource+"\\nreturn renderLalamoveDelivery(order,currentStatus);")(o,s,lalamoveEnvironment,esc,money);
+        const adminCancelled = renderDelivery({ ...order, lalamove_status: "cancelled", cancelled_by: "admin" }, "Cancelada");
+        const noDriver = renderDelivery({ ...order, lalamove_status: "expired", cancelled_by: "lalamove: no_driver" }, "Preparando");
+        const driverCancelled = renderDelivery({ ...order, lalamove_status: "cancelled", cancelled_by: "lalamove: driver_cancelled" }, "Preparando");
+        if (!adminCancelled.includes("Entrega cancelada por você")) throw new Error("Cancelamento do admin deve ter motivo correto");
+        if (!noDriver.includes("Nenhum motorista aceitou. Chame outro entregador.")) throw new Error("Expiração deve indicar ausência de motorista");
+        if (!driverCancelled.includes("O entregador cancelou. Chame outro entregador.")) throw new Error("Cancelamento pelo motorista/Lalamove deve ter motivo correto");
         $("orders").innerHTML = renderOrder + renderReady;
         let loggedIn = false;
         const flow = new Function("db","$","esc","money","appConfirm","normalizeOrderStatus","allOrders","load","CSS","document","lalamoveEnvironment","orderSource","flowSource","calls","storedQuote",
