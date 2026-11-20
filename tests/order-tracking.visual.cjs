@@ -5,6 +5,7 @@ const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
 const mapSource = fs.readFileSync(path.join(root, 'lalamove-map.js'), 'utf8');
 const endpoint = fs.readFileSync(path.join(root, 'supabase/functions/lalamove-tracking/index.ts'), 'utf8');
+const storefront = fs.readFileSync(path.join(root, 'loja.html'), 'utf8');
 
 async function installMapMock(page) {
   await page.evaluate(() => {
@@ -113,6 +114,8 @@ async function admin(browser) {
  try{
   fs.mkdirSync(path.join(root,'artifacts'),{recursive:true});
   await customer(browser,360,800);await customer(browser,412,915);await admin(browser);
+  assert.equal(storefront.includes('<span aria-hidden="true">📍</span><div><b>Entrega Feira On</b>'),false,'delivery address in customer order card has no emoji pin');
+  assert.equal(storefront.includes('Estamos chamando um novo entregador 🛵'),false,'customer order card has no emoji motorcycle');
   assert.match(mapSource,/basemaps\.cartocdn\.com\/light_all/);
   assert.match(endpoint,/\.eq\("user_id", authData\.user\.id\)/,'tracking endpoint remains owner-scoped');
   assert.match(endpoint,/if \(!isOwner && !admin\) return json\(\{ error: "Pedido não encontrado\." \}, 404\)/,'another customer receives not-found');
