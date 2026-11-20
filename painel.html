@@ -55,6 +55,11 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 
 .main-tabs button[aria-selected="true"],.product-tabs button[aria-pressed="true"]{background:#cfe8cf;color:#155b32;box-shadow:0 2px 7px rgba(23,53,37,.08)}
 .product-tabs{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:8px}
+#productTools.product-missing-mode>:not(#productSubtabs):not(#missingBalconySection){display:none!important}
+#missingBalconySection[hidden]{display:none!important}
+.missing-balcony-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(110px,.65fr) auto;gap:9px;align-items:end;padding:12px 0;border-bottom:1px solid var(--line)}
+.missing-balcony-row strong{overflow-wrap:anywhere}.missing-balcony-row label{margin:0}.missing-balcony-row button{white-space:nowrap}
+@media(max-width:480px){.missing-balcony-row{grid-template-columns:minmax(0,1fr) minmax(100px,.7fr)}.missing-balcony-row button{grid-column:1/-1;width:100%}}
 #productTools .card{max-width:none}
 #productTools h1{font-size:20px;margin:0 0 14px}
 .product-section{width:100%;min-width:0}
@@ -359,6 +364,8 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 </section>
 </section>
 <section id="productTools" class="hidden" role="tabpanel">
+<div id="productSubtabs" class="product-tabs" role="group" aria-label="Sub-abas de produtos"><button type="button" id="productsMainTab" aria-pressed="true">Produtos</button><button type="button" id="productsMissingBalconyTab" aria-pressed="false">Sem preço de balcão (<span id="missingBalconyCount">0</span>)</button></div>
+<section id="missingBalconySection" class="card" hidden aria-labelledby="missingBalconyTitle"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 id="missingBalconyTitle" style="margin:0">Produtos sem preço de balcão</h2><button type="button" id="refreshMissingBalcony" class="secondary">Atualizar lista</button></div><p id="missingBalconyMessage" class="muted" role="status" aria-live="polite">Carregando produtos…</p><div id="missingBalconyList" class="product-list"></div></section>
 <section class="card unified-products" aria-label="Produtos">
  <div class="unified-products-head"><div><h1>Produtos</h1><p class="muted">Toque em um produto para abrir a ficha completa.</p></div><button type="button" id="openNewProduct" disabled>+ Novo produto</button></div>
  <div class="unified-product-filters"><input id="unifiedProductSearch" type="search" placeholder="Buscar produto" aria-label="Buscar produto por nome"><select id="unifiedCategoryFilter" aria-label="Filtrar por categoria"><option value="">Todas as categorias</option></select><select id="unifiedCostFilter" aria-label="Filtrar por cadastro de custo"><option value="">Todos os custos</option><option value="missing">Sem custo cadastrado (0)</option></select></div>
@@ -2213,6 +2220,9 @@ async function loadAutomaticPriceReview(){
   }).join('')||'<p class="muted">Nenhum produto com preço de balcão.</p>';
   const noBalcony=Array.isArray(data?.without_balcony)?data.without_balcony:[];
   missing.innerHTML='<h3>Sem preço de balcão ('+noBalcony.length+')</h3>'+(noBalcony.map(p=>'<div class="product-row"><strong>'+esc(p.name)+'</strong><span class="muted">'+moneyAutomatic(p.current_price)+'</span></div>').join('')||'<p class="muted">Todos os produtos têm preço de balcão.</p>');
+  $('missingBalconyCount').textContent=String(noBalcony.length);
+  $('missingBalconyMessage').textContent=noBalcony.length+' produto(s) sem preço de balcão. Informe o valor e salve individualmente.';
+  $('missingBalconyList').innerHTML=noBalcony.map(p=>'<div class="missing-balcony-row"><strong>'+esc(p.name)+'</strong><label>Preço de balcão (R$)<input type="text" inputmode="decimal" placeholder="Ex.: 8,00" data-missing-balcony-input="'+esc(p.id)+'" aria-label="Preço de balcão para '+esc(p.name)+'"></label><button type="button" data-save-missing-balcony="'+esc(p.id)+'">Salvar</button></div>').join('')||'<p class="muted">Todos os produtos têm preço de balcão.</p>';
   msg.textContent=rows.length+' produto(s) com balcão. Preços só mudam após aplicação.';
  }catch(e){msg.textContent='Não foi possível carregar a revisão de preços.';}
 }
@@ -2222,6 +2232,26 @@ async function applyOneAutomaticPrice(id,ask=true){
  const {error}=await db.rpc('admin_apply_automatic_price',{p_product_id:id});if(error)throw error;
  await Promise.all([loadAutomaticPriceReview(),loadCostReport()]);
  return true;
+}
+$('missingBalconyList').addEventListener('click',async e=>{
+ const button=e.target.closest('[data-save-missing-balcony]');if(!button)return;
+ const id=button.getAttribute('data-save-missing-balcony');
+ const input=$('missingBalconyList').querySelector('[data-missing-balcony-input="'+CSS.escape(id)+'"]');
+ const value=parseCostInput(input?.value?.trim()||'');
+ if(value===null||value<0){$('missingBalconyMessage').textContent='Informe um preço de balcão válido, igual ou maior que zero.';input?.focus();return;}
+ button.disabled=true;button.textContent='Salvando…';
+ try{const {error}=await db.rpc('admin_set_product_prices',{p_product_id:id,p_preco_balcao:value,p_preco_pago:null});if(error)throw error;$('missingBalconyMessage').textContent='Preço de balcão salvo.';await loadAutomaticPriceReview();}
+ catch(error){$('missingBalconyMessage').textContent=error?.message||'Não foi possível salvar o preço de balcão.';}
+ finally{button.disabled=false;button.textContent='Salvar';}
+});
+$('refreshMissingBalcony').addEventListener('click',loadAutomaticPriceReview);
+$('productsMainTab').addEventListener('click',()=>setProductSubtab(false));
+$('productsMissingBalconyTab').addEventListener('click',()=>{setProductSubtab(true);void loadAutomaticPriceReview();});
+function setProductSubtab(missing){
+ $('productTools').classList.toggle('product-missing-mode',missing);
+ $('missingBalconySection').hidden=!missing;
+ $('productsMainTab').setAttribute('aria-pressed',String(!missing));
+ $('productsMissingBalconyTab').setAttribute('aria-pressed',String(missing));
 }
 $('automaticPriceReviewRows').addEventListener('click',async e=>{
  const b=e.target.closest('[data-apply-auto-price]');if(!b)return;
