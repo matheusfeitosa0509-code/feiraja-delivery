@@ -47,7 +47,7 @@ async function customer(browser,width,height) {
    <div id="map" data-lalamove-map data-order-id="TEST-CUSTOMER"></div></article></body></html>`);
   await installMapMock(page);
   let current={active:true,status:'searching',driver_assigned:false,store:{lat:-3.1347,lng:-60.0237},customer:{lat:-3.105,lng:-60.005}};
-  const state=await page.evaluate(()=>window.FeiraLalamoveMap.mount(document.querySelector('#map'),async()=>window.__trackingData,{pollIntervalMs:30000}));
+  await page.evaluate(()=>{window.__state=window.FeiraLalamoveMap.mount(document.querySelector('#map'),async()=>window.__trackingData,{pollIntervalMs:30000});});
   await page.evaluate(data=>{window.__trackingData=data;},current);
   await page.evaluate(()=>window.__state.refresh());
   await page.waitForSelector('#map .feira-delivery-map:not([hidden])');
@@ -72,6 +72,7 @@ async function customer(browser,width,height) {
   current={active:true,status:'picked_up',driver_assigned:true,vehicle:'MOTO',store:current.store,customer:current.customer,eta:12,driver:{name:'Ana Souza',phone:'+5592999999999',plateNumber:'ABC1D23',coordinates:start}};
   await page.evaluate(data=>{window.__trackingData=data;},current);await page.evaluate(()=>window.__state.refresh());
   assert.equal(await page.evaluate(()=>window.__state.map.markers.length),3,'motorcycle appears once GPS coordinates arrive');
+  assert.equal(await page.evaluate(()=>window.__state.map.bounds.length),3,'first motorcycle fix is included in automatic zoom bounds');
   assert.match(await page.locator('.feira-delivery-status').innerText(),/Previsão de chegada: 12 min/);
   const before=await page.evaluate(()=>window.__state.driver.latlng);
   current={...current,driver:{...current.driver,coordinates:finish}};
@@ -97,7 +98,7 @@ async function admin(browser) {
   const page=await browser.newPage({viewport:{width:412,height:915}});
   await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="admin" data-order-id="TEST-ADMIN"></div></body></html>');
   await installMapMock(page);
-  const state=await page.evaluate(()=>window.FeiraLalamoveMap.mount(document.querySelector('#admin'),async()=>({active:true,status:'assigned',driver_assigned:true,vehicle:'MOTO',store:{lat:-3.13,lng:-60.02},customer:{lat:-3.10,lng:-60.01},tracking_url:'https://share.lalamove.com/admin-test',driver:{name:'Carlos Silva',phone:'+5592888888888',plateNumber:'XYZ1234',coordinates:{lat:-3.12,lng:-60.015}}}),{admin:true}));
+  await page.evaluate(()=>{window.__state=window.FeiraLalamoveMap.mount(document.querySelector('#admin'),async()=>({active:true,status:'assigned',driver_assigned:true,vehicle:'MOTO',store:{lat:-3.13,lng:-60.02},customer:{lat:-3.10,lng:-60.01},tracking_url:'https://share.lalamove.com/admin-test',driver:{name:'Carlos Silva',phone:'+5592888888888',plateNumber:'XYZ1234',coordinates:{lat:-3.12,lng:-60.015}}}),{admin:true});});
   await page.waitForSelector('#admin .feira-delivery-actions a.admin:not([hidden])');
   assert.equal(await page.evaluate(()=>window.__mapOptions.zoomControl),true,'admin keeps zoom controls');
   assert.equal(await page.evaluate(()=>window.__state.map.markers.length),3);
