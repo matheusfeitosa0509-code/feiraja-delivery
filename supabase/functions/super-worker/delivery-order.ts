@@ -1,6 +1,6 @@
 import { geocodeManausAddress } from "../_shared/geocoding.ts";
 import {
-  chooseVehicle, estimateLoad, formatDropoff, parseQuotation, requestSandboxQuotation,
+  chooseVehicle, estimateLoad, formatDropoff, parseQuotation, requestSandboxQuotation, resolveDeliveryDropoffCoordinates,
   type DeliveryAddress, type QuoteItem, type ProductWeight,
 } from "../_shared/delivery-quote.ts";
 
@@ -48,6 +48,7 @@ export async function calculateServerDelivery(input: {
   geocodingApiKey: string;
   environment?: "sandbox" | "producao";
   scheduleAt?: string;
+  coordinates?: unknown;
   geocodeFetcher?: typeof fetch;
   fetcher?: typeof fetch;
 }) {
@@ -55,10 +56,11 @@ export async function calculateServerDelivery(input: {
   const load = estimateLoad(input.items, input.products);
   const vehicle = chooseVehicle(load.weightKg, load.bulky, input.motoLimitKg);
   const serviceType = vehicle === "MOTO" ? "LALAGO" : "CAR";
-  const [originCoordinates, dropoffCoordinates] = await Promise.all([
+  const [originCoordinates, destinationResult] = await Promise.all([
     geocodeManausAddress(ORIGIN_ADDRESS, input.geocodingApiKey, input.geocodeFetcher || fetch),
-    geocodeManausAddress(dropoff, input.geocodingApiKey, input.geocodeFetcher || fetch),
+    resolveDeliveryDropoffCoordinates(input.coordinates, () => geocodeManausAddress(dropoff, input.geocodingApiKey, input.geocodeFetcher || fetch)),
   ]);
+  const dropoffCoordinates = destinationResult.coordinates;
   const response = await requestSandboxQuotation(
     input.apiKey, input.apiSecret, serviceType, dropoff,
     { origin: originCoordinates, dropoff: dropoffCoordinates }, input.fetcher || fetch, input.environment || "sandbox", input.scheduleAt,
