@@ -2,7 +2,7 @@ import { lalamoveBaseUrl, type LalamoveEnvironment } from "./lalamove-environmen
 
 export type DeliveryCoordinates = { lat: string; lng: string };
 export type DeliveryAddress = {
-  street: string; number: string; neighborhood: string;
+  street: string; number: string; neighborhood: string; postal_code?: string;
   complement?: string; reference?: string;
 };
 export type QuoteItem = { product_id: string; quantity: number };
@@ -11,6 +11,23 @@ export type ProductWeight = {
   sale_unit: string | null;
 };
 export type QuoteResult = { vehicle: "MOTO" | "CAR"; weightKg: number; fee: number; validUntil: string };
+
+export function normalizeConfirmedDeliveryCoordinates(input: unknown): DeliveryCoordinates | null {
+  if (!input || typeof input !== "object") return null;
+  const value = input as Record<string, unknown>;
+  const lat = Number(value.lat), lng = Number(value.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { lat: lat.toFixed(6), lng: lng.toFixed(6) };
+}
+
+export async function resolveDeliveryDropoffCoordinates(
+  input: unknown,
+  fallback: () => Promise<DeliveryCoordinates>,
+): Promise<{ coordinates: DeliveryCoordinates; source: "confirmed_pin" | "geocoded_fallback" }> {
+  const confirmed = normalizeConfirmedDeliveryCoordinates(input);
+  if (confirmed) return { coordinates: confirmed, source: "confirmed_pin" };
+  return { coordinates: await fallback(), source: "geocoded_fallback" };
+}
 
 export function estimateLoad(items: QuoteItem[], products: ProductWeight[]) {
   if (!Array.isArray(items) || items.length < 1 || items.length > 100) throw new Error("INVALID_ITEMS");
