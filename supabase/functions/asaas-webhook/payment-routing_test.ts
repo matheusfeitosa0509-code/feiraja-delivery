@@ -336,3 +336,18 @@ Deno.test("handler: divergência de valor gera exatamente um alerta administrati
   assertEquals(mock.alerts[0].order_id, "ORDER-123");
   assertEquals(mock.getOrder()?.status, "Pagamento Pendente");
 });
+
+Deno.test("handler: exceção ao validar pagamento gera alerta administrativo sem mudar o pedido", async () => {
+  const mock = makeDb({
+    id: "ORDER-123", status: "Pagamento Pendente", total: 30,
+    payment_id: "pay_123", payment_provider: "asaas",
+    created_at: "2026-11-13T11:55:00Z", is_test_order: false,
+  });
+  const deps = makeDependencies(mock).deps;
+  deps.fetch = (async () => { throw new Error("simulated network failure"); }) as typeof fetch;
+  const response = await handleAsaasWebhook(makeRequest(), deps);
+  assertEquals(response.status, 503);
+  assertEquals(mock.alerts.length, 1);
+  assertEquals(mock.alerts[0].tipo, "asaas_pagamento_erro");
+  assertEquals(mock.getOrder()?.status, "Pagamento Pendente");
+});
