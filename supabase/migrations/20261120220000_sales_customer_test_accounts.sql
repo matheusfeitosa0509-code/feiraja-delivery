@@ -37,17 +37,18 @@ BEGIN
  IF auth.uid() IS NULL OR NOT public.is_current_user_admin() THEN RAISE EXCEPTION 'Acesso permitido somente a administradores.' USING ERRCODE='42501'; END IF;
  SELECT COALESCE(jsonb_agg(to_jsonb(c) ORDER BY c.last_order_at DESC NULLS LAST),'[]'::jsonb) INTO v_result
  FROM (
-  SELECT o.user_id,
+  SELECT DISTINCT ON (o.user_id)
+   o.user_id,
    COALESCE(NULLIF(btrim(cp.full_name),''),NULLIF(btrim(o.customer_name),''),'Cliente sem nome') AS customer_name,
    COALESCE(NULLIF(lower(btrim(u.email)),''),NULLIF(lower(btrim(o.customer_email)),'')) AS customer_email,
    COALESCE(NULLIF(btrim(cp.phone),''),NULLIF(btrim(o.customer_phone),'')) AS customer_phone,
-   max(o.created_at) AS last_order_at,(t.user_id IS NOT NULL) AS is_test_account
+   o.created_at AS last_order_at,(t.user_id IS NOT NULL) AS is_test_account
   FROM public.orders o
   LEFT JOIN public.customer_profiles cp ON cp.user_id=o.user_id
   LEFT JOIN auth.users u ON u.id=o.user_id
   LEFT JOIN feira_cost_private.customer_test_accounts t ON t.user_id=o.user_id
   WHERE NOT EXISTS(SELECT 1 FROM public.admin_users au WHERE au.user_id=o.user_id)
-  GROUP BY o.user_id,cp.full_name,u.email,o.customer_name,o.customer_email,cp.phone,o.customer_phone,t.user_id
+  ORDER BY o.user_id,o.created_at DESC NULLS LAST
  ) c;
  RETURN v_result;
 END;
