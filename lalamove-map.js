@@ -78,12 +78,14 @@
   function syncStatus(data){
    const value=String(data?.status||'').toLowerCase(),card=container.closest('.order-card');if(!card)return;
    const heading=card.querySelector('.order-status-top b'),subtitle=card.querySelector('.order-subtitle'),timeline=card.querySelector('.order-timeline'),detail=timeline?.querySelector('.order-timeline-detail');
-   const terminal=['delivered','completed','cancelled','canceled'];if(terminal.includes(value)){stop();container.hidden=true;return;}
-   const index=value==='picked_up'?4:['assigned','enroute_pickup'].includes(value)?3:value==='searching'?2:-1;
-   if(value==='picked_up'){if(heading)heading.textContent='Saiu para entrega';if(subtitle)subtitle.textContent='Seu pedido está a caminho.';if(detail)detail.textContent='O entregador está levando seu pedido.';}
+   const terminal=['delivered','completed','cancelled','canceled'],isDelivered=['delivered','completed'].includes(value);
+   const index=isDelivered?5:value==='picked_up'?4:['assigned','enroute_pickup'].includes(value)?3:value==='searching'?2:-1;
+   if(isDelivered){if(heading)heading.textContent='Pedido entregue';if(subtitle)subtitle.textContent='Sua entrega foi concluída.';if(detail)detail.textContent='Seu pedido chegou.';}
+   else if(value==='picked_up'){if(heading)heading.textContent='Saiu para entrega';if(subtitle)subtitle.textContent='Seu pedido está a caminho.';if(detail)detail.textContent='O entregador está levando seu pedido.';}
    else if(value==='assigned'||value==='enroute_pickup'){if(heading)heading.textContent='Entregador a caminho da feira';if(subtitle)subtitle.textContent='O entregador está indo buscar seu pedido.';if(detail)detail.textContent='Entregador a caminho da feira.';}
    else if(value==='searching'){if(heading)heading.textContent='Procurando entregador';if(subtitle)subtitle.textContent='Estamos buscando um entregador para seu pedido.';if(detail)detail.textContent='Procurando entregador.';}
    if(timeline){[...timeline.querySelectorAll('li')].forEach((step,i)=>{step.classList.toggle('done',index>=0&&i<index);step.classList.toggle('now',index>=0&&i===index);});}
+   if(terminal.includes(value)){stop();container.hidden=true;}
   }
   async function refresh(){if(state.stopped||!container.isConnected||state.inFlight)return;state.inFlight=true;try{const data=await fetchTracking(String(container.dataset.orderId||''));syncStatus(data);const terminal=['delivered','completed','cancelled','canceled'].includes(String(data?.status||'').toLowerCase());if(!data||terminal||data.active===false){stop();status.textContent=terminal?'Entrega encerrada.':'Acompanhamento encerrado.';mapEl.hidden=true;driverCard.hidden=true;container.hidden=true;return;}container.hidden=false;await renderMap(data);}catch(_){if(options.admin){status.textContent='Acompanhamento indisponível no momento.';mapEl.hidden=true;driverCard.hidden=true;}else{stop();container.hidden=true;}}finally{state.inFlight=false;}}
   function start(){if(state.stopped||state.timer||document.visibilityState==='hidden'||!container.getClientRects().length)return;void refresh();state.timer=setInterval(()=>void refresh(),options.pollIntervalMs||30000);}
