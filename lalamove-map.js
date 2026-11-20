@@ -36,7 +36,7 @@
   if(options.admin){const open=document.createElement('a');open.className='admin';open.target='_blank';open.rel='noopener noreferrer';open.textContent='Abrir na Lalamove';open.hidden=true;actions.append(open);}
   else{const contact=document.createElement('a');contact.href=options.whatsappUrl||'https://wa.me/559294444989';contact.target='_blank';contact.rel='noopener noreferrer';contact.textContent='Falar com a Feira On';actions.append(contact);}
   root.append(status,driverCard,mapEl,actions);container.replaceChildren(root);
-  const state={container,root,status,driverCard,mapEl,map:null,store:null,home:null,driver:null,route:null,progress:null,timer:null,observer:null,animation:0,lastPoint:null,inFlight:false,stopped:false};
+  const state={container,root,status,driverCard,mapEl,map:null,store:null,home:null,driver:null,route:null,progress:null,driverIncludedInBounds:false,timer:null,observer:null,animation:0,lastPoint:null,inFlight:false,stopped:false};
   function stop(){if(state.timer){clearInterval(state.timer);state.timer=null;}if(state.animation)cancelAnimationFrame(state.animation);state.animation=0;}
   function destroy(){stop();state.stopped=true;state.observer?.disconnect();state.map?.remove();instances.delete(container);}
   function renderDriver(driver,vehicle){
@@ -49,7 +49,7 @@
    const end=projectedPoint(state.store,state.home,driver);state.progress.setLatLngs([[state.store.lat,state.store.lng],[end.lat,end.lng]]);
   }
   function animateDriver(target){
-   if(!state.driver){state.driver=window.L.marker([target.lat,target.lng],{icon:marker(window.L,'moto','Entregador',0),zIndexOffset:1000}).addTo(state.map);state.lastPoint={...target};updateProgress(target);return;}
+   if(!state.driver){state.driver=window.L.marker([target.lat,target.lng],{icon:marker(window.L,'moto','Entregador',0),zIndexOffset:1000}).addTo(state.map);state.lastPoint={...target};updateProgress(target);if(!state.driverIncludedInBounds){state.map.fitBounds([[state.store.lat,state.store.lng],[state.home.lat,state.home.lng],[target.lat,target.lng]],{padding:[36,36],maxZoom:16});state.driverIncludedInBounds=true;}return;}
    if(!state.lastPoint){state.driver.setLatLng([target.lat,target.lng]);state.lastPoint={...target};updateProgress(target);return;}
    if(state.animation)cancelAnimationFrame(state.animation);const from={...state.lastPoint},to={...target},angle=bearing(from,to);let start=0;const duration=2500;
    const frame=now=>{if(!start)start=now;const t=Math.min(1,(now-start)/duration),e=t*t*(3-2*t);const current={lat:from.lat+(to.lat-from.lat)*e,lng:from.lng+(to.lng-from.lng)*e};state.driver.setLatLng([current.lat,current.lng]);updateProgress(current);if(t<1)state.animation=requestAnimationFrame(frame);else{state.animation=0;state.lastPoint={...to};if(state.driver.setIcon)state.driver.setIcon(marker(window.L,'moto','Entregador',angle));}};
@@ -64,11 +64,11 @@
     state.progress=L.polyline([[store.lat,store.lng],[store.lat,store.lng]],{color:'#14532D',weight:6,opacity:1,lineCap:'round'}).addTo(state.map);
     state.store=L.marker([store.lat,store.lng],{icon:marker(L,'store','Feira On')}).addTo(state.map);
     state.home=L.marker([home.lat,home.lng],{icon:marker(L,'home','Casa da cliente')}).addTo(state.map);
-    if(driver){state.driver=L.marker([driver.lat,driver.lng],{icon:marker(L,'moto','Entregador'),zIndexOffset:1000}).addTo(state.map);state.lastPoint={...driver};updateProgress(driver);}
+    if(driver){state.driver=L.marker([driver.lat,driver.lng],{icon:marker(L,'moto','Entregador'),zIndexOffset:1000}).addTo(state.map);state.lastPoint={...driver};state.driverIncludedInBounds=true;updateProgress(driver);}
     state.map.fitBounds([[store.lat,store.lng],[home.lat,home.lng],...(driver?[[driver.lat,driver.lng]]:[])],{padding:[36,36],maxZoom:16});
    }else{
     state.store.setLatLng([store.lat,store.lng]);state.home.setLatLng([home.lat,home.lng]);state.route.setLatLngs([[store.lat,store.lng],[home.lat,home.lng]]);
-    if(driver)animateDriver(driver);else if(state.driver){state.map.removeLayer(state.driver);state.driver=null;state.lastPoint=null;state.progress.setLatLngs([[store.lat,store.lng],[store.lat,store.lng]]);}
+    if(driver)animateDriver(driver);else if(state.driver){state.map.removeLayer(state.driver);state.driver=null;state.lastPoint=null;state.driverIncludedInBounds=false;state.progress.setLatLngs([[store.lat,store.lng],[store.lat,store.lng]]);}
    }
    if(driver){renderDriver(data.driver,data.vehicle);status.textContent=data.eta?'Previsão de chegada: '+(/^\d+(?:[.,]\d+)?$/.test(String(data.eta).trim())?String(data.eta)+' min':String(data.eta)):data.status==='picked_up'?'O entregador está a caminho do seu endereço.':'O entregador está a caminho da feira.';}
    else{driverCard.hidden=true;status.textContent=data.status==='searching'?'Procurando entregador.':data.status==='picked_up'?'O entregador saiu para entrega.':'Entregador a caminho da feira.';}
