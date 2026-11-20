@@ -55,6 +55,7 @@ async function customer(browser,width,height) {
   await page.waitForFunction(()=>window.__state?.map?.polylines?.length===2);
   const searching=await page.evaluate(()=>({markers:window.__state.map.markers.length,zoom:window.__mapOptions.zoomControl,tile:window.__tileUrl,fit:window.__state.map.fitOptions,bounds:window.__state.map.bounds,html:document.querySelector('#map').innerText,height:getComputedStyle(document.querySelector('.feira-delivery-map')).height,attribution:document.querySelector('.feira-delivery-map')?.getAttribute('aria-label')}));
   assert.equal(searching.markers,2,'without driver, show only store and customer');
+  assert.match(mapSource,/\.feira-delivery-map\\{height:45vh/,'customer map uses about 45 percent of viewport height');
   assert.equal(searching.zoom,false,'customer map hides zoom controls');
   assert.match(searching.tile,/basemaps\.cartocdn\.com\/light_all/,'light CARTO tiles replace standard OSM');
   assert.equal(searching.bounds.length,2,'fit bounds only store and customer when driver is absent');
@@ -62,6 +63,9 @@ async function customer(browser,width,height) {
   assert.match(searching.height,/\d+px/);
   assert.doesNotMatch(searching.html,/📍|🏠|🏪|🛵|🚗/,'customer map card uses no emoji');
   assert.equal(await page.locator('.leaflet-control-zoom').count(),0);
+  const svgPins=await page.locator('.feira-map-marker').evaluateAll(nodes=>nodes.map(node=>node.innerHTML).join(' '));
+  assert.match(svgPins,/<svg/,'custom markers are SVG artwork');
+  assert.doesNotMatch(svgPins,/📍|🏠|🏪|🛵|🚗/,'custom map pins contain no emoji');
   await page.screenshot({path:path.join(root,'artifacts','order-tracking-map-customer-'+width+'-searching.png'),fullPage:true});
 
   current={active:true,status:'assigned',driver_assigned:true,store:current.store,customer:current.customer,driver:{name:'Ana Souza',plateNumber:'ABC1D23'}};
@@ -84,13 +88,17 @@ async function customer(browser,width,height) {
   assert.match(await page.locator('.feira-driver-card').innerText(),/Ana/);
   assert.match(await page.locator('.feira-driver-card').innerText(),/Placa ABC1D23/);
   assert.doesNotMatch(await page.locator('.feira-driver-card').innerText(),/9999999999/,'customer never sees driver phone');
+  assert.equal(await page.evaluate(()=>window.__state.route.options.color),'#1E6B3A','full route uses app green');
   assert.equal(await page.evaluate(()=>window.__state.progress.options.color),'#14532D','traveled segment uses darker green');
   await page.screenshot({path:path.join(root,'artifacts','order-tracking-map-customer-'+width+'-picked-up.png'),fullPage:true});
 
-  current={active:false,status:'completed',driver_assigned:true,store:current.store,customer:current.customer};
+  current={active:false,status:'delivered',driver_assigned:true,store:current.store,customer:current.customer};
   await page.evaluate(data=>{window.__trackingData=data;},current);await page.evaluate(()=>window.__state.refresh());
   assert.equal(await page.locator('#map .feira-delivery-map:not([hidden])').count(),0,'completed order hides map');
-  assert.equal(await page.locator('#map').evaluate(el=>el.hidden),true,'completed tracking card is hidden');
+  assert.equal(await page.locator('#map').evaluate(el=>el.hidden),true,'delivered tracking card is hidden');
+  await page.evaluate(()=>{const card=document.createElement('article');card.className='order-card';card.innerHTML='<div class="order-status-top"><b>Pedido cancelado</b></div><div id="cancelled-map" data-lalamove-map data-order-id="TEST-CANCELLED"></div>';document.body.append(card);window.__cancelledState=window.FeiraLalamoveMap.mount(document.querySelector('#cancelled-map'),async()=>({active:false,status:'cancelled'}));});
+  await page.waitForFunction(()=>window.__cancelledState?.container?.hidden===true);
+  assert.equal(await page.locator('#cancelled-map').evaluate(el=>el.hidden),true,'cancelled tracking card is hidden');
   assert.deepEqual(errors,[]);
   await page.close();
 }
