@@ -2469,7 +2469,7 @@ $('productRequestsList').addEventListener('click',async event=>{
   if(error)throw error;
   if(data===false)throw new Error('A solicitação não foi encontrada ou já foi processada.');
   await loadProductRequests();
- }catch(error){message.textContent=error?.message||'Não foi possível atualizar a solicitação.';button.disabled=false;}
+ }catch(error){$('productRequestsMessage').textContent=error?.message||'Não foi possível atualizar a solicitação.';button.disabled=false;}
 });
 $('refreshProductRequests').addEventListener('click',loadProductRequests);
 
