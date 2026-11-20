@@ -62,6 +62,7 @@ let deliveryPlacesSessionToken='session-123',deliveryAutocompleteTimer=null,deli
 const deliveryQuoteCache=new Map();
 const buildDeliveryQuoteCacheKey=(address,items,coordinates=null,userId='')=>JSON.stringify({user:String(userId||''),address,items,coordinates:coordinates||null});
 const isCachedDeliveryQuoteValid=(entry,now=Date.now())=>!!entry&&Number(entry.expiresAt)>Number(now)&&isValidDeliveryQuote(entry.quote,now);
+const hasMultipleDeliveryAddresses = input => {const pattern=/(?:\\b(?:rua|avenida|travessa|alameda|rodovia|estrada)\\b|\\b(?:r|av|tv)\\.)[\\s\\S]{0,80}\\b\\d{1,5}\\b/i;return pattern.test(String(input?.complement||''))||pattern.test(String(input?.reference||''));};
 const normalizeDeliveryAddress = value => ({street:String(value.street||'').trim(),number:String(value.number||'').trim(),neighborhood:String(value.neighborhood||'').trim(),complement:String(value.complement||''),reference:String(value.reference||'')});
 const getDeliveryAddress = () => normalizeDeliveryAddress({street:$('#deliveryStreet').value,number:$('#deliveryNumber').value,neighborhood:$('#deliveryNeighborhood').value,reference:$('#deliveryReference').value});
 let quoteCalls=0,quoteMode='success';
