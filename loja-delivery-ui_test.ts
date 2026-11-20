@@ -212,7 +212,7 @@ Deno.test("acompanhamento da entrega usa seis etapas e não expõe o parceiro ao
     "Aguardando pagamento do Pix",
     "Procurando entregador.",
     "Retire na Av. Lourenço da Silva Braga, 700",
-    "Estamos chamando um novo entregador 🛵",
+    "Estamos chamando um novo entregador",
     "Seu pedido continua garantido.",
     "Pedido cancelado",
     "Fale com a loja se precisar de ajuda.",
@@ -226,6 +226,8 @@ Deno.test("acompanhamento da entrega usa seis etapas e não expõe o parceiro ao
   assertEquals(orderRendering.includes("Peso estimado"), false, "customer tracking must not show delivery weight");
   assertEquals(orderRendering.includes("Lalamove"), false, "customer order card must not name the delivery provider");
   assertEquals(orderRendering.includes("data-tracking-url"), false, "customer order card must not contain provider tracking links");
+  assertEquals(orderRendering.includes("📍"), false, "customer order card must not use an emoji address pin");
+  assertEquals(orderRendering.includes("🛵"), false, "customer order card must not use an emoji motorcycle");
   assertEquals(html.includes("delivery_weight_kg"), false, "customer order query must not fetch delivery weight");
 });
 
