@@ -834,7 +834,7 @@ function renderUnifiedProductList(){
  host.innerHTML=rows.map(p=>{
   const cost=costs.get(p.id),margin=productMargin(p,cost),hasCost=!!cost&&cost.unit_cost!=null&&Number(cost.unit_cost)>0;
   const effectiveCost=cost?(cost.preco_pago??cost.preco_balcao??cost.unit_cost):null;
-  const counterCost=cost?(cost.preco_balcao??cost.unit_cost):null;
+  const counterCost=cost?(cost.preco_balcao??(cost.preco_pago==null?cost.unit_cost:null)):null;
   const profit=effectiveCost==null?null:Number(p.price)-Number(effectiveCost);
   const counterProfit=counterCost==null?null:Number(p.price)-Number(counterCost);
   const marginClass=margin!==null&&margin<0?'below-cost':margin!==null&&margin<costMarginThreshold?'low-margin':'';
@@ -879,7 +879,8 @@ function fillProductSheet(product){
  const margin=productMargin(product,cost);
  const effectiveCost=cost?.preco_pago??cost?.preco_balcao??cost?.unit_cost??null;
  const profit=effectiveCost==null?null:Number(product.price)-Number(effectiveCost);
- const counterProfit=(cost?.preco_balcao??cost?.unit_cost)==null?null:Number(product.price)-Number(cost.preco_balcao??cost.unit_cost);
+ const counterCost=cost?.preco_balcao??(cost?.preco_pago==null?cost?.unit_cost:null);
+ const counterProfit=counterCost==null?null:Number(product.price)-Number(counterCost);
  const updated=cost?.updated_at?new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',dateStyle:'short',timeStyle:'short'}).format(new Date(cost.updated_at)):'Ainda não atualizado';
  $('sheetProfit').innerHTML=effectiveCost==null?'Sem preço de custo cadastrado.':('Lucro real: <strong>'+money(profit)+'</strong> por unidade comercial'+(counterProfit==null?'':'<br><small>Lucro sobre balcão: '+money(counterProfit)+'</small>')+'<br><small>Última atualização: '+esc(updated)+'</small>');
  setSheetMessage('Altere os campos necessários e salve.');
@@ -1302,7 +1303,7 @@ function renderOrderItemProfit(snapshot,item){
  const orderId=arguments[2],itemIndex=arguments[3],safeOrderId=String(orderId??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
  const qty=Number(snapshot?.quantity??item?.quantity??item?.qty??1),sale=Number(snapshot?.sale_total??(Number(item?.price||0)*qty));
  const edit='<button type="button" class="cost-edit-pencil" data-edit-order-cost="'+safeOrderId+'" data-cost-item-index="'+itemIndex+'" aria-label="Editar custo pago deste item" title="Editar custo">✎</button>';
- const balcony=snapshot?.preco_balcao??snapshot?.unit_cost??null,paid=snapshot?.preco_pago??null,effective=paid??balcony;
+ const balcony=snapshot?.preco_balcao??(snapshot?.preco_pago==null?snapshot?.unit_cost??null:null),paid=snapshot?.preco_pago??null,effective=paid??balcony??snapshot?.unit_cost??null;
  if(effective===null||effective===undefined)return '<small class="profit-item-meta missing">Venda: '+money(sale)+' · sem preço de custo '+edit+'</small>';
  const realProfit=sale-(Number(effective)*qty),counterProfit=balcony==null?null:sale-(Number(balcony)*qty);
  return '<small class="profit-item-meta '+(realProfit<0?'profit-negative':'profit-positive')+'">Venda: '+money(sale)+' · Lucro real: '+money(realProfit)+' '+edit+(counterProfit===null?'':'<br><small>Lucro sobre balcão: '+money(counterProfit)+'</small>')+'</small>';
@@ -1310,9 +1311,9 @@ function renderOrderItemProfit(snapshot,item){
 
 function renderOrderProfitMarkup(data,totalItems){
  if(!data)return '<strong class="order-profit-summary profit-positive">Lucro parcial (0 de '+totalItems+' itens): R$ 0,00</strong>';
- const calculated=Number(data.calculated_items||0),total=Number(data.total_items??totalItems),profit=Number(data.profit||0),counter=Number(data.profit_on_counter_total??data.profit_on_counter??profit),covered=Number(data.delivery_covered||0),partial=calculated<total;
+ const calculated=Number(data.calculated_items||0),total=Number(data.total_items??totalItems),profit=Number(data.profit||0),counterRaw=data.profit_on_counter_total??data.profit_on_counter,counter=counterRaw==null?null:Number(counterRaw),covered=Number(data.delivery_covered||0),partial=calculated<total;
  const note=covered>0?'<small>Inclui '+money(covered)+' de entrega coberta pela loja</small>':'';
- return '<strong class="order-profit-summary '+(profit<0?'profit-negative':'profit-positive')+'">'+(partial?'Lucro real parcial ('+calculated+' de '+total+' itens): ':'Lucro real do pedido: ')+money(profit)+note+'<br><small style="font-weight:500">Lucro sobre balcão: '+money(counter)+'</small></strong>';
+ return '<strong class="order-profit-summary '+(profit<0?'profit-negative':'profit-positive')+'">'+(partial?'Lucro real parcial ('+calculated+' de '+total+' itens): ':'Lucro real do pedido: ')+money(profit)+note+'<br><small style="font-weight:500">Lucro sobre balcão: '+(counter===null?'—':money(counter))+'</small></strong>';
 }
 function renderDailySummary(){
  const s=dailyProfitSummary||{};
@@ -1323,7 +1324,7 @@ function renderDailySummary(){
   dayInDelivery:String(s.in_delivery??0),
   dayPaidSales:money(s.paid_sales||0),
   dayProfit:money(s.profit||0),
-  dayProfitNote:'Sobre balcão: '+money(s.profit_on_counter||0)+(Number(s.missing_cost_items||0)>0?' · Parcial · '+s.missing_cost_items+' item(ns) sem custo':''),
+  dayProfitNote:'Sobre balcão: '+(s.profit_on_counter==null?'—':money(s.profit_on_counter))+(Number(s.missing_cost_items||0)>0?' · Parcial · '+s.missing_cost_items+' item(ns) sem custo':''),
   count:String(statsOrders.length),
   pending:String(statsOrders.filter(o=>['Pedido Recebido','Pagamento Pendente'].includes(normalizeOrderStatus(o.status))).length),
   active:String(statsOrders.filter(o=>['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega'].includes(normalizeOrderStatus(o.status))).length),
@@ -2151,7 +2152,7 @@ async function loadCostReport(){
   if(typeof renderUnifiedProductList==='function')renderUnifiedProductList();
   if(typeof renderAllSharedProductLists==='function')renderAllSharedProductLists();
   const now=Date.now();
-  $('costProductStatusList').innerHTML=products.map(product=>{const updated=product.updated_at?new Date(product.updated_at):null;const stale=updated&&now-updated.getTime()>7*24*60*60*1000;const effective=product.preco_pago??product.preco_balcao??product.unit_cost;const margin=effective==null||Number(effective)<=0||Number(product.price)<=0?null:(Number(product.price)-Number(effective))/Number(product.price)*100;const below=margin!==null&&margin<0;const low=margin!==null&&!below&&margin<costMarginThreshold;const classes=[stale?'stale':'',below?'below-cost':low?'low-margin':''].filter(Boolean).join(' ');const date=updated?new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',day:'2-digit',month:'2-digit'}).format(updated):null;const costText=effective==null?'Preço não cadastrado':date?'Atualizado em: '+date:'Preço cadastrado';const realProfit=effective==null?null:Number(product.price)-Number(effective);const counterProfit=(product.preco_balcao??product.unit_cost)==null?null:Number(product.price)-Number(product.preco_balcao??product.unit_cost);const marginText=realProfit===null?'Lucro real: sem preço':('Lucro real: '+money(realProfit)+(counterProfit===null?'':' · sobre balcão: '+money(counterProfit)));return '<article class="cost-product-row '+classes+'"><strong>'+esc(product.name)+'</strong><small>'+costText+'</small><small>'+marginText+'</small></article>';}).join('')||'<p class="muted">Nenhum produto cadastrado.</p>';
+  $('costProductStatusList').innerHTML=products.map(product=>{const updated=product.updated_at?new Date(product.updated_at):null;const stale=updated&&now-updated.getTime()>7*24*60*60*1000;const effective=product.preco_pago??product.preco_balcao??product.unit_cost;const margin=effective==null||Number(effective)<=0||Number(product.price)<=0?null:(Number(product.price)-Number(effective))/Number(product.price)*100;const below=margin!==null&&margin<0;const low=margin!==null&&!below&&margin<costMarginThreshold;const classes=[stale?'stale':'',below?'below-cost':low?'low-margin':''].filter(Boolean).join(' ');const date=updated?new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',day:'2-digit',month:'2-digit'}).format(updated):null;const costText=effective==null?'Preço não cadastrado':date?'Atualizado em: '+date:'Preço cadastrado';const realProfit=effective==null?null:Number(product.price)-Number(effective);const counterCost=product.preco_balcao??(product.preco_pago==null?product.unit_cost:null);const counterProfit=counterCost==null?null:Number(product.price)-Number(counterCost);const marginText=realProfit===null?'Lucro real: sem preço':('Lucro real: '+money(realProfit)+(counterProfit===null?'':' · sobre balcão: '+money(counterProfit)));return '<article class="cost-product-row '+classes+'"><strong>'+esc(product.name)+'</strong><small>'+costText+'</small><small>'+marginText+'</small></article>';}).join('')||'<p class="muted">Nenhum produto cadastrado.</p>';
   const selected=$('costProductSelect').value;
   $('costProductSelect').replaceChildren(new Option('Selecione um produto',''));
   products.forEach(product=>{
