@@ -1164,7 +1164,7 @@ function openOrderCostEditor(orderId,itemIndex){
  $('orderCostOrderId').value=String(orderId);$('orderCostItemIndex').value=String(itemIndex);
  $('orderCostBalconyInput').value=snapshot.preco_balcao==null?'':Number(snapshot.preco_balcao).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
  $('orderCostPaidInput').value=snapshot.preco_pago==null?'':Number(snapshot.preco_pago).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
- $('orderCostUpdateProduct').checked=true;$('orderCostWarning').textContent='';
+ $('orderCostUpdateProduct').checked=Boolean(snapshot.product_id);$('orderCostUpdateProduct').disabled=!snapshot.product_id;$('orderCostWarning').textContent='';
  $('orderCostItemName').textContent=String(snapshot.product_name||order.items?.[itemIndex]?.name||'Item do pedido');
  $('orderCostBackdrop').hidden=false;$('orderCostUnitInput').focus();
 }
@@ -1223,7 +1223,7 @@ async function saveOrderItemCost(){
  }catch(error){
   console.error('Falha ao atualizar custo do item:',error);
   message.textContent=error?.message||'Não foi possível salvar o custo. Verifique a sessão de administrador.';
- }finally{button.disabled=false;button.textContent='Salvar custo';}
+ }finally{button.disabled=false;button.textContent='Salvar preços';}
 }
 $('orderCostCancel').addEventListener('click',()=>$('orderCostBackdrop').hidden=true);
 $('orderCostSave').addEventListener('click',saveOrderItemCost);
@@ -2112,10 +2112,11 @@ $('btnConfirmProductEdit').addEventListener('click',async()=>{
 });
 
 function parseCostInput(value){
- const raw=String(value||'').trim().replace(/R\$\s?/gi,'').replace(/\s/g,'');
+ const raw=String(value??'').trim().replace(/R\$\s?/gi,'').replace(/\s/g,'');
+ if(!raw)return null;
  const normalized=raw.includes(',')?raw.replace(/\./g,'').replace(',','.'):raw;
  const amount=Number(normalized);
- return Number.isFinite(amount)&&amount>0?amount:null;
+ return Number.isFinite(amount)&&amount>=0?amount:null;
 }
 function costDateInManaus(value,addDay=false){
  const date=new Date(value+'T00:00:00-04:00');
@@ -2146,11 +2147,11 @@ async function loadCostReport(){
   if(typeof renderUnifiedProductList==='function')renderUnifiedProductList();
   if(typeof renderAllSharedProductLists==='function')renderAllSharedProductLists();
   const now=Date.now();
-  $('costProductStatusList').innerHTML=products.map(product=>{const updated=product.updated_at?new Date(product.updated_at):null;const stale=updated&&now-updated.getTime()>7*24*60*60*1000;const margin=product.unit_cost==null||Number(product.unit_cost)<=0||Number(product.price)<=0?null:(Number(product.price)-Number(product.unit_cost))/Number(product.price)*100;const below=margin!==null&&margin<0;const low=margin!==null&&!below&&margin<costMarginThreshold;const classes=[stale?'stale':'',below?'below-cost':low?'low-margin':''].filter(Boolean).join(' ');const date=updated?new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',day:'2-digit',month:'2-digit'}).format(updated):null;const costText=product.unit_cost==null||Number(product.unit_cost)<=0?'Custo não cadastrado':date?'Custo atualizado em: '+date:'Custo não cadastrado';const marginText=margin===null?'Margem: sem custo':('Margem estimada: '+margin.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%');return '<article class="cost-product-row '+classes+'"><strong>'+esc(product.name)+'</strong><small>'+costText+'</small><small>'+marginText+'</small></article>';}).join('')||'<p class="muted">Nenhum produto cadastrado.</p>';
+  $('costProductStatusList').innerHTML=products.map(product=>{const updated=product.updated_at?new Date(product.updated_at):null;const stale=updated&&now-updated.getTime()>7*24*60*60*1000;const effective=product.preco_pago??product.preco_balcao??product.unit_cost;const margin=effective==null||Number(effective)<=0||Number(product.price)<=0?null:(Number(product.price)-Number(effective))/Number(product.price)*100;const below=margin!==null&&margin<0;const low=margin!==null&&!below&&margin<costMarginThreshold;const classes=[stale?'stale':'',below?'below-cost':low?'low-margin':''].filter(Boolean).join(' ');const date=updated?new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',day:'2-digit',month:'2-digit'}).format(updated):null;const costText=effective==null?'Preço não cadastrado':date?'Atualizado em: '+date:'Preço cadastrado';const realProfit=effective==null?null:Number(product.price)-Number(effective);const counterProfit=(product.preco_balcao??product.unit_cost)==null?null:Number(product.price)-Number(product.preco_balcao??product.unit_cost);const marginText=realProfit===null?'Lucro real: sem preço':('Lucro real: '+money(realProfit)+(counterProfit===null?'':' · sobre balcão: '+money(counterProfit)));return '<article class="cost-product-row '+classes+'"><strong>'+esc(product.name)+'</strong><small>'+costText+'</small><small>'+marginText+'</small></article>';}).join('')||'<p class="muted">Nenhum produto cadastrado.</p>';
   const selected=$('costProductSelect').value;
   $('costProductSelect').replaceChildren(new Option('Selecione um produto',''));
   products.forEach(product=>{
-   const label=product.name+(product.available?'':' — indisponível')+(product.unit_cost==null||Number(product.unit_cost)<=0?' — sem custo':' — custo '+money(product.unit_cost));
+   const label=product.name+(product.available?'':' — indisponível')+(product.preco_balcao==null?' — sem balcão':' — balcão '+money(product.preco_balcao))+(product.preco_pago==null?'':' — pago '+money(product.preco_pago));
    $('costProductSelect').add(new Option(label,product.id));
   });
   if(products.some(product=>product.id===selected))$('costProductSelect').value=selected;
@@ -2180,19 +2181,21 @@ $('costProductSelect').addEventListener('change',()=>{
  const product=Array.from($('costProductSelect').options).map(option=>option.value).includes($('costProductSelect').value)
   ?$('costProductSelect').value:'';
  const current=(window.__feiraCostProducts||[]).find(item=>item.id===product);
- $('costUnitInput').value=current?.unit_cost==null||Number(current.unit_cost)<=0?'':Number(current.unit_cost).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+ $('costBalconyInput').value=current?.preco_balcao==null?'':Number(current.preco_balcao).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+ $('costPaidInput').value=current?.preco_pago==null?'':Number(current.preco_pago).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
  $('btnSaveCost').disabled=!product;
 });
 $('btnSaveCost').addEventListener('click',async()=>{
  const productId=$('costProductSelect').value;
- const unitCost=parseCostInput($('costUnitInput').value);
+ const balconyRaw=$('costBalconyInput').value.trim(),paidRaw=$('costPaidInput').value.trim();
+ const balcony=parseCostInput(balconyRaw),paid=parseCostInput(paidRaw);
  const message=$('costEditMessage');
- if(!productId||unitCost==null){message.textContent='Selecione um produto e informe um custo maior que zero.';return;}
+ if(!productId||(!balconyRaw&&!paidRaw)||(balconyRaw&&balcony===null)||(paidRaw&&paid===null)){message.textContent='Selecione um produto e informe ao menos um preço válido (zero ou positivo).';return;}
  const button=$('btnSaveCost');button.disabled=true;button.textContent='Salvando…';
  try{
-  const {error}=await db.rpc('admin_set_product_cost',{p_product_id:productId,p_unit_cost:unitCost});
+  const {error}=await db.rpc('admin_set_product_prices',{p_product_id:productId,p_preco_balcao:balconyRaw?balcony:null,p_preco_pago:paidRaw?paid:null});
   if(error)throw error;
-  message.textContent='Preço de custo salvo. Os próximos pedidos usarão este valor; os snapshots antigos não mudam.';
+  message.textContent='Preço de balcão/pago salvo. Pedidos antigos mantêm seus snapshots.';
   await loadCostReport();
  }catch(error){
   console.error('Falha ao salvar preço de custo:',error);
