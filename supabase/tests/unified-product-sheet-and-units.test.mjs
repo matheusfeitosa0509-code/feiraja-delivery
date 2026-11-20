@@ -54,6 +54,8 @@ assert.match(priceMigration,/ADD COLUMN IF NOT EXISTS preco_balcao/,'private cou
 assert.match(priceMigration,/ADD COLUMN IF NOT EXISTS preco_pago/,'private paid price column is added');
 assert.match(priceMigration,/UPDATE feira_cost_private\.product_costs\s+SET preco_balcao = unit_cost/,'legacy cost is copied into counter price');
 assert.match(priceMigration,/CREATE TABLE IF NOT EXISTS feira_cost_private\.product_price_history/,'private price history is created');
+assert.match(priceMigration,/ALTER TABLE feira_cost_private\.product_price_history ENABLE ROW LEVEL SECURITY/,'private price history has RLS enabled');
+assert.match(priceMigration,/REVOKE ALL ON TABLE feira_cost_private\.product_price_history FROM PUBLIC, anon, authenticated/,'private price history is inaccessible to client roles');
 assert.match(priceMigration,/public\.admin_set_product_prices/,'admin-only dual-price RPC is created');
 assert.match(priceMigration,/public\.is_current_user_admin\(\)/,'RPC validates admin authorization');
 console.log('OK: unified product sheet, private counter/paid price RPC and history, responsive styles, confirmed unit/minimum rules, unchanged prices and rollback.');
