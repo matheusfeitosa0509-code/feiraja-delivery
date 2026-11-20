@@ -52,7 +52,6 @@ const context = {
   MIN_ORDER_AMOUNT:30,category:'Todos',
   money:v=>'R$ '+Number(v).toFixed(2).replace('.',','),
   esc:v=>String(v),
-  effectiveUnitPriceCents(p,q){const normal=Math.round(Number(p.price)*100),resale=Math.round(Number(p.resale_price)*100),min=Number(p.resale_min_qty);return p.resale_enabled===true&&Number.isInteger(min)&&min>=1&&q>=min&&Number.isSafeInteger(resale)&&resale>0&&resale<=normal?resale:normal;},
   persistCart(){},
   closeValueSaleSheet(){},
   showStoreConfirm:async(...args)=>{confirmMessages.push(args);return confirmAnswer;},
@@ -81,6 +80,13 @@ assert.match(context.cartPriceMarkup({price:10,old_price:12}),/cart-price-old">R
 assert.match(context.cartPriceMarkup({price:10,old_price:12}),/cart-price-current promo">R\$ 10,00/);
 assert.match(context.cartPriceMarkup({price:10,old_price:12}),/cart-discount-badge">-17%/);
 assert.match(context.cartPriceMarkup({price:10}),/cart-price-current">R\$ 10,00/);
+const resaleTestProduct={price:12.5,resale_enabled:true,resale_price:10,resale_min_qty:10,resale_unit:'un'};
+assert.equal(context.effectiveUnitPriceCents(resaleTestProduct,9),1250,'9 units use normal price');
+assert.equal(context.effectiveUnitPriceCents(resaleTestProduct,10),1000,'10 units use exact resale price');
+assert.equal(context.effectiveUnitPriceCents({...resaleTestProduct,resale_enabled:false},10),1250,'disabled resale uses normal price');
+assert.equal(context.effectiveUnitPriceCents({...resaleTestProduct,resale_price:null},10),1250,'missing balcony price disables resale');
+assert.equal(context.effectiveUnitPriceCents({...resaleTestProduct,resale_price:13},10),1250,'resale above normal price is ignored');
+assert.match(context.cartPriceMarkup(resaleTestProduct,10),/Revenda aplicada:/,'cart labels applied resale price');
 for(const p of [{price:9.99,old_price:10,name:'Farinha Branca'},{price:9.99,old_price:10,name:'Coco'},{price:44.99,old_price:45,name:'Couve-flor'}]){assert.equal(context.hasVisiblePromotion(p),false,p.name+' must not show a sub-5% promotion');assert.doesNotMatch(context.priceBlock(p),/pct-badge|price-old|price-promo/);assert.doesNotMatch(context.cartPriceMarkup(p),/cart-price-old|cart-discount-badge|promo/);}
 assert.equal(context.hasVisiblePromotion({price:9.5,old_price:10}),true,'exactly 5% remains a promotion');
 assert.match(context.priceBlock({price:9.5,old_price:10}),/pct-badge">-5%/);
@@ -104,8 +110,8 @@ assert.match(html,/function priceBlock\(p\)/,'initial, search and category cards
 assert.match(html,/\.product \.price:not\(\.price-promo\).*color:#202820!important/,'normal selling price is dark');
 assert.match(html,/\.product \.price\.price-promo\{color:#28743b!important\}/,'promotion price is green');
 assert.match(html,/\.pct-badge\{[^}]*background:#ed7d16;color:#fff/,'discount badge is orange with white text');
-assert.match(html,/function cartPriceMarkup\(p\)/,'cart has a dedicated price renderer');
-assert.match(html,/class="cart-price-line"[^>]*>\'\+cartPriceMarkup\(x\.p\)/,'cart renders the promotion price line');
+assert.match(html,/function cartPriceMarkup\(p,q\)/,'cart has a dedicated price renderer');
+assert.match(html,/class="cart-price-line"[^>]*>\'\+cartPriceMarkup\(x\.p,x\.q\)/,'cart renders the promotion price line and quantity-based resale label');
 
 // The product card contains only the small R$ button; the editor lives in the sheet.
 assert.match(context.valueSaleEditorMarkup(product),/>Pedir por valor R\$<\/button>/);

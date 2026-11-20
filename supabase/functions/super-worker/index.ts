@@ -311,10 +311,23 @@ Deno.serve(async (req: Request) => {
     const amountCentsById = new Map<string, number>();
     const saleModeById = new Map<string, string>();
     const { data: products, error: productsError } = await db.from("products")
-      .select("id,name,price,category,image,available,resale_enabled,resale_price,resale_min_qty,delivery_unit_weight_kg,delivery_bulky").in("id", ids);
+      .select("id,name,price,category,image,available,resale_enabled,delivery_unit_weight_kg,delivery_bulky").in("id", ids);
     if (productsError) throw productsError;
     if (!products || products.length !== ids.length) return json({ error: "Um ou mais produtos não existem mais. Atualize a feira e tente novamente." }, 409);
     if (products.some((p: any) => p.available !== true)) return json({ error: "Um dos produtos está indisponível. Atualize a feira e tente novamente." }, 409);
+
+    // Revenda is priced from the private counter-price table, never from client payload or public cache.
+    const { data: resaleBalconyPrices, error: resaleBalconyError } = await db.rpc("service_get_product_resale_prices", {
+      p_product_ids: ids,
+    });
+    if (resaleBalconyError) {
+      console.error("super-worker", { code: "RESALE_BALCONY_LOOKUP_FAILED", stage: "validate_resale_price" });
+      return json({ error: "Não foi possível confirmar os preços de revenda agora. Tente novamente." }, 503);
+    }
+    const resaleBalconyById = new Map((resaleBalconyPrices || []).map((row: any) => [
+      String(row.product_id),
+      row.preco_balcao == null ? null : Number(row.preco_balcao),
+    ]));
 
     const { data: salesRules, error: salesRulesError } = await db.from("product_sales_rules")
       .select("product_id,sale_unit,quantity_step,min_quantity,max_quantity,allow_value_sale,value_min_kg")
@@ -380,22 +393,21 @@ Deno.serve(async (req: Request) => {
       }
 
       let effectivePriceCents = normalPriceCents;
-      if (pricingVersion === "resale-v1" && p.resale_enabled === true) {
-        const resalePriceCents = p.resale_price == null ? NaN : Math.round(Number(p.resale_price) * 100);
-        const resaleMinQty = Number(p.resale_min_qty);
-        if (p.resale_price == null || !Number.isSafeInteger(resalePriceCents) || resalePriceCents <= 0 ||
-            resalePriceCents > normalPriceCents || p.resale_min_qty == null ||
-            !Number.isInteger(resaleMinQty) || resaleMinQty < 1) {
-          console.error("super-worker", { code: "RESALE_CONFIG_INVALID", stage: "validate_resale_config" });
-          return json({ error: "Preço de revenda configurado incorretamente para um produto. Avise a loja antes de tentar novamente." }, 409);
-        }
+      const balconyPrice = resaleBalconyById.get(String(p.id));
+      const resalePriceCents = balconyPrice == null ? NaN : Math.round(Number(balconyPrice) * 100);
+      const resaleIsValid = Number.isSafeInteger(resalePriceCents) &&
+        resalePriceCents > 0 && resalePriceCents < normalPriceCents;
+      if (pricingVersion === "resale-v1" && p.resale_enabled === true && qty >= 10 && resaleIsValid) {
         effectivePriceCents = selectEffectiveUnitPriceCents(
           normalPriceCents,
           resalePriceCents,
           true,
-          resaleMinQty,
+          10,
           qty,
         );
+      } else if (pricingVersion === "resale-v1" && p.resale_enabled === true && balconyPrice != null && !resaleIsValid) {
+        // Keep normal sale price if counter price is equal to or above it; never fail checkout.
+        console.warn("super-worker", { code: "RESALE_SKIPPED_NOT_BELOW_NORMAL", stage: "calculate_item_price" });
       }
 
       if (saleMode === "value" && effectivePriceCents !== normalPriceCents) {

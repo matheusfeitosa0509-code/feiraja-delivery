@@ -6,7 +6,7 @@ const migration=fs.readFileSync(new URL('../migrations/20261115030000_unified_pr
 const rollback=fs.readFileSync(new URL('../rollbacks/20261115030000_unified_product_sheet_and_confirmed_units_rollback.sql',import.meta.url),'utf8');
 const priceMigration=fs.readFileSync(new URL('../migrations/20261120190000_product_counter_paid_prices.sql',import.meta.url),'utf8');
 
-for(const id of ['unifiedProductSearch','unifiedCategoryFilter','unifiedProductList','productSheet','sheetName','sheetCategory','sheetImage','sheetPrice','sheetResalePrice','sheetBalconyCost','sheetPaidCost','sheetProfit','sheetSaleUnit','sheetMin','sheetStep','sheetValueEnabled','sheetValueMin','sheetAvailable']) {
+for(const id of ['unifiedProductSearch','unifiedCategoryFilter','unifiedProductList','productSheet','sheetName','sheetCategory','sheetImage','sheetPrice','sheetResaleEnabled','sheetBalconyCost','sheetPaidCost','sheetProfit','sheetSaleUnit','sheetMin','sheetStep','sheetValueEnabled','sheetValueMin','sheetAvailable']) {
  assert.match(panel,new RegExp('id="'+id+'"'),'unified product UI includes '+id);
 }
 assert.match(panel,/normalizeProductSearch\(\$\('unifiedProductSearch'\)\.value\)/,'search is accent/case insensitive');
@@ -19,6 +19,9 @@ assert.match(panel,/admin_create_product_with_sales_rule/,'new product is create
 assert.doesNotMatch(panel,/\b(?:window\.)?(?:alert|confirm|prompt)\s*\(/,'panel must not use native browser dialogs');
 assert.match(panel,/admin_update_product_sales_rule/,'sale unit and quantity rules use the admin RPC');
 assert.match(panel,/admin_set_product_prices/,'private counter and paid prices use the admin RPC');
+assert.match(panel,/Revenda ativa/,'product sheet exposes only the resale activation switch');
+assert.doesNotMatch(panel,/id="sheetResalePrice"|id="sheetResaleMin"|id="sheetResaleUnit"/,'resale price, threshold and unit are no longer manually editable');
+assert.match(panel,/getProductCost\(id\)\?\.preco_balcao/,'resale eligibility is derived from the private counter-price cache');
 assert.match(panel,/let orderCostFieldsDirty=\{balcony:false,paid:false\}/,'unchanged snapshot values do not overwrite product defaults');
 assert.match(panel,/p_update_product:\$\('orderCostUpdateProduct'\)\.checked/,'the existing checkbox controls whether product defaults are updated');
 assert.doesNotMatch(panel,/id="sheetCost"/,'the old single cost field is replaced by two private price fields');
