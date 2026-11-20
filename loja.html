@@ -1605,6 +1605,7 @@ function showRequiredProfileStep(message=''){
  openPreviewModal('accountModal');
 }
 async function loadDeliveryAccess(user){
+ window.__feiraMetaAdminCheckComplete=false;
  const request=++deliveryAccessRequest;
  currentUserIsAdmin=false;deliveryAdminCheckComplete=false;deliveryActive=false;
  if(!user?.id||user.is_anonymous){
@@ -1614,6 +1615,7 @@ async function loadDeliveryAccess(user){
    if(request!==deliveryAccessRequest)return;
    deliveryActive=data===true;
   }catch(error){console.warn("Não foi possível consultar a disponibilidade pública da Entrega Feira On:",error);}
+  window.__feiraMetaIsAdmin=false;window.__feiraMetaAdminCheckComplete=true;
   syncDeliveryOptionVisibility();
   return;
  }
@@ -1630,6 +1632,7 @@ async function loadDeliveryAccess(user){
  if(request!==deliveryAccessRequest||currentUser?.id!==user.id)return;
  deliveryAdminCheckComplete=access.adminCheckComplete;
  currentUserIsAdmin=access.isAdmin;
+ window.__feiraMetaIsAdmin=currentUserIsAdmin===true;window.__feiraMetaAdminCheckComplete=true;
  deliveryActive=access.deliveryActive;
  syncDeliveryOptionVisibility();
 }
@@ -2869,7 +2872,7 @@ document.addEventListener('keydown',event=>{
   (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src='https://www.clarity.ms/tag/'+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y)})(window,document,'clarity','script','zgjh3nd5ao');
  };
  const pixelId='1082580581415480';
- window.__feiraMetaPixelTrack=(eventName,params,eventId)=>{if(!window.__feiraMetaPixelConsent||window.__feiraMetaIsAdmin===true||typeof window.fbq!=='function')return false;window.fbq('track',eventName,params||{},eventId?{eventID:String(eventId)}:undefined);return true;};
+ window.__feiraMetaPixelTrack=(eventName,params,eventId)=>{if(!window.__feiraMetaPixelConsent||window.__feiraMetaAdminCheckComplete!==true||window.__feiraMetaIsAdmin===true||typeof window.fbq!=='function')return false;window.fbq('track',eventName,params||{},eventId?{eventID:String(eventId)}:undefined);return true;};
  window.__feiraMetaPixelPurchase=order=>{if(!order||order.is_test_order===true||window.__feiraMetaIsAdmin===true||!document.getElementById('pageOrders')?.classList.contains('active'))return false;const status=String(order.status||'').trim().toLowerCase();const paid=['pagamento confirmado','preparando','pronto para retirada','saiu para entrega','entregue','pedido concluído','pedido concluido'].includes(status);const method=String(order.payment_method||'').toLowerCase();if(!paid||method.includes('dinheiro')||method.includes('cart')||method==='cash'||method==='card_on_delivery')return false;const id=String(order.id||'');const value=Number(order.total);if(!id||!Number.isFinite(value)||value<=0)return false;const key='feira_meta_pixel_purchase_sent_v1';let sent=[];try{sent=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(sent))sent=[];}catch(_){}if(sent.includes(id)||window.__feiraMetaPixelPurchaseMemory?.has(id))return false;if(!window.__feiraMetaPixelTrack?.('Purchase',{value:Number(value.toFixed(2)),currency:'BRL'},id))return false;try{sent.push(id);localStorage.setItem(key,JSON.stringify(sent.slice(-500)));}catch(_){}window.__feiraMetaPixelPurchaseMemory=window.__feiraMetaPixelPurchaseMemory||new Set();window.__feiraMetaPixelPurchaseMemory.add(id);return true;};
  const loadMetaPixel=()=>{if(window.__feiraMetaPixelLoaded)return;window.__feiraMetaPixelLoaded=true;window.__feiraMetaPixelConsent=true;(function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=true;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=true;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s);})(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');window.fbq('set','autoConfig',false,pixelId);window.fbq('init',pixelId);if(window.__feiraMetaPixelPageViewReady)window.__feiraMetaPixelTrack('PageView');};
  let choice=null;try{choice=localStorage.getItem(key);}catch(_){}
