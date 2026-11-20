@@ -245,6 +245,7 @@ Deno.serve(async (req: Request) => {
     if (deliveryType === "delivery") {
       const rawAddress = deliveryAddressInput || {};
       if (hasMultipleDeliveryAddresses(rawAddress)) return json({ error: "Coloque só um endereço. Use o campo Referência para pontos próximos." }, 400);
+      if (String(rawAddress.complement || "").trim().length > 60 || String(rawAddress.reference || "").trim().length > 120) return json({ error: "Confira o complemento e a referência. Use apenas informações curtas." }, 400);
       normalizedDeliveryCoordinates = normalizeConfirmedDeliveryCoordinates(deliveryCoordinatesInput);
       if (!normalizedDeliveryCoordinates) return json({ error: "Confira se o pino está na sua casa e confirme o endereço no mapa." }, 400);
       normalizedDeliveryAddress = {
