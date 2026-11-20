@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.117.1";
 import { readLalamoveCredentials, readLalamoveEnvironment, normalizeLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
-import { formatDropoff, requestSandboxQuotation } from "../_shared/delivery-quote.ts";
+import { formatDropoff, requestSandboxQuotation, resolveDeliveryDropoffCoordinates } from "../_shared/delivery-quote.ts";
 import { geocodeManausAddress } from "../_shared/geocoding.ts";
 import {
   assertTestProductionDispatchConfirmation, buildLalamoveOrderBody, canCancelLalamove, canQuoteLalamove, canStartDispatch, isLalamoveDispatchReady, cancelLalamoveOrder, createLalamoveOrder, normalizeBrazilPhone,
@@ -47,7 +47,7 @@ async function adminContext(req: Request): Promise<{ db: any; user: any; error?:
 }
 async function getOrder(db: any, orderId: string, requireReady = false) {
   const { data, error } = await db.from("orders").select(
-    "id,status,payment_method,is_test_order,delivery_type,delivery_address,delivery_vehicle,delivery_weight_kg,delivery_fee,customer_name,customer_phone",
+    "id,status,payment_method,is_test_order,delivery_type,delivery_address,delivery_coordinates,delivery_vehicle,delivery_weight_kg,delivery_fee,customer_name,customer_phone",
   ).eq("id", orderId).maybeSingle();
   if (error) throw new Error("ORDER_LOOKUP_FAILED");
   if (!data) throw new Error("ORDER_NOT_FOUND");
@@ -88,11 +88,14 @@ async function quoteBoth(db: any, order: any, userId: string) {
   const address = order.delivery_address;
   const dropoff = formatDropoff(address);
   const geocodingKey = requiredEnv("GOOGLE_GEOCODING_API_KEY");
-  const [origin, destination] = await Promise.all([
+  const [origin, destinationResult] = await Promise.all([
     geocodeManausAddress(ORIGIN_LATLNG, geocodingKey),
-    geocodeManausAddress(dropoff, geocodingKey),
+    resolveDeliveryDropoffCoordinates(order.delivery_coordinates, () => geocodeManausAddress(dropoff, geocodingKey)),
   ]);
-  const coordinates = { origin, dropoff: destination };
+  if (destinationResult.source === "geocoded_fallback") {
+    console.warn("lalamove-dispatch destination geocoding fallback", { order_id: String(order.id), reason: "missing_or_invalid_confirmed_coordinates" });
+  }
+  const coordinates = { origin, dropoff: destinationResult.coordinates };
   const [moto, car] = await Promise.all([
     fetchQuote(key, secret, "LALAGO", dropoff, coordinates, environment),
     fetchQuote(key, secret, "CAR", dropoff, coordinates, environment),
