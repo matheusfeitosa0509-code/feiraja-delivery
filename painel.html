@@ -902,12 +902,12 @@ function fillNewProductSheet(){
   $('sheetResalePrice').value='';
   $('sheetResaleMin').value='10';
   $('sheetResaleUnit').value='un';
-  $('sheetCost').value='';
+  $('sheetBalconyCost').value='';$('sheetPaidCost').value='';
   $('sheetSaleUnit').value='un';
   $('sheetMin').value='1';$('sheetStep').value='1';
   $('sheetValueEnabled').value='true';
   $('sheetValueMin').value='1';$('sheetValueMin').disabled=true;$('sheetValueMin').closest('label').hidden=true;
-  $('sheetProfit').textContent='O custo é opcional e ficará restrito ao painel administrativo.';
+  $('sheetProfit').textContent='Preço de balcão e preço pago são opcionais e ficam restritos ao painel administrativo.';
   setSheetMessage('Preencha os dados do novo produto.');
   $('productSheetBackdrop').hidden=false;
   document.body.style.overflow='hidden';
@@ -1166,7 +1166,7 @@ function openOrderCostEditor(orderId,itemIndex){
  $('orderCostPaidInput').value=snapshot.preco_pago==null?'':Number(snapshot.preco_pago).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
  $('orderCostUpdateProduct').checked=Boolean(snapshot.product_id);$('orderCostUpdateProduct').disabled=!snapshot.product_id;$('orderCostWarning').textContent='';
  $('orderCostItemName').textContent=String(snapshot.product_name||order.items?.[itemIndex]?.name||'Item do pedido');
- $('orderCostBackdrop').hidden=false;$('orderCostUnitInput').focus();
+ $('orderCostBackdrop').hidden=false;$('orderCostBalconyInput').focus();
 }
 async function openShoppingCostList(){
  const modal=$('shoppingCostBackdrop'),host=$('shoppingCostRows');
@@ -1319,7 +1319,7 @@ function renderDailySummary(){
   dayInDelivery:String(s.in_delivery??0),
   dayPaidSales:money(s.paid_sales||0),
   dayProfit:money(s.profit||0),
-  dayProfitNote:Number(s.missing_cost_items||0)>0?'Parcial · '+s.missing_cost_items+' item(ns) sem custo':'',
+  dayProfitNote:'Sobre balcão: '+money(s.profit_on_counter||0)+(Number(s.missing_cost_items||0)>0?' · Parcial · '+s.missing_cost_items+' item(ns) sem custo':''),
   count:String(statsOrders.length),
   pending:String(statsOrders.filter(o=>['Pedido Recebido','Pagamento Pendente'].includes(normalizeOrderStatus(o.status))).length),
   active:String(statsOrders.filter(o=>['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega'].includes(normalizeOrderStatus(o.status))).length),
