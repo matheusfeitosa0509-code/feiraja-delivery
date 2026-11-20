@@ -318,7 +318,7 @@ BEGIN
       i.counter_profit::numeric counter_profit,
       GREATEST(COALESCE(dc.actual_cost,0)-COALESCE(o.delivery_fee,0),0)::numeric delivery_covered,
       (COALESCE(i.item_profit,0)-GREATEST(COALESCE(dc.actual_cost,0)-COALESCE(o.delivery_fee,0),0))::numeric profit,
-      (COALESCE(i.counter_profit,0)-GREATEST(COALESCE(dc.actual_cost,0)-COALESCE(o.delivery_fee,0),0))::numeric profit_on_counter
+      CASE WHEN i.counter_profit IS NOT NULL THEN (i.counter_profit-GREATEST(COALESCE(dc.actual_cost,0)-COALESCE(o.delivery_fee,0),0))::numeric ELSE NULL END profit_on_counter
     FROM target_orders o
     LEFT JOIN feira_cost_private.order_delivery_costs dc ON dc.order_id=o.id
     LEFT JOIN LATERAL (
