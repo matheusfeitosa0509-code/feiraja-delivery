@@ -205,14 +205,17 @@ Deno.test("acompanhamento da entrega usa seis etapas e não expõe o parceiro ao
   const html = await Deno.readTextFile("loja.html");
   for (const required of [
     "const icon=(kind)=>",
-    "['Pago',icon('card')],['Separando',icon('bag')],['Pronto para envio',icon('bike')],['Entregador a caminho da feira',icon('bike')],['Saiu para entrega',icon('bike')],['Entregue',icon('check')]",
+    "['Pago',icon('card')],['Separando',icon('bag')],['Buscando entregador',icon('moto')],['A caminho da feira',icon('moto')],['Saiu para entrega',icon('moto')],['Entregue',icon('check')]",
     "['Pago',icon('card')],['Preparando',icon('bag')],['Pronto',icon('check')],['Retirado',icon('check')]",
     "grid-template-columns:repeat(6,minmax(0,1fr))",
-    "white-space:nowrap",
+    "white-space:normal",
     "Aguardando pagamento do Pix",
-    "Procurando entregador…",
+    "Procurando entregador.",
     "Retire na Av. Lourenço da Silva Braga, 700",
-    "A solicitação expirou. Estamos chamando outro entregador.",
+    "Estamos chamando um novo entregador 🛵",
+    "Seu pedido continua garantido.",
+    "Pedido cancelado",
+    "Fale com a loja se precisar de ajuda.",
     "Taxa '+money(Number(o.delivery_fee||0))",
     "data-lalamove-map",
   ]) assertEquals(html.includes(required), true, "missing order tracking requirement: " + required);
