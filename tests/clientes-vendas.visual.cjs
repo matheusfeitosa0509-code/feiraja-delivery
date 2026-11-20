@@ -6,7 +6,7 @@ const {chromium}=require("playwright");
  const source=fs.readFileSync(path.join(process.cwd(),"clientes-vendas.html"),"utf8");
  const html=source
   .replace('<script src="./turnstile.js" defer></script>','')
-  .replace("await import('https://esm.sh/@supabase/supabase-js@2.117.1')","Promise.resolve({createClient:()=>window.__mockDb})")
+  .replace("await Promise.resolve({createClient:()=>window.__mockDb})","Promise.resolve({createClient:()=>window.__mockDb})")
   .replace('<script>\nfunction showPageError', '<script>\nwindow.FeiraTurnstile={create:()=>({init(){},getToken(){return null},reset(){}})};\nwindow.__mockDb={auth:{onAuthStateChange(){},getSession:async()=>({data:{session:null},error:null})}};\nfunction showPageError');
  assert.match(html,/data-period="today"/);
  assert.match(html,/id="realProfit"/);
