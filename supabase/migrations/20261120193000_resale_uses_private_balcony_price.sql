@@ -58,7 +58,9 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  IF TG_OP = 'INSERT' OR OLD.preco_balcao IS NULL THEN
+  IF TG_OP = 'INSERT' THEN
+    v_enable := NEW.preco_balcao < v_sale_price;
+  ELSIF OLD.preco_balcao IS NULL THEN
     v_enable := NEW.preco_balcao < v_sale_price;
   ELSE
     v_enable := COALESCE(v_was_enabled, false) AND NEW.preco_balcao < v_sale_price;
@@ -78,11 +80,16 @@ $function$;
 REVOKE ALL ON FUNCTION feira_cost_private.sync_product_resale_from_balcony() FROM PUBLIC, anon, authenticated;
 
 DROP TRIGGER IF EXISTS sync_product_resale_from_balcony ON feira_cost_private.product_costs;
-CREATE TRIGGER sync_product_resale_from_balcony
-AFTER INSERT OR UPDATE OF preco_balcao
-ON feira_cost_private.product_costs
+DROP TRIGGER IF EXISTS sync_product_resale_from_balcony_insert ON feira_cost_private.product_costs;
+DROP TRIGGER IF EXISTS sync_product_resale_from_balcony_update ON feira_cost_private.product_costs;
+CREATE TRIGGER sync_product_resale_from_balcony_insert
+AFTER INSERT ON feira_cost_private.product_costs
 FOR EACH ROW
-WHEN (TG_OP = 'INSERT' OR OLD.preco_balcao IS DISTINCT FROM NEW.preco_balcao)
+EXECUTE FUNCTION feira_cost_private.sync_product_resale_from_balcony();
+CREATE TRIGGER sync_product_resale_from_balcony_update
+AFTER UPDATE OF preco_balcao ON feira_cost_private.product_costs
+FOR EACH ROW
+WHEN (OLD.preco_balcao IS DISTINCT FROM NEW.preco_balcao)
 EXECUTE FUNCTION feira_cost_private.sync_product_resale_from_balcony();
 
 CREATE OR REPLACE FUNCTION public.service_get_product_resale_prices(p_product_ids text[])
