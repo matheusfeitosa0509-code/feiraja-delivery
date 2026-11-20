@@ -478,7 +478,7 @@ Deno.serve(async (req: Request) => {
     if (deliveryType === "delivery") {
       if (priorOrder) {
         const storedAddress = priorOrder.delivery_address;
-        const sameStoredAddress = !!storedAddress && ["street", "number", "neighborhood", "complement", "reference"]
+        const sameStoredAddress = !!storedAddress && ["street", "number", "postal_code", "neighborhood", "complement", "reference"]
           .every((key) => String(storedAddress[key] || "") === String((normalizedDeliveryAddress as any)?.[key] || ""));
         const sameStoredCoordinates = JSON.stringify(priorOrder.delivery_coordinates || null) === JSON.stringify(normalizedDeliveryCoordinates);
         if (!sameStoredAddress || !sameStoredCoordinates || !priorOrder.delivery_vehicle ||
