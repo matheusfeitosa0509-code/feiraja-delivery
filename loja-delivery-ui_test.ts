@@ -77,7 +77,7 @@ Deno.test("endereço estruturado exige rua, número e bairro e limita campos", (
   assertEquals(normalizeDeliveryAddress({ street: "R".repeat(161), number: "1", neighborhood: "Centro" }), null);
   assertEquals(hasMultipleDeliveryAddresses({ reference: "R. Belford Roxo, 203" }), true);
   assertEquals(normalizeDeliveryAddress({ street: "Rua A", number: "12", neighborhood: "Centro", reference: "R. Belford Roxo, 203" }), null);
-  assertEquals(normalizeDeliveryAddress({ street: "Rua A", number: "12", neighborhood: "Centro", complement: "Apto 302" }).complement, "Apto 302");
+  assertEquals(normalizeDeliveryAddress({ street: "Rua A", number: "12", neighborhood: "Centro", complement: "Apto 302" })?.complement, "Apto 302");
 });
 
 Deno.test("itens do carrinho viram payload de cotação", () => {
