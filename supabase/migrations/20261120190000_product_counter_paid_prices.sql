@@ -117,8 +117,8 @@ BEGIN
       RAISE EXCEPTION 'O produto informado não corresponde ao item do pedido.' USING ERRCODE='22023';
     END IF;
 
-    v_new_bal := COALESCE(p_preco_balcao,v_snapshot.preco_balcao,CASE WHEN p_update_product THEN v_old_bal END);
-    v_new_pago := COALESCE(p_preco_pago,v_snapshot.preco_pago,CASE WHEN p_update_product THEN v_old_pago END);
+    v_new_bal := COALESCE(p_preco_balcao,v_snapshot.preco_balcao,CASE WHEN v_snapshot.preco_pago IS NULL THEN v_snapshot.unit_cost END);
+    v_new_pago := COALESCE(p_preco_pago,v_snapshot.preco_pago);
     v_old_effective := COALESCE(v_snapshot.preco_pago,v_snapshot.preco_balcao,v_snapshot.unit_cost);
     v_new_effective := COALESCE(v_new_pago,v_new_bal,v_snapshot.unit_cost);
 
