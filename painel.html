@@ -261,10 +261,50 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 .admin-alerts-trigger{min-width:46px;padding:8px 12px;font-size:19px}.admin-alerts-count{display:inline-grid;place-items:center;min-width:19px;height:19px;margin-left:5px;padding:0 5px;border-radius:999px;background:#fff;color:#176b3a;font-size:11px;font-weight:900}.admin-alerts-panel{margin:12px 0 16px}.admin-alerts-list{display:grid;gap:8px}.admin-alert-item{display:block;width:100%;padding:12px;text-align:left;background:#f7faf5;color:var(--ink);border:1px solid var(--line);border-radius:12px}.admin-alert-item.unread{border-left:4px solid #176b3a}.admin-alert-item small{display:block;color:var(--muted);margin-top:5px}.admin-alerts-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.admin-alerts-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:12px 0;padding:13px 15px;border:1px solid #b9d9b9;border-radius:14px;background:#edf7e9}.admin-alerts-banner p{margin:0;font-weight:750}.admin-alerts-banner[hidden]{display:none!important}
 
 .automatic-margin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.automatic-margin-toggle{display:flex;align-items:center;gap:10px;margin:16px 0}.automatic-margin-toggle input{width:22px;min-height:22px}.automatic-price-row{padding:12px;border:1px solid var(--line);border-radius:14px;background:#fbfdf9}.automatic-price-row .price-review-values{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0}.automatic-price-row small{display:block;color:var(--muted)}.automatic-price-row button{margin-top:8px;width:100%}@media(max-width:480px){.automatic-margin-grid{grid-template-columns:1fr}.automatic-price-row .price-review-values{grid-template-columns:1fr}}
+
+/* Organização do painel – camada exclusivamente visual e filtros de apresentação. */
+.legacy-filter-accessible{position:absolute!important;left:-10000px!important;top:auto!important;width:1px!important;height:1px!important;min-height:1px!important;padding:0!important;margin:0!important;opacity:.01!important;overflow:hidden!important}
+.order-summary-top{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:8px}
+.order-summary-top>div{grid-column:1;grid-row:1;min-width:0}
+.order-summary-top .pill{grid-column:2;grid-row:1}
+.order-summary-top .total{grid-column:3;grid-row:1}
+.order-summary-top .order-expand{grid-column:4;grid-row:1}
+.order-summary-top>span:not(.pill){grid-column:1/-1;grid-row:2}
+.order-contact{font-size:12px;white-space:normal;flex-wrap:wrap;line-height:1.4}
+.order-profit-summary{font-size:12px;margin-top:5px}
+@media(max-width:420px){.order-summary-top{grid-template-columns:minmax(0,1fr) auto auto}.order-summary-top .order-expand{grid-column:3;grid-row:1}.order-summary-top .total{grid-column:2;grid-row:1}.order-summary-top .pill{grid-column:1;grid-row:2;justify-self:start}.order-summary-top>span:not(.pill){grid-column:1/-1;grid-row:3}}
+
+.brand-header{min-height:68px;margin-bottom:12px;padding:14px 16px;border-radius:0 0 18px 18px;flex-wrap:nowrap}
+.brand-header h1{font-size:clamp(17px,4vw,22px);letter-spacing:-.35px}
+.panel-top-actions{display:flex;align-items:center;gap:10px;flex:none}
+.panel-top-actions .admin-alerts-trigger{display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:44px;padding:8px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);border-radius:13px;color:#fff}
+.panel-menu{position:relative}.panel-menu summary{display:grid;place-items:center;width:44px;height:44px;list-style:none;cursor:pointer;border:1px solid rgba(255,255,255,.3);border-radius:13px;background:rgba(255,255,255,.16);font-size:23px;font-weight:800}.panel-menu summary::-webkit-details-marker{display:none}
+.panel-menu-items{position:absolute;right:0;top:52px;z-index:30;display:grid;gap:8px;width:min(270px,calc(100vw - 28px));padding:12px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 32px #17352524}
+.panel-menu-items a,.panel-menu-items button{display:flex;align-items:center;min-height:44px;padding:10px 12px;border-radius:10px;text-decoration:none;text-align:left;color:var(--ink);background:#f2f7f0;font:700 14px inherit}
+.panel-menu-items button{width:100%;justify-content:flex-start}.menu-push-state{padding:8px 10px;font-size:12px;font-weight:700}
+.main-tabs{top:0;margin:8px 0 14px}
+.period-chips,.order-subtabs{display:grid;gap:8px;margin:12px 0}
+.period-chips{grid-template-columns:repeat(4,minmax(0,1fr))}
+.period-chips button,.order-subtabs button{min-height:42px;padding:8px 6px;background:#e8f1e6;color:#3e6048;border:1px solid #d9e7d7;font-size:13px}
+.period-chips button[aria-pressed="true"],.order-subtabs button[aria-pressed="true"]{background:#176b3a;color:#fff}
+.daily-stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0}
+.daily-stats .stat{padding:12px;min-height:90px}.daily-stats .stat strong{font-size:clamp(17px,3.5vw,23px)}
+.daily-stats .profit-day-stat{grid-column:auto}.daily-stats #dayProfitNote{font-size:10px;line-height:1.35;margin-top:4px}
+.order-subtabs{grid-template-columns:repeat(4,minmax(0,1fr));margin:16px 0 10px}
+.order-subtabs button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px}
+.order-subtabs button span{font-size:11px;font-weight:800}
+.order-search-card{padding:10px;margin:10px 0}.order-search-card input{min-height:44px}
+.orders-toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}
+.orders-toolbar button{width:100%;min-height:44px;padding:8px 10px}
+.order{padding:14px;border-radius:16px}.orderhead{align-items:center}
+@media(max-width:600px){.daily-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.daily-stats .profit-day-stat{grid-column:auto}.orders-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.order-subtabs{gap:5px}.order-subtabs button{padding:7px 3px;font-size:11px}}
+@media(min-width:701px){.orders{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:380px){.brand-header{padding:12px}.brand-header h1{font-size:16px}.period-chips{gap:5px}.period-chips button{font-size:12px}.order-subtabs button{font-size:10px}}
+
 </style>
 </head>
 <body><main class="wrap">
-<header class="brand-header"><div><h1>Feira On Delivery</h1><p class="brand-subtitle">Painel administrativo</p></div><div class="actions"><a href="https://www.feiraondelivery.com.br/clientes-vendas.html" class="secondary" style="display:inline-flex;align-items:center;text-decoration:none;min-height:42px;padding:9px 15px;border:1px solid rgba(255,255,255,.28);border-radius:999px">Clientes e vendas</a><button id="adminAlertsToggle" class="admin-alerts-trigger hidden" type="button" aria-expanded="false" aria-controls="adminAlertsPanel" aria-label="Alertas administrativos">🔔 <span id="adminAlertsCount" class="admin-alerts-count">0</span></button><button id="refresh" class="secondary hidden">↻ Atualizar</button><button id="pushToggle" class="secondary hidden" type="button">Ativar avisos</button><button id="logout" class="secondary hidden">Sair</button><small id="pushHint" class="muted hidden" role="status"></small></div></header><section id="adminAlertsBanner" class="admin-alerts-banner" hidden><p>Ativar alertas no celular</p><button id="adminAlertsEnablePush" type="button">Ativar alertas</button></section><section id="adminAlertsPanel" class="card admin-alerts-panel hidden" aria-label="Alertas administrativos"><div class="admin-alerts-head"><h2>Alertas</h2><button id="adminAlertsMarkAll" class="secondary" type="button">Marcar tudo como lido</button></div><div id="adminAlertsList" class="admin-alerts-list"><p class="muted">Carregando alertas…</p></div></section>
+<header class="brand-header"><h1>Feira On Delivery · Painel</h1><div class="panel-top-actions"><button id="adminAlertsToggle" class="admin-alerts-trigger hidden" type="button" aria-expanded="false" aria-controls="adminAlertsPanel" aria-label="Alertas administrativos">🔔 <span id="adminAlertsCount" class="admin-alerts-count">0</span></button><details class="panel-menu"><summary aria-label="Menu">☰</summary><nav class="panel-menu-items"><a href="https://www.feiraondelivery.com.br/clientes-vendas.html">Clientes e vendas</a><button id="pushToggle" class="secondary hidden" type="button">Ativar avisos</button><span id="pushHint" class="menu-push-state muted" role="status">Avisos neste aparelho: —</span><button id="refresh" class="secondary hidden" type="button">Atualizar</button><button id="logout" class="secondary hidden" type="button">Sair</button></nav></details></div></header><section id="adminAlertsBanner" class="admin-alerts-banner" hidden><p>Ativar alertas no celular</p><button id="adminAlertsEnablePush" type="button">Ativar alertas</button></section><section id="adminAlertsPanel" class="card admin-alerts-panel hidden" aria-label="Alertas administrativos"><div class="admin-alerts-head"><h2>Alertas</h2><button id="adminAlertsMarkAll" class="secondary" type="button">Marcar tudo como lido</button></div><div id="adminAlertsList" class="admin-alerts-list"><p class="muted">Carregando alertas…</p></div></section>
 <section id="login" class="card login"><h2>Entrar como administrador</h2><p class="muted">Use a conta de administrador da loja.</p><form id="form"><label for="email">E-mail</label><input id="email" type="email" autocomplete="username" required><label for="password">Senha</label><input id="password" type="password" autocomplete="current-password" required><div id="adminTurnstile" style="margin:12px 0;min-height:65px"></div><p id="adminCaptchaMessage" class="muted" role="status">Conclua a verificação ou envie sem token se ela falhar.</p><button id="adminCaptchaRetry" type="button" hidden class="secondary" style="margin-top:4px">Tentar de novo</button><button type="submit" disabled style="width:100%;margin-top:16px">Entrar</button></form><p id="message" role="status"></p></section>
 <section id="panel" class="hidden">
 <div class="main-tabs" role="tablist" aria-label="Seções do painel">
@@ -273,17 +313,11 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <button type="button" id="tabSettings" role="tab" aria-selected="false">Configurações</button>
 </div>
 <section id="ordersTab" role="tabpanel">
-<section class="daily-stats" aria-label="Resumo do dia">
- <div class="stat"><small>Pedidos de hoje</small><strong id="dayOrdersCount">0</strong></div>
- <div class="stat"><small>A separar</small><strong id="dayToSeparate">0</strong></div>
- <div class="stat"><small>Em entrega</small><strong id="dayInDelivery">0</strong></div>
- <div class="stat"><small>Vendas pagas</small><strong id="dayPaidSales">R$ 0,00</strong></div>
- <div class="stat profit-day-stat"><small>Lucro do dia</small><strong id="dayProfit">R$ 0,00</strong><small id="dayProfitNote" class="muted"></small></div>
-</section>
+<div class="period-chips" role="group" aria-label="Período"><button type="button" data-period="today" aria-pressed="true">Hoje</button><button type="button" data-period="yesterday" aria-pressed="false">Ontem</button><button type="button" data-period="week" aria-pressed="false">Semana</button><button type="button" data-period="month" aria-pressed="false">Mês</button></div><section class="daily-stats" aria-label="Resumo do período"><div class="stat"><small>Pedidos</small><strong id="dayOrdersCount">0</strong></div><div class="stat"><small>Vendas pagas</small><strong id="dayPaidSales">R$ 0,00</strong></div><div class="stat profit-day-stat"><small>Lucro real</small><strong id="dayProfit">R$ 0,00</strong><small id="dayProfitNote" class="muted"></small></div><div class="stat"><small>Ticket médio</small><strong id="averageTicket">R$ 0,00</strong></div><div class="stat" hidden aria-hidden="true"><small>Compatibilidade</small><strong>—</strong></div></section><div class="hidden" aria-hidden="true"><span id="dayToSeparate">0</span><span id="dayInDelivery">0</span></div>
 <div class="hidden" aria-hidden="true"><span id="count">0</span><span id="pending">0</span><span id="active">0</span><span id="sum">R$ 0,00</span></div>
 <div id="notice" class="notice hidden" role="status"></div>
 
-<div class="orders-toolbar"><button type="button" id="shoppingListButton" class="secondary">Lista de compras</button><button type="button" id="shoppingCostEditButton" class="secondary">Editar custos na lista</button><span class="muted">Pedidos pagos ainda não entregues</span></div><section class="card"><div class="filters"><input id="search" placeholder="Buscar por pedido, cliente ou telefone" aria-label="Buscar pedidos"><select id="filter" aria-label="Filtrar pedidos"><option value="active" selected>Ativos</option><option value="pending">Aguardando pagamento</option><option value="completed">Concluídos</option><option value="cancelled">Cancelados/Expirados</option><option value="tests">Testes</option><option value="all">Todos</option></select></div></section><div id="orders" class="orders"></div><div class="actions" style="justify-content:center;margin:16px 0"><button id="loadMore" class="secondary">Carregar mais pedidos</button></div>
+<div class="order-subtabs" role="group" aria-label="Situação dos pedidos"><button type="button" data-order-group="new" aria-pressed="true">Novos <span id="groupNewCount">0</span></button><button type="button" data-order-group="progress" aria-pressed="false">Em andamento <span id="groupProgressCount">0</span></button><button type="button" data-order-group="done" aria-pressed="false">Concluídos <span id="groupDoneCount">0</span></button><button type="button" data-order-group="cancelled" aria-pressed="false">Cancelados <span id="groupCancelledCount">0</span></button></div><section class="card order-search-card"><input id="search" placeholder="Buscar pedido, cliente ou telefone" aria-label="Buscar pedidos"><select id="filter" aria-label="Filtro legado" class="legacy-filter-accessible"><option value="groups" selected>Grupos</option><option value="active">Ativos</option><option value="pending">Aguardando pagamento</option><option value="completed">Concluídos</option><option value="cancelled">Cancelados/Expirados</option><option value="tests">Testes</option><option value="all">Todos</option></select></section><div class="orders-toolbar"><button type="button" id="shoppingListButton" class="secondary">Lista de compras</button><button type="button" id="shoppingCostEditButton" class="secondary">Editar custos na lista</button></div><div id="orders" class="orders"></div><div class="actions" style="justify-content:center;margin:16px 0"><button id="loadMore" class="secondary">Carregar mais pedidos</button></div>
 
 </section>
 <section id="settingsTab" class="hidden" role="tabpanel" aria-label="Configurações">
@@ -1336,24 +1370,42 @@ function renderOrderProfitMarkup(data,totalItems){
  const note=covered>0?'<small>Inclui '+money(covered)+' de entrega coberta pela loja</small>':'';
  return '<strong class="order-profit-summary '+(profit<0?'profit-negative':'profit-positive')+'">'+(partial?'Lucro real parcial ('+calculated+' de '+total+' itens): ':'Lucro real do pedido: ')+money(profit)+note+'<br><small style="font-weight:500">Lucro sobre balcão: '+(counter===null?'—':money(counter))+'</small></strong>';
 }
-function renderDailySummary(){
- const s=dailyProfitSummary||{};
- const statsOrders=allOrders.filter(o=>o.is_test_order!==true);
- const values={
-  dayOrdersCount:String(s.orders_today??statsOrders.filter(o=>!['Cancelada','Reembolsado','Contestado'].includes(normalizeOrderStatus(o.status))).length),
-  dayToSeparate:String(s.to_separate??0),
-  dayInDelivery:String(s.in_delivery??0),
-  dayPaidSales:money(s.paid_sales||0),
-  dayProfit:money(s.profit||0),
-  dayProfitNote:'Sobre balcão: '+(s.profit_on_counter==null?'—':money(s.profit_on_counter))+(Number(s.missing_cost_items||0)>0?' · Parcial · '+s.missing_cost_items+' item(ns) sem custo':''),
-  count:String(statsOrders.length),
-  pending:String(statsOrders.filter(o=>['Pedido Recebido','Pagamento Pendente'].includes(normalizeOrderStatus(o.status))).length),
-  active:String(statsOrders.filter(o=>['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega'].includes(normalizeOrderStatus(o.status))).length),
-  sum:money(s.paid_sales||0)
- };
- for(const [id,value] of Object.entries(values)){const node=$(id);if(node)node.textContent=value;}
- const profitNode=$('dayProfit');if(profitNode)profitNode.classList.toggle('profit-negative',Number(s.profit||0)<0);
+function periodDateKey(date){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);}
+let selectedPeriod='today',selectedOrderGroup='new';
+function periodBounds(period){
+ const now=new Date(),today=periodDateKey(now),[y,m,d]=today.split('-').map(Number);
+ const start=new Date(Date.UTC(y,m-1,d,4));
+ if(period==='yesterday')start.setUTCDate(start.getUTCDate()-1);
+ else if(period==='week'){const weekday=(start.getUTCDay()+6)%7;start.setUTCDate(start.getUTCDate()-weekday);}
+ else if(period==='month')start.setUTCDate(1);
+ const end=new Date(start.getTime()+86400000);
+ if(period==='week'||period==='month'){end.setUTCDate(period==='week'?start.getUTCDate()+7:1);if(period==='month')end.setUTCMonth(start.getUTCMonth()+1);}
+ return {start:start.getTime(),end:end.getTime()};
 }
+function ordersForSelectedPeriod(rows){const b=periodBounds(selectedPeriod);return rows.filter(o=>{if(!o.created_at)return true;const t=new Date(o.created_at).getTime();return t>=b.start&&t<b.end;});}
+function orderGroupKey(order){
+ const st=normalizeOrderStatus(order.status);
+ if(['Cancelada','Pagamento cancelado','Pagamento recusado','Pagamento Expirado','Reembolsado','Contestado'].includes(st))return 'cancelled';
+ if(st==='Entregue')return 'done';
+ if(['Preparando','Pronto para Retirada','Saiu para Entrega'].includes(st))return 'progress';
+ return 'new';
+}
+function matchesSelectedOrderGroup(order,group){return order.is_test_order!==true&&orderGroupKey(order)===group;}
+function renderOrderGroupCounts(rows){
+ const counts={new:0,progress:0,done:0,cancelled:0};rows.filter(o=>o.is_test_order!==true).forEach(o=>counts[orderGroupKey(o)]++);
+ for(const [key,id] of Object.entries({new:'groupNewCount',progress:'groupProgressCount',done:'groupDoneCount',cancelled:'groupCancelledCount'})){const n=$(id);if(n)n.textContent=String(counts[key]);}
+}
+function renderDailySummary(){
+ const rows=ordersForSelectedPeriod(allOrders).filter(o=>o.is_test_order!==true),valid=rows.filter(o=>!['Cancelada','Pagamento cancelado','Pagamento recusado','Pagamento Expirado','Reembolsado','Contestado'].includes(normalizeOrderStatus(o.status)));
+ const paid=rows.filter(o=>['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega','Entregue'].includes(normalizeOrderStatus(o.status)));
+ const sales=paid.reduce((sum,o)=>sum+Number(o.total||0),0),profits=paid.map(o=>profitByOrder[o.id]).filter(Boolean);
+ const profit=profits.reduce((sum,p)=>sum+Number(p.profit||0),0),counter=profits.reduce((sum,p)=>sum+Number(p.profit_on_counter_total??p.profit_on_counter??0),0);
+ const missing=profits.reduce((sum,p)=>sum+Number(p.missing_cost_items||0),0);
+ const values={dayOrdersCount:String(valid.length),dayPaidSales:money(sales),dayProfit:money(profit),dayProfitNote:'Sobre balcão: '+money(counter)+(missing?' · '+missing+' item(ns) sem custo':''),averageTicket:money(paid.length?sales/paid.length:0),dayToSeparate:String(rows.filter(o=>['Pagamento Confirmado','Preparando'].includes(normalizeOrderStatus(o.status))).length),dayInDelivery:String(rows.filter(o=>normalizeOrderStatus(o.status)==='Saiu para Entrega').length),count:String(valid.length),pending:String(rows.filter(o=>orderGroupKey(o)==='new').length),active:String(rows.filter(o=>orderGroupKey(o)==='progress').length),sum:money(sales)};
+ for(const [id,value] of Object.entries(values)){const node=$(id);if(node)node.textContent=value;}
+ const profitNode=$('dayProfit');if(profitNode)profitNode.classList.toggle('profit-negative',profit<0);
+}
+
 function manausDayRange(){
  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
  const value=Object.fromEntries(parts.map(part=>[part.type,part.value]));
@@ -1362,7 +1414,8 @@ function manausDayRange(){
 }
 async function loadOrderProfit(){
  try{
-  const range=manausDayRange();
+  const bounds=periodBounds(selectedPeriod);
+  const range={start:new Date(bounds.start).toISOString(),end:new Date(bounds.end).toISOString()};
   const {data,error}=await db.rpc('admin_get_order_profit',{p_order_ids:allOrders.map(o=>o.id),p_start:range.start,p_end:range.end});
   if(error)throw error;
   profitByOrder=Object.fromEntries((data?.orders||[]).map(row=>[row.order_id,row]));
@@ -1380,9 +1433,10 @@ function render(){
  const savedWindowScrollY=window.scrollY||window.pageYOffset||0,savedOrdersScrollTop=ordersRoot?.scrollTop||0;
  const settingsBadge=$('lalamoveSettingsBadge');if(settingsBadge){settingsBadge.className='lalamove-env-badge '+lalamoveEnvironment;settingsBadge.textContent=lalamoveEnvironment==='producao'?'PRODUÇÃO':'SANDBOX';}
  const q=$('search').value.trim().toLowerCase(),f=$('filter').value;
- const filtered=allOrders.filter(o=>matchesOrderFilter(o,f)&&(!q||[o.id,o.customer_name,o.customer_phone].some(v=>String(v||'').toLowerCase().includes(q))));
- const statsOrders=allOrders.filter(o=>o.is_test_order!==true);
- renderDailySummary();
+ const periodOrders=f==='groups'?ordersForSelectedPeriod(allOrders):allOrders,group=selectedOrderGroup;
+ const filtered=periodOrders.filter(o=>(f===''||f==='all'||(f==='groups'?matchesSelectedOrderGroup(o,group):matchesOrderFilter(o,f)))&&(!q||[o.id,o.customer_name,o.customer_phone].some(v=>String(v||'').toLowerCase().includes(q))));
+ const statsOrders=periodOrders.filter(o=>o.is_test_order!==true);
+ renderDailySummary();renderOrderGroupCounts(periodOrders);
  $('orders').innerHTML=filtered.map(o=>{
   const items=Array.isArray(o.items)?o.items:[];
   const checklist=o.market_checklist;
@@ -1669,7 +1723,13 @@ $('refresh').addEventListener('click',()=>{document.title='Feira On Delivery | P
  try{await cleanupPanelPushAndSignOut();setLoggedIn(false);}
  catch(error){console.error('Falha ao sair do painel:',error);$('message').textContent='Não foi possível sair: '+(error?.message||'erro não identificado')+'. Tente novamente.';}
  finally{button.disabled=false;}
-});$('search').addEventListener('input',render);$('filter').addEventListener('change',render);show();
+});$('search').addEventListener('input',render);$('filter').addEventListener('change',render);
+document.querySelectorAll('[data-period]').forEach(button=>button.addEventListener('click',()=>{selectedPeriod=button.dataset.period;document.querySelectorAll('[data-period]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));render();void loadOrderProfit();}));
+document.querySelectorAll('[data-order-group]').forEach(button=>button.addEventListener('click',()=>{selectedOrderGroup=button.dataset.orderGroup;document.querySelectorAll('[data-order-group]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));render();}));
+document.querySelector('.panel-menu')?.addEventListener('toggle',()=>{});
+const pushStateObserver=new MutationObserver(()=>{const hint=$('pushHint'),toggle=$('pushToggle');if(hint&&toggle){const active=/desativar/i.test(toggle.textContent);hint.textContent='Avisos neste aparelho: '+(active?'ativos':'desativados');}});
+pushStateObserver.observe($('pushToggle'),{childList:true,subtree:true,characterData:true});
+show();
 
 
 const slug=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
