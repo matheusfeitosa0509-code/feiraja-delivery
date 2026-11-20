@@ -4,8 +4,9 @@ import fs from 'node:fs';
 const panel=fs.readFileSync(new URL('../../painel.html',import.meta.url),'utf8');
 const migration=fs.readFileSync(new URL('../migrations/20261115030000_unified_product_sheet_and_confirmed_units.sql',import.meta.url),'utf8');
 const rollback=fs.readFileSync(new URL('../rollbacks/20261115030000_unified_product_sheet_and_confirmed_units_rollback.sql',import.meta.url),'utf8');
+const priceMigration=fs.readFileSync(new URL('../migrations/20261120190000_product_counter_paid_prices.sql',import.meta.url),'utf8');
 
-for(const id of ['unifiedProductSearch','unifiedCategoryFilter','unifiedProductList','productSheet','sheetName','sheetCategory','sheetImage','sheetPrice','sheetResalePrice','sheetCost','sheetProfit','sheetSaleUnit','sheetMin','sheetStep','sheetValueEnabled','sheetValueMin','sheetAvailable']) {
+for(const id of ['unifiedProductSearch','unifiedCategoryFilter','unifiedProductList','productSheet','sheetName','sheetCategory','sheetImage','sheetPrice','sheetResalePrice','sheetBalconyCost','sheetPaidCost','sheetProfit','sheetSaleUnit','sheetMin','sheetStep','sheetValueEnabled','sheetValueMin','sheetAvailable']) {
  assert.match(panel,new RegExp('id="'+id+'"'),'unified product UI includes '+id);
 }
 assert.match(panel,/normalizeProductSearch\(\$\('unifiedProductSearch'\)\.value\)/,'search is accent/case insensitive');
@@ -17,13 +18,17 @@ assert.match(panel,/\$\('openNewProduct'\)\.addEventListener\('click',fillNewPro
 assert.match(panel,/admin_create_product_with_sales_rule/,'new product is created through the existing admin RPC');
 assert.doesNotMatch(panel,/\b(?:window\.)?(?:alert|confirm|prompt)\s*\(/,'panel must not use native browser dialogs');
 assert.match(panel,/admin_update_product_sales_rule/,'sale unit and quantity rules use the admin RPC');
-assert.match(panel,/admin_set_product_cost/,'private product cost uses the existing admin RPC');
+assert.match(panel,/admin_set_product_prices/,'private counter and paid prices use the admin RPC');
+assert.match(panel,/let orderCostFieldsDirty=\{balcony:false,paid:false\}/,'unchanged snapshot values do not overwrite product defaults');
+assert.match(panel,/p_update_product:\$\('orderCostUpdateProduct'\)\.checked/,'the existing checkbox controls whether product defaults are updated');
+assert.doesNotMatch(panel,/id="sheetCost"/,'the old single cost field is replaced by two private price fields');
 assert.match(panel,/db\.rpc\('admin_get_cost_report_with_delivery'/,'inline costs continue to come from the administrative report RPC');
 assert.match(panel,/window\.__feiraCostProducts/,'inline product cost is sourced from the administrative RPC cache');
 assert.match(panel,/unifiedCostFilter/,'products tab filters products without cost');
 assert.match(panel,/Sem custo cadastrado \(/,'missing-cost filter shows its product count');
 assert.match(panel,/Custo não cadastrado/,'missing costs are not presented as zero');
-assert.match(panel,/Custo '\+money\(cost\.unit_cost\)\+' · Lucro '\+money\(profit\)/,'product rows show cost and profit under the selling price');
+assert.match(panel,/Lucro real '\+money\(profit\)/,'product rows show actual profit');
+assert.match(panel,/Sobre balcão '\+money\(counterProfit\)/,'product rows show profit over counter price');
 assert.match(panel,/margin\.toLocaleString\('pt-BR'/,'product row shows margin percentage');
 assert.match(panel,/unified-product-cost \'\+marginClass/,'low-margin and below-cost colors are applied to the inline cost summary');
 assert.match(panel,/unified-availability\{align-self:start/,'active switch stays aligned to the top beside name and price');
@@ -47,4 +52,16 @@ assert.match(rollback,/DROP FUNCTION IF EXISTS public\.admin_update_product_sale
 assert.doesNotMatch(migration,/UPDATE public\.products SET price\s*=/i,'no product price is modified');
 assert.doesNotMatch(migration,/DELETE FROM public\.products/i,'no product is deleted, including unresolved Uva rows');
 
-console.log('OK: unified product sheet, private cost RPC, responsive styles, confirmed unit/minimum rules, unchanged prices and rollback.');
+assert.match(priceMigration,/ADD COLUMN IF NOT EXISTS preco_balcao/,'private counter price column is added');
+assert.match(priceMigration,/ADD COLUMN IF NOT EXISTS preco_pago/,'private paid price column is added');
+assert.match(priceMigration,/UPDATE feira_cost_private\.product_costs\s+SET preco_balcao = unit_cost/,'legacy cost is copied into counter price');
+assert.match(priceMigration,/CREATE TABLE IF NOT EXISTS feira_cost_private\.product_price_history/,'private price history is created');
+assert.match(priceMigration,/ALTER TABLE feira_cost_private\.product_price_history ENABLE ROW LEVEL SECURITY/,'private price history has RLS enabled');
+assert.match(priceMigration,/REVOKE ALL ON TABLE feira_cost_private\.product_price_history FROM PUBLIC, anon, authenticated/,'private price history is inaccessible to client roles');
+assert.match(priceMigration,/public\.admin_set_product_prices/,'admin-only dual-price RPC is created');
+assert.match(priceMigration,/public\.is_current_user_admin\(\)/,'RPC validates admin authorization');
+assert.match(priceMigration,/Mantém os preços fotografados anteriormente/,'order item edits preserve existing snapshots');
+assert.match(priceMigration,/COALESCE\(v_existing\.preco_pago,v_existing\.preco_balcao,v_existing\.unit_cost\)/,'legacy order snapshots retain their original cost fallback');
+assert.match(priceMigration,/v_new_bal := COALESCE\(p_preco_balcao,v_snapshot\.preco_balcao,CASE WHEN v_snapshot\.preco_pago IS NULL THEN v_snapshot\.unit_cost END\)/,'partial price edits retain the historical counter cost');
+assert.match(priceMigration,/v_new_pago := COALESCE\(p_preco_pago,v_snapshot\.preco_pago\)/,'partial price edits do not import current product paid cost into old orders');
+console.log('OK: unified product sheet, private counter/paid price RPC and history, responsive styles, confirmed unit/minimum rules, unchanged prices and rollback.');

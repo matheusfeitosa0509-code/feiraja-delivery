@@ -321,7 +321,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
    <label>Preço de revenda (R$)<input id="sheetResalePrice" inputmode="decimal"></label>
    <label>A partir de<input id="sheetResaleMin" type="number" min="1" step="1"></label>
    <label>Unidade da revenda<select id="sheetResaleUnit"><option value="un">un / pacote</option><option value="kg">kg</option></select></label>
-   <label>Preço de custo (R$)<input id="sheetCost" inputmode="decimal" placeholder="Sem custo cadastrado"></label>
+   <label>Preço de balcão (R$)<input id="sheetBalconyCost" inputmode="decimal" placeholder="Ex.: 8,00"></label><label>Quanto paguei (R$)<input id="sheetPaidCost" inputmode="decimal" placeholder="Vazio = usar balcão"></label>
    <div id="sheetProfit" class="sheet-profit"></div>
    <label>Unidade de venda<select id="sheetSaleUnit"><option value="kg">kg</option><option value="un">Unidade</option><option value="maco">Maço</option><option value="pacote">Pacote</option><option value="duzia">Dúzia</option></select></label>
    <label>Mínimo<input id="sheetMin" type="number" min="0.001" step="0.5"></label>
@@ -426,8 +426,10 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
  <p class="muted">Cadastre o custo unitário de cada produto. O custo é copiado para os novos pedidos e fica preservado no histórico, mesmo se o custo atual mudar.</p>
  <label for="costProductSelect">Produto</label>
  <select id="costProductSelect"><option value="">Carregando produtos…</option></select>
- <label for="costUnitInput">Custo unitário (R$)</label>
- <input id="costUnitInput" inputmode="decimal" placeholder="Ex.: 4,50">
+ <label for="costBalconyInput">Preço de balcão (R$)</label>
+ <input id="costBalconyInput" inputmode="decimal" placeholder="Ex.: 8,00">
+ <label for="costPaidInput">Quanto paguei (R$)</label>
+ <input id="costPaidInput" inputmode="decimal" placeholder="Vazio = usar balcão">
  <button id="btnSaveCost" type="button" disabled>Salvar preço de custo</button>
  <p id="costEditMessage" class="muted" role="status" aria-live="polite"></p>
  <div class="card" style="margin:18px 0 0;padding:14px">
@@ -470,9 +472,11 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
   <h2 id="orderCostTitle">Editar custo do item</h2>
   <p id="orderCostItemName" class="muted"></p>
   <input id="orderCostOrderId" type="hidden"><input id="orderCostItemIndex" type="hidden">
-  <label for="orderCostUnitInput">Custo pago hoje (por unidade/kg)</label>
-  <input id="orderCostUnitInput" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00">
-  <label class="order-cost-checkbox"><input id="orderCostUpdateProduct" type="checkbox" checked> Atualizar também o custo padrão do produto</label>
+  <label for="orderCostBalconyInput">Preço de balcão (por unidade/kg)</label>
+  <input id="orderCostBalconyInput" type="text" inputmode="decimal" autocomplete="off" placeholder="Vazio = manter">
+  <label for="orderCostPaidInput">Quanto paguei (por unidade/kg)</label>
+  <input id="orderCostPaidInput" type="text" inputmode="decimal" autocomplete="off" placeholder="Vazio = manter">
+  <label class="order-cost-checkbox"><input id="orderCostUpdateProduct" type="checkbox" checked> Atualizar também no produto</label>
   <p id="orderCostWarning" class="order-cost-warning" role="status"></p>
   <div class="actions"><button type="button" id="orderCostCancel" class="secondary">Cancelar</button><button type="button" id="orderCostSave">Salvar custo</button></div>
  </section>
@@ -815,7 +819,7 @@ function unitLabel(unit){return ({kg:'kg',un:'un',maco:'maço',pacote:'pacote',d
 function moneyInput(value){return Number(value||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function sheetNumber(id){const raw=$(id).value.trim();if(!raw)return null;const normalized=raw.includes(',')?raw.replace(/\./g,'').replace(',','.'):raw;const n=Number(normalized);return Number.isFinite(n)?n:null;}
 function getProductCost(productId){return (window.__feiraCostProducts||[]).find(row=>row.id===productId)||null;}
-function productMargin(product,cost){if(!cost||cost.unit_cost==null||Number(cost.unit_cost)<=0||Number(product.price)<=0)return null;return (Number(product.price)-Number(cost.unit_cost))/Number(product.price)*100;}
+function productMargin(product,cost){const effective=cost?.preco_pago??cost?.preco_balcao??cost?.unit_cost;if(effective==null||Number(effective)<=0||Number(product.price)<=0)return null;return (Number(product.price)-Number(effective))/Number(product.price)*100;}
 function renderUnifiedProductList(){
  const host=$('unifiedProductList');if(!host)return;
  const term=normalizeProductSearch($('unifiedProductSearch').value),category=$('unifiedCategoryFilter').value,costFilter=$('unifiedCostFilter')?.value||'';
@@ -829,10 +833,13 @@ function renderUnifiedProductList(){
  if(!rows.length){host.innerHTML='<p class="muted">Nenhum produto encontrado.</p>';return;}
  host.innerHTML=rows.map(p=>{
   const cost=costs.get(p.id),margin=productMargin(p,cost),hasCost=!!cost&&cost.unit_cost!=null&&Number(cost.unit_cost)>0;
-  const profit=hasCost?Number(p.price)-Number(cost.unit_cost):null;
+  const effectiveCost=cost?(cost.preco_pago??cost.preco_balcao??cost.unit_cost):null;
+  const counterCost=cost?(cost.preco_balcao??(cost.preco_pago==null?cost.unit_cost:null)):null;
+  const profit=effectiveCost==null?null:Number(p.price)-Number(effectiveCost);
+  const counterProfit=counterCost==null?null:Number(p.price)-Number(counterCost);
   const marginClass=margin!==null&&margin<0?'below-cost':margin!==null&&margin<costMarginThreshold?'low-margin':'';
   const badges=(p.available?[]:['<span class="unavailable">Indisponível</span>']).concat(!hasCost?['<span class="no-cost">Custo não cadastrado</span>']:[],margin!==null&&margin<0?['<span class="below-cost">Abaixo do custo</span>']:margin!==null&&margin<costMarginThreshold?['<span class="low-margin">Margem baixa</span>']:[]);
-  const costLine=hasCost?'<span class="unified-product-cost '+marginClass+'">Custo '+money(cost.unit_cost)+' · Lucro '+money(profit)+' ('+margin.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%)</span>':'';
+  const costLine=effectiveCost!=null?'<span class="unified-product-cost '+marginClass+'">Lucro real '+money(profit)+(margin===null?'':' · Margem '+margin.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%')+(counterProfit==null?'':' · <small>Sobre balcão '+money(counterProfit)+'</small>')+'</span>':'';
   const image=productListImage(p.image);
   return '<div class="unified-product-row" data-open-product="'+esc(p.id)+'"><img src="'+esc(image)+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'"><span class="unified-product-meta"><strong>'+esc(p.name)+'</strong><span class="unified-product-price">'+money(p.price)+' <span class="unified-product-unit">· '+unitLabel(p.sale_unit)+'</span></span>'+costLine+'<span class="unified-product-badges">'+badges.join('')+'</span></span><label class="unified-availability" title="Disponibilidade"><input type="checkbox" data-quick-availability="'+esc(p.id)+'" '+(p.available?'checked':'')+' aria-label="Disponível: '+esc(p.name)+'"><span>Ativo</span></label></div>';
  }).join('');
@@ -862,16 +869,20 @@ function fillProductSheet(product){
  $('sheetResalePrice').value=product.resale_price==null?'':moneyInput(product.resale_price);
  $('sheetResaleMin').value=String(product.resale_min_qty||10);
  $('sheetResaleUnit').value=product.resale_unit==='kg'?'kg':'un';
- $('sheetCost').value=cost?.unit_cost==null?'':moneyInput(cost.unit_cost);
+ $('sheetBalconyCost').value=cost?.preco_balcao==null?'':moneyInput(cost.preco_balcao);
+ $('sheetPaidCost').value=cost?.preco_pago==null?'':moneyInput(cost.preco_pago);
  $('sheetSaleUnit').value=product.sale_unit||'un';
  $('sheetMin').value=String(product.min_quantity||1);
  $('sheetStep').value=String(product.quantity_step||1);
  $('sheetValueEnabled').value=String(product.allow_value_sale===true);
  $('sheetValueMin').value=String(product.value_min_kg||product.min_quantity||1);$('sheetValueMin').disabled=product.sale_unit!=='kg';$('sheetValueMin').closest('label').hidden=product.sale_unit!=='kg';
  const margin=productMargin(product,cost);
- const profit=cost?.unit_cost==null?null:Number(product.price)-Number(cost.unit_cost);
+ const effectiveCost=cost?.preco_pago??cost?.preco_balcao??cost?.unit_cost??null;
+ const profit=effectiveCost==null?null:Number(product.price)-Number(effectiveCost);
+ const counterCost=cost?.preco_balcao??(cost?.preco_pago==null?cost?.unit_cost:null);
+ const counterProfit=counterCost==null?null:Number(product.price)-Number(counterCost);
  const updated=cost?.updated_at?new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',dateStyle:'short',timeStyle:'short'}).format(new Date(cost.updated_at)):'Ainda não atualizado';
- $('sheetProfit').innerHTML=cost?.unit_cost==null?'Sem custo cadastrado.':('Lucro estimado: <strong>'+money(profit)+'</strong> por unidade comercial · Margem: <strong>'+margin.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%</strong><br><small>Última atualização do custo: '+esc(updated)+'</small>');
+ $('sheetProfit').innerHTML=effectiveCost==null?'Sem preço de custo cadastrado.':('Lucro real: <strong>'+money(profit)+'</strong> por unidade comercial'+(counterProfit==null?'':'<br><small>Lucro sobre balcão: '+money(counterProfit)+'</small>')+'<br><small>Última atualização: '+esc(updated)+'</small>');
  setSheetMessage('Altere os campos necessários e salve.');
  $('productSheetBackdrop').hidden=false;
  document.body.style.overflow='hidden';
@@ -892,12 +903,12 @@ function fillNewProductSheet(){
   $('sheetResalePrice').value='';
   $('sheetResaleMin').value='10';
   $('sheetResaleUnit').value='un';
-  $('sheetCost').value='';
+  $('sheetBalconyCost').value='';$('sheetPaidCost').value='';
   $('sheetSaleUnit').value='un';
   $('sheetMin').value='1';$('sheetStep').value='1';
   $('sheetValueEnabled').value='true';
   $('sheetValueMin').value='1';$('sheetValueMin').disabled=true;$('sheetValueMin').closest('label').hidden=true;
-  $('sheetProfit').textContent='O custo é opcional e ficará restrito ao painel administrativo.';
+  $('sheetProfit').textContent='Preço de balcão e preço pago são opcionais e ficam restritos ao painel administrativo.';
   setSheetMessage('Preencha os dados do novo produto.');
   $('productSheetBackdrop').hidden=false;
   document.body.style.overflow='hidden';
@@ -907,7 +918,8 @@ async function saveProductSheet(){
   const mode=sheetMode;
   const name=$('sheetName').value.trim(),category=$('sheetCategory').value;
   const price=sheetNumber('sheetPrice'),resaleEnabled=$('sheetResaleEnabled').value==='true',resalePrice=sheetNumber('sheetResalePrice'),resaleMin=Number($('sheetResaleMin').value),resaleUnit=$('sheetResaleUnit').value;
-  const costValue=$('sheetCost').value.trim()?sheetNumber('sheetCost'):null;
+  const balconyValue=$('sheetBalconyCost').value.trim()?sheetNumber('sheetBalconyCost'):null;
+  const paidValue=$('sheetPaidCost').value.trim()?sheetNumber('sheetPaidCost'):null;
   const saleUnit=$('sheetSaleUnit').value,min=Number($('sheetMin').value),step=Number($('sheetStep').value),valueEnabled=$('sheetValueEnabled').value==='true',valueMin=Number($('sheetValueMin').value);
   let image=$('sheetImage').value.trim();if(image){image=productImageValue(image);}
   const id=mode==='create'?makeId(name):unifiedCurrentProductId;
@@ -920,7 +932,7 @@ async function saveProductSheet(){
    if($('sheetAvailable').value==='true'&&price<0.50)throw new Error('Defina o preço de venda antes de disponibilizar');
    if(!id)throw new Error('Informe um nome válido para gerar o ID do produto.');
    if(resaleEnabled&&(!Number.isFinite(resalePrice)||resalePrice<=0||resalePrice>=price||!Number.isInteger(resaleMin)||resaleMin<1))throw new Error('Revenda exige preço menor que o preço normal e quantidade mínima inteira.');
-   if(costValue!==null&&costValue<=0)throw new Error('O custo deve ser maior que zero.');
+   if((balconyValue!==null&&balconyValue<0)||(paidValue!==null&&paidValue<0))throw new Error('Os preços não podem ser negativos.');
    if(!Number.isFinite(min)||min<=0||!Number.isFinite(step)||step<=0||!Number.isFinite(valueMin)||valueMin<=0)throw new Error('Mínimo, passo e mínimo por valor devem ser maiores que zero.');
    if(saleUnit!=='kg'&&(!Number.isInteger(min)||!Number.isInteger(step)))throw new Error('Unidades, maços e pacotes usam mínimo e passo inteiros.');
    if(saleUnit==='kg'&&Math.abs(min/step-Math.round(min/step))>1e-8)throw new Error('O mínimo precisa respeitar o passo da unidade.');
@@ -936,7 +948,7 @@ async function saveProductSheet(){
     if(updateError)throw updateError;
     const {error:ruleError}=await db.rpc('admin_update_product_sales_rule',{p_product_id:id,p_sale_unit:saleUnit,p_min_quantity:min,p_quantity_step:step,p_allow_value_sale:valueEnabled,p_value_min_kg:saleUnit==='kg'?valueMin:1});
     if(ruleError)throw ruleError;
-    if(costValue!==null){const {error:costError}=await db.rpc('admin_set_product_cost',{p_product_id:id,p_unit_cost:costValue});if(costError)throw costError;}
+    if(balconyValue!==null||paidValue!==null){const {error:costError}=await db.rpc('admin_set_product_prices',{p_product_id:id,p_preco_balcao:balconyValue,p_preco_pago:paidValue});if(costError)throw costError;}
     clearPendingProductPhoto('sheet');
     await Promise.all([loadAdminProducts(),loadCostReport()]);
     closeProductSheet();renderUnifiedProductList();
@@ -956,8 +968,10 @@ async function saveProductSheet(){
    if(Object.keys(productChanges).length){const {data,error}=await db.from('products').update(productChanges).eq('id',id).select('id').maybeSingle();if(error)throw error;if(!data)throw new Error('O produto não foi atualizado. Confira a sessão administrativa.');if(uploadedPhoto&&productChanges.image===uploadedPhoto.url)imageSaved=true;}
    const salesChanged=saleUnit!==product.sale_unit||min!==product.min_quantity||step!==product.quantity_step||valueEnabled!==product.allow_value_sale||(saleUnit==='kg'&&valueMin!==product.value_min_kg);
    if(salesChanged){const {error}=await db.rpc('admin_update_product_sales_rule',{p_product_id:id,p_sale_unit:saleUnit,p_min_quantity:min,p_quantity_step:step,p_allow_value_sale:valueEnabled,p_value_min_kg:saleUnit==='kg'?valueMin:1});if(error)throw error;}
-   const oldCost=getProductCost(id)?.unit_cost;
-   if(costValue!==null&&(oldCost==null||Math.round(costValue*100)!==Math.round(Number(oldCost)*100))){const {error}=await db.rpc('admin_set_product_cost',{p_product_id:id,p_unit_cost:costValue});if(error)throw error;}
+   const oldCost=getProductCost(id)||{};
+   const changedBalcony=balconyValue!==null&&(oldCost.preco_balcao==null||Math.round(balconyValue*100)!==Math.round(Number(oldCost.preco_balcao)*100));
+   const changedPaid=paidValue!==null&&(oldCost.preco_pago==null||Math.round(paidValue*100)!==Math.round(Number(oldCost.preco_pago)*100));
+   if(changedBalcony||changedPaid){const {error}=await db.rpc('admin_set_product_prices',{p_product_id:id,p_preco_balcao:changedBalcony?balconyValue:null,p_preco_pago:changedPaid?paidValue:null});if(error)throw error;}
    if(product.image&&image!==product.image)await deleteOldProductPhotoIfUnused(product.image,id);
    await Promise.all([loadAdminProducts(),loadCostReport()]);
    closeProductSheet();renderUnifiedProductList();$('unifiedProductList').scrollTop=0;
@@ -1143,16 +1157,20 @@ function parseOrderUnitCost(value){
  return Number.isFinite(amount)&&amount>=0?amount:null;
 }
 let shoppingCostOrders=[],shoppingCostProfitByOrder={};
+let orderCostFieldsDirty={balcony:false,paid:false};
 function openOrderCostEditor(orderId,itemIndex){
  const order=allOrders.find(row=>String(row.id)===String(orderId))||shoppingCostOrders.find(row=>String(row.id)===String(orderId));
  const snapshot=(profitByOrder[orderId]?.items||shoppingCostProfitByOrder[orderId]?.items||[]).find(row=>Number(row.item_index)===Number(itemIndex));
  if(!order||!snapshot){notice('Não foi possível carregar o custo deste item. Atualize os pedidos e tente novamente.',true);return;}
  const modal=$('orderCostBackdrop');if(!modal)return;
  $('orderCostOrderId').value=String(orderId);$('orderCostItemIndex').value=String(itemIndex);
- $('orderCostUnitInput').value=snapshot.unit_cost==null?'':Number(snapshot.unit_cost).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
- $('orderCostUpdateProduct').checked=true;$('orderCostWarning').textContent='';
+ const snapshotBalcony=snapshot.preco_balcao??(snapshot.preco_pago==null?snapshot.unit_cost:null);
+ $('orderCostBalconyInput').value=snapshotBalcony==null?'':Number(snapshotBalcony).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+ $('orderCostPaidInput').value=snapshot.preco_pago==null?'':Number(snapshot.preco_pago).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+ orderCostFieldsDirty={balcony:false,paid:false};
+ $('orderCostUpdateProduct').checked=Boolean(snapshot.product_id);$('orderCostUpdateProduct').disabled=!snapshot.product_id;$('orderCostWarning').textContent='';
  $('orderCostItemName').textContent=String(snapshot.product_name||order.items?.[itemIndex]?.name||'Item do pedido');
- $('orderCostBackdrop').hidden=false;$('orderCostUnitInput').focus();
+ $('orderCostBackdrop').hidden=false;$('orderCostBalconyInput').focus();
 }
 async function openShoppingCostList(){
  const modal=$('shoppingCostBackdrop'),host=$('shoppingCostRows');
@@ -1171,7 +1189,8 @@ async function openShoppingCostList(){
    const snapshots=shoppingCostProfitByOrder[order.id]?.items||[];
    return '<section><strong>Pedido '+esc(shortOrderNumber(order.id))+'</strong>'+((order.items||[]).map((item,index)=>{
     const snap=snapshots.find(row=>Number(row.item_index)===index);
-    const cost=snap?.unit_cost==null?'Custo não cadastrado':'Custo atual: '+money(snap.unit_cost)+' / un.';
+    const effective=snap?.preco_pago??snap?.preco_balcao??snap?.unit_cost;
+    const cost=effective==null?'Sem preço cadastrado':'Lucro real: '+money(Number(snap.sale_total||0)-Number(effective)*Number(snap.quantity||1))+' · balcão: '+(snap?.preco_balcao==null?'—':money(Number(snap.sale_total||0)-Number(snap.preco_balcao)*Number(snap.quantity||1)));
     return '<div class="shopping-cost-row"><div>'+esc(formatOrderItemDescription(item))+'<small>'+esc(cost)+'</small></div><button type="button" class="secondary" data-edit-order-cost="'+esc(order.id)+'" data-cost-item-index="'+index+'">Editar</button></div>';
    }).join('')||'<p class="muted">Sem itens detalhados.</p>')+'</section>';
   }).join('');
@@ -1184,30 +1203,34 @@ $('shoppingCostBackdrop').addEventListener('click',event=>{if(event.target===$('
 
 async function saveOrderItemCost(){
  const orderId=$('orderCostOrderId').value,itemIndex=Number($('orderCostItemIndex').value);
- const unitCost=parseOrderUnitCost($('orderCostUnitInput').value);
+ const balconyRaw=orderCostFieldsDirty.balcony?$('orderCostBalconyInput').value.trim():'',paidRaw=orderCostFieldsDirty.paid?$('orderCostPaidInput').value.trim():'';
+ const balconyCost=balconyRaw?parseOrderUnitCost(balconyRaw):null,paidCost=paidRaw?parseOrderUnitCost(paidRaw):null;
  const message=$('orderCostWarning');
- if(unitCost===null){message.textContent='Informe um custo válido, usando zero ou valor positivo.';return;}
+ if((balconyRaw&&balconyCost===null)||(paidRaw&&paidCost===null)){message.textContent='Informe valores válidos, usando zero ou valor positivo.';return;}
+ if(balconyCost===null&&paidCost===null){message.textContent='Informe ao menos um preço. Campo vazio mantém o último valor.';return;}
  const order=allOrders.find(row=>String(row.id)===String(orderId))||shoppingCostOrders.find(row=>String(row.id)===String(orderId));
  const item=order?.items?.[itemIndex]||{};
- const sale=Number(item.price||0);
- message.textContent=unitCost>sale?'Atenção: custo maior que a venda, prejuízo neste item':'';
+ const sale=Number(item.price||0),effective=paidCost??balconyCost;
+ message.textContent=effective!==null&&effective>sale?'Atenção: custo maior que a venda, prejuízo neste item':'';
  const button=$('orderCostSave');button.disabled=true;button.textContent='Salvando…';
  try{
-  const {data,error}=await db.rpc('admin_update_order_item_cost',{
-   p_order_id:orderId,p_item_index:itemIndex,p_unit_cost:unitCost,
-   p_update_product_cost:$('orderCostUpdateProduct').checked
+  const {data,error}=await db.rpc('admin_set_product_prices',{
+   p_product_id:snapshotProductId(orderId,itemIndex),p_preco_balcao:balconyCost,p_preco_pago:paidCost,
+   p_order_id:orderId,p_item_index:itemIndex,p_update_product:$('orderCostUpdateProduct').checked
   });
   if(error)throw error;
   $('orderCostBackdrop').hidden=true;
   await loadOrderProfit();
-  if(data?.product_default_updated&&typeof loadCostReport==='function')await loadCostReport();
+  if($('orderCostUpdateProduct').checked&&typeof loadCostReport==='function')await loadCostReport();
   if(shoppingCostOrders.some(row=>String(row.id)===String(orderId))&&$('shoppingCostBackdrop')&&!$('shoppingCostBackdrop').hidden)await openShoppingCostList();
   notice('Custo do item atualizado. Lucro do pedido e do dia recalculados.');
  }catch(error){
   console.error('Falha ao atualizar custo do item:',error);
   message.textContent=error?.message||'Não foi possível salvar o custo. Verifique a sessão de administrador.';
- }finally{button.disabled=false;button.textContent='Salvar custo';}
+ }finally{button.disabled=false;button.textContent='Salvar preços';}
 }
+$('orderCostBalconyInput').addEventListener('input',()=>{orderCostFieldsDirty.balcony=true;});
+$('orderCostPaidInput').addEventListener('input',()=>{orderCostFieldsDirty.paid=true;});
 $('orderCostCancel').addEventListener('click',()=>$('orderCostBackdrop').hidden=true);
 $('orderCostSave').addEventListener('click',saveOrderItemCost);
 $('orderCostBackdrop').addEventListener('click',event=>{if(event.target===$('orderCostBackdrop'))$('orderCostBackdrop').hidden=true;});
@@ -1276,21 +1299,22 @@ function matchesOrderFilter(order,filter){
  if(filter==='cancelled')return ['Cancelada','Pagamento cancelado','Pagamento recusado','Pagamento Expirado','Reembolsado','Contestado'].includes(status);
  return ['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega'].includes(status);
 }
+function snapshotProductId(orderId,itemIndex){return (profitByOrder[orderId]?.items||shoppingCostProfitByOrder[orderId]?.items||[]).find(row=>Number(row.item_index)===Number(itemIndex))?.product_id||null;}
 function renderOrderItemProfit(snapshot,item){
  const orderId=arguments[2],itemIndex=arguments[3],safeOrderId=String(orderId??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
  const qty=Number(snapshot?.quantity??item?.quantity??item?.qty??1),sale=Number(snapshot?.sale_total??(Number(item?.price||0)*qty));
  const edit='<button type="button" class="cost-edit-pencil" data-edit-order-cost="'+safeOrderId+'" data-cost-item-index="'+itemIndex+'" aria-label="Editar custo pago deste item" title="Editar custo">✎</button>';
- if(!snapshot||snapshot.unit_cost===null||snapshot.unit_cost===undefined)
-  return '<small class="profit-item-meta missing">Venda: '+money(sale)+' · custo não cadastrado '+edit+'</small>';
- const unitCost=Number(snapshot.unit_cost),cost=Number(snapshot.cost_total??unitCost*qty),profit=Number(snapshot.profit??(sale-cost)),percent=sale>0?profit/sale*100:0;
- return '<small class="profit-item-meta '+(profit<0?'profit-negative':'profit-positive')+'">Venda: '+money(sale)+' · Custo: '+money(cost)+' '+edit+' · Lucro: '+money(profit)+' ('+percent.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%)</small>';
+ const balcony=snapshot?.preco_balcao??(snapshot?.preco_pago==null?snapshot?.unit_cost??null:null),paid=snapshot?.preco_pago??null,effective=paid??balcony??snapshot?.unit_cost??null;
+ if(effective===null||effective===undefined)return '<small class="profit-item-meta missing">Venda: '+money(sale)+' · sem preço de custo '+edit+'</small>';
+ const realProfit=sale-(Number(effective)*qty),counterProfit=balcony==null?null:sale-(Number(balcony)*qty);
+ return '<small class="profit-item-meta '+(realProfit<0?'profit-negative':'profit-positive')+'">Venda: '+money(sale)+' · Lucro real: '+money(realProfit)+' '+edit+(counterProfit===null?'':'<br><small>Lucro sobre balcão: '+money(counterProfit)+'</small>')+'</small>';
 }
 
 function renderOrderProfitMarkup(data,totalItems){
  if(!data)return '<strong class="order-profit-summary profit-positive">Lucro parcial (0 de '+totalItems+' itens): R$ 0,00</strong>';
- const calculated=Number(data.calculated_items||0),total=Number(data.total_items??totalItems),profit=Number(data.profit||0),covered=Number(data.delivery_covered||0),partial=calculated<total;
+ const calculated=Number(data.calculated_items||0),total=Number(data.total_items??totalItems),profit=Number(data.profit||0),counterRaw=data.profit_on_counter_total??data.profit_on_counter,counter=counterRaw==null?null:Number(counterRaw),covered=Number(data.delivery_covered||0),partial=calculated<total;
  const note=covered>0?'<small>Inclui '+money(covered)+' de entrega coberta pela loja</small>':'';
- return '<strong class="order-profit-summary '+(profit<0?'profit-negative':'profit-positive')+'">'+(partial?'Lucro parcial ('+calculated+' de '+total+' itens): ':'Lucro do pedido: ')+money(profit)+note+'</strong>';
+ return '<strong class="order-profit-summary '+(profit<0?'profit-negative':'profit-positive')+'">'+(partial?'Lucro real parcial ('+calculated+' de '+total+' itens): ':'Lucro real do pedido: ')+money(profit)+note+'<br><small style="font-weight:500">Lucro sobre balcão: '+(counter===null?'—':money(counter))+'</small></strong>';
 }
 function renderDailySummary(){
  const s=dailyProfitSummary||{};
@@ -1301,7 +1325,7 @@ function renderDailySummary(){
   dayInDelivery:String(s.in_delivery??0),
   dayPaidSales:money(s.paid_sales||0),
   dayProfit:money(s.profit||0),
-  dayProfitNote:Number(s.missing_cost_items||0)>0?'Parcial · '+s.missing_cost_items+' item(ns) sem custo':'',
+  dayProfitNote:'Sobre balcão: '+(s.profit_on_counter==null?'—':money(s.profit_on_counter))+(Number(s.missing_cost_items||0)>0?' · Parcial · '+s.missing_cost_items+' item(ns) sem custo':''),
   count:String(statsOrders.length),
   pending:String(statsOrders.filter(o=>['Pedido Recebido','Pagamento Pendente'].includes(normalizeOrderStatus(o.status))).length),
   active:String(statsOrders.filter(o=>['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega'].includes(normalizeOrderStatus(o.status))).length),
@@ -2094,10 +2118,11 @@ $('btnConfirmProductEdit').addEventListener('click',async()=>{
 });
 
 function parseCostInput(value){
- const raw=String(value||'').trim().replace(/R\$\s?/gi,'').replace(/\s/g,'');
+ const raw=String(value??'').trim().replace(/R\$\s?/gi,'').replace(/\s/g,'');
+ if(!raw)return null;
  const normalized=raw.includes(',')?raw.replace(/\./g,'').replace(',','.'):raw;
  const amount=Number(normalized);
- return Number.isFinite(amount)&&amount>0?amount:null;
+ return Number.isFinite(amount)&&amount>=0?amount:null;
 }
 function costDateInManaus(value,addDay=false){
  const date=new Date(value+'T00:00:00-04:00');
@@ -2128,11 +2153,11 @@ async function loadCostReport(){
   if(typeof renderUnifiedProductList==='function')renderUnifiedProductList();
   if(typeof renderAllSharedProductLists==='function')renderAllSharedProductLists();
   const now=Date.now();
-  $('costProductStatusList').innerHTML=products.map(product=>{const updated=product.updated_at?new Date(product.updated_at):null;const stale=updated&&now-updated.getTime()>7*24*60*60*1000;const margin=product.unit_cost==null||Number(product.unit_cost)<=0||Number(product.price)<=0?null:(Number(product.price)-Number(product.unit_cost))/Number(product.price)*100;const below=margin!==null&&margin<0;const low=margin!==null&&!below&&margin<costMarginThreshold;const classes=[stale?'stale':'',below?'below-cost':low?'low-margin':''].filter(Boolean).join(' ');const date=updated?new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',day:'2-digit',month:'2-digit'}).format(updated):null;const costText=product.unit_cost==null||Number(product.unit_cost)<=0?'Custo não cadastrado':date?'Custo atualizado em: '+date:'Custo não cadastrado';const marginText=margin===null?'Margem: sem custo':('Margem estimada: '+margin.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%');return '<article class="cost-product-row '+classes+'"><strong>'+esc(product.name)+'</strong><small>'+costText+'</small><small>'+marginText+'</small></article>';}).join('')||'<p class="muted">Nenhum produto cadastrado.</p>';
+  $('costProductStatusList').innerHTML=products.map(product=>{const updated=product.updated_at?new Date(product.updated_at):null;const stale=updated&&now-updated.getTime()>7*24*60*60*1000;const effective=product.preco_pago??product.preco_balcao??product.unit_cost;const margin=effective==null||Number(effective)<=0||Number(product.price)<=0?null:(Number(product.price)-Number(effective))/Number(product.price)*100;const below=margin!==null&&margin<0;const low=margin!==null&&!below&&margin<costMarginThreshold;const classes=[stale?'stale':'',below?'below-cost':low?'low-margin':''].filter(Boolean).join(' ');const date=updated?new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',day:'2-digit',month:'2-digit'}).format(updated):null;const costText=effective==null?'Preço não cadastrado':date?'Atualizado em: '+date:'Preço cadastrado';const realProfit=effective==null?null:Number(product.price)-Number(effective);const counterCost=product.preco_balcao??(product.preco_pago==null?product.unit_cost:null);const counterProfit=counterCost==null?null:Number(product.price)-Number(counterCost);const marginText=realProfit===null?'Lucro real: sem preço':('Lucro real: '+money(realProfit)+(counterProfit===null?'':' · sobre balcão: '+money(counterProfit)));return '<article class="cost-product-row '+classes+'"><strong>'+esc(product.name)+'</strong><small>'+costText+'</small><small>'+marginText+'</small></article>';}).join('')||'<p class="muted">Nenhum produto cadastrado.</p>';
   const selected=$('costProductSelect').value;
   $('costProductSelect').replaceChildren(new Option('Selecione um produto',''));
   products.forEach(product=>{
-   const label=product.name+(product.available?'':' — indisponível')+(product.unit_cost==null||Number(product.unit_cost)<=0?' — sem custo':' — custo '+money(product.unit_cost));
+   const label=product.name+(product.available?'':' — indisponível')+(product.preco_balcao==null?' — sem balcão':' — balcão '+money(product.preco_balcao))+(product.preco_pago==null?'':' — pago '+money(product.preco_pago));
    $('costProductSelect').add(new Option(label,product.id));
   });
   if(products.some(product=>product.id===selected))$('costProductSelect').value=selected;
@@ -2162,19 +2187,21 @@ $('costProductSelect').addEventListener('change',()=>{
  const product=Array.from($('costProductSelect').options).map(option=>option.value).includes($('costProductSelect').value)
   ?$('costProductSelect').value:'';
  const current=(window.__feiraCostProducts||[]).find(item=>item.id===product);
- $('costUnitInput').value=current?.unit_cost==null||Number(current.unit_cost)<=0?'':Number(current.unit_cost).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+ $('costBalconyInput').value=current?.preco_balcao==null?'':Number(current.preco_balcao).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+ $('costPaidInput').value=current?.preco_pago==null?'':Number(current.preco_pago).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
  $('btnSaveCost').disabled=!product;
 });
 $('btnSaveCost').addEventListener('click',async()=>{
  const productId=$('costProductSelect').value;
- const unitCost=parseCostInput($('costUnitInput').value);
+ const balconyRaw=$('costBalconyInput').value.trim(),paidRaw=$('costPaidInput').value.trim();
+ const balcony=parseCostInput(balconyRaw),paid=parseCostInput(paidRaw);
  const message=$('costEditMessage');
- if(!productId||unitCost==null){message.textContent='Selecione um produto e informe um custo maior que zero.';return;}
+ if(!productId||(!balconyRaw&&!paidRaw)||(balconyRaw&&balcony===null)||(paidRaw&&paid===null)){message.textContent='Selecione um produto e informe ao menos um preço válido (zero ou positivo).';return;}
  const button=$('btnSaveCost');button.disabled=true;button.textContent='Salvando…';
  try{
-  const {error}=await db.rpc('admin_set_product_cost',{p_product_id:productId,p_unit_cost:unitCost});
+  const {error}=await db.rpc('admin_set_product_prices',{p_product_id:productId,p_preco_balcao:balconyRaw?balcony:null,p_preco_pago:paidRaw?paid:null});
   if(error)throw error;
-  message.textContent='Preço de custo salvo. Os próximos pedidos usarão este valor; os snapshots antigos não mudam.';
+  message.textContent='Preço de balcão/pago salvo. Pedidos antigos mantêm seus snapshots.';
   await loadCostReport();
  }catch(error){
   console.error('Falha ao salvar preço de custo:',error);
