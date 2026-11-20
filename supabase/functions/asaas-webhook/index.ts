@@ -292,9 +292,6 @@ export async function handleAsaasWebhook(req: Request, deps: WebhookDependencies
     }
     asaasBaseUrl = configuredBase.origin;
   } catch {
-    if (isPaymentConfirmationEvent && order) {
-      await recordAsaasPaymentAlert(db, { tipo: "asaas_pagamento_erro", orderId: order.id, paymentId, message: "⚠️ Problema no pagamento do pedido " + order.id + " — exceção ao validar pagamento", isTestOrder: order.is_test_order === true });
-    }
     return json({ error: "Não foi possível validar a cobrança." }, 503);
   }
 
@@ -326,6 +323,9 @@ export async function handleAsaasWebhook(req: Request, deps: WebhookDependencies
     }
     verifiedPayment = await verificationResponse.json();
   } catch {
+    if (isPaymentConfirmationEvent && order) {
+      await recordAsaasPaymentAlert(db, { tipo: "asaas_pagamento_erro", orderId: order.id, paymentId, message: "⚠️ Problema no pagamento do pedido " + order.id + " — exceção ao validar pagamento", isTestOrder: order.is_test_order === true });
+    }
     return json({ error: "Não foi possível validar a cobrança." }, 503);
   }
 
