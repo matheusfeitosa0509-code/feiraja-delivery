@@ -224,7 +224,12 @@ export async function handleAsaasWebhook(req: Request, deps: WebhookDependencies
           String(candidate?.externalReference || "") === externalReference &&
           String(candidate?.billingType || "").toUpperCase() === "PIX"
         );
-      } catch { return json({ error: "Não foi possível consultar a cobrança Asaas." }, 503); }
+      } catch {
+        if (isPaymentConfirmationEvent) {
+          await recordAsaasPaymentAlert(db, { tipo: "asaas_pagamento_erro", orderId: order.id, paymentId, message: "⚠️ Problema no pagamento do pedido " + order.id + " — exceção ao consultar cobrança", isTestOrder: order.is_test_order === true });
+        }
+        return json({ error: "Não foi possível consultar a cobrança Asaas." }, 503);
+      }
       if (!reconciledPayment) return json({ error: "Cobrança ainda não localizada no Asaas; nova tentativa necessária." }, 503);
       const reconciledCents = Math.round(Number(reconciledPayment.value) * 100);
       const expectedCents = Math.round(Number(order.total) * 100);
@@ -287,6 +292,9 @@ export async function handleAsaasWebhook(req: Request, deps: WebhookDependencies
     }
     asaasBaseUrl = configuredBase.origin;
   } catch {
+    if (isPaymentConfirmationEvent && order) {
+      await recordAsaasPaymentAlert(db, { tipo: "asaas_pagamento_erro", orderId: order.id, paymentId, message: "⚠️ Problema no pagamento do pedido " + order.id + " — exceção ao validar pagamento", isTestOrder: order.is_test_order === true });
+    }
     return json({ error: "Não foi possível validar a cobrança." }, 503);
   }
 
