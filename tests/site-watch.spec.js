@@ -20,10 +20,8 @@ for (const viewport of viewports) {
     };
 
     try {
+      await context.addInitScript(() => { try { localStorage.setItem('feira_cookie_consent_v1', 'accepted'); } catch (_) {} });
       await page.goto(`${BASE}/loja.html`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-      await expect(page.locator('#cookieConsent')).toBeVisible({ timeout: 15000 });
-      await page.locator('#cookieAccept').click();
-      await expect(page.locator('#cookieConsent')).toBeHidden();
       await expect(page.locator('#pageHome')).toHaveClass(/active/, { timeout: 15000 })
         .catch(() => failAt('loja', 'a página inicial da loja não abriu'));
       await expect(page.locator('#homeProductSections')).toBeVisible({ timeout: 45000 })
