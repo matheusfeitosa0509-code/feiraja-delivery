@@ -2849,10 +2849,10 @@ document.addEventListener('keydown',event=>{
 </script>
 
 <style id="cookieConsentStyles">
-.cookie-consent{position:fixed;inset:auto 0 0;z-index:100000;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 16px calc(13px + env(safe-area-inset-bottom,0px));background:#fff;border-top:1px solid #dce5d0;box-shadow:0 -6px 24px rgba(29,42,18,.14);color:#1d2a12;font:600 13px/1.45 'Plus Jakarta Sans',system-ui,sans-serif}
+.cookie-consent{position:fixed;inset:auto 0 0;z-index:19;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 16px calc(13px + env(safe-area-inset-bottom,0px));background:#fff;border-top:1px solid #dce5d0;box-shadow:0 -6px 24px rgba(29,42,18,.14);color:#1d2a12;font:600 13px/1.45 'Plus Jakarta Sans',system-ui,sans-serif}
 .cookie-consent[hidden]{display:none!important}.cookie-consent p{margin:0;min-width:0;flex:1}.cookie-consent a{color:#2f6a14;font-weight:800;text-decoration:underline}
 .cookie-consent-actions{display:flex;flex:none;gap:8px}.cookie-consent-actions button{min-height:42px;padding:0 16px;border:1px solid #2f6a14;border-radius:12px;background:#2f6a14;color:#fff;font:800 13px 'Plus Jakarta Sans',system-ui,sans-serif}.cookie-consent-actions #cookieReject{background:#fff;color:#2f6a14}
-@media(max-width:520px){.cookie-consent{align-items:stretch;flex-direction:column;gap:9px;padding:12px 14px calc(12px + env(safe-area-inset-bottom,0px))}.cookie-consent-actions button{flex:1}}
+@media(max-width:520px){.cookie-consent{inset:auto 0 calc(76px + env(safe-area-inset-bottom,0px));align-items:center;flex-direction:row;gap:8px;padding:9px 12px}.cookie-consent p{flex:1 1 auto;font-size:11px;line-height:1.35}.cookie-consent-actions{gap:6px}.cookie-consent-actions button{flex:0 0 auto;min-width:62px;min-height:40px;padding:0 9px;font-size:12px}}
 </style>
 <script id="cookieConsentAndClarity">
 (()=>{
