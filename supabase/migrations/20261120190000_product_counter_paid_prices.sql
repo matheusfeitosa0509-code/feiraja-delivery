@@ -174,6 +174,7 @@ AS $function$
 DECLARE
   v_item jsonb;
   v_index integer;
+  v_item_count integer := 0;
   v_product_id text;
   v_product_name text;
   v_quantity numeric;
@@ -183,29 +184,43 @@ DECLARE
   v_preco_pago numeric;
   v_sale_total numeric;
   v_cost_total numeric;
+  v_existing feira_cost_private.order_item_snapshots%ROWTYPE;
+  v_has_existing boolean;
   v_error text;
 BEGIN
   BEGIN
-    DELETE FROM feira_cost_private.order_item_snapshots WHERE order_id = NEW.id;
     IF jsonb_typeof(NEW.items) = 'array' THEN
       FOR v_item, v_index IN
         SELECT item.value, (item.ordinality - 1)::integer
         FROM jsonb_array_elements(NEW.items) WITH ORDINALITY AS item(value, ordinality)
       LOOP
+        v_item_count := v_item_count + 1;
         v_product_id := NULLIF(v_item->>'id', '');
         v_product_name := COALESCE(NULLIF(v_item->>'name', ''), 'Produto sem nome');
         v_quantity := COALESCE(NULLIF(v_item->>'qty', ''), NULLIF(v_item->>'quantity', ''))::numeric;
         v_sale_unit_price := NULLIF(v_item->>'price', '')::numeric;
-        v_unit_cost := NULL;
-        v_preco_balcao := NULL;
-        v_preco_pago := NULL;
 
-        IF v_product_id IS NOT NULL THEN
-          SELECT pc.preco_balcao, pc.preco_pago
-            INTO v_preco_balcao, v_preco_pago
-          FROM feira_cost_private.product_costs pc
-          WHERE pc.product_id=v_product_id;
-          v_unit_cost := COALESCE(v_preco_pago,v_preco_balcao);
+        SELECT * INTO v_existing
+        FROM feira_cost_private.order_item_snapshots
+        WHERE order_id=NEW.id AND item_index=v_index;
+        v_has_existing := FOUND AND v_existing.product_id IS NOT DISTINCT FROM v_product_id;
+
+        IF v_has_existing THEN
+          -- Mantém os preços fotografados anteriormente; alterações no catálogo não reescrevem pedidos antigos.
+          v_preco_balcao := v_existing.preco_balcao;
+          v_preco_pago := v_existing.preco_pago;
+          v_unit_cost := COALESCE(v_existing.preco_pago,v_existing.preco_balcao,v_existing.unit_cost);
+        ELSE
+          v_preco_balcao := NULL;
+          v_preco_pago := NULL;
+          v_unit_cost := NULL;
+          IF v_product_id IS NOT NULL THEN
+            SELECT pc.preco_balcao,pc.preco_pago
+              INTO v_preco_balcao,v_preco_pago
+            FROM feira_cost_private.product_costs pc
+            WHERE pc.product_id=v_product_id;
+            v_unit_cost := COALESCE(v_preco_pago,v_preco_balcao);
+          END IF;
         END IF;
 
         IF v_item->>'sale_mode'='value' THEN
@@ -217,22 +232,44 @@ BEGIN
         v_cost_total := CASE WHEN v_quantity IS NOT NULL AND v_unit_cost IS NOT NULL
           THEN round(v_quantity*v_unit_cost,2) ELSE NULL END;
 
-        INSERT INTO feira_cost_private.order_item_snapshots(
-          order_id,item_index,product_id,product_name,quantity,sale_unit_price,
-          unit_cost,preco_balcao,preco_pago,sale_total,cost_total,profit,cost_status,captured_at
-        ) VALUES (
-          NEW.id,v_index,v_product_id,v_product_name,v_quantity,v_sale_unit_price,
-          v_unit_cost,v_preco_balcao,v_preco_pago,v_sale_total,v_cost_total,
-          CASE WHEN v_sale_total IS NOT NULL AND v_cost_total IS NOT NULL THEN round(v_sale_total-v_cost_total,2) END,
-          CASE WHEN v_quantity IS NULL OR v_sale_unit_price IS NULL THEN 'invalid_item'
-               WHEN v_unit_cost IS NULL THEN 'missing_cost' ELSE 'ok' END,
-          now()
-        );
+        IF FOUND AND v_has_existing THEN
+          UPDATE feira_cost_private.order_item_snapshots
+          SET product_name=v_product_name,quantity=v_quantity,sale_unit_price=v_sale_unit_price,
+              sale_total=v_sale_total,cost_total=v_cost_total,
+              unit_cost=v_unit_cost,
+              profit=CASE WHEN v_sale_total IS NOT NULL AND v_cost_total IS NOT NULL THEN round(v_sale_total-v_cost_total,2) END,
+              cost_status=CASE WHEN v_quantity IS NULL OR v_sale_unit_price IS NULL THEN 'invalid_item'
+                               WHEN v_unit_cost IS NULL THEN 'missing_cost' ELSE 'ok' END,
+              captured_at=now()
+          WHERE order_id=NEW.id AND item_index=v_index;
+        ELSE
+          INSERT INTO feira_cost_private.order_item_snapshots(
+            order_id,item_index,product_id,product_name,quantity,sale_unit_price,
+            unit_cost,preco_balcao,preco_pago,sale_total,cost_total,profit,cost_status,captured_at
+          ) VALUES (
+            NEW.id,v_index,v_product_id,v_product_name,v_quantity,v_sale_unit_price,
+            v_unit_cost,v_preco_balcao,v_preco_pago,v_sale_total,v_cost_total,
+            CASE WHEN v_sale_total IS NOT NULL AND v_cost_total IS NOT NULL THEN round(v_sale_total-v_cost_total,2) END,
+            CASE WHEN v_quantity IS NULL OR v_sale_unit_price IS NULL THEN 'invalid_item'
+                 WHEN v_unit_cost IS NULL THEN 'missing_cost' ELSE 'ok' END,
+            now()
+          )
+          ON CONFLICT(order_id,item_index) DO UPDATE SET
+            product_id=EXCLUDED.product_id,product_name=EXCLUDED.product_name,quantity=EXCLUDED.quantity,
+            sale_unit_price=EXCLUDED.sale_unit_price,unit_cost=EXCLUDED.unit_cost,
+            preco_balcao=EXCLUDED.preco_balcao,preco_pago=EXCLUDED.preco_pago,
+            sale_total=EXCLUDED.sale_total,cost_total=EXCLUDED.cost_total,profit=EXCLUDED.profit,
+            cost_status=EXCLUDED.cost_status,captured_at=now();
+        END IF;
       END LOOP;
+      DELETE FROM feira_cost_private.order_item_snapshots
+      WHERE order_id=NEW.id AND item_index>=v_item_count;
+    ELSE
+      DELETE FROM feira_cost_private.order_item_snapshots WHERE order_id=NEW.id;
     END IF;
   EXCEPTION WHEN OTHERS THEN
     GET STACKED DIAGNOSTICS v_error = MESSAGE_TEXT;
-    BEGIN DELETE FROM feira_cost_private.order_item_snapshots WHERE order_id=NEW.id; EXCEPTION WHEN OTHERS THEN NULL; END;
+    -- The exception block rolls back its own partial writes; existing snapshots remain intact.
     BEGIN
       INSERT INTO feira_cost_private.snapshot_errors(order_id,error_message)
       VALUES(NEW.id,left(COALESCE(v_error,'Falha desconhecida na captura de custo'),500));
