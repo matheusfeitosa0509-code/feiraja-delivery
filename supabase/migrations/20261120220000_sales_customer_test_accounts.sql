@@ -79,6 +79,9 @@ BEGIN
   '''new_customers_month'', (SELECT count(*)::integer FROM customer_rollup WHERE first_order_at >= p_start AND first_order_at < p_end)');
  v_definition:=replace(v_definition,'WHERE last_order_at < now() - interval ''30 days''','WHERE last_order_at < p_start');
  v_definition:=replace(v_definition,
+  'SELECT'||E'\n          customer_name,'||E'\n          customer_email,',
+  'SELECT'||E'\n          customer_key,'||E'\n          customer_name,'||E'\n          customer_email,');
+ v_definition:=replace(v_definition,
   '''orders_by_weekday'', COALESCE((',
   '''paid_order_ids'', COALESCE((SELECT jsonb_agg(id) FROM filtered_paid), ''[]''::jsonb),
   ''paid_order_customers'', COALESCE((SELECT jsonb_agg(jsonb_build_object(''order_id'',id,''customer_key'',customer_key)) FROM filtered_paid), ''[]''::jsonb),
