@@ -1032,7 +1032,7 @@ async function loadAdminProducts(){
   const rulesByProductId=new Map((rules||[]).map(rule=>[String(rule.product_id),rule]));
   adminProducts=rows.map(p=>{const rule=rulesByProductId.get(String(p.id));return {...p,available:p.available===true,sale_unit:rule?.sale_unit||null,allow_value_sale:rule?.allow_value_sale===true,value_min_kg:Number(rule?.value_min_kg||1),min_quantity:Number(rule?.min_quantity||1),quantity_step:Number(rule?.quantity_step||(rule?.sale_unit==='kg'?0.5:1))};});
   priceProducts=rows.map(p=>({...p,price:Number(p.price),old_price:p.old_price==null?null:Number(p.old_price)}));
-  resaleProducts=rows.map(p=>({...p,price:Number(p.price),resale_enabled:p.resale_enabled===true,resale_unit:p.resale_unit==='kg'?'kg':'un'}));
+  resaleProducts=adminProducts.map(p=>({...p,price:Number(p.price),resale_enabled:p.resale_enabled===true,resale_unit:p.sale_unit==='kg'?'kg':'un'}));
   editableProducts=rows.slice();
   renderAdminProducts();
   populateProductCategorySelectors();populateUnifiedCategory();renderUnifiedProductList();
