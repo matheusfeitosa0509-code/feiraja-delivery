@@ -9,7 +9,9 @@ const { chromium } = require("playwright");
   const renderStart = source.indexOf("function lalamoveStatusLabel(status){");
   const renderEnd = source.indexOf("async function lalamoveErrorMessage", renderStart);
   if (renderStart < 0 || renderEnd < 0) throw new Error("Renderizadores reais do painel não encontrados");
-  const renderSource = source.slice(renderStart, renderEnd);
+  const displayStatusMatch = source.match(/function displayOrderStatusLabel[^\\r\\n]+/);
+  if (!displayStatusMatch) throw new Error("Rótulo de status do pedido não encontrado");
+  const renderSource = displayStatusMatch[0] + "\\n" + source.slice(renderStart, renderEnd);
   if (!source.includes("data-lalamove-feedback") || !source.includes("setLalamoveFeedback(orderId")) {
     throw new Error("Feedback de entrega dentro do cartão não encontrado");
   }
