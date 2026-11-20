@@ -38,6 +38,7 @@ on:
       - "politica-privacidade.html"
       - ".github/workflows/pages.yml"
       - ".github/workflows/deploy-functions.yml"
+      - "supabase/migrations/*delivery_pin_and_lalamove_cancel_origin.sql"
       - "supabase/migrations/*lalamove-dispatch-and-webhook.sql"
       - "supabase/migrations/*lalamove-production-environment.sql"
       - "supabase/rollback/*lalamove-production-environment.sql"
@@ -115,6 +116,7 @@ jobs:
       - run: deno check --config supabase/functions/delivery-address/deno.json supabase/functions/delivery-address/index.ts
       - run: deno check --config supabase/functions/delivery-quote/deno.json supabase/functions/delivery-quote/index.ts
       - run: deno check --config supabase/functions/lalamove-dispatch/deno.json supabase/functions/lalamove-dispatch/index.ts
+      - run: deno check --no-lock supabase/functions/super-worker/index.ts
       - run: deno check supabase/functions/asaas-webhook/index.ts
       - run: deno check --config supabase/functions/lalamove-webhook/deno.json supabase/functions/lalamove-webhook/index.ts
       - run: deno test --config supabase/functions/lalamove-webhook/deno.json supabase/functions/lalamove-webhook/index_test.ts

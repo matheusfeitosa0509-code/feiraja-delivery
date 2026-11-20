@@ -131,8 +131,14 @@ export function deliveryPaymentOptions(isAdmin) {
   return ["pix", ...(isAdmin ? ["pix_test"] : [])];
 }
 
+export function hasMultipleDeliveryAddresses(input) {
+  const pattern = /(?:\b(?:rua|avenida|travessa|alameda|rodovia|estrada)\b|\b(?:r|av|tv)\.)[\s\S]{0,80}\b\d{1,5}\b/i;
+  return pattern.test(String(input?.complement || "")) || pattern.test(String(input?.reference || ""));
+}
+
 export function normalizeDeliveryAddress(input) {
   const address = {
+    postal_code: String(input?.postal_code || "").replace(/\D/g, "").slice(0, 8),
     street: String(input?.street || "").trim(),
     number: String(input?.number || "").trim(),
     neighborhood: String(input?.neighborhood || "").trim(),
@@ -141,8 +147,8 @@ export function normalizeDeliveryAddress(input) {
   };
   if (!address.street || !address.number || !address.neighborhood) return null;
   if (address.street.length > 160 || address.number.length > 30 ||
-      address.neighborhood.length > 100 || address.complement.length > 100 ||
-      address.reference.length > 160) return null;
+      address.neighborhood.length > 100 || address.complement.length > 60 ||
+      address.reference.length > 120 || hasMultipleDeliveryAddresses(address)) return null;
   return address;
 }
 

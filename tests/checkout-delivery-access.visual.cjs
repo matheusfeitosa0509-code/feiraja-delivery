@@ -103,7 +103,7 @@ const checkoutCss = [
         document.querySelector('#delivery option[value="pickup_uber"]')?.remove();
         const store = document.createElement('label'); store.className = 'opt'; store.innerHTML = '<input id="deliveryStore" type="radio" name="deliveryChoice">';
         document.querySelector('#checkoutForm').prepend(store);
-        const address = document.createElement('div'); address.id = 'deliveryAddressFields'; document.querySelector('#checkoutForm').append(address);
+        const address = document.createElement('div'); address.id = 'deliveryAddressFields'; address.innerHTML = '<input id="deliveryComplement"><input id="deliveryReference">'; document.querySelector('#checkoutForm').append(address);
         const continueButton = document.createElement('button'); continueButton.id = 'checkout'; continueButton.textContent = 'Continuar · R$ 49,95'; document.body.append(continueButton);
         const modal = document.createElement('div'); modal.id = 'modal'; document.body.append(modal);
         window.$ = selector => document.querySelector(selector);
