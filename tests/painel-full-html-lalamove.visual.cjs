@@ -67,6 +67,10 @@ function prepareHtml(source) {
         ["#productsReviewTab","#automaticPriceReview"],
         ["#productsRequestsTab","#productRequests"]
       ];
+      await page.locator("#productsMainTab").click();
+      await page.locator("#unifiedProductSearch").fill("banana");
+      await page.locator("#clearUnifiedProductSearch").click();
+      if(await page.locator("#unifiedProductSearch").inputValue()!=="")throw new Error("O botão Limpar não limpou a busca do catálogo.");
       for(const [tab,section] of productSubtabs){
         await page.locator(tab).click();
         if(await page.locator(section).isHidden())throw new Error("Sub-aba de Produtos não abriu: "+tab);
