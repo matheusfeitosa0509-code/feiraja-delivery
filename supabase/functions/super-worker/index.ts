@@ -4,7 +4,7 @@ import { isLegacyMercadoPagoWebhookNotice, isAsaasPixEnabled } from "./payment-p
 import { checkoutPaymentMethodError } from "../_shared/checkout-payment-policy.ts";
 import { generatePickupCode } from "../_shared/pickup-code.ts";
 import { normalizeItemPreference } from "../_shared/item-preferences.ts";
-import { formatDropoff } from "../_shared/delivery-quote.ts";
+import { formatDropoff, normalizeConfirmedDeliveryCoordinates, hasMultipleDeliveryAddresses } from "../_shared/delivery-quote.ts";
 import { readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
 import { calculateServerDelivery, orderTotals, validateCheckoutDelivery } from "./delivery-order.ts";
 import { getCommercialSchedule } from "../_shared/commercial-calendar.js";
@@ -190,7 +190,7 @@ Deno.serve(async (req: Request) => {
     let priorOrder: any = null;
     if (priorAttempt) {
       const { data: existingOrder, error: existingOrderError } = await db.from("orders")
-        .select("id,status,total,payment_id,pix_qr_code,pix_qr_code_base64,pickup_code,payment_provider,payment_method,delivery_address,delivery_vehicle,delivery_weight_kg,delivery_fee,scheduled_for")
+        .select("id,status,total,payment_id,pix_qr_code,pix_qr_code_base64,pickup_code,payment_provider,payment_method,delivery_address,delivery_coordinates,delivery_vehicle,delivery_weight_kg,delivery_fee,scheduled_for")
         .eq("id", String(priorAttempt.order_id)).eq("user_id", orderUserId).maybeSingle();
       if (existingOrderError || !existingOrder) return json({ error: "Não foi possível recuperar o pedido desta tentativa." }, 503);
       priorOrder = existingOrder;
@@ -217,6 +217,7 @@ Deno.serve(async (req: Request) => {
     const email = String(customer.email ?? "").trim().toLowerCase().slice(0, 254);
     const requestedDeliveryType = String(customer.deliveryType ?? body?.delivery_type ?? "");
     const deliveryAddressInput = customer.deliveryAddress || customer.delivery_address || body?.delivery_address || null;
+    const deliveryCoordinatesInput = customer.deliveryCoordinates || customer.delivery_coordinates || body?.delivery_coordinates || null;
     let deliveryActive = false;
     let deliveryMotoLimitKg = 8;
     if (requestedDeliveryType === "delivery" || (requestedDeliveryType === "pickup_uber" && !priorOrder)) {
@@ -238,11 +239,16 @@ Deno.serve(async (req: Request) => {
     if (paymentMethod === "pix" && !asaasApiKey) {
       return json({ error: "Asaas Pix ainda não está configurado." }, 503);
     }
-    let normalizedDeliveryAddress: { street: string; number: string; neighborhood: string; complement?: string; reference?: string } | null = null;
+    let normalizedDeliveryAddress: { street: string; number: string; postal_code?: string; neighborhood: string; complement?: string; reference?: string } | null = null;
+    let normalizedDeliveryCoordinates: { lat: string; lng: string } | null = null;
     let address = "Av. Lourenço da Silva Braga, 700 (em frente à feira)";
     if (deliveryType === "delivery") {
       const rawAddress = deliveryAddressInput || {};
+      if (hasMultipleDeliveryAddresses(rawAddress)) return json({ error: "Coloque só um endereço. Use o campo Referência para pontos próximos." }, 400);
+      normalizedDeliveryCoordinates = normalizeConfirmedDeliveryCoordinates(deliveryCoordinatesInput);
+      if (!normalizedDeliveryCoordinates) return json({ error: "Confira se o pino está na sua casa e confirme o endereço no mapa." }, 400);
       normalizedDeliveryAddress = {
+        postal_code: String(rawAddress.postal_code || "").replace(/\D/g, "").slice(0, 8),
         street: String(rawAddress.street || "").trim().slice(0, 160),
         number: String(rawAddress.number || "").trim().slice(0, 30),
         neighborhood: String(rawAddress.neighborhood || "").trim().slice(0, 100),
@@ -474,7 +480,8 @@ Deno.serve(async (req: Request) => {
         const storedAddress = priorOrder.delivery_address;
         const sameStoredAddress = !!storedAddress && ["street", "number", "neighborhood", "complement", "reference"]
           .every((key) => String(storedAddress[key] || "") === String((normalizedDeliveryAddress as any)?.[key] || ""));
-        if (!sameStoredAddress || !priorOrder.delivery_vehicle ||
+        const sameStoredCoordinates = JSON.stringify(priorOrder.delivery_coordinates || null) === JSON.stringify(normalizedDeliveryCoordinates);
+        if (!sameStoredAddress || !sameStoredCoordinates || !priorOrder.delivery_vehicle ||
             priorOrder.delivery_weight_kg == null || priorOrder.delivery_fee == null) {
           return json({ error: "Os dados desta tentativa de entrega não conferem. Inicie um novo checkout." }, 409);
         }
@@ -511,6 +518,7 @@ Deno.serve(async (req: Request) => {
             geocodingApiKey: Deno.env.get("GOOGLE_GEOCODING_API_KEY") || "",
             environment: lalamoveEnvironment,
             scheduleAt: scheduledFor || undefined,
+            coordinates: normalizedDeliveryCoordinates,
           });
         } catch (error) {
           const code = error instanceof Error ? error.message : "UNKNOWN";
@@ -550,7 +558,7 @@ Deno.serve(async (req: Request) => {
       user_id: orderUserId,
       customer: {
         name, phone, cpf, email, delivery_type: deliveryType,
-        ...(deliveryType === "delivery" ? { delivery_address: normalizedDeliveryAddress } : {}),
+        ...(deliveryType === "delivery" ? { delivery_address: normalizedDeliveryAddress, delivery_coordinates: normalizedDeliveryCoordinates } : {}),
       },
       payment_method: paymentMethod,
       items: items.slice().sort((a: any, b: any) => String(a.id).localeCompare(String(b.id))),
@@ -621,7 +629,8 @@ Deno.serve(async (req: Request) => {
         customer_name: name, customer_phone: phone,
         customer_cpf: null, customer_email: email || null, customer_address: address,
         delivery_type: deliveryType,
-        payment_method: paymentMethod === "pix_test" ? "Pix de teste (admin)" : paymentMethod === "cash" ? "Dinheiro na retirada" : "Cartão na retirada",
+        ...(deliveryType === "delivery" ? { delivery_address: normalizedDeliveryAddress, delivery_coordinates: normalizedDeliveryCoordinates } : {}),
+        payment_method: paymentMethod === "pix_test ? "Pix de teste (admin)" : paymentMethod === "cash" ? "Dinheiro na retirada" : "Cartão na retirada",
         pickup_code: pickupCode,
         items, subtotal, delivery_fee: deliveryFee, total, status: paymentMethod === "pix_test" ? "Pagamento Pendente" : "Pedido Recebido",
         market_checklist: { notes: String(body?.notes ?? "").trim().slice(0, 1000) },
@@ -644,6 +653,7 @@ Deno.serve(async (req: Request) => {
         const orderUpdate: Record<string, unknown> = {};
         if (deliveryType === "delivery") Object.assign(orderUpdate, {
           delivery_address: normalizedDeliveryAddress,
+          delivery_coordinates: normalizedDeliveryCoordinates,
           delivery_vehicle: deliveryQuote?.vehicle,
           delivery_weight_kg: deliveryQuote?.weightKg,
           scheduled_for: scheduledFor,
@@ -679,6 +689,7 @@ Deno.serve(async (req: Request) => {
       customer_name: name, customer_phone: phone,
       customer_cpf: cpf, customer_email: email, customer_address: address,
       delivery_type: deliveryType, pickup_code: pickupCode, payment_method: "Asaas Pix", payment_provider: "asaas",
+      ...(deliveryType === "delivery" ? { delivery_address: normalizedDeliveryAddress, delivery_coordinates: normalizedDeliveryCoordinates } : {}),
       items, subtotal, delivery_fee: deliveryFee, total, status: "Pagamento Pendente",
       market_checklist: { items: items.map((item: any) => ({ id: item.id, name: item.name, qty: item.qty, bought: false })), notes: String(body?.notes ?? "").trim().slice(0, 500) },
     };
