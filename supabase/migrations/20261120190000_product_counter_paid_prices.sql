@@ -25,6 +25,7 @@ CREATE INDEX IF NOT EXISTS product_price_history_product_changed_idx
 
 REVOKE ALL ON TABLE feira_cost_private.product_price_history FROM PUBLIC, anon, authenticated;
 GRANT ALL ON TABLE feira_cost_private.product_price_history TO service_role;
+GRANT USAGE, SELECT ON SEQUENCE feira_cost_private.product_price_history_id_seq TO service_role;
 
 CREATE OR REPLACE FUNCTION public.admin_set_product_prices(
   p_product_id text,
@@ -66,6 +67,9 @@ BEGIN
   END IF;
   IF (p_order_id IS NULL) <> (p_item_index IS NULL) THEN
     RAISE EXCEPTION 'Pedido e índice do item devem ser informados juntos.' USING ERRCODE='22023';
+  END IF;
+  IF NOT p_update_product AND p_order_id IS NULL THEN
+    RAISE EXCEPTION 'Informe o item do pedido quando não atualizar o produto.' USING ERRCODE='22023';
   END IF;
 
   IF p_update_product THEN
@@ -391,3 +395,31 @@ REVOKE ALL ON FUNCTION public.admin_get_order_profit(text[],timestamptz,timestam
 GRANT EXECUTE ON FUNCTION public.admin_get_order_profit(text[],timestamptz,timestamptz) TO authenticated, service_role;
 REVOKE ALL ON FUNCTION public.admin_get_cost_report_with_delivery(timestamptz,timestamptz) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.admin_get_cost_report_with_delivery(timestamptz,timestamptz) TO authenticated, service_role;
+
+
+CREATE OR REPLACE FUNCTION public.admin_update_order_item_cost(
+  p_order_id text,
+  p_item_index integer,
+  p_unit_cost numeric,
+  p_update_product_cost boolean DEFAULT true
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE v_product_id text;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_current_user_admin() THEN
+    RAISE EXCEPTION 'Acesso permitido somente a administradores.' USING ERRCODE='42501';
+  END IF;
+  SELECT product_id INTO v_product_id
+  FROM feira_cost_private.order_item_snapshots
+  WHERE order_id=p_order_id AND item_index=p_item_index;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Item do pedido não encontrado no snapshot financeiro.' USING ERRCODE='P0002';
+  END IF;
+  RETURN public.admin_set_product_prices(
+    v_product_id,NULL,p_unit_cost,p_order_id,p_item_index,p_update_product_cost
+  );
+END;
+$function$;
