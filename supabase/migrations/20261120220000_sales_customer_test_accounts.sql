@@ -37,7 +37,7 @@ BEGIN
  IF auth.uid() IS NULL OR NOT public.is_current_user_admin() THEN RAISE EXCEPTION 'Acesso permitido somente a administradores.' USING ERRCODE='42501'; END IF;
  SELECT COALESCE(jsonb_agg(to_jsonb(c) ORDER BY c.last_order_at DESC NULLS LAST),'[]'::jsonb) INTO v_result
  FROM (
-  SELECT DISTINCT ON (o.user_id)
+  SELECT DISTINCT ON (COALESCE(o.user_id::text,NULLIF(lower(btrim(o.customer_email)),''),NULLIF(regexp_replace(COALESCE(o.customer_phone,''),'[^0-9]','','g'),''),o.id))
    o.user_id,
    COALESCE(NULLIF(btrim(cp.full_name),''),NULLIF(btrim(o.customer_name),''),'Cliente sem nome') AS customer_name,
    COALESCE(NULLIF(lower(btrim(u.email)),''),NULLIF(lower(btrim(o.customer_email)),'')) AS customer_email,
@@ -48,7 +48,7 @@ BEGIN
   LEFT JOIN auth.users u ON u.id=o.user_id
   LEFT JOIN feira_cost_private.customer_test_accounts t ON t.user_id=o.user_id
   WHERE NOT EXISTS(SELECT 1 FROM public.admin_users au WHERE au.user_id=o.user_id)
-  ORDER BY o.user_id,o.created_at DESC NULLS LAST
+  ORDER BY COALESCE(o.user_id::text,NULLIF(lower(btrim(o.customer_email)),''),NULLIF(regexp_replace(COALESCE(o.customer_phone,''),'[^0-9]','','g'),''),o.id),o.created_at DESC NULLS LAST
  ) c;
  RETURN v_result;
 END;
