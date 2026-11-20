@@ -90,10 +90,10 @@ async function verifyHmac(
   return constantTimeEqual(bytesToHex(digest), suppliedSignature.toLowerCase());
 }
 
-function getNotificationText(kind: PushKind, status: string, pickupCode: string | null = null, orderId = ""): string | null {
+function getNotificationText(kind: PushKind, status: string, pickupCode: string | null = null, orderId = "", order: { total?: number | string | null; delivery_type?: string | null } = {}): string | null {
   if (kind === "admin") {
     if (status === "Pedido Recebido") return "Novo pedido recebido";
-    if (status === "Pagamento Confirmado") return "Pagamento Pix confirmado";
+    if (status === "Pagamento Confirmado") { const total = Number(order.total || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); const mode = order.delivery_type === "delivery" ? "Entrega" : "Retirada"; return `🛒 Novo pedido pago – R$ ${total} (${mode})`; }
     if (status === "Pix pago em pedido cancelado — devolver") return "Pix pago em pedido cancelado — devolver";
     if (status === "Pedido pago cancelado pelo cliente — devolver Pix") return "Pedido pago cancelado pelo cliente — devolver Pix";
     if (/^Lalamove sem motorista@[0-9]{10}$/.test(status)) return `⚠️ Nenhum motorista aceitou o pedido ${orderId} – chame de novo`;
@@ -202,7 +202,7 @@ Deno.serve(async (req: Request) => {
   try {
     const { data: order, error: orderError } = await supabase
       .from("orders")
-      .select("id,user_id,status,refund_pending,cancelled_by,is_test_order,separation_started_at,pickup_code,lalamove_status")
+      .select("id,user_id,status,refund_pending,cancelled_by,is_test_order,separation_started_at,pickup_code,lalamove_status,total,delivery_type")
       .eq("id", order_id)
       .maybeSingle();
 
@@ -210,7 +210,7 @@ Deno.serve(async (req: Request) => {
     if (!order) return jsonResponse(404, { error: "ORDER_NOT_FOUND" });
     if (shouldSkipOrderPush(order.is_test_order === true, kind === "customer" ? order.user_id : "admin")) return jsonResponse(200, { ok: true, skipped: "TEST_ORDER_OR_NO_OWNER" });
     const isLalamoveNoDriverNotice = /^Lalamove sem motorista@[0-9]{10}$/.test(new_status);
-    const message = getNotificationText(kind, new_status, order.pickup_code || null, order.id);
+    const message = getNotificationText(kind, new_status, order.pickup_code || null, order.id, order);
     if (!message) return jsonResponse(400, { error: "INVALID_REQUEST" });
 
     // Eventos de devolução são códigos administrativos; exigem pedido cancelado
