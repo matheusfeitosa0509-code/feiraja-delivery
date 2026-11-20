@@ -91,7 +91,7 @@ async function measure(page,cdp,url) {
    const candidateErrors=[];
    candidate.on('pageerror',e=>candidateErrors.push('pageerror: '+e.message));
    candidate.on('console',m=>{if(m.type()==='error')candidateErrors.push('console.error: '+m.text());});
-   await candidate.addInitScript(()=>{window.__storefrontPerf={firstProductAt:null,skeletonSeen:false};const mark=()=>{if(window.__storefrontPerf.firstProductAt===null&&document.querySelector('#homeProductSections .product[data-product-id]'))window.__storefrontPerf.firstProductAt=performance.now();if(document.querySelector('#homeProductSections .storefront-skeleton'))window.__storefrontPerf.skeletonSeen=true;};new MutationObserver(mark).observe(document,{childList:true,subtree:true});document.addEventListener('DOMContentLoaded',mark);});
+   await candidate.addInitScript(()=>{try{localStorage.setItem('feira_cookie_consent_v1','accepted');}catch(_){}window.__storefrontPerf={firstProductAt:null,skeletonSeen:false};const mark=()=>{if(window.__storefrontPerf.firstProductAt===null&&document.querySelector('#homeProductSections .product[data-product-id]'))window.__storefrontPerf.firstProductAt=performance.now();if(document.querySelector('#homeProductSections .storefront-skeleton'))window.__storefrontPerf.skeletonSeen=true;};new MutationObserver(mark).observe(document,{childList:true,subtree:true});document.addEventListener('DOMContentLoaded',mark);});
    const candidateCdp=await emulate4G(candidate);
    const candidateFirst=await measure(candidate,candidateCdp,url);
    await candidate.waitForFunction(()=>{const cache=JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')||'null');return !!cache&&Array.isArray(cache.products)&&cache.products.length>0;},null,{timeout:30000});

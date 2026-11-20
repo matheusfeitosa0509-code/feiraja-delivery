@@ -66,6 +66,7 @@ const normalizeText = value => String(value || '').replace(/\u00a0/g, ' ');
       page.on('console', message => { if (message.type() === 'error') errors.push('console.error: ' + message.text()); });
       page.on('dialog', async dialog => { dialogs.push(dialog.type()); await dialog.dismiss(); });
       await page.addInitScript(() => {
+        localStorage.setItem('feira_cookie_consent_v1', 'rejected');
         localStorage.setItem('feiraja_cart_v1', JSON.stringify({ 'coco-un': 5 }));
         localStorage.setItem('feiraja_cart_modes_v1', '{}');
         localStorage.setItem('feiraja_cart_value_cents_v1', '{}');

@@ -20,6 +20,7 @@ for (const viewport of viewports) {
     };
 
     try {
+      await context.addInitScript(() => { try { localStorage.setItem('feira_cookie_consent_v1', 'rejected'); } catch (_) {} });
       await page.goto(`${BASE}/loja.html`, { waitUntil: 'domcontentloaded', timeout: 60000 });
       await expect(page.locator('#pageHome')).toHaveClass(/active/, { timeout: 15000 })
         .catch(() => failAt('loja', 'a página inicial da loja não abriu'));
@@ -177,6 +178,7 @@ async function preparePaidOrderPage(context, page, options = {}) {
     created_at: '2026-01-01T00:00:00.000Z',
   };
   await context.addInitScript(({ user, mockPush, mockPermission }) => {
+    localStorage.setItem('feira_cookie_consent_v1', 'rejected');
     localStorage.setItem('sb-juhwdevvwstmyxyyagzh-auth-token', JSON.stringify({
       access_token: 'mock-access-token',
       refresh_token: 'mock-refresh-token',
