@@ -48,8 +48,7 @@ async function customer(browser,width,height) {
    <div id="map" data-lalamove-map data-order-id="TEST-CUSTOMER"></div></article></body></html>`);
   await installMapMock(page);
   let current={active:true,status:'searching',driver_assigned:false,store:{lat:-3.1347,lng:-60.0237},customer:{lat:-3.105,lng:-60.005}};
-  await page.evaluate(()=>{window.__state=window.FeiraLalamoveMap.mount(document.querySelector('#map'),async()=>window.__trackingData,{pollIntervalMs:30000});});
-  await page.evaluate(data=>{window.__trackingData=data;},current);
+  await page.evaluate(data=>{window.__trackingData=data;window.__state=window.FeiraLalamoveMap.mount(document.querySelector('#map'),async()=>window.__trackingData,{pollIntervalMs:30000});},current);
   await page.evaluate(()=>window.__state.refresh());
   await page.waitForSelector('#map .feira-delivery-map:not([hidden])');
   await page.waitForFunction(()=>window.__state?.map?.polylines?.length===2);
