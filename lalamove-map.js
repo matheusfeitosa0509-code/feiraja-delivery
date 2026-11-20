@@ -13,7 +13,7 @@
  document.head.append(style);}
  function point(value){const lat=Number(value?.lat),lng=Number(value?.lng);return Number.isFinite(lat)&&Number.isFinite(lng)&&lat>=-90&&lat<=90&&lng>=-180&&lng<=180?{lat,lng}:null;}
  function safePhoto(value){try{const url=new URL(String(value||''));return url.protocol==='https:'?url.href:'';}catch{return '';}}
- function firstName(value){return String(value||'Entregador').trim().split(/\\s+/)[0]||'Entregador';}
+ function firstName(value){return String(value||'Entregador').trim().split(/\s+/)[0]||'Entregador';}
  function marker(L,emoji,label,driver=false){return L.divIcon({className:'',html:'<span class="feira-map-marker'+(driver?' driver':'')+'" role="img" aria-label="'+label+'">'+emoji+'</span>',iconSize:driver?[42,42]:[34,34],iconAnchor:driver?[21,21]:[17,17]});}
  function mount(container,fetchTracking,options={}){
   if(!container||typeof fetchTracking!=='function'||instances.has(container))return null;addStyles();
