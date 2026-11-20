@@ -630,7 +630,7 @@ Deno.serve(async (req: Request) => {
         customer_cpf: null, customer_email: email || null, customer_address: address,
         delivery_type: deliveryType,
         ...(deliveryType === "delivery" ? { delivery_address: normalizedDeliveryAddress, delivery_coordinates: normalizedDeliveryCoordinates } : {}),
-        payment_method: paymentMethod === "pix_test ? "Pix de teste (admin)" : paymentMethod === "cash" ? "Dinheiro na retirada" : "Cartão na retirada",
+        payment_method: paymentMethod === "pix_test" ? "Pix de teste (admin)" : paymentMethod === "cash" ? "Dinheiro na retirada" : "Cartão na retirada",
         pickup_code: pickupCode,
         items, subtotal, delivery_fee: deliveryFee, total, status: paymentMethod === "pix_test" ? "Pagamento Pendente" : "Pedido Recebido",
         market_checklist: { notes: String(body?.notes ?? "").trim().slice(0, 1000) },
