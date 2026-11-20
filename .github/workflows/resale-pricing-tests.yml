@@ -1,0 +1,28 @@
+name: Resale pricing from private balcony cost
+on:
+  pull_request:
+    paths:
+      - "loja.html"
+      - "painel.html"
+      - "supabase/functions/super-worker/index.ts"
+      - "supabase/migrations/*resale_uses_private_balcony_price.sql"
+      - "supabase/tests/resale-uses-balcony-price.test.mjs"
+      - ".github/workflows/resale-pricing-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "loja.html"
+      - "painel.html"
+      - "supabase/functions/super-worker/index.ts"
+      - "supabase/migrations/*resale_uses_private_balcony_price.sql"
+      - "supabase/tests/resale-uses-balcony-price.test.mjs"
+      - ".github/workflows/resale-pricing-tests.yml"
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test supabase/tests/resale-uses-balcony-price.test.mjs
