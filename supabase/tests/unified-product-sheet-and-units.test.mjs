@@ -19,6 +19,8 @@ assert.match(panel,/admin_create_product_with_sales_rule/,'new product is create
 assert.doesNotMatch(panel,/\b(?:window\.)?(?:alert|confirm|prompt)\s*\(/,'panel must not use native browser dialogs');
 assert.match(panel,/admin_update_product_sales_rule/,'sale unit and quantity rules use the admin RPC');
 assert.match(panel,/admin_set_product_prices/,'private counter and paid prices use the admin RPC');
+assert.match(panel,/let orderCostFieldsDirty=\{balcony:false,paid:false\}/,'unchanged snapshot values do not overwrite product defaults');
+assert.match(panel,/p_update_product:\$\('orderCostUpdateProduct'\)\.checked/,'the existing checkbox controls whether product defaults are updated');
 assert.doesNotMatch(panel,/id="sheetCost"/,'the old single cost field is replaced by two private price fields');
 assert.match(panel,/db\.rpc\('admin_get_cost_report_with_delivery'/,'inline costs continue to come from the administrative report RPC');
 assert.match(panel,/window\.__feiraCostProducts/,'inline product cost is sourced from the administrative RPC cache');
@@ -58,4 +60,6 @@ assert.match(priceMigration,/ALTER TABLE feira_cost_private\.product_price_histo
 assert.match(priceMigration,/REVOKE ALL ON TABLE feira_cost_private\.product_price_history FROM PUBLIC, anon, authenticated/,'private price history is inaccessible to client roles');
 assert.match(priceMigration,/public\.admin_set_product_prices/,'admin-only dual-price RPC is created');
 assert.match(priceMigration,/public\.is_current_user_admin\(\)/,'RPC validates admin authorization');
+assert.match(priceMigration,/Mantém os preços fotografados anteriormente/,'order item edits preserve existing snapshots');
+assert.match(priceMigration,/COALESCE\(v_existing\.preco_pago,v_existing\.preco_balcao,v_existing\.unit_cost\)/,'legacy order snapshots retain their original cost fallback');
 console.log('OK: unified product sheet, private counter/paid price RPC and history, responsive styles, confirmed unit/minimum rules, unchanged prices and rollback.');
