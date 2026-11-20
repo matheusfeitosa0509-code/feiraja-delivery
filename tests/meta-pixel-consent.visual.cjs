@@ -36,7 +36,7 @@ const fixture = `<!doctype html><html><body>
    assert.equal(await page.locator('script[src*="connect.facebook.net"]').count(),0,'Pixel não pode carregar antes do consentimento');
    checks++;
    await page.locator('#cookieAccept').click();
-   await page.waitForSelector('script[src*="connect.facebook.net"]');
+   await page.waitForSelector('script[src*="connect.facebook.net"]',{state:'attached'});
    await page.waitForFunction(()=>typeof window.fbq==='function'&&window.fbq.queue?.some(x=>x[0]==='track'&&x[1]==='PageView'));
    await page.evaluate(()=>{
     window.__feiraMetaPixelTrack('AddToCart',{value:12.5,currency:'BRL'});
