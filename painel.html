@@ -1433,7 +1433,7 @@ function render(){
  const settingsBadge=$('lalamoveSettingsBadge');if(settingsBadge){settingsBadge.className='lalamove-env-badge '+lalamoveEnvironment;settingsBadge.textContent=lalamoveEnvironment==='producao'?'PRODUÇÃO':'SANDBOX';}
  const q=$('search').value.trim().toLowerCase(),f=$('filter').value;
  const periodOrders=ordersForSelectedPeriod(allOrders),group=selectedOrderGroup;
- const filtered=periodOrders.filter(o=>matchesSelectedOrderGroup(o,group)&&(!q||[o.id,o.customer_name,o.customer_phone].some(v=>String(v||'').toLowerCase().includes(q))));
+ const filtered=periodOrders.filter(o=>(f===''||matchesSelectedOrderGroup(o,group))&&(!q||[o.id,o.customer_name,o.customer_phone].some(v=>String(v||'').toLowerCase().includes(q))));
  const statsOrders=periodOrders.filter(o=>o.is_test_order!==true);
  renderDailySummary();renderOrderGroupCounts(periodOrders);
  $('orders').innerHTML=filtered.map(o=>{
