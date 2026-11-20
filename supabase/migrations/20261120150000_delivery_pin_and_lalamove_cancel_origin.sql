@@ -130,7 +130,7 @@ begin
      when p_status='cancelled' and v_existing_cancelled_by='admin' then null
      when p_status='cancelled' then 'O entregador cancelou. Chame outro entregador.'
      else null end,
-   'cancellation_reason_recorded',case when p_status in ('cancelled','rejected','expired') then v_reason is not null else false end
+   'cancellation_reason_recorded',p_status in ('cancelled','rejected','expired')
  );
 end;
 $$;
