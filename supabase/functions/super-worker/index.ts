@@ -252,8 +252,8 @@ Deno.serve(async (req: Request) => {
         street: String(rawAddress.street || "").trim().slice(0, 160),
         number: String(rawAddress.number || "").trim().slice(0, 30),
         neighborhood: String(rawAddress.neighborhood || "").trim().slice(0, 100),
-        ...(String(rawAddress.complement || "").trim() ? { complement: String(rawAddress.complement).trim().slice(0, 100) } : {}),
-        ...(String(rawAddress.reference || "").trim() ? { reference: String(rawAddress.reference).trim().slice(0, 160) } : {}),
+        ...(String(rawAddress.complement || "").trim() ? { complement: String(rawAddress.complement).trim().slice(0, 60) } : {}),
+        ...(String(rawAddress.reference || "").trim() ? { reference: String(rawAddress.reference).trim().slice(0, 120) } : {}),
       };
       try {
         address = formatDropoff(normalizedDeliveryAddress);
