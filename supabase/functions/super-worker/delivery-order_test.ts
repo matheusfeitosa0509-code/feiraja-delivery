@@ -51,6 +51,34 @@ Deno.test("checkout envia scheduleAt ao recalcular entrega fora do horário", as
   assertEquals(quote.scheduleAt, "2026-11-18T10:00:00.000Z");
 });
 
+Deno.test("cotação de checkout usa as coordenadas do pino confirmado sem geocodificar o destino", async () => {
+  const pin = { lat: "-3.123456", lng: "-60.987654" };
+  const geocodedAddresses: string[] = [];
+  const geocoder = async (input: RequestInfo | URL) => {
+    const url = new URL(String(input));
+    geocodedAddresses.push(String(url.searchParams.get("address") || ""));
+    return new Response(JSON.stringify({ status: "OK", results: [{
+      types: ["street_address"], address_components: [
+        { long_name: "Manaus", short_name: "Manaus", types: ["locality", "political"] },
+        { long_name: "Amazonas", short_name: "AM", types: ["administrative_area_level_1", "political"] },
+        { long_name: "Brasil", short_name: "BR", types: ["country", "political"] },
+      ], geometry: { location: { lat: -3.1, lng: -60.02 } },
+    }] }), { status: 200 });
+  };
+  const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body));
+    assertEquals(body.data.stops[1].coordinates, pin);
+    assertEquals(body.data.stops[0].coordinates, { lat: "-3.100000", lng: "-60.020000" });
+    return new Response(JSON.stringify({ data: { expiresAt: new Date(Date.now() + 60_000).toISOString(), priceBreakdown: { total: "8.32", currency: "BRL" } } }), { status: 201 });
+  };
+  await calculateServerDelivery({
+    items: [{ product_id: "banana", quantity: 2 }], products, address, motoLimitKg: 8,
+    apiKey: "pk_test_demo", apiSecret: "sk_test_demo", geocodingApiKey: "google-test",
+    coordinates: pin, geocodeFetcher: geocoder, fetcher,
+  });
+  assertEquals(geocodedAddresses.length, 1, "only the origin is geocoded; the destination comes from the confirmed pin");
+});
+
 Deno.test("entrega admin com Pix de teste: autoriza, calcula cotação Sandbox e taxa no servidor", async () => {
   assertEquals(validateCheckoutDelivery({
     deliveryType: "delivery", paymentMethod: "pix_test", isAdmin: true, deliveryActive: false,
