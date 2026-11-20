@@ -60,6 +60,19 @@ function prepareHtml(source) {
       if(!costStats.includes("40,00"))throw new Error("O painel deixou de exibir o lucro estimado via RPC admin: "+costStats);
       const costProducts=await page.locator("#costProductStatusList").textContent();
       if(!costProducts.includes("Banana Prata"))throw new Error("O painel deixou de exibir os custos dos produtos via RPC admin: "+costProducts);
+      await page.locator("#tabProducts").click();
+      const productSubtabs=[
+        ["#productsMainTab",".unified-products"],
+        ["#productsMissingBalconyTab","#missingBalconySection"],
+        ["#productsReviewTab","#automaticPriceReview"],
+        ["#productsRequestsTab","#productRequests"]
+      ];
+      for(const [tab,section] of productSubtabs){
+        await page.locator(tab).click();
+        if(await page.locator(section).isHidden())throw new Error("Sub-aba de Produtos não abriu: "+tab);
+      }
+      if(errors.length)throw new Error("Erros JS/console ao abrir as quatro sub-abas de Produtos: "+errors.join("\\n"));
+      await page.locator("#productsMainTab").click();
       await page.locator("#tabOrders").click();
       await page.locator("#filter").selectOption("tests");
       await page.waitForSelector("[data-order-toggle]");
