@@ -2215,7 +2215,7 @@ async function afterBalconyPriceSaved(productId){
  if(!productId)return;
  const {data,error}=await db.rpc('admin_get_automatic_price_review');if(error)throw error;
  const p=(data?.products||[]).find(x=>x.id===productId);if(!p)return;
- if(p.is_promo){$('automaticPriceReviewMessage').textContent='Preço de balcão atualizado. Produto em promoção: preço de venda mantido.';return;}
+ if(p.is_promo){$('automaticPriceReviewMessage').textContent='Novo preço de balcão: '+moneyAutomatic(p.balcony)+'. Produto em promoção: preço de venda mantido.';return;}
  const text='Venda: '+moneyAutomatic(p.current_price)+' → '+moneyAutomatic(p.suggested_price)+' (lucro real '+moneyAutomatic(p.real_profit)+').';
  const {data:settings,error:settingsError}=await db.rpc('admin_get_automatic_margin_settings');if(settingsError)throw settingsError;
  if(settings?.auto_apply===true){
