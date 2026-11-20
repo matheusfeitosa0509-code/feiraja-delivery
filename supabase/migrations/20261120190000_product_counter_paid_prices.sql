@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS feira_cost_private.product_price_history (
   changed_at timestamptz NOT NULL DEFAULT now()
 );
 
+ALTER TABLE feira_cost_private.product_price_history ENABLE ROW LEVEL SECURITY;
+
 CREATE INDEX IF NOT EXISTS product_price_history_product_changed_idx
   ON feira_cost_private.product_price_history(product_id, changed_at DESC);
 
