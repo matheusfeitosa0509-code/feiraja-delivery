@@ -176,7 +176,7 @@ Deno.test("checkout novo mantém a ordem visual dos cards e os campos funcionais
   const customer = html.indexOf('id="checkoutCustomerTitle"');
   assertEquals(receive > 0 && receive < address && address < summary && summary < customer && customer < payment, true);
   for (const required of [
-    'placeholder="Digite sua rua e número"', 'id="deliveryStreetSuggestions"',
+    'placeholder="Digite o nome da rua"', 'CEP (opcional)', 'id="deliveryZip"', 'id="deliveryStreetSuggestions"',
     'id="deliveryAddressSummaryStreet"', 'id="deliveryAddressEdit"',
     'id="deliveryMapAdjust"', '+ Adicionar complemento ou referência',
     'id="checkoutProductsTotal"', 'id="checkoutDeliveryTotal"',
@@ -205,7 +205,7 @@ Deno.test("acompanhamento da entrega usa seis etapas e não expõe o parceiro ao
   const html = await Deno.readTextFile("loja.html");
   for (const required of [
     "const icon=(kind)=>",
-    "['Pago',icon('card')],['Separando',icon('bag')],['Procurando entregador',icon('bike')],['Entregador a caminho da feira',icon('bike')],['Saiu para entrega',icon('bike')],['Entregue',icon('check')]",
+    "['Pago',icon('card')],['Separando',icon('bag')],['Pronto para envio',icon('bike')],['Entregador a caminho da feira',icon('bike')],['Saiu para entrega',icon('bike')],['Entregue',icon('check')]",
     "['Pago',icon('card')],['Preparando',icon('bag')],['Pronto',icon('check')],['Retirado',icon('check')]",
     "grid-template-columns:repeat(6,minmax(0,1fr))",
     "white-space:nowrap",
