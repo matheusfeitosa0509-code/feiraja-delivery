@@ -1403,7 +1403,8 @@ function manausDayRange(){
 }
 async function loadOrderProfit(){
  try{
-  const range=manausDayRange();
+  const bounds=periodBounds(selectedPeriod);
+  const range={start:new Date(bounds.start).toISOString(),end:new Date(bounds.end).toISOString()};
   const {data,error}=await db.rpc('admin_get_order_profit',{p_order_ids:allOrders.map(o=>o.id),p_start:range.start,p_end:range.end});
   if(error)throw error;
   profitByOrder=Object.fromEntries((data?.orders||[]).map(row=>[row.order_id,row]));
@@ -1712,7 +1713,7 @@ $('refresh').addEventListener('click',()=>{document.title='Feira On Delivery | P
  catch(error){console.error('Falha ao sair do painel:',error);$('message').textContent='Não foi possível sair: '+(error?.message||'erro não identificado')+'. Tente novamente.';}
  finally{button.disabled=false;}
 });$('search').addEventListener('input',render);$('filter').addEventListener('change',render);
-document.querySelectorAll('[data-period]').forEach(button=>button.addEventListener('click',()=>{selectedPeriod=button.dataset.period;document.querySelectorAll('[data-period]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));render();}));
+document.querySelectorAll('[data-period]').forEach(button=>button.addEventListener('click',()=>{selectedPeriod=button.dataset.period;document.querySelectorAll('[data-period]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));render();void loadOrderProfit();}));
 document.querySelectorAll('[data-order-group]').forEach(button=>button.addEventListener('click',()=>{selectedOrderGroup=button.dataset.orderGroup;document.querySelectorAll('[data-order-group]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));render();}));
 document.querySelector('.panel-menu')?.addEventListener('toggle',()=>{});
 const pushStateObserver=new MutationObserver(()=>{const hint=$('pushHint'),toggle=$('pushToggle');if(hint&&toggle){const active=/desativar/i.test(toggle.textContent);hint.textContent='Avisos neste aparelho: '+(active?'ativos':'desativados');}});
