@@ -7,8 +7,8 @@ const rollback=fs.readFileSync('supabase/rollback/20261119150000_admin_edit_orde
 const dualPriceMigration=fs.readFileSync('supabase/migrations/20261120190000_product_counter_paid_prices.sql','utf8');
 
 assert.match(panel,/data-edit-order-cost/,'each order item exposes the admin cost editor');
-assert.match(panel,/Preço de balcão \(por unidade\\/kg\)/,'editor labels the counter price');
-assert.match(panel,/Quanto paguei \(por unidade\\/kg\)/,'editor labels the paid price');
+assert.ok(panel.includes('Preço de balcão (por unidade/kg)'),'editor labels the counter price');
+assert.ok(panel.includes('Quanto paguei (por unidade/kg)'),'editor labels the paid price');
 assert.match(panel,/id="orderCostUpdateProduct" type="checkbox" checked/,'product default update is checked by default');
 assert.match(panel,/Atualizar também no produto/,'editor explains the product default option');
 assert.match(panel,/amount>=0/,'cost parser accepts zero and rejects negative values');
