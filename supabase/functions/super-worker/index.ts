@@ -311,7 +311,7 @@ Deno.serve(async (req: Request) => {
     const amountCentsById = new Map<string, number>();
     const saleModeById = new Map<string, string>();
     const { data: products, error: productsError } = await db.from("products")
-      .select("id,name,price,category,image,available,resale_enabled,resale_price,resale_min_qty,delivery_unit_weight_kg,delivery_bulky").in("id", ids);
+      .select("id,name,price,category,image,available,resale_enabled,delivery_unit_weight_kg,delivery_bulky").in("id", ids);
     if (productsError) throw productsError;
     if (!products || products.length !== ids.length) return json({ error: "Um ou mais produtos não existem mais. Atualize a feira e tente novamente." }, 409);
     if (products.some((p: any) => p.available !== true)) return json({ error: "Um dos produtos está indisponível. Atualize a feira e tente novamente." }, 409);
