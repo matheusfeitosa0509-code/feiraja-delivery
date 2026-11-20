@@ -23,7 +23,7 @@ input{border:1px solid #d6e2d4;background:white;color:var(--ink)}label{font-weig
 .bar-row{display:grid;grid-template-columns:minmax(100px,1fr) 2fr auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:12px}.bar{height:9px;border-radius:99px;background:#e5eee2;overflow:hidden}.bar span{display:block;height:100%;background:#27834a;border-radius:99px}
 .report-period{font-weight:800;color:var(--ink);margin:0}.section-note{font-size:12px;color:var(--muted);margin:-5px 0 12px}.empty{text-align:center;padding:18px;color:var(--muted)}
 @media(max-width:520px){.wrap{padding-left:11px;padding-right:11px}header{margin-left:-11px;margin-right:-11px;padding:18px 13px}.back{font-size:12px;padding:8px 10px}.rank-grid,.product-grid,.customer-grid{grid-template-columns:1fr}.custom-range{grid-template-columns:1fr 1fr}.custom-range button{grid-column:1/-1}}
-@media print{body{background:#fff;color:#17251b;font-size:10pt}.wrap{max-width:none;padding:0}header{margin:0 0 12px;padding:0 0 10px;background:#fff;color:#173525;border-radius:0;border-bottom:2px solid var(--green)}.subtitle{color:#425a49}.top-links,.period-card,.no-print,#login,#dataMessage,#globalError,.customer-card button{display:none!important}.card,.stat{box-shadow:none;break-inside:avoid}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.rank-grid,.product-grid,.customer-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.rank-card,.product-card,.customer-card{break-inside:avoid}}
+@media print{body{background:#fff;color:#17251b;font-size:10pt}.wrap{max-width:none;padding:0}header{margin:0 0 12px;padding:0 0 10px;background:#fff;color:#173525;border-radius:0;border-bottom:2px solid var(--green)}.subtitle{color:#425a49}.top-links,.period-card,.no-print,#login,#dataMessage,#globalError,#customerManagementCard,.customer-card button{display:none!important}.card,.stat{box-shadow:none;break-inside:avoid}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.rank-grid,.product-grid,.customer-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.rank-card,.product-card,.customer-card{break-inside:avoid}}
 </style>
 </head>
 <body><main class="wrap">
@@ -52,7 +52,7 @@ input{border:1px solid #d6e2d4;background:white;color:var(--ink)}label{font-weig
 <div class="card"><h2>Ranking por valor gasto</h2><div id="spendRanking" class="rank-grid"><p class="empty">—</p></div></div>
 <div class="card"><h2>Ranking por número de pedidos</h2><div id="ordersRanking" class="rank-grid"><p class="empty">—</p></div></div>
 <div class="card"><h2>Produtos mais vendidos no período</h2><div id="topProducts" class="product-grid"><p class="empty">—</p></div></div>
-<div class="card"><h2>Clientes</h2><p class="section-note">Contas marcadas como teste ficam fora de todos os indicadores, rankings e exportações.</p><div id="customerList" class="customer-grid"><p class="empty">—</p></div></div>
+<div class="card" id="customerManagementCard"><h2>Clientes</h2><p class="section-note">Contas marcadas como teste ficam fora de todos os indicadores, rankings e exportações.</p><div id="customerList" class="customer-grid"><p class="empty">—</p></div></div>
 <div class="card"><h2>Pedidos por dia da semana</h2><div id="weekdays"></div></div>
 <div class="card"><h2>Pedidos por faixa de horário</h2><div id="hours"></div></div>
 <p id="dataMessage" class="message hidden" role="status"></p></section></main>
