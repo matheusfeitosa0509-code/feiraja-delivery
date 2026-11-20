@@ -62,4 +62,6 @@ assert.match(priceMigration,/public\.admin_set_product_prices/,'admin-only dual-
 assert.match(priceMigration,/public\.is_current_user_admin\(\)/,'RPC validates admin authorization');
 assert.match(priceMigration,/Mantém os preços fotografados anteriormente/,'order item edits preserve existing snapshots');
 assert.match(priceMigration,/COALESCE\(v_existing\.preco_pago,v_existing\.preco_balcao,v_existing\.unit_cost\)/,'legacy order snapshots retain their original cost fallback');
+assert.match(priceMigration,/v_new_bal := COALESCE\(p_preco_balcao,v_snapshot\.preco_balcao,CASE WHEN v_snapshot\.preco_pago IS NULL THEN v_snapshot\.unit_cost END\)/,'partial price edits retain the historical counter cost');
+assert.match(priceMigration,/v_new_pago := COALESCE\(p_preco_pago,v_snapshot\.preco_pago\)/,'partial price edits do not import current product paid cost into old orders');
 console.log('OK: unified product sheet, private counter/paid price RPC and history, responsive styles, confirmed unit/minimum rules, unchanged prices and rollback.');
