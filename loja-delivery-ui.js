@@ -132,13 +132,13 @@ export function deliveryPaymentOptions(isAdmin) {
 }
 
 export function hasMultipleDeliveryAddresses(input) {
-  const pattern = /(?:\\b(?:rua|avenida|travessa|alameda|rodovia|estrada)\\b|\\b(?:r|av|tv)\\.)[\\s\\S]{0,80}\\b\\d{1,5}\\b/i;
+  const pattern = /(?:\b(?:rua|avenida|travessa|alameda|rodovia|estrada)\b|\b(?:r|av|tv)\\.)[\s\S]{0,80}\b\\d{1,5}\b/i;
   return pattern.test(String(input?.complement || "")) || pattern.test(String(input?.reference || ""));
 }
 
 export function normalizeDeliveryAddress(input) {
   const address = {
-    postal_code: String(input?.postal_code || "").replace(/\\D/g, "").slice(0, 8),
+    postal_code: String(input?.postal_code || "").replace(/\D/g, "").slice(0, 8),
     street: String(input?.street || "").trim(),
     number: String(input?.number || "").trim(),
     neighborhood: String(input?.neighborhood || "").trim(),
