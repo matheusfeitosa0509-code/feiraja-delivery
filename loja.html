@@ -1632,7 +1632,7 @@ async function loadDeliveryAccess(user){
  if(request!==deliveryAccessRequest||currentUser?.id!==user.id)return;
  deliveryAdminCheckComplete=access.adminCheckComplete;
  currentUserIsAdmin=access.isAdmin;
- window.__feiraMetaIsAdmin=currentUserIsAdmin===true;window.__feiraMetaAdminCheckComplete=true;
+ window.__feiraMetaIsAdmin=currentUserIsAdmin===true;window.__feiraMetaAdminCheckComplete=access.adminCheckComplete===true;
  deliveryActive=access.deliveryActive;
  syncDeliveryOptionVisibility();
 }
