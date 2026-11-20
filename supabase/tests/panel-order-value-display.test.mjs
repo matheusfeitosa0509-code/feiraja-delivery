@@ -83,7 +83,7 @@ for(const [item,expected] of displayCases){
 assert.match(store,/const cashAtPickup=method\.includes\('dinheiro'\)\|\|method\.includes\('cart'\)/,'cash/card at pickup uses the cash timeline');
 assert.match(store,/const icon=\(kind\)=>/,'timeline uses checkout-style line SVG icons');
 assert.doesNotMatch(store,/data-tracking-url=/,'customer tracking never exposes the provider URL');
-assert.doesNotMatch(store,/Abrir rastreio|share\\.lalamove/i,'customer order screen has no external provider link or name');
+assert.doesNotMatch(store,/Abrir rastreio|share[.]lalamove/i,'customer order screen has no external provider link or name');
 assert.match(store,/deliveryAdminCheckComplete=false/,'delivery option starts locked while admin authorization is pending');
 assert.equal((trackingMigration.match(/as \$\$/g)||[]).length,2,'both tracking RPCs open with dollar-quoted bodies');
 assert.equal((trackingMigration.match(/\$\$;/g)||[]).length,2,'both tracking RPCs close with matching dollar quotes');
