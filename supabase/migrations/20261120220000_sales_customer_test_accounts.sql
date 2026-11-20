@@ -77,6 +77,9 @@ BEGIN
  v_definition:=replace(v_definition,
   '''new_customers_month'', (SELECT count(*)::integer FROM customer_rollup WHERE first_order_at >= v_month_start AND first_order_at < v_next_month_start)',
   '''new_customers_month'', (SELECT count(*)::integer FROM customer_rollup WHERE first_order_at >= p_start AND first_order_at < p_end)');
+ v_definition:=replace(v_definition,
+  'FROM base_orders'||E'\n    WHERE is_paid'||E'\n    GROUP BY customer_key',
+  'FROM base_orders'||E'\n    WHERE is_paid AND created_at >= p_start AND created_at < p_end'||E'\n    GROUP BY customer_key');
  v_definition:=replace(v_definition,'WHERE last_order_at < now() - interval ''30 days''','WHERE last_order_at < p_start');
  v_definition:=replace(v_definition,
   'SELECT'||E'\n          customer_name,'||E'\n          customer_email,',
