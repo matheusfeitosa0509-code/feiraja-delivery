@@ -31,7 +31,8 @@ CREATE OR REPLACE FUNCTION public.admin_set_product_prices(
   p_preco_balcao numeric DEFAULT NULL,
   p_preco_pago numeric DEFAULT NULL,
   p_order_id text DEFAULT NULL,
-  p_item_index integer DEFAULT NULL
+  p_item_index integer DEFAULT NULL,
+  p_update_product boolean DEFAULT true
 ) RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -53,9 +54,11 @@ BEGIN
     RAISE EXCEPTION 'Acesso permitido somente a administradores.' USING ERRCODE='42501';
   END IF;
 
-  IF p_product_id IS NULL OR btrim(p_product_id) = ''
-     OR (p_preco_balcao IS NULL AND p_preco_pago IS NULL) THEN
-    RAISE EXCEPTION 'Informe o produto e ao menos um preço.' USING ERRCODE='22023';
+  IF (p_preco_balcao IS NULL AND p_preco_pago IS NULL) THEN
+    RAISE EXCEPTION 'Informe ao menos um preço.' USING ERRCODE='22023';
+  END IF;
+  IF p_update_product AND (p_product_id IS NULL OR btrim(p_product_id) = '') THEN
+    RAISE EXCEPTION 'Produto obrigatório para atualizar os preços padrão.' USING ERRCODE='22023';
   END IF;
   IF (p_preco_balcao IS NOT NULL AND p_preco_balcao < 0)
      OR (p_preco_pago IS NOT NULL AND p_preco_pago < 0) THEN
@@ -65,41 +68,36 @@ BEGIN
     RAISE EXCEPTION 'Pedido e índice do item devem ser informados juntos.' USING ERRCODE='22023';
   END IF;
 
-  SELECT pc.preco_balcao, pc.preco_pago
-    INTO v_old_bal, v_old_pago
-  FROM feira_cost_private.product_costs pc
-  WHERE pc.product_id = p_product_id
-  FOR UPDATE;
-
-  IF NOT FOUND THEN
-    IF NOT EXISTS (SELECT 1 FROM public.products p WHERE p.id = p_product_id) THEN
-      RAISE EXCEPTION 'Produto não encontrado.' USING ERRCODE='P0002';
+  IF p_update_product THEN
+    SELECT pc.preco_balcao, pc.preco_pago INTO v_old_bal, v_old_pago
+    FROM feira_cost_private.product_costs pc WHERE pc.product_id=p_product_id FOR UPDATE;
+    IF NOT FOUND THEN
+      IF NOT EXISTS (SELECT 1 FROM public.products p WHERE p.id=p_product_id) THEN
+        RAISE EXCEPTION 'Produto não encontrado.' USING ERRCODE='P0002';
+      END IF;
+      INSERT INTO feira_cost_private.product_costs(product_id,unit_cost,preco_balcao,preco_pago,updated_at,updated_by)
+      VALUES(p_product_id,COALESCE(p_preco_pago,p_preco_balcao,0),p_preco_balcao,p_preco_pago,now(),v_actor);
+      v_old_bal := NULL; v_old_pago := NULL;
     END IF;
-    INSERT INTO feira_cost_private.product_costs(product_id, unit_cost, preco_balcao, preco_pago, updated_at, updated_by)
-    VALUES (p_product_id, COALESCE(p_preco_pago,p_preco_balcao,0), p_preco_balcao, p_preco_pago, now(), v_actor);
-    v_old_bal := NULL;
-    v_old_pago := NULL;
   END IF;
 
   v_new_bal := COALESCE(p_preco_balcao, v_old_bal);
   v_new_pago := COALESCE(p_preco_pago, v_old_pago);
 
-  IF p_preco_balcao IS NOT NULL AND p_preco_balcao IS DISTINCT FROM v_old_bal THEN
+  IF p_update_product AND p_preco_balcao IS NOT NULL AND p_preco_balcao IS DISTINCT FROM v_old_bal THEN
     INSERT INTO feira_cost_private.product_price_history(product_id,field,old_value,new_value,changed_by)
     VALUES(p_product_id,'preco_balcao',v_old_bal,round(p_preco_balcao,2),v_actor);
   END IF;
-  IF p_preco_pago IS NOT NULL AND p_preco_pago IS DISTINCT FROM v_old_pago THEN
+  IF p_update_product AND p_preco_pago IS NOT NULL AND p_preco_pago IS DISTINCT FROM v_old_pago THEN
     INSERT INTO feira_cost_private.product_price_history(product_id,field,old_value,new_value,changed_by)
     VALUES(p_product_id,'preco_pago',v_old_pago,round(p_preco_pago,2),v_actor);
   END IF;
 
-  UPDATE feira_cost_private.product_costs
-  SET preco_balcao = v_new_bal,
-      preco_pago = v_new_pago,
-      unit_cost = COALESCE(v_new_pago, v_new_bal, unit_cost),
-      updated_at = CASE WHEN p_preco_balcao IS NOT NULL OR p_preco_pago IS NOT NULL THEN now() ELSE updated_at END,
-      updated_by = CASE WHEN p_preco_balcao IS NOT NULL OR p_preco_pago IS NOT NULL THEN v_actor ELSE updated_by END
-  WHERE product_id = p_product_id;
+  IF p_update_product THEN
+    UPDATE feira_cost_private.product_costs
+    SET preco_balcao=v_new_bal,preco_pago=v_new_pago,unit_cost=COALESCE(v_new_pago,v_new_bal,unit_cost),updated_at=now(),updated_by=v_actor
+    WHERE product_id=p_product_id;
+  END IF;
 
   IF p_order_id IS NOT NULL THEN
     SELECT * INTO v_snapshot
@@ -109,12 +107,12 @@ BEGIN
     IF NOT FOUND THEN
       RAISE EXCEPTION 'Item do pedido não encontrado no snapshot financeiro.' USING ERRCODE='P0002';
     END IF;
-    IF v_snapshot.product_id IS DISTINCT FROM p_product_id THEN
+    IF p_product_id IS NOT NULL AND v_snapshot.product_id IS DISTINCT FROM p_product_id THEN
       RAISE EXCEPTION 'O produto informado não corresponde ao item do pedido.' USING ERRCODE='22023';
     END IF;
 
-    v_new_bal := COALESCE(p_preco_balcao, v_snapshot.preco_balcao, v_old_bal);
-    v_new_pago := COALESCE(p_preco_pago, v_snapshot.preco_pago, v_old_pago);
+    v_new_bal := COALESCE(p_preco_balcao,v_snapshot.preco_balcao,CASE WHEN p_update_product THEN v_old_bal END);
+    v_new_pago := COALESCE(p_preco_pago,v_snapshot.preco_pago,CASE WHEN p_update_product THEN v_old_pago END);
     v_old_effective := COALESCE(v_snapshot.preco_pago,v_snapshot.preco_balcao,v_snapshot.unit_cost);
     v_new_effective := COALESCE(v_new_pago,v_new_bal,v_snapshot.unit_cost);
 
@@ -131,7 +129,7 @@ BEGIN
     INSERT INTO feira_cost_private.order_item_cost_history(
       order_id,item_index,product_id,old_unit_cost,new_unit_cost,product_default_updated,changed_at,changed_by
     ) VALUES (
-      p_order_id,p_item_index,p_product_id,v_snapshot.unit_cost,v_new_effective,true,now(),v_actor
+      p_order_id,p_item_index,COALESCE(p_product_id,v_snapshot.product_id),v_snapshot.unit_cost,v_new_effective,p_update_product,now(),v_actor
     );
   END IF;
 
@@ -143,8 +141,8 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.admin_set_product_prices(text,numeric,numeric,text,integer) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.admin_set_product_prices(text,numeric,numeric,text,integer) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.admin_set_product_prices(text,numeric,numeric,text,integer,boolean) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_set_product_prices(text,numeric,numeric,text,integer,boolean) TO authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION public.admin_set_product_cost(p_product_id text, p_unit_cost numeric)
 RETURNS jsonb
