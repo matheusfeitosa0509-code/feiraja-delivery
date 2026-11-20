@@ -64,43 +64,25 @@ function constantTimeEqual(left: string, right: string) {
 }
 
 
-async function notifyAdminUnmatchedPayment(db: any, paymentId: string, deps: WebhookDependencies) {
-  console.error("Pagamento Pix Asaas confirmado sem pedido correspondente.", { payment_id: paymentId });
-  const publicKey = deps.env.get("VAPID_PUBLIC_KEY");
-  const privateKey = deps.env.get("VAPID_PRIVATE_KEY");
-  const subject = deps.env.get("VAPID_SUBJECT");
-  if (!publicKey || !privateKey || !subject) {
-    console.error("Aviso administrativo de Pix sem pedido não enviado: VAPID indisponível.");
-    return;
-  }
-  const { data: admins, error: adminsError } = await db.from("admin_users").select("user_id");
-  if (adminsError) {
-    console.error("Falha ao localizar administradores para Pix sem pedido.");
-    return;
-  }
-  const adminRows = (admins ?? []) as Array<{ user_id: string }>;
-  const ids = [...new Set(adminRows.map((row) => row.user_id).filter(Boolean))];
-  if (!ids.length) return;
-  const { data: subscriptions, error: subscriptionsError } = await db.from("push_subscriptions")
-    .select("endpoint,p256dh,auth_secret").eq("ativo", true).in("user_id", ids);
-  if (subscriptionsError) {
-    console.error("Falha ao localizar inscrições push para Pix sem pedido.");
-    return;
-  }
-  deps.webpush.setVapidDetails(subject, publicKey, privateKey);
-  const payload = JSON.stringify({
-    title: "Feira On Delivery",
-    body: "Pix recebido sem pedido correspondente — conferir no Asaas",
-    url: "/painel.html",
-    tag: `feira-asaas-sem-pedido-${paymentId}`,
-  });
-  const subscriptionRows = (subscriptions ?? []) as Array<{ endpoint: string; p256dh: string; auth_secret: string }>;
-  for (const row of subscriptionRows) {
-    try {
-      await deps.webpush.sendNotification({ endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth_secret } }, payload, { TTL: 3600, urgency: "high" });
-    } catch {
-      console.error("Falha no envio de aviso administrativo de Pix sem pedido.");
+async function recordAsaasPaymentAlert(
+  db: any,
+  input: { tipo: string; orderId: string | null; paymentId: string; message: string; isTestOrder?: boolean },
+) {
+  if (input.isTestOrder === true) return;
+  try {
+    const { error } = await db.from("admin_alerts").insert({
+      tipo: input.tipo,
+      order_id: input.orderId,
+      asaas_payment_id: input.paymentId,
+      mensagem: input.message,
+    });
+    if (error && error.code !== "23505") {
+      console.error("Falha ao registrar alerta administrativo de pagamento Asaas.", {
+        code: error.code || "UNKNOWN",
+      });
     }
+  } catch {
+    console.error("Exceção ao registrar alerta administrativo de pagamento Asaas.");
   }
 }
 
@@ -196,7 +178,7 @@ export async function handleAsaasWebhook(req: Request, deps: WebhookDependencies
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data: order, error: orderReadError } = await db.from("orders")
-    .select("id,status,total,payment_id,payment_provider,created_at,delivery_type,pickup_code")
+    .select("id,status,total,payment_id,payment_provider,created_at,delivery_type,pickup_code,is_test_order")
     .eq("id", externalReference)
     .maybeSingle();
 
@@ -266,11 +248,17 @@ export async function handleAsaasWebhook(req: Request, deps: WebhookDependencies
         .eq("id", order.id).eq("payment_provider", "asaas")
         .is("payment_id", null).eq("status", order.status)
         .select("id").maybeSingle();
-      if (linkError) return json({ error: "Falha ao registrar a confirmação do pagamento." }, 500);
+      if (linkError) {
+        await recordAsaasPaymentAlert(db, { tipo: "asaas_pagamento_erro", orderId: order.id, paymentId, message: "⚠️ Problema no pagamento do pedido " + order.id + " — falha ao registrar a confirmação", isTestOrder: order.is_test_order === true });
+        return json({ error: "Falha ao registrar a confirmação do pagamento." }, 500);
+      }
       if (linkedOrder) return json({ received: true, reconciled: true });
       const { data: currentOrder, error: currentError } = await db.from("orders")
         .select("status,payment_id").eq("id", order.id).maybeSingle();
-      if (currentError) return json({ error: "Falha ao confirmar reconciliação." }, 500);
+      if (currentError) {
+        await recordAsaasPaymentAlert(db, { tipo: "asaas_pagamento_erro", orderId: order.id, paymentId, message: "⚠️ Problema no pagamento do pedido " + order.id + " — falha ao confirmar reconciliação", isTestOrder: order.is_test_order === true });
+        return json({ error: "Falha ao confirmar reconciliação." }, 500);
+      }
       if (currentOrder?.payment_id === paymentId) {
         return json({ received: true, ignored: true, duplicate: true });
       }
@@ -372,11 +360,20 @@ export async function handleAsaasWebhook(req: Request, deps: WebhookDependencies
       (!Number.isFinite(expectedCents) || expectedCents <= 0 || !Number.isFinite(paidCents) || paidCents !== expectedCents ||
         !Number.isFinite(verifiedCents) || verifiedCents !== expectedCents) ? "valor_divergente" : "dados_divergentes";
     console.warn("Webhook Asaas ignorado após consulta bem-sucedida: divergência permanente.", { mismatch });
+    if (isPaymentConfirmationEvent && order) {
+      await recordAsaasPaymentAlert(db, { tipo: "asaas_pagamento_erro", orderId: order.id, paymentId, message: "⚠️ Problema no pagamento do pedido " + order.id + " — " + (mismatch === "valor_divergente" ? "valor divergente" : "dados do pagamento divergentes"), isTestOrder: order.is_test_order === true });
+    }
     return json({ received: true, ignored: true, reason: "divergencia_permanente" });
   }
 
   if (noMatchingOrder) {
-    if (isPaymentConfirmationEvent) await notifyAdminUnmatchedPayment(db, paymentId, deps);
+    if (isPaymentConfirmationEvent) {
+      if (!order) {
+        await recordAsaasPaymentAlert(db, { tipo: "asaas_pagamento_sem_pedido", orderId: null, paymentId, message: "⚠️ Pagamento sem pedido correspondente – ID Asaas " + paymentId });
+      } else {
+        await recordAsaasPaymentAlert(db, { tipo: "asaas_pagamento_erro", orderId: order.id, paymentId, message: "⚠️ Problema no pagamento do pedido " + order.id + " — pagamento não corresponde ao provedor do pedido", isTestOrder: order.is_test_order === true });
+      }
+    }
     return json({ received: true, ignored: true, reason: "pedido_nao_encontrado_ou_nao_asaas" });
   }
   if (!order) return json({ received: true, ignored: true });
@@ -387,12 +384,16 @@ export async function handleAsaasWebhook(req: Request, deps: WebhookDependencies
     const { data: refundOrder, error: refundUpdateError } = await guardedUpdate.select("id").maybeSingle();
     if (refundUpdateError) {
       console.error("Falha ao marcar devolução de Pix em pedido cancelado.");
+      await recordAsaasPaymentAlert(db, { tipo: "asaas_pagamento_erro", orderId: order.id, paymentId, message: "⚠️ Problema no pagamento do pedido " + order.id + " — falha ao registrar devolução", isTestOrder: order.is_test_order === true });
       return json({ error: "Falha ao registrar devolução pendente." }, 500);
     }
     if (refundOrder) return json({ received: true, refund_pending: true });
     const { data: currentOrder, error: currentOrderError } = await db.from("orders")
       .select("status,refund_pending").eq("id", order.id).maybeSingle();
-    if (currentOrderError) return json({ error: "Falha ao confirmar registro de devolução." }, 500);
+    if (currentOrderError) {
+      await recordAsaasPaymentAlert(db, { tipo: "asaas_pagamento_erro", orderId: order.id, paymentId, message: "⚠️ Problema no pagamento do pedido " + order.id + " — falha ao confirmar devolução", isTestOrder: order.is_test_order === true });
+      return json({ error: "Falha ao confirmar registro de devolução." }, 500);
+    }
     if (String(currentOrder?.status || "").toLowerCase() === "cancelada" && currentOrder?.refund_pending === true) {
       return json({ received: true, refund_pending: true, duplicate: true });
     }
@@ -421,6 +422,7 @@ export async function handleAsaasWebhook(req: Request, deps: WebhookDependencies
       .maybeSingle();
     if (overdueUpdateError) {
       console.error("Falha ao registrar expiração de cobrança Asaas.");
+      await recordAsaasPaymentAlert(db, { tipo: "asaas_pagamento_erro", orderId: order.id, paymentId, message: "⚠️ Problema no pagamento do pedido " + order.id + " — falha ao atualizar vencimento", isTestOrder: order.is_test_order === true });
       return json({ error: "Falha ao atualizar pedido." }, 500);
     }
     if (!expiredOrder) return json({ received: true, ignored: true });
@@ -457,6 +459,7 @@ export async function handleAsaasWebhook(req: Request, deps: WebhookDependencies
 
     if (financialUpdateError) {
       console.error("Falha ao registrar status financeiro após webhook Asaas.");
+      await recordAsaasPaymentAlert(db, { tipo: "asaas_pagamento_erro", orderId: order.id, paymentId, message: "⚠️ Problema no pagamento do pedido " + order.id + " — falha ao atualizar status financeiro", isTestOrder: order.is_test_order === true });
       return json({ error: "Falha ao atualizar pedido." }, 500);
     }
     if (!updatedFinancialOrder) return json({ received: true, ignored: true });
@@ -492,6 +495,7 @@ export async function handleAsaasWebhook(req: Request, deps: WebhookDependencies
 
   if (updateError) {
     console.error("Falha ao atualizar pedido após webhook Asaas.");
+    await recordAsaasPaymentAlert(db, { tipo: "asaas_pagamento_erro", orderId: order.id, paymentId, message: "⚠️ Problema no pagamento do pedido " + order.id + " — falha ao atualizar pedido", isTestOrder: order.is_test_order === true });
     return json({ error: "Falha ao atualizar pedido." }, 500);
   }
   if (!updatedOrder) return json({ received: true, ignored: true });

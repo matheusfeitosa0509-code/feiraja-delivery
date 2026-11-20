@@ -11,19 +11,22 @@ type Order = {
   refund_pending?: boolean;
   delivery_type?: string;
   pickup_code?: string | null;
+  is_test_order?: boolean;
 };
 
 function makeDb(initialOrder: Order | null) {
   let order = initialOrder ? structuredClone(initialOrder) : null;
   const updates: Array<Record<string, unknown>> = [];
+  const alerts: Array<Record<string, unknown>> = [];
   const db = {
     from(table: string) {
-      let operation: "select" | "update" = "select";
+      let operation: "select" | "update" | "insert" = "select";
       let patch: Record<string, unknown> = {};
       const filters: Array<[string, string, unknown]> = [];
       const builder: any = {
         select() { return builder; },
         update(value: Record<string, unknown>) { operation = "update"; patch = value; return builder; },
+        insert(value: Record<string, unknown>) { operation = "insert"; patch = value; return builder; },
         eq(column: string, value: unknown) { filters.push(["eq", column, value]); return builder; },
         is(column: string, value: unknown) { filters.push(["is", column, value]); return builder; },
         in(column: string, value: unknown) { filters.push(["in", column, value]); return builder; },
@@ -33,6 +36,15 @@ function makeDb(initialOrder: Order | null) {
         },
       };
       async function execute() {
+        if (table === "admin_alerts") {
+          if (operation === "insert") {
+            const duplicate = alerts.some((row) => row.tipo === patch.tipo && (patch.order_id ? row.order_id === patch.order_id : row.asaas_payment_id === patch.asaas_payment_id));
+            if (duplicate) return { data: null, error: { code: "23505" } };
+            alerts.push(structuredClone(patch));
+            return { data: null, error: null };
+          }
+          return { data: null, error: null };
+        }
         if (table === "admin_users") return { data: [{ user_id: "admin-1" }], error: null };
         if (table === "push_subscriptions") {
           return { data: [{ endpoint: "https://push.invalid", p256dh: "p", auth_secret: "a" }], error: null };
@@ -59,6 +71,7 @@ function makeDb(initialOrder: Order | null) {
   return {
     db,
     updates,
+    alerts,
     getOrder: () => order ? structuredClone(order) : null,
   };
 }
@@ -174,7 +187,11 @@ Deno.test("handler: cobrança confirmada sem pedido não altera pedido e envia a
   assertEquals(result.response.status, 200);
   assertEquals(result.body.reason, "pedido_nao_encontrado_ou_nao_asaas");
   assertEquals(mock.getOrder(), null);
-  assertEquals(result.pushCount, 1);
+  assertEquals(result.pushCount, 0);
+  assertEquals(mock.alerts.length, 1);
+  assertEquals(mock.alerts[0].tipo, "asaas_pagamento_sem_pedido");
+  assertEquals(mock.alerts[0].order_id, null);
+  assertEquals(mock.alerts[0].asaas_payment_id, "pay_123");
 });
 
 Deno.test("handler: fluxo normal de pedido não cancelado continua confirmando pagamento com ID correspondente", async () => {
@@ -273,4 +290,49 @@ Deno.test("pickup_store: confirmação Pix gera código de retirada de quatro d�
   assertEquals(/^\d{4}$/.test(String(mock.getOrder()?.pickup_code || "")), true);
   assertEquals(mock.updates.length, 1);
   assertEquals(typeof mock.updates[0].pickup_code, "string");
+});
+
+Deno.test("handler: reenvio de pagamento sem pedido não duplica alerta", async () => {
+  const mock = makeDb(null);
+  await invoke(mock);
+  await invoke(mock);
+  assertEquals(mock.alerts.length, 1);
+});
+
+Deno.test("handler: pedido de teste nunca gera alerta de pagamento", async () => {
+  const mock = makeDb({
+    id: "ORDER-123", status: "Pagamento Pendente", total: 30,
+    payment_id: "pay_123", payment_provider: "mercado_pago",
+    created_at: "2026-11-13T11:55:00Z", is_test_order: true,
+  });
+  await invoke(mock);
+  assertEquals(mock.alerts.length, 0);
+});
+
+Deno.test("handler: token inválido não cria alerta", async () => {
+  const mock = makeDb(null);
+  const request = new Request("https://webhook.test/asaas", {
+    method: "POST",
+    headers: { "content-type": "application/json", "asaas-access-token": "invalid-token" },
+    body: JSON.stringify({ event: "PAYMENT_RECEIVED", payment: { ...validPayment } }),
+  });
+  const deps = makeDependencies(mock);
+  const response = await handleAsaasWebhook(request, deps.deps);
+  assertEquals(response.status, 401);
+  assertEquals(mock.alerts.length, 0);
+});
+
+Deno.test("handler: divergência de valor gera exatamente um alerta administrativo", async () => {
+  const mock = makeDb({
+    id: "ORDER-123", status: "Pagamento Pendente", total: 30,
+    payment_id: "pay_123", payment_provider: "asaas",
+    created_at: "2026-11-13T11:55:00Z", is_test_order: false,
+  });
+  const result = await invoke(mock, { ...validPayment, value: 31 });
+  assertEquals(result.response.status, 200);
+  assertEquals(result.body.reason, "divergencia_permanente");
+  assertEquals(mock.alerts.length, 1);
+  assertEquals(mock.alerts[0].tipo, "asaas_pagamento_erro");
+  assertEquals(mock.alerts[0].order_id, "ORDER-123");
+  assertEquals(mock.getOrder()?.status, "Pagamento Pendente");
 });
