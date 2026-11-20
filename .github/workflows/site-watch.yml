@@ -33,6 +33,8 @@ jobs:
           npm init -y
           npm install --save-dev @playwright/test
           npx playwright install --with-deps chromium
+      - name: Test customer delivery status and timeline at 360px/412px
+        run: node tests/order-tracking-display.visual.cjs
       - name: Run vigia against production
         run: npx playwright test tests/site-watch.spec.js --reporter=list
       - name: Verify health-check rejects requests without token
@@ -76,6 +78,14 @@ jobs:
               }
             });
           '
+      - name: Upload display screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: order-tracking-display-screenshots
+          path: artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4

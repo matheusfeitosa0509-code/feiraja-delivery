@@ -86,7 +86,7 @@ function prepareHtml(source) {
       await page.getByRole("dialog").getByRole("button",{name:"Confirmar?"}).click();
       const productionFlagSent=await page.evaluate(()=>window.__testDb.__state.calls.findLast(x=>x.action==="create"&&x.environment==="producao")?.testProductionConfirmed===true);
       if(!productionFlagSent)throw new Error("A flag de confirmação de corrida real não foi enviada.");
-      await page.waitForFunction(()=>document.querySelector("[data-lalamove-status-label]")?.textContent.includes("Procurando motorista"));
+      await page.waitForFunction(()=>document.querySelector("[data-lalamove-status-label]")?.textContent.includes("Procurando entregador"));
       if(await page.locator("[data-lalamove-map]").count()!==1)throw new Error("Status/rastreio não apareceu após criação mockada em Produção.");
 
       await page.evaluate(()=>window.__testDb.resetOrder());
@@ -106,7 +106,7 @@ function prepareHtml(source) {
       if(!(await sandboxQuote.textContent()).includes("Sandbox"))throw new Error("Cotação não identificou Sandbox.");
       await sandboxQuote.locator('[data-lalamove-vehicle="MOTO"]').click();
       await sandboxQuote.locator("[data-lalamove-confirm]").click();
-      await page.waitForFunction(()=>document.querySelector("[data-lalamove-status-label]")?.textContent.includes("Procurando motorista"));
+      await page.waitForFunction(()=>document.querySelector("[data-lalamove-status-label]")?.textContent.includes("Procurando entregador"));
       if(await page.locator("[data-lalamove-map]").count()!==1)throw new Error("Status/rastreio não apareceu após criação mockada em Sandbox.");
 
       // Retorna ao filtro padrão: pedidos reais ativos aparecem; o pedido de teste fica fora da lista.

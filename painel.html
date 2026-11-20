@@ -1215,8 +1215,8 @@ $('orderCostBackdrop').addEventListener('click',event=>{if(event.target===$('ord
 
 
 function lalamoveStatusLabel(status){
- const labels={pending:'Confirmando criação',searching:'Procurando motorista',assigned:'A caminho',enroute_pickup:'A caminho',picked_up:'Coletado',delivered:'Entregue',cancelled:'Entrega cancelada',rejected:'Entrega recusada',expired:'Nenhum motorista aceitou — chame de novo'};
- return labels[String(status||'')]||'Aguardando chamada do entregador';
+ const labels={pending:'Confirmando criação',searching:'Procurando entregador',assigned:'Entregador a caminho da feira',enroute_pickup:'Entregador a caminho da feira',picked_up:'Saiu para entrega',delivered:'Entregue',completed:'Entregue',cancelled:'Entrega cancelada',rejected:'Entrega recusada',expired:'Nenhum motorista aceitou — chame de novo'};
+ return labels[String(status||'').toLowerCase()]||'Procurando entregador';
 }
 function lalamoveEnvironmentBadge(environment){const selected=environment||(typeof lalamoveEnvironment!=='undefined'?lalamoveEnvironment:'sandbox');const value=selected==='producao'?'producao':'sandbox';return '<span class="lalamove-env-badge '+value+'" data-lalamove-env-badge="'+value+'">'+(value==='producao'?'PRODUÇÃO':'SANDBOX')+'</span>';}
 function renderLalamoveDelivery(order,currentStatus){
@@ -1259,7 +1259,7 @@ function renderLalamoveDelivery(order,currentStatus){
  return '<section class="lalamove-admin"><div class="lalamove-admin-head"><strong>Entrega Feira On</strong>'+lalamoveEnvironmentBadge()+'</div>'+scheduledNote
   +'<div class="lalamove-address"><small>ENDEREÇO</small><strong>'+addressLines.map(esc).join('<br>')+'</strong><a href="'+esc(mapUrl)+'" target="_blank" rel="noopener noreferrer">Abrir no mapa</a></div>'
   +'<div class="lalamove-facts"><span>Veículo: <b>'+esc(vehicle)+'</b></span><span>Peso: <b>'+esc(weightText)+'</b></span><span>Taxa: <b>'+money(order.delivery_fee)+'</b></span></div>'
-  +(order.lalamove_status?'<p class="lalamove-state"><small>STATUS DA ENTREGA</small><strong data-lalamove-status-label>'+esc(lalamoveStatusLabel(order.lalamove_status))+'</strong></p>':'')
+  +((order.lalamove_status||['Pagamento Confirmado','Preparando','Pronto para Retirada','Pronto'].includes(currentStatus))?'<p class="lalamove-state"><small>STATUS DA ENTREGA</small><strong data-lalamove-status-label>'+esc(lalamoveStatusLabel(order.lalamove_status))+'</strong></p>':'')
   +retryWarning+driverHtml+mapHtml+(tracking?'<p>'+tracking+'</p>':'')+'<div class="actions">'+callButton+refreshButton+cancelButton+'</div>'
   +'<p class="lalamove-feedback" data-lalamove-feedback="'+esc(order.id)+'" role="status" aria-live="polite" hidden></p>'
   +(canQuote?'<div class="lalamove-quote-box" data-lalamove-quote-box="'+esc(order.id)+'" hidden></div>':'')+'</section>';
