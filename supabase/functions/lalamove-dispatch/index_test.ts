@@ -1,4 +1,5 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { resolveDeliveryDropoffCoordinates } from "../_shared/delivery-quote.ts";
 import {
   assertTestProductionDispatchConfirmation, buildLalamoveOrderBody, canCancelLalamove, canQuoteLalamove, canStartDispatch, isLalamoveDispatchReady, cancelLalamoveOrder, createLalamoveOrder, getLalamoveDriverDetails,
   isWebhookVerificationProbe, makeWebhookSignature, mapLalamoveStatus, normalizeBrazilPhone, priceDifference, quoteFee, verifyWebhookSignature, requireSupabaseServiceRoleJwt, readSupabaseServiceRoleConfig, storeLalamoveQuotes, getLalamoveOrderDetails, sanitizeLalamoveErrorPayload,
@@ -10,6 +11,26 @@ const quote = {
   priceBreakdown: { total: "8.32", currency: "BRL" },
   stops: [{ stopId: "pickup-123" }, { stopId: "dropoff-456" }],
 };
+
+Deno.test("destino Lalamove usa coordenadas confirmadas do pino sem geocodificar", async () => {
+  let fallbackCalls = 0;
+  const result = await resolveDeliveryDropoffCoordinates({ lat: -3.1234567, lng: -60.9876543 }, async () => {
+    fallbackCalls++;
+    return { lat: "-3.100000", lng: "-60.020000" };
+  });
+  assertEquals(result, { coordinates: { lat: "-3.123457", lng: "-60.987654" }, source: "confirmed_pin" });
+  assertEquals(fallbackCalls, 0);
+});
+
+Deno.test("pedido antigo sem coordenadas usa geocodificação de fallback", async () => {
+  let fallbackCalls = 0;
+  const result = await resolveDeliveryDropoffCoordinates(null, async () => {
+    fallbackCalls++;
+    return { lat: "-3.100000", lng: "-60.020000" };
+  });
+  assertEquals(result, { coordinates: { lat: "-3.100000", lng: "-60.020000" }, source: "geocoded_fallback" });
+  assertEquals(fallbackCalls, 1);
+});
 
 Deno.test("criação Lalamove MOCKADA: envia quotationId e contatos, recebe orderId e custo", async () => {
   const body = buildLalamoveOrderBody({
