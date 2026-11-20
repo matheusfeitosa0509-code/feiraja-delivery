@@ -119,7 +119,8 @@ async function initializePage(){
   lastCustomerList=Array.isArray(data)?data:[];$('customerList').innerHTML=renderCustomers(lastCustomerList);
  }
  function enrichProfits(data,profitData){
-  const orders=Array.isArray(profitData?.orders)?profitData.orders:[];
+  const allowedIds=new Set((Array.isArray(data?.paid_order_ids)?data.paid_order_ids:[]).map(String));
+  const orders=(Array.isArray(profitData?.orders)?profitData.orders:[]).filter(o=>allowedIds.has(String(o.order_id)));
   const byId=new Map(orders.map(o=>[String(o.order_id),o]));
   const orderCustomers=Array.isArray(data?.paid_order_customers)?data.paid_order_customers:[];
   const customerMap=new Map();
