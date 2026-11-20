@@ -3,7 +3,7 @@ import {
   buildDeliveryQuoteItems, buildDeliveryQuoteCacheKey, isCachedDeliveryQuoteValid, canShowDeliveryOption, canShowUberPickupOption, checkoutGrandTotal,
   deliveryUnavailableMessage, isDeliveryOptionDisabled, loadDeliveryAccessState,
   deliveryPaymentOptions, deliveryQuoteErrorMessage, deliveryQuoteLabel, formatDeliveryMapAddressSummary, isAdminRpcTrue, isDeliveryOutOfArea, isValidDeliveryQuote,
-  normalizeDeliveryAddress,
+  normalizeDeliveryAddress, hasMultipleDeliveryAddresses,
 } from "./loja-delivery-ui.js";
 
 Deno.test("Entrega Feira On fica pública com flag ativa, mantém prévia admin desligada e respeita horário", () => {
@@ -71,10 +71,13 @@ Deno.test("pagamentos da entrega: Pix para todos e Pix de teste só para admin",
 
 Deno.test("endereço estruturado exige rua, número e bairro e limita campos", () => {
   assertEquals(normalizeDeliveryAddress({ street: " Rua A ", number: " 12 ", neighborhood: " Centro " }), {
-    street: "Rua A", number: "12", neighborhood: "Centro", complement: "", reference: "",
+    postal_code: "", street: "Rua A", number: "12", neighborhood: "Centro", complement: "", reference: "",
   });
   assertEquals(normalizeDeliveryAddress({ street: "Rua A", number: "", neighborhood: "Centro" }), null);
   assertEquals(normalizeDeliveryAddress({ street: "R".repeat(161), number: "1", neighborhood: "Centro" }), null);
+  assertEquals(hasMultipleDeliveryAddresses({ reference: "R. Belford Roxo, 203" }), true);
+  assertEquals(normalizeDeliveryAddress({ street: "Rua A", number: "12", neighborhood: "Centro", reference: "R. Belford Roxo, 203" }), null);
+  assertEquals(normalizeDeliveryAddress({ street: "Rua A", number: "12", neighborhood: "Centro", complement: "Apto 302" }).complement, "Apto 302");
 });
 
 Deno.test("itens do carrinho viram payload de cotação", () => {
@@ -112,8 +115,8 @@ Deno.test("loja.html conecta a opção, cotação, endereço salvo e acompanhame
   const deliveryUi = await Deno.readTextFile("loja-delivery-ui.js");
   for (const required of [
     'id="deliveryHomeOption"', 'aria-disabled="true"', 'disabled', 'Entrega Feira On', 'Receba em casa sem precisar solicitar uma corrida.', 'Em breve', 'Receber com motorista de aplicativo', 'id="deliveryAddressFields"',
-    'id="deliveryStreet"', 'id="deliveryNumber"', 'id="deliveryNeighborhood"', 'id="deliveryStreetSuggestions"', 'id="deliveryMapFullscreen"', 'id="deliveryMap"', 'id="deliveryMapConfirm"', 'id="deliveryMapGps"', 'id="deliveryMapPreview"', 'id="deliveryMapAdjust"', 'id="deliveryAddressSummary"', 'id="deliveryAddressEdit"', 'id="deliveryStartingPrice"', 'id="checkoutProductsTotal"', 'id="checkoutDeliveryTotal"', 'id="checkoutSummaryTotal"', 'id="checkoutDeliveryMeta"',
-    'id="deliveryComplement"', 'id="deliveryReference"',
+    'id="deliveryZip"', 'CEP (opcional)', 'Confira se o pino está na sua casa', 'id="deliveryStreet"', 'id="deliveryNumber"', 'id="deliveryNeighborhood"', 'id="deliveryStreetSuggestions"', 'id="deliveryMapFullscreen"', 'id="deliveryMap"', 'id="deliveryMapConfirm"', 'id="deliveryMapGps"', 'id="deliveryMapPreview"', 'id="deliveryMapAdjust"', 'id="deliveryAddressSummary"', 'id="deliveryAddressEdit"', 'id="deliveryStartingPrice"', 'id="checkoutProductsTotal"', 'id="checkoutDeliveryTotal"', 'id="checkoutSummaryTotal"', 'id="checkoutDeliveryMeta"',
+    'id="deliveryComplement"', 'id="deliveryReference"', 'Coloque só um endereço. Use o campo Referência para pontos próximos.',
     "loadDeliveryAccessState(user", "hasConfirmedDeliveryAdmin()", "functions.invoke('delivery-quote'",
     "address_street", "address_reference", "delivery_vehicle", "delivery_fee",
     "syncAdminTestPaymentOption", "checkoutScheduleMessage(new Date(),true)",
