@@ -48,7 +48,7 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
 
   const browser = await chromium.launch({ headless:true });
   try {
-    for (const width of [360, 412]) {
+    for (const width of [360, 412, 500]) {
       const page = await browser.newPage({ viewport:{width,height:1000}, deviceScaleFactor:1 });
       const errors = [];
       page.on('pageerror', e => errors.push('pageerror: '+e.message+' STACK '+e.stack));
