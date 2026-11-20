@@ -14,7 +14,7 @@ assert.match(migration,/service_get_product_resale_prices/);
 assert.match(migration,/GRANT EXECUTE ON FUNCTION public\.service_get_product_resale_prices\(text\[\]\) TO service_role/);
 assert.match(migration,/REVOKE ALL ON FUNCTION public\.service_get_product_resale_prices\(text\[\]\) FROM PUBLIC, anon, authenticated/);
 
-assert.match(loja,/Revenda a partir de 10/);
+assert.match(loja,/Revenda \\(10\\+/);
 assert.match(loja,/Revenda aplicada:/);
 assert.match(loja,/function effectiveUnitPriceCents\(p,q\)/);
 const effectiveSource=loja.match(/function effectiveUnitPriceCents\(p,q\)\{[^}]+\}/)?.[0];
