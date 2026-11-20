@@ -132,7 +132,7 @@ export function deliveryPaymentOptions(isAdmin) {
 }
 
 export function hasMultipleDeliveryAddresses(input) {
-  const pattern = /(?:\b(?:rua|avenida|travessa|alameda|rodovia|estrada)\b|\b(?:r|av|tv)\\.)[\s\S]{0,80}\b\\d{1,5}\b/i;
+  const pattern = /(?:\b(?:rua|avenida|travessa|alameda|rodovia|estrada)\b|\b(?:r|av|tv)\.)[\s\S]{0,80}\b\d{1,5}\b/i;
   return pattern.test(String(input?.complement || "")) || pattern.test(String(input?.reference || ""));
 }
 
