@@ -26,7 +26,7 @@ async function runCustomer(browser, width, height) {
       invalidateSize() {} remove() { this.removed = true; }
     }
     class MockMarker {
-      constructor(point) { this.point = point; this.element = document.createElement('span'); this.element.innerHTML = point.icon.options.html; this.latlng = point.point; }
+      constructor(point, options) { this.point = point; this.element = document.createElement('span'); this.element.innerHTML = options.icon.options.html; this.latlng = point; }
       addTo(map) { this.map = map; map.markers.push(this); map.el.append(this.element); return this; }
       setLatLng(point) { this.latlng = point; return this; }
     }
@@ -34,7 +34,7 @@ async function runCustomer(browser, width, height) {
       map: (el) => new MockMap(el),
       tileLayer: () => ({ addTo() {} }),
       divIcon: options => ({ options }),
-      marker: (point) => new MockMarker(point),
+      marker: (point, options) => new MockMarker(point, options),
     };
     delete window.IntersectionObserver;
   });
@@ -85,7 +85,7 @@ async function runAdmin(browser) {
   const page = await browser.newPage({viewport:{width:412,height:915}});
   await page.setContent('<main><div id="admin" data-order-id="TEST-ADMIN"></div></main>');
   await page.evaluate(() => {
-    window.L={map:el=>({el,markers:[],setView(){return this;},fitBounds(){},invalidateSize(){},remove(){}}),tileLayer:()=>({addTo(){}}),divIcon:options=>({options}),marker:p=>({element:Object.assign(document.createElement('span'),{innerHTML:p.icon.options.html}),addTo(map){map.el.append(this.element);return this;},setLatLng(){return this;}})};
+    window.L={map:el=>({el,markers:[],setView(){return this;},fitBounds(){},invalidateSize(){},remove(){}}),tileLayer:()=>({addTo(){}}),divIcon:options=>({options}),marker:(point,options)=>({element:Object.assign(document.createElement('span'),{innerHTML:options.icon.options.html}),addTo(map){map.el.append(this.element);return this;},setLatLng(){return this;}})};
     delete window.IntersectionObserver;
   });
   await page.addScriptTag({path:path.join(root,'lalamove-map.js')});
