@@ -315,7 +315,7 @@ BEGIN
       COALESCE(i.missing_cost_items,0)::integer missing_cost_items,
       COALESCE(i.known_revenue,0)::numeric known_revenue,
       COALESCE(i.item_profit,0)::numeric item_profit,
-      COALESCE(i.counter_profit,0)::numeric counter_profit,
+      i.counter_profit::numeric counter_profit,
       GREATEST(COALESCE(dc.actual_cost,0)-COALESCE(o.delivery_fee,0),0)::numeric delivery_covered,
       (COALESCE(i.item_profit,0)-GREATEST(COALESCE(dc.actual_cost,0)-COALESCE(o.delivery_fee,0),0))::numeric profit,
       (COALESCE(i.counter_profit,0)-GREATEST(COALESCE(dc.actual_cost,0)-COALESCE(o.delivery_fee,0),0))::numeric profit_on_counter
@@ -330,12 +330,12 @@ BEGIN
           'quantity',COALESCE(s.quantity,NULLIF(item.value->>'qty','')::numeric,NULLIF(item.value->>'quantity','')::numeric,1),
           'sale_unit_price',COALESCE(s.sale_unit_price,NULLIF(item.value->>'price','')::numeric),
           'unit_cost',COALESCE(s.preco_pago,s.preco_balcao,s.unit_cost),
-          'preco_balcao',COALESCE(s.preco_balcao,s.unit_cost),
+          'preco_balcao',CASE WHEN s.preco_balcao IS NOT NULL THEN s.preco_balcao WHEN s.preco_pago IS NULL THEN s.unit_cost ELSE NULL END,
           'preco_pago',s.preco_pago,
           'sale_total',COALESCE(s.sale_total,round(COALESCE(NULLIF(item.value->>'price','')::numeric,0)*COALESCE(NULLIF(item.value->>'qty','')::numeric,NULLIF(item.value->>'quantity','')::numeric,1),2)),
           'cost_total',CASE WHEN s.quantity IS NOT NULL AND COALESCE(s.preco_pago,s.preco_balcao,s.unit_cost) IS NOT NULL THEN round(s.quantity*COALESCE(s.preco_pago,s.preco_balcao,s.unit_cost),2) ELSE NULL END,
           'profit',CASE WHEN s.sale_total IS NOT NULL AND s.quantity IS NOT NULL AND COALESCE(s.preco_pago,s.preco_balcao,s.unit_cost) IS NOT NULL THEN round(s.sale_total-s.quantity*COALESCE(s.preco_pago,s.preco_balcao,s.unit_cost),2) ELSE NULL END,
-          'profit_on_counter',CASE WHEN s.sale_total IS NOT NULL AND s.quantity IS NOT NULL AND COALESCE(s.preco_balcao,s.unit_cost) IS NOT NULL THEN round(s.sale_total-s.quantity*COALESCE(s.preco_balcao,s.unit_cost),2) ELSE NULL END,
+          'profit_on_counter',CASE WHEN s.sale_total IS NOT NULL AND s.quantity IS NOT NULL AND COALESCE(s.preco_balcao,CASE WHEN s.preco_pago IS NULL THEN s.unit_cost END) IS NOT NULL THEN round(s.sale_total-s.quantity*COALESCE(s.preco_balcao,CASE WHEN s.preco_pago IS NULL THEN s.unit_cost END),2) ELSE NULL END,
           'cost_status',CASE WHEN COALESCE(s.preco_pago,s.preco_balcao,s.unit_cost) IS NOT NULL THEN 'ok' ELSE COALESCE(s.cost_status,'missing_cost') END
         ) ORDER BY item.ordinality) items,
         count(*) FILTER(WHERE COALESCE(s.preco_pago,s.preco_balcao,s.unit_cost) IS NOT NULL)::integer calculated_items,
@@ -343,7 +343,7 @@ BEGIN
         count(*) FILTER(WHERE COALESCE(s.preco_pago,s.preco_balcao,s.unit_cost) IS NULL)::integer missing_cost_items,
         COALESCE(sum(s.sale_total) FILTER(WHERE COALESCE(s.preco_pago,s.preco_balcao,s.unit_cost) IS NOT NULL),0)::numeric known_revenue,
         COALESCE(sum(s.sale_total-s.quantity*COALESCE(s.preco_pago,s.preco_balcao,s.unit_cost)) FILTER(WHERE s.sale_total IS NOT NULL AND s.quantity IS NOT NULL AND COALESCE(s.preco_pago,s.preco_balcao,s.unit_cost) IS NOT NULL),0)::numeric item_profit,
-        COALESCE(sum(s.sale_total-s.quantity*COALESCE(s.preco_balcao,s.unit_cost)) FILTER(WHERE s.sale_total IS NOT NULL AND s.quantity IS NOT NULL AND COALESCE(s.preco_balcao,s.unit_cost) IS NOT NULL),0)::numeric counter_profit
+        CASE WHEN count(*) FILTER(WHERE s.sale_total IS NOT NULL AND s.quantity IS NOT NULL AND COALESCE(s.preco_balcao,CASE WHEN s.preco_pago IS NULL THEN s.unit_cost END) IS NOT NULL)>0 THEN sum(s.sale_total-s.quantity*COALESCE(s.preco_balcao,CASE WHEN s.preco_pago IS NULL THEN s.unit_cost END)) FILTER(WHERE s.sale_total IS NOT NULL AND s.quantity IS NOT NULL AND COALESCE(s.preco_balcao,CASE WHEN s.preco_pago IS NULL THEN s.unit_cost END) IS NOT NULL) ELSE NULL END::numeric counter_profit
       FROM jsonb_array_elements(CASE WHEN jsonb_typeof(COALESCE(o.items,'[]'::jsonb))='array' THEN COALESCE(o.items,'[]'::jsonb) ELSE '[]'::jsonb END)
         WITH ORDINALITY item(value,ordinality)
       LEFT JOIN feira_cost_private.order_item_snapshots s ON s.order_id=o.id AND s.item_index=(item.ordinality-1)::integer
@@ -369,7 +369,7 @@ BEGIN
       'in_delivery',(SELECT count(*)::integer FROM day_orders WHERE lower(btrim(COALESCE(status,'')))='saiu para entrega'),
       'paid_sales',(SELECT COALESCE(sum(total),0)::numeric FROM paid_day_orders),
       'profit',(SELECT COALESCE(sum(profit),0)::numeric FROM paid_day_orders),
-      'profit_on_counter',(SELECT COALESCE(sum(profit_on_counter),0)::numeric FROM paid_day_orders),
+      'profit_on_counter',(SELECT sum(profit_on_counter)::numeric FROM paid_day_orders),
       'missing_cost_items',(SELECT COALESCE(sum(missing_cost_items),0)::integer FROM paid_day_orders),
       'calculated_items',(SELECT COALESCE(sum(calculated_items),0)::integer FROM paid_day_orders),
       'total_items',(SELECT COALESCE(sum(total_items),0)::integer FROM paid_day_orders)
@@ -401,7 +401,7 @@ WITH paid_orders AS MATERIALIZED (
     COALESCE(sum(sale_total) FILTER(WHERE COALESCE(preco_pago,preco_balcao,unit_cost) IS NOT NULL),0)::numeric known_revenue,
     COALESCE(sum(quantity*COALESCE(preco_pago,preco_balcao,unit_cost)) FILTER(WHERE quantity IS NOT NULL AND COALESCE(preco_pago,preco_balcao,unit_cost) IS NOT NULL),0)::numeric known_cost,
     COALESCE(sum(sale_total-quantity*COALESCE(preco_pago,preco_balcao,unit_cost)) FILTER(WHERE sale_total IS NOT NULL AND quantity IS NOT NULL AND COALESCE(preco_pago,preco_balcao,unit_cost) IS NOT NULL),0)::numeric profit,
-    COALESCE(sum(sale_total-quantity*COALESCE(preco_balcao,unit_cost)) FILTER(WHERE sale_total IS NOT NULL AND quantity IS NOT NULL AND COALESCE(preco_balcao,unit_cost) IS NOT NULL),0)::numeric profit_on_counter,
+    CASE WHEN count(*) FILTER(WHERE sale_total IS NOT NULL AND quantity IS NOT NULL AND COALESCE(preco_balcao,CASE WHEN preco_pago IS NULL THEN unit_cost END) IS NOT NULL)>0 THEN sum(sale_total-quantity*COALESCE(preco_balcao,CASE WHEN preco_pago IS NULL THEN unit_cost END)) FILTER(WHERE sale_total IS NOT NULL AND quantity IS NOT NULL AND COALESCE(preco_balcao,CASE WHEN preco_pago IS NULL THEN unit_cost END) IS NOT NULL) ELSE NULL END::numeric profit_on_counter,
     count(*) FILTER(WHERE COALESCE(preco_pago,preco_balcao,unit_cost) IS NULL)::integer missing_cost_items,
     count(*) FILTER(WHERE COALESCE(preco_pago,preco_balcao,unit_cost) IS NOT NULL)::integer calculated_items,
     count(*)::integer total_items,
