@@ -7,6 +7,8 @@ const root = path.resolve(__dirname, '..');
 const store = fs.readFileSync(path.join(root, 'loja.html'), 'utf8');
 const panel = fs.readFileSync(path.join(root, 'painel.html'), 'utf8');
 const consentScript = store.match(/<script id="cookieConsentAndClarity">([\s\S]*?)<\/script>/)?.[1];
+const consentStyles = store.match(/<style id="cookieConsentStyles">([\s\S]*?)<\/style>/)?.[1];
+assert.ok(consentStyles, 'estilos do consentimento não encontrados');
 assert.ok(consentScript, 'script de consentimento não encontrado');
 assert.ok(store.includes("increaseCart(b.dataset.cardChange)"), 'botão + do produto não rastreia AddToCart');
 assert.ok(store.includes("increaseCart(b.dataset.homeCardChange)"), 'botão + da vitrine não rastreia AddToCart');
@@ -30,6 +32,7 @@ const fixture = `<!doctype html><html><body>
 </body></html>`;
 
 (async () => {
+ fs.mkdirSync(path.join(root,'artifacts'),{recursive:true});
  const browser = await chromium.launch({headless:true});
  let checks=0;
  try {
