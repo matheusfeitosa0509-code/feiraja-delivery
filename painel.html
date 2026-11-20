@@ -1218,7 +1218,7 @@ function renderLalamoveDelivery(order,currentStatus){
  const complement=looksLikeAnotherAddress(address.complement)?'':String(address.complement||'').trim();
  const reference=looksLikeAnotherAddress(address.reference)?'':String(address.reference||'').trim();
  const streetLine=[address.street,address.number].filter(Boolean).join(', ')+(complement?' – '+complement:'');
- const addressLines=[streetLine,address.neighborhood?'Bairro: '+address.neighborhood:'',reference?'Referência: '+reference:''].filter(Boolean);
+ const addressLines=[streetLine,address.neighborhood?'Bairro: '+address.neighborhood:'',reference?'Referência: '+reference:''].filter(Boolean);if(!addressLines.length)addressLines.push(String(order.customer_address||'Endereço não informado'));
  const fullAddress=[address.street,address.number,complement,address.neighborhood,reference,'Manaus - AM, Brasil'].filter(Boolean).join(', ');
  const pin=order.delivery_coordinates&&typeof order.delivery_coordinates==='object'?order.delivery_coordinates:{};
  const pinLat=Number(pin.lat),pinLng=Number(pin.lng),hasPin=Number.isFinite(pinLat)&&Number.isFinite(pinLng)&&pinLat>=-90&&pinLat<=90&&pinLng>=-180&&pinLng<=180;
