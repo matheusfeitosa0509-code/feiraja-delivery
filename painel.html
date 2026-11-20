@@ -263,6 +263,16 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 .automatic-margin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.automatic-margin-toggle{display:flex;align-items:center;gap:10px;margin:16px 0}.automatic-margin-toggle input{width:22px;min-height:22px}.automatic-price-row{padding:12px;border:1px solid var(--line);border-radius:14px;background:#fbfdf9}.automatic-price-row .price-review-values{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0}.automatic-price-row small{display:block;color:var(--muted)}.automatic-price-row button{margin-top:8px;width:100%}@media(max-width:480px){.automatic-margin-grid{grid-template-columns:1fr}.automatic-price-row .price-review-values{grid-template-columns:1fr}}
 
 /* Organização do painel – camada exclusivamente visual e filtros de apresentação. */
+.order-summary-top{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:8px}
+.order-summary-top>div{grid-column:1;grid-row:1;min-width:0}
+.order-summary-top .pill{grid-column:2;grid-row:1}
+.order-summary-top .total{grid-column:3;grid-row:1}
+.order-summary-top .order-expand{grid-column:4;grid-row:1}
+.order-summary-top>span:not(.pill){grid-column:1/-1;grid-row:2}
+.order-contact{font-size:12px;white-space:normal;flex-wrap:wrap;line-height:1.4}
+.order-profit-summary{font-size:12px;margin-top:5px}
+@media(max-width:420px){.order-summary-top{grid-template-columns:minmax(0,1fr) auto auto}.order-summary-top .order-expand{grid-column:3;grid-row:1}.order-summary-top .total{grid-column:2;grid-row:1}.order-summary-top .pill{grid-column:1;grid-row:2;justify-self:start}.order-summary-top>span:not(.pill){grid-column:1/-1;grid-row:3}}
+
 .brand-header{min-height:68px;margin-bottom:12px;padding:14px 16px;border-radius:0 0 18px 18px;flex-wrap:nowrap}
 .brand-header h1{font-size:clamp(17px,4vw,22px);letter-spacing:-.35px}
 .panel-top-actions{display:flex;align-items:center;gap:10px;flex:none}
@@ -1376,7 +1386,7 @@ function orderGroupKey(order){
  const st=normalizeOrderStatus(order.status);
  if(['Cancelada','Pagamento cancelado','Pagamento recusado','Pagamento Expirado','Reembolsado','Contestado'].includes(st))return 'cancelled';
  if(st==='Entregue')return 'done';
- if(['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega'].includes(st))return 'progress';
+ if(['Preparando','Pronto para Retirada','Saiu para Entrega'].includes(st))return 'progress';
  return 'new';
 }
 function matchesSelectedOrderGroup(order,group){return order.is_test_order!==true&&orderGroupKey(order)===group;}
