@@ -2585,7 +2585,7 @@ if(root){
 </script>
 <script type="module">
 (() => {
-  const db=window.__feiraPanelDb;
+  const funnelDb=window.__feiraPanelDb;
   const $ = id => document.getElementById(id);
   const labels = [
     ['visit','Visitas'],['add_to_cart','Adicionou ao carrinho'],['checkout_open','Abriu checkout'],
@@ -2639,7 +2639,7 @@ if(root){
     button.disabled=true; $('funnelMessage').textContent='Carregando…';
     try {
       const range=periodRange(activePeriod);
-      const {data,error}=await db.rpc('admin_get_store_funnel',range);
+      const {data,error}=await funnelDb.rpc('admin_get_store_funnel',range);
       if(error) throw error;
       render(data);
     } catch(error) {
