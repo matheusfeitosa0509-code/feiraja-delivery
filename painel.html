@@ -319,6 +319,16 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 @media(max-width:380px){.brand-header{padding:12px}.brand-header h1{font-size:16px}.period-chips{gap:5px}.period-chips button{font-size:12px}.order-subtabs button{font-size:10px}}
 
 </style>
+<style id="storeFunnelStyles">
+.main-tabs{grid-template-columns:repeat(4,minmax(0,1fr))}
+.funnel-stages{display:grid;gap:13px;margin:16px 0}
+.funnel-stage{display:grid;gap:6px}
+.funnel-stage-head{display:flex;justify-content:space-between;gap:10px;font-size:13px}
+.funnel-stage-head span{font-weight:800;white-space:nowrap}
+.funnel-track{height:12px;overflow:hidden;border-radius:999px;background:#e8f1e6}
+.funnel-track span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#176b3a,#58a66b)}
+@media(max-width:380px){.main-tabs{gap:4px}.main-tabs button{font-size:10px;padding:8px 2px}}
+</style>
 </head>
 <body><main class="wrap">
 <header class="brand-header"><h1>Feira On Delivery · Painel</h1><div class="panel-top-actions"><button id="adminAlertsToggle" class="admin-alerts-trigger hidden" type="button" aria-expanded="false" aria-controls="adminAlertsPanel" aria-label="Alertas administrativos">🔔 <span id="adminAlertsCount" class="admin-alerts-count">0</span></button><details class="panel-menu"><summary aria-label="Menu">☰</summary><nav class="panel-menu-items"><a href="https://www.feiraondelivery.com.br/clientes-vendas.html">Clientes e vendas</a><button id="pushToggle" class="secondary hidden" type="button">Ativar avisos</button><span id="pushHint" class="menu-push-state muted" role="status">Avisos neste aparelho: —</span><button id="refresh" class="secondary hidden" type="button">Atualizar</button><button id="logout" class="secondary hidden" type="button">Sair</button></nav></details></div></header><section id="adminAlertsBanner" class="admin-alerts-banner" hidden><p>Ativar alertas no celular</p><button id="adminAlertsEnablePush" type="button">Ativar alertas</button></section><section id="adminAlertsPanel" class="card admin-alerts-panel hidden" aria-label="Alertas administrativos"><div class="admin-alerts-head"><h2>Alertas</h2><button id="adminAlertsMarkAll" class="secondary" type="button">Marcar tudo como lido</button></div><div id="adminAlertsList" class="admin-alerts-list"><p class="muted">Carregando alertas…</p></div></section>
@@ -328,7 +338,26 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <button type="button" id="tabOrders" role="tab" aria-selected="true">Pedidos</button>
 <button type="button" id="tabProducts" role="tab" aria-selected="false">Produtos</button>
 <button type="button" id="tabSettings" role="tab" aria-selected="false">Configurações</button>
+<button type="button" id="tabFunnel" role="tab" aria-selected="false">Funil</button>
 </div>
+<section id="funnelTab" class="hidden" role="tabpanel" aria-label="Funil de vendas">
+ <section class="card">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2>Funil da loja</h2><button type="button" id="funnelRefresh" class="secondary">Atualizar</button></div>
+  <p class="muted">Contagens anônimas, sem cookies ou identificadores de visitantes.</p>
+  <div class="period-chips" role="group" aria-label="Período do funil">
+   <button type="button" data-funnel-period="today" aria-pressed="true">Hoje</button>
+   <button type="button" data-funnel-period="yesterday" aria-pressed="false">Ontem</button>
+   <button type="button" data-funnel-period="week" aria-pressed="false">Semana</button>
+   <button type="button" data-funnel-period="month" aria-pressed="false">Mês</button>
+  </div>
+  <div id="funnelStages" class="funnel-stages"><p class="muted">Selecione um período para carregar.</p></div>
+  <p id="funnelMessage" class="muted" role="status" aria-live="polite"></p>
+ </section>
+ <section class="card">
+  <h2>Origem do tráfego</h2>
+  <div class="simulation-wrap"><table class="simulation-table"><thead><tr><th>Origem</th><th>Visitas</th><th>Carrinho</th><th>Pedidos</th><th>Pagos</th></tr></thead><tbody id="funnelOrigins"><tr><td colspan="5">Sem dados.</td></tr></tbody></table></div>
+ </section>
+</section>
 <section id="ordersTab" role="tabpanel">
 <div class="period-chips" role="group" aria-label="Período"><button type="button" data-period="today" aria-pressed="true">Hoje</button><button type="button" data-period="yesterday" aria-pressed="false">Ontem</button><button type="button" data-period="week" aria-pressed="false">Semana</button><button type="button" data-period="month" aria-pressed="false">Mês</button></div><section class="daily-stats" aria-label="Resumo do período"><div class="stat"><small>Pedidos</small><strong id="dayOrdersCount">0</strong></div><div class="stat"><small>Vendas pagas</small><strong id="dayPaidSales">R$ 0,00</strong></div><div class="stat profit-day-stat"><small>Lucro real</small><strong id="dayProfit">R$ 0,00</strong><small id="dayProfitNote" class="muted"></small></div><div class="stat"><small>Ticket médio</small><strong id="averageTicket">R$ 0,00</strong></div><div class="stat" hidden aria-hidden="true"><small>Compatibilidade</small><strong>—</strong></div></section><div class="hidden" aria-hidden="true"><span id="dayToSeparate">0</span><span id="dayInDelivery">0</span></div>
 <div class="hidden" aria-hidden="true"><span id="count">0</span><span id="pending">0</span><span id="active">0</span><span id="sum">R$ 0,00</span></div>
@@ -560,6 +589,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <script type="module">
 import{createClient}from'https://esm.sh/@supabase/supabase-js@2.117.1';
 const db=createClient('https://juhwdevvwstmyxyyagzh.supabase.co','sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW',{auth:{persistSession:true,autoRefreshToken:true}});
+window.__feiraPanelDb=db;
 function formatStoreScheduleLabel(value){return new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',weekday:'long',day:'2-digit',month:'2-digit'}).format(new Date(value)).replace('-feira','');}
 const VAPID_PUBLIC_KEY='BJ9dTvmRGcTHYQSOOLj61AG2kC2YEMuhWMM2J6GdDdTuofeBkYJsyF5uNIhCfnV03jZBn2fFP1ZUqty0QZ_uuog'; // VAPID pública
 const PANEL_PUSH_PENDING_KEY='feira_push_pending_release_v1';let panelPushUserSynced='',panelCurrentUser=null;
@@ -2483,16 +2513,18 @@ db.auth.onAuthStateChange((event,session)=>{
 
 }
 const params=new URLSearchParams(location.search);
-const requestedTab=params.get('aba')==='produtos'?'products':params.get('aba')==='configuracoes'?'settings':'orders';
+const requestedTab=params.get('aba')==='produtos'?'products':params.get('aba')==='configuracoes'?'settings':params.get('aba')==='funil'?'funnel':'orders';
 const requestedSection=params.get('secao')||'cadastrar';
 function selectMainTab(tab){
- const products=tab==='products',settings=tab==='settings';
- document.getElementById('ordersTab').classList.toggle('hidden',products||settings);
+ const products=tab==='products',settings=tab==='settings',funnel=tab==='funnel';
+ document.getElementById('ordersTab').classList.toggle('hidden',products||settings||funnel);
  document.getElementById('productTools').classList.toggle('hidden',!products);
  document.getElementById('settingsTab').classList.toggle('hidden',!settings);
- document.getElementById('tabOrders').setAttribute('aria-selected',String(!products&&!settings));
+ document.getElementById('funnelTab')?.classList.toggle('hidden',!funnel);
+ document.getElementById('tabOrders').setAttribute('aria-selected',String(!products&&!settings&&!funnel));
  document.getElementById('tabProducts').setAttribute('aria-selected',String(products));
  document.getElementById('tabSettings').setAttribute('aria-selected',String(settings));
+ document.getElementById('tabFunnel')?.setAttribute('aria-selected',String(funnel));
 }
 function selectProductSection(id){
  document.getElementById('productRequests').classList.add('active');
@@ -2550,5 +2582,78 @@ if(root){
   row.append(name,meta);root.append(row);
  }
 }
+</script>
+<script type="module">
+(() => {
+  const funnelDb=window.__feiraPanelDb;
+  const $ = id => document.getElementById(id);
+  const labels = [
+    ['visit','Visitas'],['add_to_cart','Adicionou ao carrinho'],['checkout_open','Abriu checkout'],
+    ['login_screen','Tela de login'],['order_created','Pedido criado'],['order_paid','Pedido pago']
+  ];
+  const moneyless = value => Number(value || 0).toLocaleString('pt-BR');
+  const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let activePeriod = 'today';
+
+  function periodRange(period) {
+    const end = new Date(), start = new Date(end);
+    start.setHours(0,0,0,0);
+    if (period === 'yesterday') { start.setDate(start.getDate()-1); end.setTime(start.getTime()+86400000); }
+    else if (period === 'week') { const day=(start.getDay()+6)%7; start.setDate(start.getDate()-day); }
+    else if (period === 'month') start.setDate(1);
+    else end.setTime(start.getTime()+86400000);
+    return { p_start:start.toISOString(), p_end:end.toISOString() };
+  }
+  function originLabel(row) {
+    const all=[row.utm_source,row.utm_medium,row.utm_campaign].filter(Boolean).join(' ').toLowerCase();
+    if (all.includes('whatsapp') || all.includes('wa.me')) return 'WhatsApp';
+    if (all.includes('bio') || all.includes('linktree')) return 'Bio';
+    if (/(cpc|paid|ads|anuncio|anúncio|facebook|instagram_ads)/i.test(all)) return 'Anúncio';
+    if (row.utm_source === 'direto') return 'Direto';
+    return row.utm_source || 'Outros';
+  }
+  function render(data) {
+    const counts=data?.counts||{};
+    const max=Math.max(1,Number(counts.visit)||0);
+    const funnel=$('funnelStages');
+    funnel.innerHTML=labels.map(([key,label],index)=>{
+      const value=Number(counts[key]||0);
+      const previous=index?Number(counts[labels[index-1][0]]||0):null;
+      const conversion=index? (previous>0?((value/previous)*100).toFixed(1).replace('.',',')+'%':'—') : 'Base';
+      const width=Math.max(0,Math.min(100,(value/max)*100));
+      return '<div class="funnel-stage"><div class="funnel-stage-head"><strong>'+label+'</strong><span>'+moneyless(value)+' · '+conversion+'</span></div><div class="funnel-track"><span style="width:'+width+'%"></span></div></div>';
+    }).join('');
+    const grouped=new Map();
+    for(const row of (data?.origins||[])) {
+      const label=originLabel(row), current=grouped.get(label)||{visits:0,cart:0,orders:0,paid:0};
+      current.visits+=Number(row.visits||0); current.cart+=Number(row.add_to_cart||0);
+      current.orders+=Number(row.order_created||0); current.paid+=Number(row.order_paid||0);
+      grouped.set(label,current);
+    }
+    const rows=[...grouped.entries()].sort((a,b)=>b[1].visits-a[1].visits);
+    $('funnelOrigins').innerHTML=rows.length?rows.map(([label,row])=>'<tr><td>'+escapeHtml(label)+'</td><td>'+moneyless(row.visits)+'</td><td>'+moneyless(row.cart)+'</td><td>'+moneyless(row.orders)+'</td><td>'+moneyless(row.paid)+'</td></tr>').join(''):'<tr><td colspan="5">Sem dados neste período.</td></tr>';
+    $('funnelMessage').textContent='Dados anônimos · '+rows.length+' origem(ns).';
+  }
+  async function load() {
+    const button=$('funnelRefresh');
+    button.disabled=true; $('funnelMessage').textContent='Carregando…';
+    try {
+      const range=periodRange(activePeriod);
+      const {data,error}=await funnelDb.rpc('admin_get_store_funnel',range);
+      if(error) throw error;
+      render(data);
+    } catch(error) {
+      $('funnelMessage').textContent=error?.message||'Não foi possível carregar o funil.';
+      $('funnelStages').replaceChildren(); $('funnelOrigins').innerHTML='<tr><td colspan="5">Sem dados disponíveis.</td></tr>';
+    } finally { button.disabled=false; }
+  }
+  document.querySelectorAll('[data-funnel-period]').forEach(button=>button.addEventListener('click',()=>{
+    activePeriod=button.dataset.funnelPeriod;
+    document.querySelectorAll('[data-funnel-period]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
+    void load();
+  }));
+  $('funnelRefresh')?.addEventListener('click',load);
+  $('tabFunnel')?.addEventListener('click',load);
+})();
 </script>
 </body></html>
