@@ -14,7 +14,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.1';
     p_utm_campaign: params.get('utm_campaign') || null,
     p_device: (window.matchMedia && window.matchMedia('(max-width: 767px)').matches) || window.innerWidth < 768 ? 'celular' : 'computador'
   };
-  const seen = { checkout:false, login:false, created:false, paid:false };
+  const seen = { added:false, checkout:false, login:false, created:false, paid:false };
   let queue = Promise.resolve();
   const record = event => {
     queue = queue.then(() => db.rpc('record_store_funnel_event', {
@@ -27,7 +27,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.1';
     const button = event.target && event.target.closest
       ? event.target.closest('[data-add],[data-home-add],[data-card-change],[data-home-card-change],[data-value-add]')
       : null;
-    if (button) record('add_to_cart');
+    if (button && !seen.added) { seen.added = true; record('add_to_cart'); }
   }, true);
 
   const inspect = () => {
@@ -35,13 +35,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.1';
     const checkoutForm = document.getElementById('checkoutForm');
     const checkoutOpen = !!(checkout && checkout.classList.contains('open') && checkoutForm && !checkoutForm.classList.contains('hidden'));
     if (checkoutOpen && !seen.checkout) { seen.checkout = true; record('checkout_open'); }
-    if (!checkoutOpen) seen.checkout = false;
 
     const account = document.getElementById('accountModal');
     const authForm = document.getElementById('authForm');
     const loginOpen = !!(account && account.classList.contains('open') && authForm && !authForm.classList.contains('hidden'));
     if (loginOpen && !seen.login) { seen.login = true; record('login_screen'); }
-    if (!loginOpen) seen.login = false;
 
     const result = (document.getElementById('result')?.textContent || '').toLocaleLowerCase('pt-BR');
     if (!seen.created && (result.includes('pedido registrado') || result.includes('pix gerado'))) {
