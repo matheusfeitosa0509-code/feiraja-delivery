@@ -322,7 +322,18 @@ Deno.serve(async (req: Request) => {
     });
     if (resaleBalconyError) {
       console.error("super-worker", { code: "RESALE_BALCONY_LOOKUP_FAILED", stage: "validate_resale_price" });
-      return json({ error: "Não foi possível confirmar os preços de revenda agora. Tente novamente." }, 503);
+      // Safety fallback: never block checkout because the private resale lookup is unavailable.
+      // Affected items retain their normal retail price because no verified balcony price exists.
+      try {
+        const { error: alertError } = await db.from("admin_alerts").insert({
+          tipo: "Falha na consulta de preço de revenda",
+          mensagem: "A consulta de preços de balcão falhou no checkout. O pedido seguirá com preço normal de varejo. Produtos: " + ids.slice(0, 30).join(", "),
+          lido: false,
+        });
+        if (alertError) console.error("super-worker", { code: "RESALE_ALERT_INSERT_FAILED", stage: "validate_resale_price" });
+      } catch {
+        console.error("super-worker", { code: "RESALE_ALERT_INSERT_FAILED", stage: "validate_resale_price" });
+      }
     }
     const resaleBalconyById = new Map((resaleBalconyPrices || []).map((row: any) => [
       String(row.product_id),
