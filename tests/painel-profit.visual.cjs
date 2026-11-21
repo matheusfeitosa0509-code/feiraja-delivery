@@ -99,7 +99,7 @@ const { chromium } = require("playwright");
       const errors = [];
       page.on("pageerror",error=>errors.push(error.message));
       page.on("console",message=>{if(message.type()==="error")errors.push(message.text());});
-      await page.setContent('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+style[1]+'</style></head><body><main class="wrap">'+markup+'</main></body></html>');
+      await page.setContent('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+style[1]+'</style><style>'+(funnelStyle?.[1]||'')+'</style></head><body><main class="wrap">'+markup+'</main></body></html>');
       await page.evaluate(tabSource=>{
         const selectMainTab = new Function("document",tabSource+"\nreturn selectMainTab;")(document);
         document.getElementById("tabOrders").addEventListener("click",()=>selectMainTab("orders"));
