@@ -5,6 +5,29 @@ const { chromium } = require('playwright');
   const base = process.env.PAGES_BASE_URL || 'https://www.feiraondelivery.com.br';
   const failures = [];
   try {
+    // Links curtos precisam existir no site publicado e preservar os UTMs.
+    const shortLinks = [
+      ['/ig/', 'instagram', 'bio'],
+      ['/stories/', 'instagram', 'stories'],
+      ['/zap/', 'whatsapp', 'zap']
+    ];
+    for (const [path, source, medium] of shortLinks) {
+      const shortPage = await browser.newPage();
+      try {
+        await shortPage.goto(base + path, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await shortPage.waitForURL(url => url.pathname === '/loja.html', { timeout: 30000 });
+        const finalUrl = new URL(shortPage.url());
+        if (finalUrl.pathname !== '/loja.html') failures.push(path + ': destino final inesperado ' + finalUrl.pathname);
+        if (finalUrl.searchParams.get('utm_source') !== source) failures.push(path + ': utm_source incorreto (' + finalUrl.searchParams.get('utm_source') + ')');
+        if (finalUrl.searchParams.get('utm_medium') !== medium) failures.push(path + ': utm_medium incorreto (' + finalUrl.searchParams.get('utm_medium') + ')');
+        if (finalUrl.searchParams.get('utm_source') === 'chatgpt.com') failures.push(path + ': UTM de teste indevido');
+      } catch (error) {
+        failures.push(path + ': link ausente/404 ou redirecionamento inválido (' + error.message + ')');
+      } finally {
+        await shortPage.close();
+      }
+    }
+
     for (const path of ['/loja.html', '/painel.html']) {
       const page = await browser.newPage({ viewport: { width: 412, height: 915 } });
       const errors = [];
