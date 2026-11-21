@@ -6,7 +6,7 @@ psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261121140000_first_delivery_pro
 psql -v ON_ERROR_STOP=1 -f supabase/tests/first_delivery_promo_cases.sql
 
 # Concurrent reservation: both sessions race for the same user/phone/address.
-psql -v ON_ERROR_STOP=1 -c "TRUNCATE public.orders, public.promo_redemptions; UPDATE private.promo_settings SET enabled=true,min_subtotal=50,ends_at=now()+interval '1 day',discount_cap=NULL WHERE singleton=true;"
+psql -v ON_ERROR_STOP=1 -c "TRUNCATE public.orders, public.promo_redemptions; UPDATE promo_private.promo_settings SET enabled=true,min_subtotal=50,ends_at=now()+interval '1 day',discount_cap=NULL WHERE singleton=true;"
 psql -v ON_ERROR_STOP=1 -c "BEGIN; INSERT INTO public.orders(id,user_id,customer_phone,delivery_type,delivery_address,subtotal,delivery_fee,total,status) VALUES ('race-a','00000000-0000-4000-8000-000000000020','92944440020','delivery','{\"postal_code\":\"69000-020\",\"number\":\"20\"}',60,12,72,'Pagamento Pendente'); SELECT pg_sleep(2); COMMIT;" &
 pid_a=$!
 sleep 0.2
