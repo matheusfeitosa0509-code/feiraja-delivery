@@ -6,6 +6,28 @@
 <meta property="og:description" content="Peça frutas, verduras e produtos de feira pelo celular, com retirada na loja ou Entrega Feira On.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://www.feiraondelivery.com.br/loja.html"><link rel="preconnect" href="https://juhwdevvwstmyxyyagzh.supabase.co" crossorigin><link rel="preconnect" href="https://www.feiraondelivery.com.br" crossorigin><meta name="supabase-url" content="https://juhwdevvwstmyxyyagzh.supabase.co"><meta name="supabase-publishable-key" content="sb_publishable_Hkv-6zE28sUHkhutD3TmGg_JIgOXCAW">
+<script id="storefrontEarlyVisit">
+(()=>{try{
+ const params=new URLSearchParams(location.search);
+ const hasUtm=['utm_source','utm_medium','utm_campaign'].some(key=>params.has(key));
+ const attribution={
+  p_utm_source:hasUtm?(params.get('utm_source')||'não informado'):'direto',
+  p_utm_medium:params.get('utm_medium')||null,
+  p_utm_campaign:params.get('utm_campaign')||null,
+  p_device:(window.matchMedia&&window.matchMedia('(max-width: 767px)').matches)||window.innerWidth<768?'celular':'computador'
+ };
+ const url=document.querySelector('meta[name="supabase-url"]').content;
+ const key=document.querySelector('meta[name="supabase-publishable-key"]').content;
+ window.__feiraFunnelVisitStarted=true;
+ fetch(url+'/rest/v1/rpc/record_store_funnel_event',{
+  method:'POST',
+  headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},
+  body:JSON.stringify({p_event:'visit',...attribution}),
+  keepalive:true,
+  cache:'no-store'
+ }).catch(()=>null);
+}catch(_){}})();
+</script>
 <script id="storefrontProductsPrefetch">
 (()=>{try{
  const url=document.querySelector('meta[name="supabase-url"]').content;
@@ -2721,7 +2743,6 @@ try{setupAppTabs();}catch(error){console.error('Falha isolada na navegação da 
       p_event:event, ...attribution
     })).catch(() => null);
   };
-  record('visit');
 
   document.addEventListener('click', event => {
     const button = event.target && event.target.closest
