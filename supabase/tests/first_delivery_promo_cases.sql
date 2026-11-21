@@ -4,7 +4,10 @@ DECLARE
   v_count integer;
   v_row public.orders%ROWTYPE;
 BEGIN
-  UPDATE private.promo_settings
+  IF (SELECT enabled FROM promo_private.promo_settings WHERE singleton=true) IS DISTINCT FROM false THEN
+    RAISE EXCEPTION 'FAIL default promotion must be disabled';
+  END IF;
+  UPDATE promo_private.promo_settings
   SET enabled = true, min_subtotal = 50, ends_at = pg_catalog.now() + interval '1 day', discount_cap = NULL
   WHERE singleton = true;
 
@@ -31,20 +34,20 @@ BEGIN
   IF (SELECT delivery_discount FROM public.orders WHERE id='promo-pickup') <> 0 THEN RAISE EXCEPTION 'FAIL pickup'; END IF;
 
   -- Promoção desligada.
-  UPDATE private.promo_settings SET enabled=false WHERE singleton=true;
+  UPDATE promo_private.promo_settings SET enabled=false WHERE singleton=true;
   INSERT INTO public.orders(id,user_id,customer_phone,delivery_type,delivery_address,subtotal,delivery_fee,total,status)
   VALUES ('promo-disabled','00000000-0000-4000-8000-000000000004','92999990004','delivery',
     '{"postal_code":"69000-004","number":"14"}',60,12,72,'Pagamento Pendente');
   IF (SELECT delivery_discount FROM public.orders WHERE id='promo-disabled') <> 0 THEN RAISE EXCEPTION 'FAIL disabled'; END IF;
 
   -- Fora da data.
-  UPDATE private.promo_settings SET enabled=true, ends_at=pg_catalog.now()-interval '1 second' WHERE singleton=true;
+  UPDATE promo_private.promo_settings SET enabled=true, ends_at=pg_catalog.now()-interval '1 second' WHERE singleton=true;
   INSERT INTO public.orders(id,user_id,customer_phone,delivery_type,delivery_address,subtotal,delivery_fee,total,status)
   VALUES ('promo-expired-window','00000000-0000-4000-8000-000000000005','92999990005','delivery',
     '{"postal_code":"69000-005","number":"15"}',60,12,72,'Pagamento Pendente');
   IF (SELECT delivery_discount FROM public.orders WHERE id='promo-expired-window') <> 0 THEN RAISE EXCEPTION 'FAIL outside date'; END IF;
 
-  UPDATE private.promo_settings SET ends_at=pg_catalog.now()+interval '1 day' WHERE singleton=true;
+  UPDATE promo_private.promo_settings SET ends_at=pg_catalog.now()+interval '1 day' WHERE singleton=true;
 
   -- Mesmo usuário em outra tentativa: só a primeira reserva recebe desconto.
   INSERT INTO public.orders(id,user_id,customer_phone,delivery_type,delivery_address,subtotal,delivery_fee,total,status)
@@ -86,13 +89,27 @@ BEGIN
   IF (SELECT status FROM public.promo_redemptions WHERE order_id='promo-eligible') <> 'used' THEN RAISE EXCEPTION 'FAIL used status'; END IF;
 
   -- Teto limita o desconto sem alterar a taxa de entrega original.
-  UPDATE private.promo_settings SET discount_cap=5 WHERE singleton=true;
+  UPDATE promo_private.promo_settings SET discount_cap=5 WHERE singleton=true;
   INSERT INTO public.orders(id,user_id,customer_phone,delivery_type,delivery_address,subtotal,delivery_fee,total,status)
   VALUES ('promo-cap','00000000-0000-4000-8000-000000000012','92955550012','delivery',
     '{"postal_code":"69000-012","number":"22"}',60,12,72,'Pagamento Pendente');
   SELECT * INTO v_row FROM public.orders WHERE id='promo-cap';
   IF v_row.delivery_fee_original <> 12 OR v_row.delivery_discount <> 5 OR v_row.total <> 67 THEN
     RAISE EXCEPTION 'FAIL cap: %, %, %',v_row.delivery_fee_original,v_row.delivery_discount,v_row.total;
+  END IF;
+
+
+  -- Histórico de pedido pago anterior (sem resgate legado) bloqueia a nova tentativa.
+  UPDATE promo_private.promo_settings SET enabled=false WHERE singleton=true;
+  INSERT INTO public.orders(id,user_id,customer_phone,delivery_type,delivery_address,subtotal,delivery_fee,total,status)
+  VALUES ('promo-paid-history','00000000-0000-4000-8000-000000000013','92933330013','delivery',
+    '{"postal_code":"69000-013","number":"23"}',60,12,72,'Pagamento Confirmado');
+  UPDATE promo_private.promo_settings SET enabled=true WHERE singleton=true;
+  INSERT INTO public.orders(id,user_id,customer_phone,delivery_type,delivery_address,subtotal,delivery_fee,total,status)
+  VALUES ('promo-paid-history-retry','00000000-0000-4000-8000-000000000013','92933330014','delivery',
+    '{"postal_code":"69000-014","number":"24"}',60,12,72,'Pagamento Pendente');
+  IF (SELECT delivery_discount FROM public.orders WHERE id='promo-paid-history-retry') <> 0 THEN
+    RAISE EXCEPTION 'FAIL previous paid account must be ineligible';
   END IF;
 
   -- RLS e grants: nenhum acesso de anon/authenticated à tabela de resgates.
