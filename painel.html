@@ -319,6 +319,16 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 @media(max-width:380px){.brand-header{padding:12px}.brand-header h1{font-size:16px}.period-chips{gap:5px}.period-chips button{font-size:12px}.order-subtabs button{font-size:10px}}
 
 </style>
+<style id="storeFunnelStyles">
+.main-tabs{grid-template-columns:repeat(4,minmax(0,1fr))}
+.funnel-stages{display:grid;gap:13px;margin:16px 0}
+.funnel-stage{display:grid;gap:6px}
+.funnel-stage-head{display:flex;justify-content:space-between;gap:10px;font-size:13px}
+.funnel-stage-head span{font-weight:800;white-space:nowrap}
+.funnel-track{height:12px;overflow:hidden;border-radius:999px;background:#e8f1e6}
+.funnel-track span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#176b3a,#58a66b)}
+@media(max-width:380px){.main-tabs{gap:4px}.main-tabs button{font-size:10px;padding:8px 2px}}
+</style>
 </head>
 <body><main class="wrap">
 <header class="brand-header"><h1>Feira On Delivery · Painel</h1><div class="panel-top-actions"><button id="adminAlertsToggle" class="admin-alerts-trigger hidden" type="button" aria-expanded="false" aria-controls="adminAlertsPanel" aria-label="Alertas administrativos">🔔 <span id="adminAlertsCount" class="admin-alerts-count">0</span></button><details class="panel-menu"><summary aria-label="Menu">☰</summary><nav class="panel-menu-items"><a href="https://www.feiraondelivery.com.br/clientes-vendas.html">Clientes e vendas</a><button id="pushToggle" class="secondary hidden" type="button">Ativar avisos</button><span id="pushHint" class="menu-push-state muted" role="status">Avisos neste aparelho: —</span><button id="refresh" class="secondary hidden" type="button">Atualizar</button><button id="logout" class="secondary hidden" type="button">Sair</button></nav></details></div></header><section id="adminAlertsBanner" class="admin-alerts-banner" hidden><p>Ativar alertas no celular</p><button id="adminAlertsEnablePush" type="button">Ativar alertas</button></section><section id="adminAlertsPanel" class="card admin-alerts-panel hidden" aria-label="Alertas administrativos"><div class="admin-alerts-head"><h2>Alertas</h2><button id="adminAlertsMarkAll" class="secondary" type="button">Marcar tudo como lido</button></div><div id="adminAlertsList" class="admin-alerts-list"><p class="muted">Carregando alertas…</p></div></section>
@@ -328,7 +338,26 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 <button type="button" id="tabOrders" role="tab" aria-selected="true">Pedidos</button>
 <button type="button" id="tabProducts" role="tab" aria-selected="false">Produtos</button>
 <button type="button" id="tabSettings" role="tab" aria-selected="false">Configurações</button>
+<button type="button" id="tabFunnel" role="tab" aria-selected="false">Funil</button>
 </div>
+<section id="funnelTab" class="hidden" role="tabpanel" aria-label="Funil de vendas">
+ <section class="card">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2>Funil da loja</h2><button type="button" id="funnelRefresh" class="secondary">Atualizar</button></div>
+  <p class="muted">Contagens anônimas, sem cookies ou identificadores de visitantes.</p>
+  <div class="period-chips" role="group" aria-label="Período do funil">
+   <button type="button" data-funnel-period="today" aria-pressed="true">Hoje</button>
+   <button type="button" data-funnel-period="yesterday" aria-pressed="false">Ontem</button>
+   <button type="button" data-funnel-period="week" aria-pressed="false">Semana</button>
+   <button type="button" data-funnel-period="month" aria-pressed="false">Mês</button>
+  </div>
+  <div id="funnelStages" class="funnel-stages"><p class="muted">Selecione um período para carregar.</p></div>
+  <p id="funnelMessage" class="muted" role="status" aria-live="polite"></p>
+ </section>
+ <section class="card">
+  <h2>Origem do tráfego</h2>
+  <div class="simulation-wrap"><table class="simulation-table"><thead><tr><th>Origem</th><th>Visitas</th><th>Carrinho</th><th>Pedidos</th><th>Pagos</th></tr></thead><tbody id="funnelOrigins"><tr><td colspan="5">Sem dados.</td></tr></tbody></table></div>
+ </section>
+</section>
 <section id="ordersTab" role="tabpanel">
 <div class="period-chips" role="group" aria-label="Período"><button type="button" data-period="today" aria-pressed="true">Hoje</button><button type="button" data-period="yesterday" aria-pressed="false">Ontem</button><button type="button" data-period="week" aria-pressed="false">Semana</button><button type="button" data-period="month" aria-pressed="false">Mês</button></div><section class="daily-stats" aria-label="Resumo do período"><div class="stat"><small>Pedidos</small><strong id="dayOrdersCount">0</strong></div><div class="stat"><small>Vendas pagas</small><strong id="dayPaidSales">R$ 0,00</strong></div><div class="stat profit-day-stat"><small>Lucro real</small><strong id="dayProfit">R$ 0,00</strong><small id="dayProfitNote" class="muted"></small></div><div class="stat"><small>Ticket médio</small><strong id="averageTicket">R$ 0,00</strong></div><div class="stat" hidden aria-hidden="true"><small>Compatibilidade</small><strong>—</strong></div></section><div class="hidden" aria-hidden="true"><span id="dayToSeparate">0</span><span id="dayInDelivery">0</span></div>
 <div class="hidden" aria-hidden="true"><span id="count">0</span><span id="pending">0</span><span id="active">0</span><span id="sum">R$ 0,00</span></div>
@@ -2483,16 +2512,18 @@ db.auth.onAuthStateChange((event,session)=>{
 
 }
 const params=new URLSearchParams(location.search);
-const requestedTab=params.get('aba')==='produtos'?'products':params.get('aba')==='configuracoes'?'settings':'orders';
+const requestedTab=params.get('aba')==='produtos'?'products':params.get('aba')==='configuracoes'?'settings':params.get('aba')==='funil'?'funnel':'orders';
 const requestedSection=params.get('secao')||'cadastrar';
 function selectMainTab(tab){
- const products=tab==='products',settings=tab==='settings';
- document.getElementById('ordersTab').classList.toggle('hidden',products||settings);
+ const products=tab==='products',settings=tab==='settings',funnel=tab==='funnel';
+ document.getElementById('ordersTab').classList.toggle('hidden',products||settings||funnel);
  document.getElementById('productTools').classList.toggle('hidden',!products);
  document.getElementById('settingsTab').classList.toggle('hidden',!settings);
- document.getElementById('tabOrders').setAttribute('aria-selected',String(!products&&!settings));
+ document.getElementById('funnelTab').classList.toggle('hidden',!funnel);
+ document.getElementById('tabOrders').setAttribute('aria-selected',String(!products&&!settings&&!funnel));
  document.getElementById('tabProducts').setAttribute('aria-selected',String(products));
  document.getElementById('tabSettings').setAttribute('aria-selected',String(settings));
+ document.getElementById('tabFunnel').setAttribute('aria-selected',String(funnel));
 }
 function selectProductSection(id){
  document.getElementById('productRequests').classList.add('active');
@@ -2551,4 +2582,5 @@ if(root){
  }
 }
 </script>
+<script type="module" src="./funil-panel.js"></script>
 </body></html>
