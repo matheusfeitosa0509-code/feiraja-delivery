@@ -320,8 +320,7 @@ Deno.serve(async (req: Request) => {
     const { data: resaleBalconyPrices, error: resaleBalconyError } = await db.rpc("service_get_product_resale_prices", {
       p_product_ids: ids,
     });
-    const resaleLookupFailed = !!resaleBalconyError;
-    if (resaleLookupFailed) {
+    if (resaleBalconyError) {
       console.error("super-worker", { code: "RESALE_BALCONY_LOOKUP_FAILED", stage: "validate_resale_price" });
       // Safety fallback: never block checkout because the private resale lookup is unavailable.
       // Affected items retain their normal retail price because no verified balcony price exists.
