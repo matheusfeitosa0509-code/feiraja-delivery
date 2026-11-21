@@ -562,9 +562,9 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Não foi possível confirmar uma cotação válida e positiva para esta entrega. Calcule novamente antes de pagar." }, 502);
     }
     const totals = orderTotals(subtotalCents, deliveryQuote?.fee || 0, deliveryType);
-    const totalCents = totals.totalCents;
+    let totalCents = totals.totalCents;
     const deliveryFee = totals.deliveryFee;
-    const total = totals.total;
+    let total = totals.total;
     if (!Number.isFinite(total) || totalCents <= 0 || totalCents > 10000000) return json({ error: "Valor total inválido." }, 400);
 
     const hashPayload = JSON.stringify({
@@ -662,6 +662,12 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Não foi possível registrar o pedido." }, 500);
       }
       orderId = String(createdOrder.order_id);
+      total = Number(createdOrder.order_total);
+      totalCents = Math.round(total * 100);
+      if (!Number.isFinite(total) || !Number.isSafeInteger(totalCents) || totalCents <= 0) {
+        await db.from("orders").update({ status: "Cancelada" }).eq("id", orderId).eq("user_id", orderUserId);
+        return json({ error: "Não foi possível confirmar o total final do pedido." }, 500);
+      }
       if (deliveryType === "delivery" || paymentMethod === "pix_test") {
         const orderUpdate: Record<string, unknown> = {};
         if (deliveryType === "delivery") Object.assign(orderUpdate, {
@@ -717,6 +723,12 @@ Deno.serve(async (req: Request) => {
     const createdDraftOrder = Array.isArray(draftOrderRows) ? draftOrderRows[0] : draftOrderRows;
     if (!createdDraftOrder?.order_id) return json({ error: "Não foi possível recuperar o pedido registrado." }, 500);
     orderId = String(createdDraftOrder.order_id);
+    total = Number(createdDraftOrder.order_total);
+    totalCents = Math.round(total * 100);
+    if (!Number.isFinite(total) || !Number.isSafeInteger(totalCents) || totalCents <= 0) {
+      await db.from("orders").update({ status: "Cancelada" }).eq("id", orderId).eq("user_id", orderUserId);
+      return json({ error: "Não foi possível confirmar o total final do pedido. Nenhum Pix foi criado." }, 500);
+    }
     if (deliveryType === "delivery") {
       const { error: deliveryMetadataError } = await db.from("orders").update({
         delivery_address: normalizedDeliveryAddress,
