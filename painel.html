@@ -2519,11 +2519,11 @@ function selectMainTab(tab){
  document.getElementById('ordersTab').classList.toggle('hidden',products||settings||funnel);
  document.getElementById('productTools').classList.toggle('hidden',!products);
  document.getElementById('settingsTab').classList.toggle('hidden',!settings);
- document.getElementById('funnelTab').classList.toggle('hidden',!funnel);
+ document.getElementById('funnelTab')?.classList.toggle('hidden',!funnel);
  document.getElementById('tabOrders').setAttribute('aria-selected',String(!products&&!settings&&!funnel));
  document.getElementById('tabProducts').setAttribute('aria-selected',String(products));
  document.getElementById('tabSettings').setAttribute('aria-selected',String(settings));
- document.getElementById('tabFunnel').setAttribute('aria-selected',String(funnel));
+ document.getElementById('tabFunnel')?.setAttribute('aria-selected',String(funnel));
 }
 function selectProductSection(id){
  document.getElementById('productRequests').classList.add('active');
