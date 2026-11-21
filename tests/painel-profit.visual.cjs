@@ -5,15 +5,18 @@ const { chromium } = require("playwright");
 (async () => {
   const source = fs.readFileSync(path.join(process.cwd(), "painel.html"), "utf8");
   const style = source.match(/<style>([\s\S]*?)<\/style>/);
+  const funnelStyle = source.match(/<style id="storeFunnelStyles">([\s\S]*?)<\/style>/);
   if (!style) throw new Error("CSS do painel não encontrado");
 
   const tabsStart = source.indexOf('<div class="main-tabs"');
   const tabsEnd = source.indexOf("</div>", tabsStart) + 6;
+  const funnelStart = source.indexOf('<section id="funnelTab"');
+  const funnelEnd = source.indexOf('\n<section id="ordersTab"', funnelStart);
   const ordersStart = source.indexOf('<section id="ordersTab"');
   const settingsStart = source.indexOf('<section id="settingsTab"');
   const settingsEnd = source.indexOf('</section>\n<section id="productTools"', settingsStart) + 10;
   const ordersEnd = source.indexOf('</section>\n<section id="settingsTab"', ordersStart) + 10;
-  if ([tabsStart, tabsEnd, ordersStart, settingsStart, settingsEnd, ordersEnd].some(x => x < 0)) {
+  if ([tabsStart, tabsEnd, funnelStart, funnelEnd, ordersStart, settingsStart, settingsEnd, ordersEnd].some(x => x < 0)) {
     throw new Error("Estrutura das três abas não encontrada");
   }
 
@@ -85,6 +88,7 @@ const { chromium } = require("playwright");
   }
 
   const markup = source.slice(tabsStart,tabsEnd) +
+    source.slice(funnelStart,funnelEnd) +
     source.slice(ordersStart,ordersEnd) +
     source.slice(settingsStart,settingsEnd) +
     '<section id="productTools" class="hidden" role="tabpanel"></section>';
@@ -95,12 +99,13 @@ const { chromium } = require("playwright");
       const errors = [];
       page.on("pageerror",error=>errors.push(error.message));
       page.on("console",message=>{if(message.type()==="error")errors.push(message.text());});
-      await page.setContent('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+style[1]+'</style></head><body><main class="wrap">'+markup+'</main></body></html>');
+      await page.setContent('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+style[1]+'</style><style>'+(funnelStyle?.[1]||'')+'</style></head><body><main class="wrap">'+markup+'</main></body></html>');
       await page.evaluate(tabSource=>{
         const selectMainTab = new Function("document",tabSource+"\nreturn selectMainTab;")(document);
         document.getElementById("tabOrders").addEventListener("click",()=>selectMainTab("orders"));
         document.getElementById("tabProducts").addEventListener("click",()=>selectMainTab("products"));
         document.getElementById("tabSettings").addEventListener("click",()=>selectMainTab("settings"));
+        document.getElementById("tabFunnel").addEventListener("click",()=>selectMainTab("funnel"));
       },tabSource);
       if (await page.locator(".daily-stats .stat").count()!==5) throw new Error("Resumo não tem cinco cards em "+width+"px");
       if (await page.locator("#ordersTab #upcomingHolidaysCard").count()!==0 || await page.locator("#ordersTab #lalamoveSettingsCard").count()!==0) {
@@ -109,6 +114,10 @@ const { chromium } = require("playwright");
       if (await page.locator("#settingsTab #upcomingHolidaysCard").count()!==1 || await page.locator("#settingsTab #lalamoveSettingsCard").count()!==1) {
         throw new Error("Feriados/configurações de entrega não foram movidos");
       }
+      await page.locator("#tabFunnel").click();
+      const funnelState=await page.evaluate(()=>({ordersHidden:document.getElementById("ordersTab").classList.contains("hidden"),productsHidden:document.getElementById("productTools").classList.contains("hidden"),settingsHidden:document.getElementById("settingsTab").classList.contains("hidden"),funnelHidden:document.getElementById("funnelTab").classList.contains("hidden"),selected:document.getElementById("tabFunnel").getAttribute("aria-selected"),columns:getComputedStyle(document.querySelector(".main-tabs")).gridTemplateColumns.split(" ").length}));
+      if (!funnelState.ordersHidden || !funnelState.productsHidden || !funnelState.settingsHidden || funnelState.funnelHidden || funnelState.selected!=="true") throw new Error("Aba Funil não alternou em "+width+"px: "+JSON.stringify(funnelState));
+      if(funnelState.columns!==2)throw new Error("Abas principais não quebraram em duas colunas no celular "+width+"px");
       await page.locator("#tabSettings").click();
       if (!(await page.locator("#settingsTab").isVisible()) || await page.locator("#ordersTab").isVisible()) throw new Error("Aba Configurações não alternou");
       await page.locator("#tabProducts").click();
@@ -123,5 +132,5 @@ const { chromium } = require("playwright");
       await page.close();
     }
   } finally { await browser.close(); }
-  console.log("Painel admin Playwright: abas, filtros, lucro positivo/parcial/prejuízo/entrega coberta e layout 360/412px aprovados; controles existentes preservados.");
+  console.log("Painel admin Playwright: abas Pedidos/Produtos/Configurações/Funil, filtros, lucro e layout 360/412px aprovados; controles existentes preservados.");
 })().catch(error=>{console.error(error);process.exit(1);});
