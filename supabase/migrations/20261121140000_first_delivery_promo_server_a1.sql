@@ -6,11 +6,11 @@ ALTER TABLE public.orders
   ADD COLUMN IF NOT EXISTS delivery_discount numeric(12,2) NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS promo_code text;
 
-CREATE SCHEMA IF NOT EXISTS private;
-REVOKE ALL ON SCHEMA private FROM PUBLIC, anon, authenticated;
-GRANT USAGE ON SCHEMA private TO service_role;
+CREATE SCHEMA IF NOT EXISTS promo_private;
+REVOKE ALL ON SCHEMA promo_private FROM PUBLIC, anon, authenticated;
+GRANT USAGE ON SCHEMA promo_private TO service_role;
 
-CREATE TABLE IF NOT EXISTS private.promo_settings (
+CREATE TABLE IF NOT EXISTS promo_private.promo_settings (
   singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
   enabled boolean NOT NULL DEFAULT false,
   min_subtotal numeric(12,2) NOT NULL DEFAULT 50.00 CHECK (min_subtotal >= 0),
@@ -18,10 +18,10 @@ CREATE TABLE IF NOT EXISTS private.promo_settings (
   discount_cap numeric(12,2) NULL CHECK (discount_cap IS NULL OR discount_cap >= 0),
   updated_at timestamptz NOT NULL DEFAULT pg_catalog.now()
 );
-ALTER TABLE private.promo_settings ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON TABLE private.promo_settings FROM PUBLIC, anon, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE private.promo_settings TO service_role;
-INSERT INTO private.promo_settings(singleton, enabled, min_subtotal, ends_at, discount_cap)
+ALTER TABLE promo_private.promo_settings ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE promo_private.promo_settings FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE promo_private.promo_settings TO service_role;
+INSERT INTO promo_private.promo_settings(singleton, enabled, min_subtotal, ends_at, discount_cap)
 VALUES (true, false, 50.00, TIMESTAMPTZ '2026-12-31 23:59:59 America/Manaus', NULL)
 ON CONFLICT (singleton) DO NOTHING;
 
@@ -49,14 +49,14 @@ ALTER TABLE public.promo_redemptions ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.promo_redemptions FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.promo_redemptions TO service_role;
 
-CREATE OR REPLACE FUNCTION private.reserve_first_delivery_promo()
+CREATE OR REPLACE FUNCTION promo_private.reserve_first_delivery_promo()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
 AS $function$
 DECLARE
-  v_settings private.promo_settings%ROWTYPE;
+  v_settings promo_private.promo_settings%ROWTYPE;
   v_phone_key text;
   v_address_key text;
   v_discount numeric(12,2);
@@ -75,7 +75,7 @@ BEGIN
   END IF;
 
   SELECT * INTO v_settings
-  FROM private.promo_settings
+  FROM promo_private.promo_settings
   WHERE singleton = true;
 
   IF NOT FOUND OR NOT v_settings.enabled
@@ -138,13 +138,13 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION private.reserve_first_delivery_promo() FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION promo_private.reserve_first_delivery_promo() FROM PUBLIC, anon, authenticated, service_role;
 DROP TRIGGER IF EXISTS trg_reserve_first_delivery_promo ON public.orders;
 CREATE TRIGGER trg_reserve_first_delivery_promo
 BEFORE INSERT ON public.orders
-FOR EACH ROW EXECUTE FUNCTION private.reserve_first_delivery_promo();
+FOR EACH ROW EXECUTE FUNCTION promo_private.reserve_first_delivery_promo();
 
-CREATE OR REPLACE FUNCTION private.sync_first_delivery_promo_redemption()
+CREATE OR REPLACE FUNCTION promo_private.sync_first_delivery_promo_redemption()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -167,17 +167,17 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION private.sync_first_delivery_promo_redemption() FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION promo_private.sync_first_delivery_promo_redemption() FROM PUBLIC, anon, authenticated, service_role;
 DROP TRIGGER IF EXISTS trg_sync_first_delivery_promo_redemption ON public.orders;
 CREATE TRIGGER trg_sync_first_delivery_promo_redemption
 AFTER UPDATE OF status ON public.orders
 FOR EACH ROW
 WHEN (OLD.status IS DISTINCT FROM NEW.status)
-EXECUTE FUNCTION private.sync_first_delivery_promo_redemption();
+EXECUTE FUNCTION promo_private.sync_first_delivery_promo_redemption();
 
 COMMENT ON TABLE public.promo_redemptions IS
   'Reservas e usos atômicos da promoção PRIMEIRA_ENTREGA; acesso restrito ao servidor.';
-COMMENT ON TABLE private.promo_settings IS
+COMMENT ON TABLE promo_private.promo_settings IS
   'Configuração privada da promoção de primeira entrega; desligada por padrão.';
 
 COMMIT;
