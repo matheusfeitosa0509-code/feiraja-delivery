@@ -2031,7 +2031,7 @@ async function getStoreBannerAudience(){
  if(error)throw error;
  const user=session?.user;
  if(!user?.id)return 'new_customers';
- const {data,error:ordersError}=await supabase.from('orders').select('status,payment_method,is_test_order').eq('user_id',user.id).eq('is_test_order',false).in('status',STORE_BANNER_PAID_STATUSES).limit(30);
+ const {data,error:ordersError}=await supabase.from('orders').select('status,payment_method,is_test_order').eq('user_id',user.id).or('is_test_order.eq.false,is_test_order.is.null').in('status',STORE_BANNER_PAID_STATUSES).limit(30);
  if(ordersError)throw ordersError;
  const hasPaid=(data||[]).some(order=>{const method=String(order.payment_method||'').toLowerCase();return !method.includes('dinheiro')&&!method.includes('cart')&&method!=='cash'&&method!=='card_on_delivery';});
  return hasPaid?'returning':'new_customers';
@@ -2071,7 +2071,7 @@ function openStoreBannerRules(banner){
  openPreviewModal('storeBannerRulesSheet');
 }
 function closeStoreBannerRules(){
- const sheet=$('#storeBannerRulesSheet');sheet?.classList.remove('open');sheet?.setAttribute('aria-hidden','true');
+ const sheet=$('#storeBannerRulesSheet');sheet?.classList.remove('open');sheet?.setAttribute('aria-hidden','true');if(!document.querySelector('.modal.open,.value-sheet.open,#productRequestSheet.open,#assistantSheet.open'))document.body.classList.remove('preview-modal-open');
 }
 function runStoreBannerAction(banner){
  const value=String(banner.action_value||'');
