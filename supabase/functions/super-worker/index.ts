@@ -190,7 +190,7 @@ Deno.serve(async (req: Request) => {
     let priorOrder: any = null;
     if (priorAttempt) {
       const { data: existingOrder, error: existingOrderError } = await db.from("orders")
-        .select("id,status,total,payment_id,pix_qr_code,pix_qr_code_base64,pickup_code,payment_provider,payment_method,delivery_address,delivery_coordinates,delivery_vehicle,delivery_weight_kg,delivery_fee,scheduled_for")
+        .select("id,status,total,payment_id,pix_qr_code,pix_qr_code_base64,pickup_code,payment_provider,payment_method,delivery_address,delivery_coordinates,delivery_vehicle,delivery_weight_kg,delivery_fee,delivery_fee_original,delivery_discount,promo_code,scheduled_for")
         .eq("id", String(priorAttempt.order_id)).eq("user_id", orderUserId).maybeSingle();
       if (existingOrderError || !existingOrder) return json({ error: "Não foi possível recuperar o pedido desta tentativa." }, 503);
       priorOrder = existingOrder;
@@ -588,7 +588,7 @@ Deno.serve(async (req: Request) => {
     }
     if (priorOrder && paymentMethod === "pix" && priorOrder.pix_qr_code) {
       return json({
-        order: { id: priorOrder.id, status: priorOrder.status, total: priorOrder.total, pickupCode },
+        order: { id: priorOrder.id, status: priorOrder.status, total: priorOrder.total, delivery_fee: priorOrder.delivery_fee, delivery_fee_original: priorOrder.delivery_fee_original, delivery_discount: priorOrder.delivery_discount, promo_code: priorOrder.promo_code, pickupCode },
         paymentId: priorOrder.payment_id,
         qrCode: priorOrder.pix_qr_code,
         qrCodeBase64: priorOrder.pix_qr_code_base64,
@@ -1094,7 +1094,7 @@ Deno.serve(async (req: Request) => {
       const { data: savedAsaasOrder, error: saveAsaasQrError } = await db.from("orders")
         .update({ pix_qr_code: qrCode, pix_qr_code_base64: qrCodeBase64 })
         .eq("id", orderId).eq("payment_provider", "asaas").eq("status", "Pagamento Pendente")
-        .select("id,status,total").maybeSingle();
+        .select("id,status,total,delivery_fee,delivery_fee_original,delivery_discount,promo_code").maybeSingle();
       if (saveAsaasQrError || !savedAsaasOrder) {
         await db.from("checkout_idempotency").update({ payment_lock_until: null })
           .eq("idempotency_key", checkoutIdempotencyKey).eq("user_id", orderUserId);
