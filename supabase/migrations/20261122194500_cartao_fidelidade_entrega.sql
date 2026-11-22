@@ -93,20 +93,29 @@ BEGIN
  SELECT * INTO v_settings FROM promo_private.delivery_loyalty_settings
  WHERE singleton=true AND enabled=true FOR SHARE;
  IF NOT FOUND THEN RETURN NEW; END IF;
+
+ -- Reserve the unique order event first, then atomically increment only while
+ -- the balance is below the threshold. At/above the threshold, no phantom seal
+ -- or duplicate "you earned a seal" push is created.
  INSERT INTO promo_private.delivery_loyalty_stamp_orders(order_id,user_id,stamps_after,stamps_required)
  VALUES(NEW.id,NEW.user_id,1,v_settings.stamps_required) ON CONFLICT(order_id) DO NOTHING;
  GET DIAGNOSTICS v_inserted=ROW_COUNT;
  IF v_inserted<>1 THEN RETURN NEW; END IF;
- INSERT INTO promo_private.delivery_loyalty_balances(user_id,stamps) VALUES(NEW.user_id,1)
+
+ INSERT INTO promo_private.delivery_loyalty_balances AS balance(user_id,stamps)
+ VALUES(NEW.user_id,1)
  ON CONFLICT(user_id) DO UPDATE SET
- stamps=LEAST(v_settings.stamps_required,promo_private.delivery_loyalty_balances.stamps+1),
- updated_at=pg_catalog.now()
+  stamps=balance.stamps+1,updated_at=pg_catalog.now()
+ WHERE balance.stamps<v_settings.stamps_required
  RETURNING stamps INTO v_stamps;
+ IF NOT FOUND THEN
+  DELETE FROM promo_private.delivery_loyalty_stamp_orders WHERE order_id=NEW.id;
+  RETURN NEW;
+ END IF;
  UPDATE promo_private.delivery_loyalty_stamp_orders SET stamps_after=v_stamps WHERE order_id=NEW.id;
  RETURN NEW;
 END;
-$function$;
-REVOKE ALL ON FUNCTION promo_private.award_delivery_loyalty_stamp() FROM PUBLIC,anon,authenticated,service_role;
+$function$;REVOKE ALL ON FUNCTION promo_private.award_delivery_loyalty_stamp() FROM PUBLIC,anon,authenticated,service_role;
 DROP TRIGGER IF EXISTS trg_aaa_award_delivery_loyalty_stamp ON public.orders;
 CREATE TRIGGER trg_aaa_award_delivery_loyalty_stamp AFTER UPDATE OF status ON public.orders
 FOR EACH ROW EXECUTE FUNCTION promo_private.award_delivery_loyalty_stamp();
