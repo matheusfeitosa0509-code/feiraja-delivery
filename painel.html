@@ -401,6 +401,17 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
  <p id="firstDeliveryPromoMessage" class="muted" role="status" aria-live="polite"></p>
 
 </section>
+<section class="card" id="deliveryLoyaltySettings" aria-labelledby="deliveryLoyaltyTitle">
+ <h2 id="deliveryLoyaltyTitle">⭐ Cartão fidelidade</h2>
+ <p class="muted">Cada pedido pago e concluído com subtotal de pelo menos R$ 30 vale 1 selo. Ao completar a meta, a próxima entrega recebe o desconto configurado. A taxa original da corrida continua preservada para o despacho.</p>
+ <label style="display:flex;align-items:center;gap:10px"><input id="deliveryLoyaltyEnabled" type="checkbox" style="width:22px;min-height:22px"> Cartão fidelidade ligado</label>
+ <div class="automatic-margin-grid">
+  <label>Número de selos<input id="deliveryLoyaltyStampsRequired" type="number" min="1" max="30" step="1" value="6"></label>
+  <label>Teto do desconto (R$)<input id="deliveryLoyaltyDiscountCap" type="number" min="0" max="100000" step="0.01" placeholder="Sem teto"></label>
+ </div>
+ <button type="button" id="saveDeliveryLoyaltySettings">Salvar cartão fidelidade</button>
+ <p id="deliveryLoyaltyMessage" class="muted" role="status" aria-live="polite"></p>
+</section>
 <section class="card" id="storeBannersManager" aria-labelledby="storeBannersTitle">
  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 id="storeBannersTitle">🎨 Banners da loja</h2><button type="button" id="storeBannerNew">+ Novo banner</button></div>
  <p class="muted">Gerencie os destaques exibidos na loja. Banners promocionais só ficam públicos quando a promoção correspondente está ligada.</p>
@@ -2335,6 +2346,28 @@ async function loadFirstDeliveryPromoSettings(){
   msg.textContent='Configuração carregada. Promoção '+(data?.enabled?'ligada':'desligada')+'.';
  }catch(error){msg.textContent='Não foi possível carregar as configurações da promoção. Confira o acesso administrativo.';}
 }
+async function loadDeliveryLoyaltySettings(){
+ const msg=$('deliveryLoyaltyMessage');
+ try{
+  const {data,error}=await db.rpc('admin_get_delivery_loyalty_settings');if(error)throw error;
+  $('deliveryLoyaltyEnabled').checked=data?.enabled===true;
+  $('deliveryLoyaltyStampsRequired').value=String(Number(data?.stamps_required??6));
+  $('deliveryLoyaltyDiscountCap').value=data?.discount_cap==null?'':Number(data.discount_cap).toFixed(2);
+  msg.textContent='Configuração carregada. Cartão '+(data?.enabled?'ligado':'desligado')+'.';
+ }catch(error){msg.textContent='Não foi possível carregar o cartão fidelidade. Confira o acesso administrativo.';}
+}
+$('saveDeliveryLoyaltySettings').addEventListener('click',async()=>{
+ const msg=$('deliveryLoyaltyMessage'),button=$('saveDeliveryLoyaltySettings');
+ const required=Number($('deliveryLoyaltyStampsRequired').value),capRaw=$('deliveryLoyaltyDiscountCap').value.trim(),cap=capRaw===''?null:Number(capRaw);
+ if(!Number.isInteger(required)||required<1||required>30||(cap!==null&&(!Number.isFinite(cap)||cap<0||cap>100000))){msg.textContent='Informe uma quantidade de selos entre 1 e 30 e um teto válido.';return;}
+ button.disabled=true;
+ try{
+  const {error}=await db.rpc('admin_save_delivery_loyalty_settings',{p_enabled:$('deliveryLoyaltyEnabled').checked,p_stamps_required:required,p_discount_cap:cap});
+  if(error)throw error;
+  msg.textContent='Cartão fidelidade salvo. '+($('deliveryLoyaltyEnabled').checked?'Está ligado.':'Continua desligado.');
+ }catch(error){msg.textContent='Não foi possível salvar. Confira a sessão administrativa e tente novamente.';}
+ finally{button.disabled=false;}
+});
 $('saveFirstDeliveryPromo').addEventListener('click',async()=>{
  const msg=$('firstDeliveryPromoMessage'),button=$('saveFirstDeliveryPromo');
  const minimum=Number($('firstDeliveryPromoMinimum').value),capRaw=$('firstDeliveryPromoCap').value.trim(),date=$('firstDeliveryPromoEndsAt').value;
@@ -2441,7 +2474,7 @@ async function afterBalconyPriceSaved(productId){
  }else $('automaticPriceReviewMessage').textContent=text+' Preço atual já está correto.';
  await loadAutomaticPriceReview();
 }
-$('tabSettings').addEventListener('click',()=>{void loadAutomaticMarginSettings();void loadAutomaticPriceReview();});
+$('tabSettings').addEventListener('click',()=>{void loadAutomaticMarginSettings();void loadAutomaticPriceReview();void loadDeliveryLoyaltySettings();});
 
 function costDateInManaus(value,addDay=false){
  const date=new Date(value+'T00:00:00-04:00');
@@ -2602,7 +2635,7 @@ $('refreshProductRequests').addEventListener('click',loadProductRequests);
 db.auth.onAuthStateChange((event,session)=>{
   if(event==='SIGNED_OUT')panelPushUserSynced='';
   if(event==='SIGNED_IN'&&session?.user)void initPanelPush(session.user);
-  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){loadPriceProducts();loadEditableProducts();loadResaleProducts();loadAutomaticMarginSettings();loadAutomaticPriceReview();loadFirstDeliveryPromoSettings();}
+  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){loadPriceProducts();loadEditableProducts();loadResaleProducts();loadAutomaticMarginSettings();loadAutomaticPriceReview();loadFirstDeliveryPromoSettings();loadDeliveryLoyaltySettings();}
   if(event==='SIGNED_OUT'){$('priceEditor').classList.add('hide');priceProducts=[];$('priceProduct').replaceChildren(new Option('Entre como administrador',''));$('btnUpdatePrice').disabled=true;$('productEdit').classList.add('hide');editableProducts=[];$('resaleEditor').classList.add('hide');resaleProducts=[];$('resaleProduct').replaceChildren(new Option('Entre como administrador',''));$('btnPreviewResale').disabled=true;}
 });
 
