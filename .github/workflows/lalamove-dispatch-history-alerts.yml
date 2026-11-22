@@ -15,5 +15,5 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - run: deno test --allow-net supabase/functions/lalamove-dispatch/dispatch-persistence_test.ts
+      - run: deno test --allow-net --allow-read supabase/functions/lalamove-dispatch/dispatch-persistence_test.ts
       - run: deno check supabase/functions/lalamove-dispatch/index.ts
