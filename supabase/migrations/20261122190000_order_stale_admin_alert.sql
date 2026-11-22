@@ -15,7 +15,7 @@ select
   o.id,
   case
     when o.status not in ('Cancelada','Cancelado','Pagamento cancelado','Entregue','Concluído','Concluido','Concluída','Concluida')
-      then paid_alert.criado_em
+      then coalesce(paid_alert.criado_em, pg_catalog.clock_timestamp())
     else null
   end,
   case
@@ -31,7 +31,7 @@ left join lateral (
   order by a.criado_em asc
   limit 1
 ) paid_alert on true
-where paid_alert.criado_em is not null
+where o.status in ('Pagamento Confirmado','Preparando','Pronto para Retirada','Pronto','Saiu para Entrega')
    or (o.delivery_type='delivery' and o.status in ('Pronto para Retirada','Pronto'))
 on conflict(order_id) do nothing;
 
@@ -167,7 +167,7 @@ begin
         and (
           (
             c.paid_at is not null
-            and c.paid_at<=p_now-interval '24 hours'
+            and c.paid_at<p_now-interval '24 hours'
             and o.status not in ('Entregue','Cancelada','Cancelado','Pagamento cancelado','Concluído','Concluido','Concluída','Concluida')
           )
           or
@@ -175,7 +175,7 @@ begin
             o.delivery_type='delivery'
             and o.status in ('Pronto para Retirada','Pronto')
             and c.ready_for_dispatch_at is not null
-            and c.ready_for_dispatch_at<=p_now-interval '3 hours'
+            and c.ready_for_dispatch_at<p_now-interval '3 hours'
             and not exists (
               select 1
               from feira_cost_private.lalamove_dispatches d
@@ -193,7 +193,7 @@ begin
   insert into public.admin_alerts(tipo,order_id,mensagem)
   select 'order_stale',o.id,
     '🟠 Pedido parado – '||o.id||case
-      when c.paid_at<=p_now-interval '24 hours' then ' (pago há mais de 24h)'
+      when c.paid_at<p_now-interval '24 hours' then ' (pago há mais de 24h)'
       else ' (pronto para envio há mais de 3h, sem corrida ativa)'
     end
   from public.orders o
@@ -202,7 +202,7 @@ begin
     and (
       (
         c.paid_at is not null
-        and c.paid_at<=p_now-interval '24 hours'
+        and c.paid_at<p_now-interval '24 hours'
         and o.status not in ('Entregue','Cancelada','Cancelado','Pagamento cancelado','Concluído','Concluido','Concluída','Concluida')
       )
       or
@@ -210,7 +210,7 @@ begin
         o.delivery_type='delivery'
         and o.status in ('Pronto para Retirada','Pronto')
         and c.ready_for_dispatch_at is not null
-        and c.ready_for_dispatch_at<=p_now-interval '3 hours'
+        and c.ready_for_dispatch_at<p_now-interval '3 hours'
         and not exists (
           select 1
           from feira_cost_private.lalamove_dispatches d
