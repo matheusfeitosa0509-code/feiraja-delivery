@@ -39,6 +39,7 @@ const { chromium } = require("playwright");
     for (const width of [360, 412]) {
       const page = await browser.newPage({ viewport: { width, height: 1000 }, deviceScaleFactor: 1 });
       const runtimeErrors = [];
+      await page.addInitScript(() => { try { localStorage.setItem("feira_cookie_consent_v1","accepted"); } catch (_) {} });
       page.on("pageerror", error => runtimeErrors.push("pageerror: " + error.message));
       page.on("console", message => { if (message.type() === "error") runtimeErrors.push("console.error: " + message.text()); });
       await page.route("**/*", route => route.fulfill({ status: 200, body: "" }));
