@@ -1,0 +1,19 @@
+name: Lalamove dispatch history and alerts tests
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/functions/lalamove-dispatch/**'
+      - 'supabase/functions/lalamove-dispatch/dispatch-persistence.ts'
+      - 'supabase/migrations/*lalamove_dispatch_history_alerts.sql'
+      - '.github/workflows/lalamove-dispatch-history-alerts.yml'
+jobs:
+  deno:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno test --allow-net supabase/functions/lalamove-dispatch/dispatch-persistence_test.ts
+      - run: deno check supabase/functions/lalamove-dispatch/index.ts
