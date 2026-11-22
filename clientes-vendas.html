@@ -85,7 +85,7 @@ async function initializePage(){
  const dateOnly=d=>new Intl.DateTimeFormat('en-CA',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
  const addDays=(s,n)=>{const [y,m,d]=s.split('-').map(Number);return new Date(Date.UTC(y,m-1,d+n,12)).toISOString().slice(0,10);};
  const midnight=s=>new Date(s+'T00:00:00-04:00').toISOString();
- let selectedPeriod='30d',lastRange=null,lastData=null,lastProfit=null,lastCustomerList=[];
+ let selectedPeriod='30d',lastRange=null,lastData=null,lastProfit=null,lastCustomerList=[],deliveryLoyaltyEnabled=false;
  const periodNames={today:'Hoje',yesterday:'Ontem',week:'Semana',month:'Mês', '30d':'30 dias',custom:'Personalizado'};
  function rangeFor(p){
   const today=dateOnly(new Date());
@@ -112,11 +112,20 @@ async function initializePage(){
  }
  function renderCustomers(rows){
   if(!rows?.length)return'<p class="empty">Nenhum cliente encontrado.</p>';
-  return rows.map(r=>'<article class="customer-card"><strong>'+esc(r.customer_name||'Cliente sem nome')+'</strong><small class="muted">'+esc([r.customer_email,r.customer_phone].filter(Boolean).join(' · ')||'Contato não informado')+'</small><small class="muted">Último pedido: '+(r.last_order_at?esc(fmt.format(new Date(r.last_order_at))):'—')+'</small>'+(r.user_id?'<button class="secondary" type="button" data-toggle-test="'+esc(r.user_id)+'" data-is-test="'+String(r.is_test_account)+'">'+(r.is_test_account?'Desmarcar conta de teste':'Marcar como conta de teste')+'</button>':'')+'</article>').join('');
+  return rows.map(r=>'<article class="customer-card"><strong>'+esc(r.customer_name||'Cliente sem nome')+'</strong><small class="muted">'+esc([r.customer_email,r.customer_phone].filter(Boolean).join(' · ')||'Contato não informado')+'</small><small class="muted">Último pedido: '+(r.last_order_at?esc(fmt.format(new Date(r.last_order_at))):'—')+'</small>'+(deliveryLoyaltyEnabled?'<small class="muted">⭐ Selos: '+num(r.delivery_loyalty_stamps||0)+'/'+num(r.delivery_loyalty_required||6)+(r.delivery_loyalty_reward?' · 🎁 Prêmio liberado':'')+'</small>':'')+(r.user_id?'<button class="secondary" type="button" data-toggle-test="'+esc(r.user_id)+'" data-is-test="'+String(r.is_test_account)+'">'+(r.is_test_account?'Desmarcar conta de teste':'Marcar como conta de teste')+'</button>':'')+'</article>').join('');
  }
  async function loadCustomerList(){
   const {data,error}=await db.rpc('admin_list_sales_customers');if(error)throw error;
-  lastCustomerList=Array.isArray(data)?data:[];$('customerList').innerHTML=renderCustomers(lastCustomerList);
+  const {data:loyaltySettings,error:settingsError}=await db.rpc('admin_get_delivery_loyalty_settings');if(settingsError)throw settingsError;
+  deliveryLoyaltyEnabled=loyaltySettings?.enabled===true;
+  let loyaltyRows=[];
+  if(deliveryLoyaltyEnabled){const {data:balances,error:balancesError}=await db.rpc('admin_list_customer_delivery_loyalty');if(balancesError)throw balancesError;loyaltyRows=Array.isArray(balances)?balances:[];}
+  const loyaltyByUser=new Map(loyaltyRows.map(row=>[String(row.user_id),row]));
+  lastCustomerList=(Array.isArray(data)?data:[]).map(row=>{
+   const loyalty=loyaltyByUser.get(String(row.user_id||''))||{};
+   return {...row,delivery_loyalty_stamps:Number(loyalty.stamps||0),delivery_loyalty_required:Number(loyalty.stamps_required||loyaltySettings?.stamps_required||6),delivery_loyalty_reward:loyalty.reward_available===true};
+  });
+  $('customerList').innerHTML=renderCustomers(lastCustomerList);
  }
  function enrichProfits(data,profitData){
   const allowedIds=new Set((Array.isArray(data?.paid_order_ids)?data.paid_order_ids:[]).map(String));
