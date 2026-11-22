@@ -2135,7 +2135,7 @@ async function loadCustomerDeliveryLoyalty(){
     const required=Math.max(1,Math.min(30,Number(customerDeliveryLoyalty.stamps_required)||6));
     const stamps=Math.max(0,Math.min(required,Number(customerDeliveryLoyalty.stamps)||0));
     const dots=Array.from({length:required},(_,index)=>'<span aria-label="'+(index<stamps?'Selo conquistado':'Selo pendente')+'" style="width:27px;height:27px;border-radius:50%;border:2px solid #16834d;background:'+(index<stamps?'#16834d':'#fff')+';color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:800">'+(index<stamps?'✓':'')+'</span>').join('');
-    card.innerHTML='<h3 style="margin:0 0 8px">⭐ Cartão fidelidade</h3><div style="display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 10px" aria-label="'+stamps+' de '+required+' selos">'+dots+'</div><p class="sm" style="margin:0">'+(customerDeliveryLoyalty.reward_available===true?'Sua próxima entrega é GRÁTIS 🎁':'Faltam '+(required-stamps)+' pedidos para sua entrega grátis 🎁')+'</p>';
+    card.innerHTML='<h3 style="margin:0 0 8px">⭐ Cartão fidelidade</h3><div style="display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 10px" aria-label="'+stamps+' de '+required+' selos">'+dots+'</div><p class="sm" style="margin:0">'+(customerDeliveryLoyalty.reward_available===true?(customerDeliveryLoyalty.discount_cap==null?'Sua próxima entrega é GRÁTIS 🎁':'Prêmio liberado: até '+money(Number(customerDeliveryLoyalty.discount_cap))+' de desconto na próxima entrega 🎁'):'Faltam '+(required-stamps)+' pedidos para sua entrega grátis 🎁')+'</p>';
    }
   }
   if(typeof updateCheckoutTotals==='function')updateCheckoutTotals();
