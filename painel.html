@@ -323,8 +323,11 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 .main-tabs{grid-template-columns:repeat(4,minmax(0,1fr))}@media(max-width:520px){.main-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .funnel-stages{display:grid;gap:13px;margin:16px 0}
 .funnel-stage{display:grid;gap:6px}
-.funnel-stage-head{display:flex;justify-content:space-between;gap:10px;font-size:13px}
-.funnel-stage-head span{font-weight:800;white-space:nowrap}
+.funnel-stage-head{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px}
+.funnel-stage-rates{display:flex;align-items:baseline;justify-content:flex-end;gap:8px;flex-wrap:wrap;text-align:right}
+.funnel-stage-rates strong{font-size:17px;font-weight:900;white-space:nowrap}
+.funnel-stage-rates small{font-size:11px;font-weight:650;color:var(--muted);white-space:nowrap}
+.funnel-login-opens{margin:0;font-size:13px;font-weight:750}
 .funnel-track{height:12px;overflow:hidden;border-radius:999px;background:#e8f1e6}
 .funnel-track span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#176b3a,#58a66b)}
 @media(max-width:380px){.main-tabs{gap:4px}.main-tabs button{font-size:10px;padding:8px 2px}}
@@ -351,6 +354,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
    <button type="button" data-funnel-period="month" aria-pressed="false">Mês</button>
   </div>
   <div id="funnelStages" class="funnel-stages"><p class="muted">Selecione um período para carregar.</p></div>
+  <p id="funnelLoginOpens" class="funnel-login-opens muted">Abriram login: —</p>
   <p id="funnelMessage" class="muted" role="status" aria-live="polite"></p>
  </section>
  <section class="card">
@@ -2682,7 +2686,7 @@ if(root){
   const $ = id => document.getElementById(id);
   const labels = [
     ['visit','Visitas'],['add_to_cart','Adicionou ao carrinho'],['checkout_open','Abriu checkout'],
-    ['login_screen','Tela de login'],['order_created','Pedido criado'],['order_paid','Pedido pago']
+    ['order_created','Pedido criado'],['order_paid','Pedido pago']
   ];
   const moneyless = value => Number(value || 0).toLocaleString('pt-BR');
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -2707,15 +2711,20 @@ if(root){
   }
   function render(data) {
     const counts=data?.counts||{};
-    const max=Math.max(1,Number(counts.visit)||0);
+    const visits=Number(counts.visit)||0;
     const funnel=$('funnelStages');
     funnel.innerHTML=labels.map(([key,label],index)=>{
       const value=Number(counts[key]||0);
       const previous=index?Number(counts[labels[index-1][0]]||0):null;
-      const conversion=index? (previous>0?((value/previous)*100).toFixed(1).replace('.',',')+'%':'—') : 'Base';
-      const width=Math.max(0,Math.min(100,(value/max)*100));
-      return '<div class="funnel-stage"><div class="funnel-stage-head"><strong>'+label+'</strong><span>'+moneyless(value)+' · '+conversion+'</span></div><div class="funnel-track"><span style="width:'+width+'%"></span></div></div>';
+      const noData=value<=0||visits<=0;
+      const visitRate=noData?'sem dados ainda':((value/visits)*100).toFixed(1).replace('.',',')+'%';
+      const previousRate=index?(noData||previous<=0?'':((value/previous)*100).toFixed(1).replace('.',',')+'%'):'Base';
+      const secondary=index?(previousRate?previousRate+' da etapa anterior':''):'';
+      const width=visits>0?Math.max(0,Math.min(100,(value/visits)*100)):0;
+      const rates=noData?'<strong class="funnel-no-data">sem dados ainda</strong>':'<strong>'+visitRate+'</strong>'+(secondary?'<small>'+secondary+'</small>':'');
+      return '<div class="funnel-stage"><div class="funnel-stage-head"><strong>'+label+'</strong><span class="funnel-stage-rates">'+rates+'</span></div><div class="funnel-track"><span style="width:'+width+'%"></span></div></div>';
     }).join('');
+    $('funnelLoginOpens').textContent='Abriram login: '+moneyless(counts.login_screen||0);
     const grouped=new Map();
     for(const row of (data?.origins||[])) {
       const label=originLabel(row), current=grouped.get(label)||{visits:0,cart:0,orders:0,paid:0};
@@ -2737,7 +2746,7 @@ if(root){
       render(data);
     } catch(error) {
       $('funnelMessage').textContent=error?.message||'Não foi possível carregar o funil.';
-      $('funnelStages').replaceChildren(); $('funnelOrigins').innerHTML='<tr><td colspan="5">Sem dados disponíveis.</td></tr>';
+      $('funnelStages').replaceChildren(); $('funnelLoginOpens').textContent='Abriram login: —'; $('funnelOrigins').innerHTML='<tr><td colspan="5">Sem dados disponíveis.</td></tr>';
     } finally { button.disabled=false; }
   }
   document.querySelectorAll('[data-funnel-period]').forEach(button=>button.addEventListener('click',()=>{
