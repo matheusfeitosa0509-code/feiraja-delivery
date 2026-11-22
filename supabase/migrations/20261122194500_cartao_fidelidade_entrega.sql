@@ -52,7 +52,7 @@ CREATE INDEX IF NOT EXISTS delivery_loyalty_redemptions_user_status_idx ON promo
 CREATE OR REPLACE FUNCTION promo_private.reserve_delivery_loyalty_reward()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $function$
-DECLARE v_settings promo_private.delivery_loyalty_settings%ROWTYPE; v_discount numeric(12,2);
+DECLARE v_settings promo_private.delivery_loyalty_settings%ROWTYPE; v_discount numeric(12,2); v_stamps_reserved integer;
 BEGIN
  IF NEW.delivery_type IS DISTINCT FROM 'delivery' OR NEW.user_id IS NULL
     OR COALESCE(NEW.is_test_order,false) OR NEW.promo_code IS NOT NULL
@@ -61,12 +61,13 @@ BEGIN
  WHERE singleton=true AND enabled=true FOR SHARE;
  IF NOT FOUND OR v_settings.discount_cap=0 THEN RETURN NEW; END IF;
  UPDATE promo_private.delivery_loyalty_balances
- SET stamps=stamps-v_settings.stamps_required,updated_at=pg_catalog.now()
- WHERE user_id=NEW.user_id AND stamps>=v_settings.stamps_required;
+ SET stamps=0,updated_at=pg_catalog.now()
+ WHERE user_id=NEW.user_id AND stamps>=v_settings.stamps_required
+ RETURNING stamps+v_settings.stamps_required INTO v_stamps_reserved;
  IF NOT FOUND THEN RETURN NEW; END IF;
  v_discount:=LEAST(COALESCE(NEW.delivery_fee,0),COALESCE(v_settings.discount_cap,COALESCE(NEW.delivery_fee,0)));
  INSERT INTO promo_private.delivery_loyalty_redemptions(order_id,user_id,discount,stamps_reserved,status)
- VALUES(NEW.id,NEW.user_id,v_discount,v_settings.stamps_required,'reserved');
+ VALUES(NEW.id,NEW.user_id,v_discount,v_stamps_reserved,'reserved');
  NEW.delivery_discount:=COALESCE(NEW.delivery_discount,0)+v_discount;
  NEW.promo_code:='FIDELIDADE';
  NEW.total:=GREATEST(0,COALESCE(NEW.subtotal,0)+COALESCE(NEW.delivery_fee,0)-COALESCE(NEW.delivery_discount,0));
@@ -114,7 +115,7 @@ FOR EACH ROW EXECUTE FUNCTION promo_private.award_delivery_loyalty_stamp();
 CREATE OR REPLACE FUNCTION promo_private.sync_delivery_loyalty_redemption()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $function$
-DECLARE v_redemption promo_private.delivery_loyalty_redemptions%ROWTYPE; v_required integer;
+DECLARE v_redemption promo_private.delivery_loyalty_redemptions%ROWTYPE;
 BEGIN
  IF NEW.status IS NOT DISTINCT FROM OLD.status THEN RETURN NEW; END IF;
  IF NEW.status IN ('Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega','Entregue','Pedido Concluído','Concluído','Concluido') THEN
@@ -124,13 +125,13 @@ BEGIN
   SELECT * INTO v_redemption FROM promo_private.delivery_loyalty_redemptions
   WHERE order_id=NEW.id AND status='reserved' FOR UPDATE;
   IF FOUND THEN
-   v_required:=v_redemption.stamps_reserved;
+    
    UPDATE promo_private.delivery_loyalty_redemptions SET status='released',updated_at=pg_catalog.now()
    WHERE order_id=NEW.id AND status='reserved';
    INSERT INTO promo_private.delivery_loyalty_balances(user_id,stamps)
-   VALUES(v_redemption.user_id,COALESCE(v_required,6))
+   VALUES(v_redemption.user_id,v_redemption.stamps_reserved)
    ON CONFLICT(user_id) DO UPDATE SET
-    stamps=LEAST(COALESCE(v_required,6),promo_private.delivery_loyalty_balances.stamps+COALESCE(v_required,6)),
+    stamps=LEAST(30,promo_private.delivery_loyalty_balances.stamps+v_redemption.stamps_reserved),
     updated_at=pg_catalog.now();
   END IF;
  END IF;
