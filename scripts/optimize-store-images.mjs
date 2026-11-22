@@ -19,8 +19,8 @@ async function walk(dir) {
     await fs.mkdir(path.dirname(target), { recursive: true });
     const result = await sharp(source, { failOn: 'none' })
       .rotate()
-      .resize({ width: 400, withoutEnlargement: true })
-      .webp({ quality: 75, effort: 5 })
+      .resize({ width: 320, withoutEnlargement: true })
+      .webp({ quality: 70, effort: 5 })
       .toFile(target);
     const stat = await fs.stat(source);
     originalBytes += stat.size;
