@@ -597,7 +597,7 @@ Deno.serve(async (req: Request) => {
     }
     if (priorOrder && paymentMethod === "pix" && String(priorOrder.status || "").toLowerCase() !== "pagamento pendente") {
       return json({
-        order: { id: priorOrder.id, status: priorOrder.status, total: priorOrder.total, pickupCode },
+        order: { id: priorOrder.id, status: priorOrder.status, total: priorOrder.total, delivery_fee: priorOrder.delivery_fee, delivery_fee_original: priorOrder.delivery_fee_original, delivery_discount: priorOrder.delivery_discount, promo_code: priorOrder.promo_code, pickupCode },
         paymentId: priorOrder.payment_id,
         paymentStatus: String(priorOrder.status || "").toUpperCase(),
       });
