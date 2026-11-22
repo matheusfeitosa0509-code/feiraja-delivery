@@ -37,6 +37,8 @@ jobs:
         run: node tests/order-tracking-display.visual.cjs
       - name: Validate store banner manager and database policies
         run: node tests/store-banners-manager.test.cjs
+      - name: Test dynamic storefront banners at 360px/412px
+        run: node tests/storefront-banners.visual.cjs
       - name: Run vigia against production
         run: npx playwright test tests/site-watch.spec.js --reporter=list
       - name: Verify health-check rejects requests without token
