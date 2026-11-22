@@ -107,6 +107,13 @@ jobs:
       image: mcr.microsoft.com/playwright:v1.58.2-noble
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Generate local WebP assets for storefront visual tests
+        run: |
+          npm install --no-save sharp
+          STOREFRONT_WEBP_OUTPUT=imagens/produtos node scripts/optimize-store-images.mjs
       - name: Check post-deploy storefront test syntax
         run: node --check tests/post-deploy-storefront-actions.cjs
       - name: Install unzip for Deno setup
@@ -128,9 +135,6 @@ jobs:
       - run: deno test --allow-read supabase/functions/assistente/commercial-rules_test.ts
       - run: deno test --allow-read supabase/functions/super-worker/delivery-order_test.ts supabase/functions/_shared/item-preferences_test.ts supabase/functions/_shared/checkout-payment-policy_test.ts
       - run: node supabase/tests/cart-item-preferences.test.mjs
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
       - run: npm install --prefix /tmp/playwright playwright@1.58.2
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-product-create.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/painel-compact.visual.cjs
