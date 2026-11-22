@@ -5,8 +5,8 @@ const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '..');
 const panel = fs.readFileSync(path.join(root, 'painel.html'), 'utf8');
-const schema = fs.readFileSync(path.join(root, 'supabase/migrations/20261122155000_store_banners_manager.sql'), 'utf8');
-const policies = fs.readFileSync(path.join(root, 'supabase/migrations/20261122160000_store_banners_rls_tightening.sql'), 'utf8');
+const schema = fs.readFileSync(path.join(root, 'supabase/migrations/20261122155333_store_banners_manager.sql'), 'utf8');
+const policies = fs.readFileSync(path.join(root, 'supabase/migrations/20261122155432_store_banners_rls_tightening.sql'), 'utf8');
 
 for (const id of [
   'storeBannersManager','storeBannerList','storeBannerForm','storeBannerTitle',
