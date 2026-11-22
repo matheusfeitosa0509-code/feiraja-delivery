@@ -35,7 +35,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE promo_private.delivery_loyalty_sta
 CREATE INDEX IF NOT EXISTS delivery_loyalty_stamp_orders_user_idx ON promo_private.delivery_loyalty_stamp_orders(user_id,awarded_at DESC);
 
 CREATE TABLE IF NOT EXISTS promo_private.delivery_loyalty_redemptions (
- order_id text PRIMARY KEY REFERENCES public.orders(id) ON DELETE CASCADE,
+ order_id text PRIMARY KEY REFERENCES public.orders(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
  discount numeric(12,2) NOT NULL CHECK (discount >= 0),
  stamps_reserved integer NOT NULL DEFAULT 6 CHECK (stamps_reserved BETWEEN 1 AND 30),
