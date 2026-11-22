@@ -2284,7 +2284,8 @@ function updateCheckoutSummary(){
  if(delivery==='delivery'){
   if(deliveryQuote){
    const vehicle=deliveryQuote.vehicle==='MOTO'?'moto':'carro';
-   value.textContent=loyaltyDiscount>0?money(deliveryQuote.fee)+' → '+(loyaltyDiscount>=Number(deliveryQuote.fee)?'GRÁTIS':'R$ '+(Number(deliveryQuote.fee)-loyaltyDiscount).toFixed(2).replace('.',','))+' (fidelidade)':money(deliveryQuote.fee);
+   value.textContent=money(deliveryQuote.fee);
+   if(loyaltyDiscount>0)value.textContent=money(deliveryQuote.fee)+' → '+(loyaltyDiscount>=Number(deliveryQuote.fee)?'GRÁTIS':'R$ '+(Number(deliveryQuote.fee)-loyaltyDiscount).toFixed(2).replace('.',','))+' (fidelidade)';
    label.textContent='Entrega de '+vehicle;
    meta.textContent=loyaltyDiscount>0?'Prêmio do cartão fidelidade aplicado.':checkoutScheduleMessage(new Date(),true);
   }else{
