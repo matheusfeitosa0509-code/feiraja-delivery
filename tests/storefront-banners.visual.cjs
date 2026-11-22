@@ -49,7 +49,7 @@ const { chromium } = require("playwright");
       await page.waitForFunction(() => document.querySelectorAll("#storeBannersTrack .store-banner-slide").length === 4, null, { timeout: 10000 });
       const banners = page.locator("#storeBannersTrack .store-banner-slide");
       if (await banners.count() !== 4) throw new Error("Carrossel deve renderizar os quatro banners retornados.");
-      for (const [index, theme] of ["green","yellow","orange","red"].entries()) { if (!(await banners.nth(index).evaluate(el => el.classList.contains("theme-"+theme)))) throw new Error("Tema "+theme+" não aplicado."); }
+      for (const [index, theme] of ["green","yellow","orange","red"].entries()) { if (!(await banners.nth(index).evaluate((el, expectedTheme) => el.classList.contains("theme-"+expectedTheme), theme))) throw new Error("Tema "+theme+" não aplicado."); }
       if (await page.locator("#storeBannersDots button").count() !== 4) throw new Error("Carrossel com múltiplos banners deve exibir bolinhas.");
       if (!(await page.locator("#storeBannersTrack").innerText()).includes("Termina em 4 dias!")) throw new Error("Contagem regressiva de até sete dias ausente.");
       const order = await page.evaluate(() => ["storeBannersCarousel","home-info-strip","homeBubbles","homeProductSections"].map(id => document.getElementById(id)?.getBoundingClientRect().top ?? -1));
