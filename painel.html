@@ -867,21 +867,32 @@ async function compressProductPhoto(file){
  let blob=null;
  for(const quality of [0.86,0.78,0.70,0.62,0.54,0.46]){blob=await toBlob(quality);if(blob&&blob.size<=PRODUCT_PHOTO_MAX_BYTES)break;}
  if(!blob||blob.size>PRODUCT_PHOTO_MAX_BYTES)throw new Error('A foto ainda ficou acima de 300 KB. Escolha uma imagem mais simples.');
- return {blob,previewUrl:URL.createObjectURL(blob)};
+ const thumbBitmap=await createImageBitmap(blob);
+ const thumbScale=Math.min(1,320/Math.max(thumbBitmap.width,thumbBitmap.height));
+ const thumbCanvas=document.createElement('canvas');thumbCanvas.width=Math.max(1,Math.round(thumbBitmap.width*thumbScale));thumbCanvas.height=Math.max(1,Math.round(thumbBitmap.height*thumbScale));
+ thumbCanvas.getContext('2d').drawImage(thumbBitmap,0,0,thumbCanvas.width,thumbCanvas.height);thumbBitmap.close();
+ const thumbBlob=await new Promise(resolve=>thumbCanvas.toBlob(resolve,'image/webp',0.7));
+ if(!thumbBlob)throw new Error('Não foi possível gerar a miniatura WebP neste navegador.');
+ return {blob,thumbBlob,previewUrl:URL.createObjectURL(blob)};
 }
-async function uploadProductPhoto(productId,blob){
+async function uploadProductPhoto(productId,photo){
  const token=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2));
  const path=String(productId).replace(/[^a-zA-Z0-9_-]/g,'_')+'/'+token+'.jpg';
- const {error}=await db.storage.from(PRODUCT_PHOTO_BUCKET).upload(path,blob,{contentType:'image/jpeg',cacheControl:'31536000',upsert:false});
- if(error)throw error;
- const {data}=db.storage.from(PRODUCT_PHOTO_BUCKET).getPublicUrl(path);
- if(!data?.publicUrl)throw new Error('O Storage não retornou a URL pública da foto.');
- return {path,url:data.publicUrl};
+ const thumbPath=path.replace(/\.jpg$/i,'_320.webp');
+ const storage=db.storage.from(PRODUCT_PHOTO_BUCKET);
+ const originalUpload=await storage.upload(path,photo.blob,{contentType:'image/jpeg',cacheControl:'31536000',upsert:false});
+ if(originalUpload.error)throw originalUpload.error;
+ const thumbUpload=await storage.upload(thumbPath,photo.thumbBlob,{contentType:'image/webp',cacheControl:'31536000',upsert:false});
+ if(thumbUpload.error){await storage.remove([path]);throw thumbUpload.error;}
+ const {data}=storage.getPublicUrl(path);
+ if(!data?.publicUrl){await storage.remove([path,thumbPath]);throw new Error('O Storage não retornou a URL pública da foto.');}
+ return {path,thumbPath,url:data.publicUrl};
 }
-async function removeUploadedProductPhoto(path){
- if(!path)return;
- const {error}=await db.storage.from(PRODUCT_PHOTO_BUCKET).remove([path]);
- if(error)console.warn('Não foi possível remover a foto recém-enviada:',error);
+async function removeUploadedProductPhoto(photo){
+ if(!photo)return;
+ const paths=typeof photo==='string'?[photo]:[photo.path,photo.thumbPath].filter(Boolean);
+ const {error}=await db.storage.from(PRODUCT_PHOTO_BUCKET).remove(paths);
+ if(error)console.warn('Não foi possível remover as fotos recém-enviadas:',error);
 }
 function productPhotoStoragePath(value){
  try{
@@ -1047,7 +1058,7 @@ async function saveProductSheet(){
    if(saleUnit==='kg'&&Math.abs(min/step-Math.round(min/step))>1e-8)throw new Error('O mínimo precisa respeitar o passo da unidade.');
    if(saleUnit==='kg'&&valueEnabled&&Math.abs(valueMin-min)>1e-8)throw new Error('O mínimo do “por valor” deve ser igual ao mínimo do produto.');
    if(mode==='edit'&&saleUnit!==product.sale_unit&&!(await appConfirm('Isso muda como o cliente compra.',{title:'Alterar unidade?',confirmText:'Confirmar alteração'})))throw new Error('Alteração de unidade cancelada.');
-   if(sheetPendingPhoto){setSheetMessage('Enviando foto…');uploadedPhoto=await uploadProductPhoto(id,sheetPendingPhoto.blob);image=uploadedPhoto.url;}
+   if(sheetPendingPhoto){setSheetMessage('Enviando foto…');uploadedPhoto=await uploadProductPhoto(id,sheetPendingPhoto);image=uploadedPhoto.url;}
    if(mode==='create'){
     const {error}=await db.rpc('admin_create_product_with_sales_rule',{p_id:id,p_name:name,p_price:price,p_category:category,p_image:image||null,p_sale_unit:saleUnit});
     if(error)throw error;
@@ -1084,7 +1095,7 @@ async function saveProductSheet(){
    await Promise.all([loadAdminProducts(),loadCostReport()]);
    closeProductSheet();renderUnifiedProductList();$('unifiedProductList').scrollTop=0;
    notice('Ficha de '+name+' salva. Apenas os campos alterados foram atualizados.');
-  }catch(error){if(uploadedPhoto&&!imageSaved)await removeUploadedProductPhoto(uploadedPhoto.path);setSheetMessage(error?.message||'Não foi possível salvar a ficha.',true);}
+  }catch(error){if(uploadedPhoto&&!imageSaved)await removeUploadedProductPhoto(uploadedPhoto);setSheetMessage(error?.message||'Não foi possível salvar a ficha.',true);}
   finally{button.disabled=false;button.textContent='Salvar';}
 }
 $('unifiedProductSearch').addEventListener('input',renderUnifiedProductList);
@@ -1814,7 +1825,7 @@ $('btnSave').onclick=async()=>{
   }
   const button=$('btnSave');button.disabled=true;say('Salvando…');
   try{
-    if(createPendingPhoto){uploadedPhoto=await uploadProductPhoto(id,createPendingPhoto.blob);image=uploadedPhoto.url;}
+    if(createPendingPhoto){uploadedPhoto=await uploadProductPhoto(id,createPendingPhoto);image=uploadedPhoto.url;}
     const{error}=await db.rpc('admin_create_product_with_sales_rule',{p_id:id,p_name:name,p_price:price,p_category:category,p_image:image,p_sale_unit:saleUnit});
     if(error)throw error;
     const{data,error:readError}=await db.from('products').select('id,name,price,category,image,available').eq('id',id).maybeSingle();
@@ -1824,7 +1835,7 @@ $('btnSave').onclick=async()=>{
     uploadedPhoto=null;clearPendingProductPhoto('create');
     ['name','price','pid','imgfile'].forEach(i=>{$(i).value=''});$('saleUnit').value='un';delete $('imgfile').dataset.touched;
   }catch(error){
-    if(uploadedPhoto)await removeUploadedProductPhoto(uploadedPhoto.path);
+    if(uploadedPhoto)await removeUploadedProductPhoto(uploadedPhoto);
     console.error('Falha ao cadastrar produto:',error);
     say(error?.code==='23505'?'Já existe um produto com este ID. Altere o campo ID.':'Não foi possível cadastrar o produto: '+(error?.message||'erro não identificado')+'. Confira antes de tentar novamente.','err');
   }finally{
