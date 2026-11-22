@@ -2685,8 +2685,8 @@ if(root){
   const funnelDb=window.__feiraPanelDb;
   const $ = id => document.getElementById(id);
   const labels = [
-    ['visit','Visitas'],['add_to_cart','Adicionou ao carrinho'],['checkout_open','Abriu checkout'],
-    ['order_created','Pedido criado'],['order_paid','Pedido pago']
+    ['visit','Visitas'],['product_view','Viu produto'],['add_to_cart','Carrinho'],
+    ['checkout_open','Checkout'],['pix_generated','Pix gerado'],['order_paid','Pago']
   ];
   const moneyless = value => Number(value || 0).toLocaleString('pt-BR');
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

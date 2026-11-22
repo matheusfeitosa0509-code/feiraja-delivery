@@ -24,6 +24,8 @@ on:
       - "supabase/rollbacks/20261114185150_product_photos_storage_rollback.sql"
       - "supabase/tests/product-photo-upload-and-uva.test.mjs"
       - "supabase/tests/cart-item-preferences.test.mjs"
+      - "supabase/migrations/20261122170000_store_funnel_product_view_pix_generated.sql"
+      - "supabase/tests/store-funnel-product-pix.test.mjs"
       - ".github/workflows/check-inline-scripts.yml"
   push:
     branches: [main, feat/product-photo-upload-uva-kg]
@@ -85,3 +87,5 @@ jobs:
         run: node supabase/tests/product-photo-upload-and-uva.test.mjs
       - name: Teste de preferências por item no carrinho e repetição do Assistente
         run: node supabase/tests/cart-item-preferences.test.mjs
+      - name: Teste dos novos eventos anônimos do funil
+        run: node supabase/tests/store-funnel-product-pix.test.mjs

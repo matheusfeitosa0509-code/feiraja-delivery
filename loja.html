@@ -2847,7 +2847,12 @@ try{setupAppTabs();}catch(error){console.error('Falha isolada na navegação da 
     p_utm_campaign: params.get('utm_campaign') || null,
     p_device: (window.matchMedia && window.matchMedia('(max-width: 767px)').matches) || window.innerWidth < 768 ? 'celular' : 'computador'
   };
-  const seen = { added:false, checkout:false, login:false, created:false, paid:false };
+  const seen = { added:false, checkout:false, login:false, created:false, pixGenerated:false, paid:false };
+  const productViews = new Set();
+  try {
+    const saved = JSON.parse(sessionStorage.getItem('feira_funnel_product_views_v1') || '[]');
+    if (Array.isArray(saved)) saved.forEach(id => { if (typeof id === 'string') productViews.add(id); });
+  } catch {}
   let queue = Promise.resolve();
   const record = event => {
     queue = queue.then(() => db.rpc('record_store_funnel_event', {
@@ -2856,6 +2861,16 @@ try{setupAppTabs();}catch(error){console.error('Falha isolada na navegação da 
   };
 
   document.addEventListener('click', event => {
+    const card = event.target && event.target.closest
+      ? event.target.closest('.product[data-product-id]')
+      : null;
+    const productId = String(card?.dataset.productId || '').trim();
+    if (productId && !productViews.has(productId)) {
+      productViews.add(productId);
+      try { sessionStorage.setItem('feira_funnel_product_views_v1', JSON.stringify([...productViews])); } catch {}
+      record('product_view');
+    }
+
     const button = event.target && event.target.closest
       ? event.target.closest('[data-add],[data-home-add],[data-card-change],[data-home-card-change],[data-value-add]')
       : null;
@@ -2876,6 +2891,9 @@ try{setupAppTabs();}catch(error){console.error('Falha isolada na navegação da 
     const result = (document.getElementById('result')?.textContent || '').toLocaleLowerCase('pt-BR');
     if (!seen.created && (result.includes('pedido registrado') || result.includes('pix gerado'))) {
       seen.created = true; record('order_created');
+    }
+    if (!seen.pixGenerated && result.includes('pix gerado')) {
+      seen.pixGenerated = true; record('pix_generated');
     }
     const paymentStatus = (document.getElementById('pixStatus')?.textContent || '').toLocaleLowerCase('pt-BR');
     if (!seen.paid && (paymentStatus.includes('pagamento concluído') || paymentStatus.includes('pagamento concluido'))) {
