@@ -880,9 +880,9 @@ async function uploadProductPhoto(productId,photo){
  const path=String(productId).replace(/[^a-zA-Z0-9_-]/g,'_')+'/'+token+'.jpg';
  const thumbPath=path.replace(/\.jpg$/i,'_320.webp');
  const storage=db.storage.from(PRODUCT_PHOTO_BUCKET);
- const originalUpload=await storage.upload(path,photo.blob,{contentType:'image/jpeg',cacheControl:'31536000',upsert:false});
+ const originalUpload=await db.storage.from(PRODUCT_PHOTO_BUCKET).upload(path,photo.blob,{contentType:'image/jpeg',cacheControl:'31536000',upsert:false});
  if(originalUpload.error)throw originalUpload.error;
- const thumbUpload=await storage.upload(thumbPath,photo.thumbBlob,{contentType:'image/webp',cacheControl:'31536000',upsert:false});
+ const thumbUpload=await db.storage.from(PRODUCT_PHOTO_BUCKET).upload(thumbPath,photo.thumbBlob,{contentType:'image/webp',cacheControl:'31536000',upsert:false});
  if(thumbUpload.error){await storage.remove([path]);throw thumbUpload.error;}
  const {data}=storage.getPublicUrl(path);
  if(!data?.publicUrl){await storage.remove([path,thumbPath]);throw new Error('O Storage não retornou a URL pública da foto.');}
