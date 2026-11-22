@@ -1,5 +1,6 @@
 \set ON_ERROR_STOP on
 CREATE SCHEMA IF NOT EXISTS feira_cost_private;
+CREATE SCHEMA IF NOT EXISTS test_support;
 CREATE TABLE public.delivery_settings(singleton boolean primary key default true,lalamove_ambiente text not null);
 INSERT INTO public.delivery_settings(singleton,lalamove_ambiente) VALUES(true,'sandbox');
 CREATE TABLE public.orders(
@@ -20,7 +21,7 @@ CREATE TABLE feira_cost_private.lalamove_dispatches(
  selected_vehicle text, lalamove_order_id text,ambiente text not null default 'sandbox',
  updated_at timestamptz not null default now()
 );
-CREATE OR REPLACE FUNCTION pg_temp.seed_dispatch_case(
+CREATE OR REPLACE FUNCTION test_support.seed_dispatch_case(
  p_id text,p_status text default 'Pagamento Confirmado',
  p_provider text default 'asaas',p_payment_id text default 'pay_test_123',
  p_is_test boolean default false,p_created_at timestamptz default now(),
