@@ -1,5 +1,5 @@
 export function shouldCallLalamovePartner(start: any): boolean {
-  return start?.started === true && start?.state === "creating";
+  return start?.started === true && (start?.state == null || start?.state === "creating");
 }
 
 export async function persistCreatedLalamoveDispatch(db: any, input: {
