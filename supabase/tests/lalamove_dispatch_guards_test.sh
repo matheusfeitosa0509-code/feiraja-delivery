@@ -6,7 +6,6 @@ psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261122010000_lalamove_dispatch_
 psql -v ON_ERROR_STOP=1 -f supabase/tests/lalamove_dispatch_guards_cases.sql
 
 # Race two independent database sessions against one eligible order.
-psql -v ON_ERROR_STOP=1 -c "SELECT pg_temp.seed_dispatch_case('guard-race');" 2>/dev/null || true
 psql -v ON_ERROR_STOP=1 -c "INSERT INTO public.orders(id,status,payment_method,payment_provider,payment_id,is_test_order,delivery_type) VALUES('guard-race','Pagamento Confirmado','Pix','asaas','pay_race',false,'delivery'); INSERT INTO feira_cost_private.lalamove_dispatches(order_id,state,quote_session_id,quote_moto,quote_car,quote_moto_expires_at,quote_car_expires_at,ambiente) VALUES('guard-race','quoted','00000000-0000-4000-8000-000000000099','{}','{}',now()+interval '10 minutes',now()+interval '10 minutes','sandbox');"
 psql -v ON_ERROR_STOP=1 -c "BEGIN; SELECT public.service_begin_lalamove_dispatch('guard-race','00000000-0000-4000-8000-000000000099','MOTO','sandbox',false); SELECT pg_sleep(1); COMMIT;" > /tmp/lalamove-race-a.log &
 pid_a=$!
