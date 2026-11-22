@@ -37,6 +37,7 @@ BEGIN
  UPDATE public.orders SET status='Entregue' WHERE id='loyalty-stamp-6';
  SELECT stamps INTO v_stamps FROM promo_private.delivery_loyalty_balances WHERE user_id='00000000-0000-4000-8000-000000000001';
  IF v_stamps<>6 THEN RAISE EXCEPTION 'FAIL: sixth stamp/retry count expected 6, got %',v_stamps; END IF;
+ IF public.get_delivery_loyalty_stamp_push_message('loyalty-stamp-6') IS DISTINCT FROM 'Você ganhou mais 1 selo! (6/6)' THEN RAISE EXCEPTION 'FAIL: loyalty push message count'; END IF;
 
  -- Pickup never consumes the delivery reward.
  INSERT INTO public.orders(id,user_id,customer_phone,delivery_type,subtotal,delivery_fee,total,status,payment_method)
