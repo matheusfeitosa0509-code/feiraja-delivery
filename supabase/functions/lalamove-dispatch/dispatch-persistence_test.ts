@@ -35,8 +35,9 @@ Deno.test("vigia: alerta dispatch_stale só cobre corrida ativa com mais de duas
 });
 
 Deno.test("corrida órfã: falha após uma retentativa não chama o parceiro novamente", async () => {
+  let saves=0;
   const db={
-    rpc: async ()=>({data:null,error:{code:"XX001"}}),
+    rpc: async ()=>{saves++;return {data:null,error:{code:"XX001"}};},
     from: (_table:string)=>({
       insert: async ()=>({error:null}),
       select: (_cols:string)=>({eq: (_key:string,_value:string)=>({maybeSingle:async()=>({data:null,error:null})})}),
@@ -44,5 +45,5 @@ Deno.test("corrida órfã: falha após uma retentativa não chama o parceiro nov
   };
   const result=await persistCreatedLalamoveDispatch(db,{orderId:"ORDER-2",lalamoveOrderId:"PARTNER-2",actualCost:20,status:"searching",trackingUrl:"",driver:{}});
   assertEquals(result,{persisted:false,retried:true});
-  assertEquals(saves,0);
+  assertEquals(saves,2);
 });
