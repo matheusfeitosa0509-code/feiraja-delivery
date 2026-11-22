@@ -1,3 +1,7 @@
+export function shouldCallLalamovePartner(start: any): boolean {
+  return start?.started === true && start?.state === "creating";
+}
+
 export async function persistCreatedLalamoveDispatch(db: any, input: {
   orderId: string; lalamoveOrderId: string; actualCost: number; status: string;
   trackingUrl: string; driver: Record<string, unknown>;
