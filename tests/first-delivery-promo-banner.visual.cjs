@@ -56,7 +56,7 @@ function startServer() {
    fs.mkdirSync(path.join(root,'artifacts'),{recursive:true});
    await page.screenshot({path:path.join(root,'artifacts','first-delivery-promo-banner-'+width+'.png'),fullPage:false});
    await page.locator('#firstDeliveryPromoCta').click();
-   await page.waitForFunction(()=>window.scrollY>0,{timeout:5000}).catch(()=>{});
+   await page.waitForFunction(()=>window.scrollY>0,null,{timeout:5000}).catch(()=>{});
    const scroll=await page.evaluate(()=>({y:window.scrollY,target:document.querySelector('#homeProductSections')?.getBoundingClientRect().top}));
    assert.ok(scroll.y>0||scroll.target===0,'CTA must scroll toward the product sections');
    screenshots.push({width:width,height:layout.height,scrollY:scroll.y});
