@@ -60,11 +60,11 @@ BEGIN
  SELECT * INTO v_settings FROM promo_private.delivery_loyalty_settings
  WHERE singleton=true AND enabled=true FOR SHARE;
  IF NOT FOUND OR v_settings.discount_cap=0 THEN RETURN NEW; END IF;
- UPDATE promo_private.delivery_loyalty_balances
- SET stamps=0,updated_at=pg_catalog.now()
- WHERE user_id=NEW.user_id AND stamps>=v_settings.stamps_required
- RETURNING stamps+v_settings.stamps_required INTO v_stamps_reserved;
- IF NOT FOUND THEN RETURN NEW; END IF;
+ SELECT stamps INTO v_stamps_reserved FROM promo_private.delivery_loyalty_balances
+ WHERE user_id=NEW.user_id FOR UPDATE;
+ IF NOT FOUND OR v_stamps_reserved<v_settings.stamps_required THEN RETURN NEW; END IF;
+ UPDATE promo_private.delivery_loyalty_balances SET stamps=0,updated_at=pg_catalog.now()
+ WHERE user_id=NEW.user_id;
  v_discount:=LEAST(COALESCE(NEW.delivery_fee,0),COALESCE(v_settings.discount_cap,COALESCE(NEW.delivery_fee,0)));
  INSERT INTO promo_private.delivery_loyalty_redemptions(order_id,user_id,discount,stamps_reserved,status)
  VALUES(NEW.id,NEW.user_id,v_discount,v_stamps_reserved,'reserved');
