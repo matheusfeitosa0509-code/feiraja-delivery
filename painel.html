@@ -396,6 +396,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
  <button type="button" id="saveFirstDeliveryPromo">Salvar promoção</button>
  <p id="firstDeliveryPromoMessage" class="muted" role="status" aria-live="polite"></p>
 
+</section>
 <section class="card" id="storeBannersManager" aria-labelledby="storeBannersTitle">
  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 id="storeBannersTitle">🎨 Banners da loja</h2><button type="button" id="storeBannerNew">+ Novo banner</button></div>
  <p class="muted">Gerencie os destaques exibidos na loja. Banners promocionais só ficam públicos quando a promoção correspondente está ligada.</p>
@@ -2768,12 +2769,14 @@ if(root){
  function currentDraft(){return {title:$('storeBannerTitle').value,subtitle:$('storeBannerSubtitle').value,button_text:$('storeBannerButtonText').value,action_type:$('storeBannerActionType').value,action_value:$('storeBannerActionValue').value||null,theme:$('storeBannerTheme').value,audience:$('storeBannerAudience').value,starts_at:toIso($('storeBannerStartsAt').value),ends_at:toIso($('storeBannerEndsAt').value),rules_text:$('storeBannerRulesText').value||null,is_active:$('storeBannerActive').checked,sort_order:Number($('storeBannerSortOrder').value)||0,promo_code:$('storeBannerPromoCode').value.trim()||null};}
  function updatePreview(){preview(currentDraft(),$('storeBannerPreview'));}
  function refreshActionValue(){
-  const type=$('storeBannerActionType').value,wrap=$('storeBannerActionValueLabel'),select=$('storeBannerActionValue');
-  const relevant=type==='category'||type==='product'||type==='whatsapp';
-  wrap.hidden=!relevant;select.replaceChildren(new Option(type==='category'?'Selecione uma categoria':type==='product'?'Selecione um produto':'Número ou link do WhatsApp',''));
-  if(type==='category'){[...new Set(products.map(p=>p.category).filter(Boolean))].sort().forEach(v=>select.add(new Option(v,v)));}
-  if(type==='product'){products.slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).forEach(p=>select.add(new Option(p.name+(p.available?'':' · indisponível'),p.id)));}
-  if(type==='whatsapp'){select.remove();const input=document.createElement('input');input.id='storeBannerActionValue';input.placeholder='Ex.: 5592999999999 ou https://wa.me/...';input.maxLength=200;wrap.append(input);}
+  const type=$('storeBannerActionType').value,wrap=$('storeBannerActionValueLabel');
+  const relevant=type==='category'||type==='product'||type==='whatsapp';wrap.hidden=!relevant;
+  let field=$('storeBannerActionValue');const wantInput=type==='whatsapp';
+  if((wantInput&&field.tagName!=='INPUT')||(!wantInput&&field.tagName!=='SELECT')){const next=document.createElement(wantInput?'input':'select');next.id='storeBannerActionValue';field.replaceWith(next);field=next;}
+  if(wantInput){field.placeholder='Ex.: 5592999999999 ou https://wa.me/...';field.maxLength=200;return;}
+  field.replaceChildren(new Option(type==='category'?'Selecione uma categoria':'Selecione um produto',''));
+  if(type==='category'){[...new Set(products.map(p=>p.category).filter(Boolean))].sort().forEach(v=>field.add(new Option(v,v)));}
+  if(type==='product'){products.slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).forEach(p=>field.add(new Option(p.name+(p.available?'':' · indisponível'),p.id)));}
  }
  function fillForm(row){
   editingId=row?.id||null;$('storeBannerFormTitle').textContent=editingId?'Editar banner':'Novo banner';
@@ -2837,7 +2840,7 @@ if(root){
   catch(error){setMessage('Não foi possível salvar o banner. Verifique os campos e a permissão de administrador.',true);}
   finally{button.disabled=false;}
  });
- window.__storeBannerConfirm=async message=>window.confirm(message);
+ window.__storeBannerConfirm=async message=>typeof window.appConfirm==='function'?window.appConfirm(message,{title:'Apagar banner?',confirmText:'Apagar',cancelText:'Cancelar',danger:true}):window.confirm(message);
  const {data:sessionData}=await db.auth.getSession();
  if(sessionData?.session){const {data,error}=await db.from('products').select('id,name,category,available').order('name');if(!error)products=data||[];await load();}
  db.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){banners=[];render();}else if(session&&['SIGNED_IN','INITIAL_SESSION','TOKEN_REFRESHED'].includes(event)){void db.from('products').select('id,name,category,available').order('name').then(r=>{if(!r.error)products=r.data||[];return load();});}});
