@@ -50,18 +50,18 @@ begin
 
   -- Payment confirmation is represented by the Asaas webhook's persisted
   -- paid workflow status plus its exact Asaas payment ID (not by Pix method).
-  if coalesce(v_order.payment_provider,'') <> 'asaas'
+  if lower(btrim(coalesce(v_order.status,''))) like '%cancel%'
+     or lower(btrim(coalesce(v_order.status,''))) in
+       ('entregue','concluído','concluido','finalizado','completed','delivered') then
+    v_block_code := 'ORDER_CLOSED';
+    v_block_message := 'Despacho bloqueado: pedido cancelado ou concluído/entregue.';
+  elsif coalesce(v_order.payment_provider,'') <> 'asaas'
      or nullif(btrim(coalesce(v_order.payment_id,'')),'') is null
      or lower(btrim(coalesce(v_order.status,''))) not in
        ('pagamento confirmado','preparando','pronto','pronto para retirada',
         'saiu para entrega') then
     v_block_code := 'PAYMENT_NOT_CONFIRMED';
     v_block_message := 'Despacho bloqueado: pagamento Asaas não confirmado (status pago/recebido e payment_id obrigatório).';
-  elsif lower(btrim(coalesce(v_order.status,''))) like '%cancel%'
-     or lower(btrim(coalesce(v_order.status,''))) in
-       ('entregue','concluído','concluido','finalizado','completed','delivered') then
-    v_block_code := 'ORDER_CLOSED';
-    v_block_message := 'Despacho bloqueado: pedido cancelado ou concluído/entregue.';
   elsif coalesce(v_order.is_test_order,false) then
     v_block_code := 'TEST_ORDER';
     v_block_message := 'Despacho bloqueado: pedidos de teste nunca podem gerar corrida.';
