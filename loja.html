@@ -1562,7 +1562,7 @@ let cartValueCents=readStoredMap('feiraja_cart_value_cents_v1',value=>Number.isS
 let minValueSaleCents=500,salesSettingsReady=false;
 function readStoredCart(){try{const raw=localStorage.getItem('feiraja_cart_v1');if(raw===null)return {};const parsed=JSON.parse(raw);if(!parsed||typeof parsed!=='object'||Array.isArray(parsed)||Object.entries(parsed).some(([id,qty])=>!id.trim()||typeof qty!=='number'||!Number.isFinite(qty)||qty<=0||qty>100||(cartModes[id]==='value'?Math.abs(qty*1000-Math.round(qty*1000))>1e-7:(qty<0.5||Math.abs(qty*2-Math.round(qty*2))>1e-9)))){cartStorageWarning=true;return {};}return parsed;}catch{cartStorageWarning=true;return {};}}
 let products=[],cart=readStoredCart(),category='Todos',authMode='login',currentUser=null,pendingCheckout=false,customerPhoneReady=false;
-let firstDeliveryPromoOffer=null,customerDeliveryLoyalty=null;
+let firstDeliveryPromoOffer=null,customerDeliveryLoyalty=null,firstDeliveryPromoCheckedForUser=null;
 let currentUserIsAdmin=false,deliveryAdminCheckComplete=false,deliveryActive=false,deliveryAccessRequest=0,deliveryQuote=null,deliveryQuoteTimer=null,deliveryQuoteSequence=0;
 let uberOptionCard=null,uberSelectOption=null;
 function hasConfirmedDeliveryAdmin(){return deliveryAdminCheckComplete===true&&currentUserIsAdmin===true;}
@@ -2121,8 +2121,9 @@ async function loadFirstDeliveryPromoOffer(){
 }
 async function loadCustomerDeliveryLoyalty(){
  const userId=currentUser?.id;
- if(!userId){customerDeliveryLoyalty=null;return;}
+ if(!userId){customerDeliveryLoyalty=null;firstDeliveryPromoCheckedForUser=null;return;}
  try{
+  try{const {data:offer,error:offerError}=await supabase.rpc('get_first_delivery_promo_offer');if(offerError)throw offerError;firstDeliveryPromoOffer=offer?.enabled===true?offer:null;firstDeliveryPromoCheckedForUser=userId;}catch(offerError){firstDeliveryPromoCheckedForUser=null;console.warn('Não foi possível validar a promoção de primeira entrega antes da fidelidade:',offerError?.message||offerError);}
   const {data,error}=await supabase.rpc('get_customer_delivery_loyalty_status');
   if(error)throw error;
   if(currentUser?.id!==userId)return;
@@ -2142,7 +2143,7 @@ async function loadCustomerDeliveryLoyalty(){
 }
 function checkoutLoyaltyDiscount(fee,subtotal){
  const status=customerDeliveryLoyalty,delivery=$('#delivery')?.value||'pickup_store';
- if(delivery!=='delivery'||status?.enabled!==true||status?.reward_available!==true)return 0;
+ if(delivery!=='delivery'||status?.enabled!==true||status?.reward_available!==true||firstDeliveryPromoCheckedForUser!==currentUser?.id)return 0;
  const firstPromoEligible=firstDeliveryPromoOffer?.enabled===true&&subtotal>=Number(firstDeliveryPromoOffer.min_subtotal||0);
  if(firstPromoEligible)return 0;
  const cap=status.discount_cap==null?fee:Math.max(0,Number(status.discount_cap)||0);
