@@ -3,6 +3,7 @@ set -euo pipefail
 export PGPASSWORD=postgres PGHOST=127.0.0.1 PGPORT=5432 PGUSER=postgres PGDATABASE=promo_a1_test
 psql -v ON_ERROR_STOP=1 -f supabase/tests/first_delivery_promo_base.sql
 psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261121140000_first_delivery_promo_server_a1.sql
+psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261122100000_first_delivery_promo_ui_a2.sql
 psql -v ON_ERROR_STOP=1 -f supabase/tests/first_delivery_promo_cases.sql
 
 # Concurrent reservation: both sessions race for the same user/phone/address.

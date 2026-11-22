@@ -384,6 +384,19 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 </section>
 
 
+<section class="card" id="firstDeliveryPromoSettings" aria-labelledby="firstDeliveryPromoTitle">
+ <h2 id="firstDeliveryPromoTitle">🎁 1ª entrega grátis</h2>
+ <p class="muted">A promoção é aplicada pelo servidor apenas a clientes elegíveis. Deixe desligada até decidir ativá-la.</p>
+ <label style="display:flex;align-items:center;gap:10px"><input id="firstDeliveryPromoEnabled" type="checkbox" style="width:22px;min-height:22px"> Promoção ligada</label>
+ <div class="automatic-margin-grid">
+  <label>Pedido mínimo (R$)<input id="firstDeliveryPromoMinimum" type="number" min="0" max="100000" step="0.01" value="50"></label>
+  <label>Data final<input id="firstDeliveryPromoEndsAt" type="date" value="2026-12-31"></label>
+  <label>Teto do desconto (R$)<input id="firstDeliveryPromoCap" type="number" min="0" max="100000" step="0.01" placeholder="Sem teto"></label>
+ </div>
+ <button type="button" id="saveFirstDeliveryPromo">Salvar promoção</button>
+ <p id="firstDeliveryPromoMessage" class="muted" role="status" aria-live="polite"></p>
+</section>
+
 <section class="card lalamove-settings" id="lalamoveSettingsCard" aria-label="Configurações de entrega">
  <div class="lalamove-admin-head"><h2 style="margin:0">Configurações de entrega</h2><span id="lalamoveSettingsBadge" class="lalamove-env-badge sandbox">SANDBOX</span></div>
  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:14px 0;padding:14px;border:2px solid #2f6a14;border-radius:14px;background:#f1f8e6">
@@ -619,7 +632,7 @@ function displayOrderStatusLabel(order,status){return order?.delivery_type==='de
 function normalizeOrderStatus(status){const s=String(status||'').trim().toLowerCase();if(s==='pagamento reembolsado')return 'Reembolsado';if(s==='pagamento contestado')return 'Contestado';if(['cancelada','cancelado'].includes(s))return 'Cancelada';if(s==='pagamento cancelado')return 'Pagamento cancelado';if(s==='pagamento recusado')return 'Pagamento recusado';if(['pagamento expirado','expirado','expired'].includes(s))return 'Pagamento Expirado';if(['entregue','concluído','concluido'].includes(s))return 'Entregue';if(['pronto para retirada','pronto','pronto para envio'].includes(s))return 'Pronto para Retirada';if(['preparando','preparando pedido'].includes(s))return 'Preparando';if(['saiu para entrega'].includes(s))return 'Saiu para Entrega';if(['pedido recebido','recebido'].includes(s))return 'Pedido Recebido';if(['pagamento confirmado','pago'].includes(s))return 'Pagamento Confirmado';return 'Pagamento Pendente';}
 let allOrders=[],seenOrderIds=new Set(),firstLoadDone=false,hasMoreOrders=true,nextOffset=0;const PAGE_SIZE=200;let profitByOrder={},dailyProfitSummary=null;let adminProducts=[];let lalamoveEnvironment='sandbox',lalamoveEnvironmentReady=false,lalamoveEnvironmentLoadError='',deliveryIsActive=false;
  let separatedColumnAvailable=true,separationStartedColumnAvailable=true,separationLegacyColumnAvailable=true,scheduledColumnAvailable=true;const separatedMemory=new Map(),separatedPending=new Map();
- function orderSelectColumns(){let columns='id,created_at,customer_name,customer_phone,customer_address,customer_email,delivery_type,delivery_address,delivery_vehicle,delivery_weight_kg,delivery_fee,lalamove_status,lalamove_status_updated_at,lalamove_tracking_url,lalamove_driver,is_test_order,pickup_code,payment_method,items,subtotal,total,status,market_checklist';if(scheduledColumnAvailable)columns+=',scheduled_for';if(separatedColumnAvailable)columns+=',separated_items';if(separationStartedColumnAvailable)columns+=',separation_started_at';if(separationLegacyColumnAvailable)columns+=',separation_started_legacy';return columns+',delivery_coordinates,refund_pending,cancelled_by,cancelled_at';}
+ function orderSelectColumns(){let columns='id,created_at,customer_name,customer_phone,customer_address,customer_email,delivery_type,delivery_address,delivery_vehicle,delivery_weight_kg,delivery_fee,delivery_fee_original,delivery_discount,promo_code,lalamove_status,lalamove_status_updated_at,lalamove_tracking_url,lalamove_driver,is_test_order,pickup_code,payment_method,items,subtotal,total,status,market_checklist';if(scheduledColumnAvailable)columns+=',scheduled_for';if(separatedColumnAvailable)columns+=',separated_items';if(separationStartedColumnAvailable)columns+=',separation_started_at';if(separationLegacyColumnAvailable)columns+=',separation_started_legacy';return columns+',delivery_coordinates,refund_pending,cancelled_by,cancelled_at';}
  function isMissingSeparationSchema(error){const code=String(error?.code||'');const message=String(error?.message||'');return ['42703','PGRST204','PGRST202','42883'].includes(code)||/scheduled_for|separated_items|separation_started_at|separation_started_legacy|set_order_separated_items|schema cache|does not exist/i.test(message);}
  async function fetchOrdersPage(offset,limit,useRange=false){
   const query=()=>db.from('orders').select(orderSelectColumns()).order('created_at',{ascending:false});
@@ -1542,11 +1555,12 @@ function render(){
   const separationPill=o.separation_started_at?'<span class="pill">Separação iniciada · '+esc(new Date(o.separation_started_at).toLocaleString('pt-BR'))+'</span>':o.separation_started_legacy?'<span class="pill">Separação iniciada · pedido anterior (horário não registrado)</span>':'';
   const cancelNote=currentStatus==='Cancelada'?'<p class="muted">Pedido cancelado. Não é possível marcar itens como separados.</p>':'';
   const refundPill=o.refund_pending?'<span class="pill" style="background:#fff0ed;color:#a02d20">Devolver Pix</span>':'';
+  const firstDeliveryPromoPill=o.promo_code==='PRIMEIRA_ENTREGA'&&Number(o.delivery_discount)>0?'<span class="pill" style="background:#e8f4e8;color:#24632f">1ª entrega grátis · desconto '+money(o.delivery_discount)+'</span>':'';
   return '<article class="order" id="order-card-'+esc(o.id)+'">'
    +'<div class="order-summary"><div class="order-summary-top"><div><h3>Pedido '+esc(shortOrderNumber(o.id))+'</h3><small class="muted">'+esc(date)+'</small></div><strong class="total">'+money(o.total)+'</strong><span class="pill '+(currentStatus==='Reembolsado'?'status-reembolsado':currentStatus==='Contestado'?'status-contestado':'')+'">'+esc(displayOrderStatusLabel(o,currentStatus))+'</span>'+testBadge+scheduledBadge+'<button type="button" class="order-expand" data-order-toggle="'+esc(o.id)+'" aria-expanded="false">Expandir</button></div>'
    +contact+chips+orderProfitMarkup+'</div>'
    +'<div class="order-content" data-order-content="'+esc(o.id)+'" hidden>'
-   +separationPill+refundPill+cancelNote+pickupAddress+codeHtml+deliveryBlock
+   +separationPill+refundPill+firstDeliveryPromoPill+cancelNote+pickupAddress+codeHtml+deliveryBlock
    +'<div class="actions order-share-actions"><button type="button" class="secondary" data-share-order-list="'+esc(o.id)+'">Compartilhar lista</button></div>'
    +'<div class="order-observation"><small>OBSERVAÇÕES DO CLIENTE</small><span>'+esc(notes||'Nenhuma observação')+'</span></div>'
    +'<div class="items">'+separationHeader+(items.length?itemRows:'<p class="muted">Itens não detalhados</p>')+'<div class="item"><span>Subtotal</span><span>'+money(o.subtotal)+'</span></div><div class="item"><span>Taxa</span><span>'+money(o.delivery_fee)+'</span></div><div class="item item-total"><strong>Total</strong><strong>'+money(o.total)+'</strong></div></div>'
@@ -2265,6 +2279,39 @@ $('saveAutomaticMargin').addEventListener('click',async()=>{
  catch(e){msg.textContent='Não foi possível salvar as margens. Confira a sessão administrativa.';}
  finally{b.disabled=false;}
 });
+
+function firstDeliveryDateInManaus(value){
+ if(!value)return '2026-12-31';
+ const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(value));
+ const part=type=>parts.find(x=>x.type===type)?.value||'';
+ return part('year')+'-'+part('month')+'-'+part('day');
+}
+async function loadFirstDeliveryPromoSettings(){
+ const msg=$('firstDeliveryPromoMessage');
+ try{
+  const {data,error}=await db.rpc('admin_get_first_delivery_promo_settings');if(error)throw error;
+  $('firstDeliveryPromoEnabled').checked=data?.enabled===true;
+  $('firstDeliveryPromoMinimum').value=Number(data?.min_subtotal??50).toFixed(2);
+  $('firstDeliveryPromoEndsAt').value=firstDeliveryDateInManaus(data?.ends_at);
+  $('firstDeliveryPromoCap').value=data?.discount_cap==null?'':Number(data.discount_cap).toFixed(2);
+  msg.textContent='Configuração carregada. Promoção '+(data?.enabled?'ligada':'desligada')+'.';
+ }catch(error){msg.textContent='Não foi possível carregar as configurações da promoção. Confira o acesso administrativo.';}
+}
+$('saveFirstDeliveryPromo').addEventListener('click',async()=>{
+ const msg=$('firstDeliveryPromoMessage'),button=$('saveFirstDeliveryPromo');
+ const minimum=Number($('firstDeliveryPromoMinimum').value),capRaw=$('firstDeliveryPromoCap').value.trim(),date=$('firstDeliveryPromoEndsAt').value;
+ const cap=capRaw===''?null:Number(capRaw);
+ if(!Number.isFinite(minimum)||minimum<0||minimum>100000||!date||(cap!==null&&(!Number.isFinite(cap)||cap<0||cap>100000))){msg.textContent='Informe pedido mínimo, data final e teto válidos.';return;}
+ button.disabled=true;
+ try{
+  const endsAt=new Date(date+'T23:59:59-04:00').toISOString();
+  const {error}=await db.rpc('admin_save_first_delivery_promo_settings',{p_enabled:$('firstDeliveryPromoEnabled').checked,p_min_subtotal:minimum,p_ends_at:endsAt,p_discount_cap:cap});
+  if(error)throw error;
+  msg.textContent='Configurações salvas. A promoção '+($('firstDeliveryPromoEnabled').checked?'está ligada':'continua desligada')+'.';
+ }catch(error){msg.textContent='Não foi possível salvar. Confira a sessão administrativa e tente novamente.';}
+ finally{button.disabled=false;}
+});
+
 function moneyAutomatic(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
 async function loadAutomaticPriceReview(){
  const msg=$('automaticPriceReviewMessage'),host=$('automaticPriceReviewRows'),missing=$('automaticPriceReviewMissing');
@@ -2517,7 +2564,7 @@ $('refreshProductRequests').addEventListener('click',loadProductRequests);
 db.auth.onAuthStateChange((event,session)=>{
   if(event==='SIGNED_OUT')panelPushUserSynced='';
   if(event==='SIGNED_IN'&&session?.user)void initPanelPush(session.user);
-  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){loadPriceProducts();loadEditableProducts();loadResaleProducts();loadAutomaticMarginSettings();loadAutomaticPriceReview();}
+  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){loadPriceProducts();loadEditableProducts();loadResaleProducts();loadAutomaticMarginSettings();loadAutomaticPriceReview();loadFirstDeliveryPromoSettings();}
   if(event==='SIGNED_OUT'){$('priceEditor').classList.add('hide');priceProducts=[];$('priceProduct').replaceChildren(new Option('Entre como administrador',''));$('btnUpdatePrice').disabled=true;$('productEdit').classList.add('hide');editableProducts=[];$('resaleEditor').classList.add('hide');resaleProducts=[];$('resaleProduct').replaceChildren(new Option('Entre como administrador',''));$('btnPreviewResale').disabled=true;}
 });
 
