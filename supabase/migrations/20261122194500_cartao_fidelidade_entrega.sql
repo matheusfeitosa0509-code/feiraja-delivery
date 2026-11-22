@@ -59,7 +59,7 @@ BEGIN
     OR COALESCE(NEW.delivery_fee,0) <= 0 THEN RETURN NEW; END IF;
  SELECT * INTO v_settings FROM promo_private.delivery_loyalty_settings
  WHERE singleton=true AND enabled=true FOR SHARE;
- IF NOT FOUND THEN RETURN NEW; END IF;
+ IF NOT FOUND OR v_settings.discount_cap=0 THEN RETURN NEW; END IF;
  UPDATE promo_private.delivery_loyalty_balances
  SET stamps=stamps-v_settings.stamps_required,updated_at=pg_catalog.now()
  WHERE user_id=NEW.user_id AND stamps>=v_settings.stamps_required;
@@ -186,7 +186,8 @@ BEGIN
  INTO v_stamps;
  RETURN jsonb_build_object('enabled',COALESCE(v_settings.enabled,false),'stamps',v_stamps,
  'stamps_required',COALESCE(v_settings.stamps_required,6),
- 'reward_available',COALESCE(v_settings.enabled,false) AND v_stamps>=COALESCE(v_settings.stamps_required,6));
+ 'reward_available',COALESCE(v_settings.enabled,false) AND v_stamps>=COALESCE(v_settings.stamps_required,6),
+ 'discount_cap',v_settings.discount_cap);
 END;
 $function$;
 
@@ -222,6 +223,33 @@ GRANT EXECUTE ON FUNCTION public.admin_save_delivery_loyalty_settings(boolean,in
 GRANT EXECUTE ON FUNCTION public.get_customer_delivery_loyalty_status() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_list_customer_delivery_loyalty() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_delivery_loyalty_stamp_push_message(text) TO service_role;
+-- Pick-up completion uses the same signed push pipeline. The award trigger above
+-- runs first; send only when this order actually earned a stamp.
+CREATE OR REPLACE FUNCTION promo_private.push_delivery_loyalty_completion_notice()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $function$
+DECLARE v_secret text;
+BEGIN
+ IF NEW.status IS NOT DISTINCT FROM OLD.status
+    OR NEW.status NOT IN ('Pedido Concluído','Concluído','Concluido')
+    OR NEW.user_id IS NULL OR COALESCE(NEW.is_test_order,false)
+    OR NOT EXISTS(SELECT 1 FROM promo_private.delivery_loyalty_stamp_orders e WHERE e.order_id=NEW.id)
+ THEN RETURN NEW; END IF;
+ SELECT decrypted_secret INTO v_secret FROM vault.decrypted_secrets
+ WHERE name='push_hmac_secret' LIMIT 1;
+ IF v_secret IS NOT NULL AND pg_catalog.btrim(v_secret)<>'' THEN
+  PERFORM public.push_orders_notify_send(NEW.id,'customer',NEW.status,v_secret);
+ END IF;
+ RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+ RETURN NEW;
+END;
+$function$;
+REVOKE ALL ON FUNCTION promo_private.push_delivery_loyalty_completion_notice() FROM PUBLIC,anon,authenticated,service_role;
+DROP TRIGGER IF EXISTS trg_zzz_push_delivery_loyalty_completion_notice ON public.orders;
+CREATE TRIGGER trg_zzz_push_delivery_loyalty_completion_notice AFTER UPDATE OF status ON public.orders
+FOR EACH ROW EXECUTE FUNCTION promo_private.push_delivery_loyalty_completion_notice();
+
 COMMENT ON TABLE promo_private.delivery_loyalty_settings IS 'Cartão fidelidade de entrega; desligado por padrão.';
 COMMENT ON TABLE promo_private.delivery_loyalty_balances IS 'Saldo privado de selos de entrega por cliente.';
 COMMENT ON TABLE promo_private.delivery_loyalty_redemptions IS 'Reservas atômicas de prêmios FIDELIDADE; taxa original preservada para despacho.';
