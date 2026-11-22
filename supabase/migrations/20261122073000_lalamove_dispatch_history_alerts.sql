@@ -43,14 +43,14 @@ revoke all on function feira_cost_private.capture_lalamove_dispatch_history() fr
 
 create or replace function feira_cost_private.sync_lalamove_history_cost()
 returns trigger language plpgsql security definer set search_path=''
-as $
+as $sync$
 begin
  update feira_cost_private.lalamove_dispatch_history
  set actual_cost=new.actual_cost,updated_at=now()
  where order_id=new.order_id;
  return new;
 end;
-$;
+$sync$;
 drop trigger if exists trg_sync_lalamove_history_cost on feira_cost_private.order_delivery_costs;
 create trigger trg_sync_lalamove_history_cost
 after insert or update of actual_cost on feira_cost_private.order_delivery_costs
