@@ -69,5 +69,6 @@ test("job registra relógio de status e aplica exclusão de pedidos de teste sem
   assert.match(migration, /coalesce\(o\.is_test_order,false\)=false/i);
   assert.match(migration, /interval '24 hours'/i);
   assert.match(migration, /interval '3 hours'/i);
+  assert.match(migration, /from feira_cost_private\\.lalamove_dispatch_history h[\\s\\S]*?h\\.status in/i);
   assert.match(migration, /grant execute on function public\.process_admin_alert_jobs\(timestamptz\) to service_role/i);
 });
