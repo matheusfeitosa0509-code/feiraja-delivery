@@ -31,7 +31,7 @@ jobs:
           rm -f _site/imagens/produtos/leia.txt
           node scripts/optimize-store-images.mjs
       - name: Configure Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
         with:
           enablement: true
       - name: Upload static site
