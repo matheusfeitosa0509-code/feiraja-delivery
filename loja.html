@@ -2193,7 +2193,9 @@ function updateCheckoutSummary(){
  }else{
   value.textContent='Grátis';label.textContent='Retirada na loja';
   meta.textContent='Av. Lourenço da Silva Braga, 700 · seg a sáb, 6h às 13h';
- }}
+ }
+ if(typeof updateFirstDeliveryPromoUI==='function')updateFirstDeliveryPromoUI();
+}
 function updateCheckoutTotals(minimumMessage=''){
  const subtotal=totals().sub,delivery=$('#delivery')?.value||'pickup_store';
  const quoteValid=delivery==='delivery'&&isValidDeliveryQuote(deliveryQuote);if(delivery==='delivery'&&deliveryQuote&&!quoteValid)deliveryQuote=null;
