@@ -75,12 +75,12 @@ before update on public.store_banners
 for each row execute function public.store_banners_set_updated_at();
 
 insert into public.store_banners
-(id,title,subtitle,button_text,action_type,theme,audience,starts_at,ends_at,rules_text,is_active,sort_order,promo_code)
+(id,title,subtitle,button_text,action_type,action_value,theme,audience,starts_at,ends_at,rules_text,is_active,sort_order,promo_code)
 values
-('banners000-0000-4000-8000-000000000001','🎁 Sua 1ª entrega é GRÁTIS','Pedidos a partir de R$ 50 · Por tempo limitado','Montar meu pedido','products',null,'green','new_customers',now(),'2027-01-01 03:59:59+00','1ª entrega grátis para novos clientes. Pedidos a partir de R$ 50 (produtos), somente entrega, pagamento via Pix, 1 por cliente (conta, telefone e endereço). Válido até 31/12/2026.',true,10,'PRIMEIRA_ENTREGA'),
-('banners000-0000-4000-8000-000000000002','Fale com o Assistente','Diga o que você precisa, por voz ou texto. Ele monta uma sugestão para você conferir.','Abrir assistente','assistant','green','all',now(),null,null,true,20,null),
-('banners000-0000-4000-8000-000000000003','Não achou o produto?','Envie o nome do que você procura.','Pedir um produto','request_product','green','all',now(),null,null,true,30,null),
-('banners000-0000-4000-8000-000000000004','Retire na feira','Av. Lourenço da Silva Braga, 700, Manaus. Retire na loja ou receba em casa com a Entrega Feira On.','Como chegar','maps','green','all',now(),null,null,true,40,null)
+('00000000-0000-4000-8000-000000000001','🎁 Sua 1ª entrega é GRÁTIS','Pedidos a partir de R$ 50 · Por tempo limitado','Montar meu pedido','products',null,'green','new_customers',now(),'2027-01-01 03:59:59+00','1ª entrega grátis para novos clientes. Pedidos a partir de R$ 50 (produtos), somente entrega, pagamento via Pix, 1 por cliente (conta, telefone e endereço). Válido até 31/12/2026.',true,10,'PRIMEIRA_ENTREGA'),
+('00000000-0000-4000-8000-000000000002','Fale com o Assistente','Diga o que você precisa, por voz ou texto. Ele monta uma sugestão para você conferir.','Abrir assistente','assistant',null,'green','all',now(),null,null,true,20,null),
+('00000000-0000-4000-8000-000000000003','Não achou o produto?','Envie o nome do que você procura.','Pedir um produto','request_product',null,'green','all',now(),null,null,true,30,null),
+('00000000-0000-4000-8000-000000000004','Retire na feira','Av. Lourenço da Silva Braga, 700, Manaus. Retire na loja ou receba em casa com a Entrega Feira On.','Como chegar','maps',null,'green','all',now(),null,null,true,40,null)
 on conflict (id) do update set
  title=excluded.title,subtitle=excluded.subtitle,button_text=excluded.button_text,action_type=excluded.action_type,
  action_value=excluded.action_value,theme=excluded.theme,audience=excluded.audience,starts_at=excluded.starts_at,
