@@ -39,6 +39,12 @@ BEGIN
  SELECT stamps INTO v_stamps FROM promo_private.delivery_loyalty_balances WHERE user_id='00000000-0000-4000-8000-000000000001';
  IF v_stamps<>6 THEN RAISE EXCEPTION 'FAIL: sixth stamp/retry count expected 6, got %',v_stamps; END IF;
  IF public.get_delivery_loyalty_stamp_push_message('loyalty-stamp-6') IS DISTINCT FROM 'Você ganhou mais 1 selo! (6/6)' THEN RAISE EXCEPTION 'FAIL: loyalty push message count'; END IF;
+ INSERT INTO public.orders(id,user_id,customer_phone,delivery_type,subtotal,delivery_fee,total,status,payment_method)
+ VALUES('loyalty-after-full','00000000-0000-4000-8000-000000000001','92911110001','pickup_store',40,0,40,'Pagamento Confirmado','Asaas Pix');
+ UPDATE public.orders SET status='Entregue' WHERE id='loyalty-after-full';
+ IF EXISTS(SELECT 1 FROM promo_private.delivery_loyalty_stamp_orders WHERE order_id='loyalty-after-full')
+    OR public.get_delivery_loyalty_stamp_push_message('loyalty-after-full') IS NOT NULL
+ THEN RAISE EXCEPTION 'FAIL: no extra stamp or push after reward threshold'; END IF;
 
  -- Pickup never consumes the delivery reward.
  INSERT INTO public.orders(id,user_id,customer_phone,delivery_type,subtotal,delivery_fee,total,status,payment_method)
