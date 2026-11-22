@@ -34,7 +34,7 @@ BEGIN
  INSERT INTO public.orders(id,user_id,customer_phone,delivery_type,subtotal,delivery_fee,total,status,payment_method)
  VALUES('loyalty-stamp-6','00000000-0000-4000-8000-000000000001','92911110001','pickup_store',30,0,30,'Pagamento Confirmado','Asaas Pix');
  UPDATE public.orders SET status='Entregue' WHERE id='loyalty-stamp-6';
- UPDATE public.orders SET market_checklist='{}'::jsonb WHERE id='loyalty-stamp-6';
+ UPDATE public.orders SET status='Entregue' WHERE id='loyalty-stamp-6';
  SELECT stamps INTO v_stamps FROM promo_private.delivery_loyalty_balances WHERE user_id='00000000-0000-4000-8000-000000000001';
  IF v_stamps<>6 THEN RAISE EXCEPTION 'FAIL: sixth stamp/retry count expected 6, got %',v_stamps; END IF;
 
@@ -72,6 +72,7 @@ BEGIN
  THEN RAISE EXCEPTION 'FAIL: non-stacked reward balance changed'; END IF;
 
  -- A canceled pending reward reservation is released and its stamps restored.
+ UPDATE promo_private.promo_settings SET enabled=false WHERE singleton=true;
  INSERT INTO promo_private.delivery_loyalty_balances(user_id,stamps) VALUES('00000000-0000-4000-8000-000000000003',6);
  INSERT INTO public.orders(id,user_id,customer_phone,delivery_type,subtotal,delivery_fee,total,status,payment_method)
  VALUES('loyalty-release','00000000-0000-4000-8000-000000000003','92933330003','delivery',40,10,50,'Pagamento Pendente','Asaas Pix');
@@ -81,6 +82,7 @@ BEGIN
  THEN RAISE EXCEPTION 'FAIL: cancellation did not release reward and restore stamps'; END IF;
 
  -- Configured cap is respected; test orders never earn.
+ UPDATE promo_private.promo_settings SET enabled=false WHERE singleton=true;
  INSERT INTO promo_private.delivery_loyalty_balances(user_id,stamps) VALUES('00000000-0000-4000-8000-000000000004',6);
  UPDATE promo_private.delivery_loyalty_settings SET discount_cap=7 WHERE singleton=true;
  INSERT INTO public.orders(id,user_id,customer_phone,delivery_type,subtotal,delivery_fee,total,status,payment_method)
