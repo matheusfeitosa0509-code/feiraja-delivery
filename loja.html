@@ -2043,7 +2043,7 @@ function renderStoreBanners(items){
  if(storeBannerTimer){clearInterval(storeBannerTimer);storeBannerTimer=null;}
  track.replaceChildren();dots.replaceChildren();
  if(!items.length){carousel.hidden=true;carousel.style.minHeight='0';return;}
- carousel.hidden=false;carousel.style.minHeight=items.length>1?'166px':'148px';
+ carousel.hidden=false;carousel.style.minHeight='166px';
  items.forEach((banner,index)=>{
   const slide=document.createElement('article');slide.className='store-banner-slide theme-'+(['green','yellow','orange','red'].includes(banner.theme)?banner.theme:'green');slide.dataset.bannerIndex=String(index);
   const copy=document.createElement('div');copy.className='store-banner-copy';
