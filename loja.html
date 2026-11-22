@@ -2654,6 +2654,10 @@ function renderHomeProductSections(){
   searchMatches+=visible.length;
   return '<section class="catalog-category home-catalog-category" data-home-product-category="'+esc(cat)+'" data-category-index="'+index+'" '+(visible.length?'':'hidden')+'><header class="home-category-heading"><h2>'+esc(cat)+'</h2><button type="button" class="link home-view-all" data-view-category="'+index+'">Ver todos</button></header><div class="catalog-row">'+(q?visible:items).map((p,itemIndex)=>productCardMarkup(p,index===0&&itemIndex===0)).join('')+'</div></section>';
  }).join('');
+ const mainImage=root.querySelector('.catalog-category:not([hidden]) .product-media img');
+ if(mainImage&&!document.querySelector('link[data-storefront-main-image-preload]')){
+  const preload=document.createElement('link');preload.rel='preload';preload.as='image';preload.href=mainImage.currentSrc||mainImage.src;preload.dataset.storefrontMainImagePreload='1';preload.setAttribute('fetchpriority','high');document.head.append(preload);
+ }
  syncProductCardRowSlots(root);
  const noResults=$('#homeNoResults');
  if(noResults){
