@@ -1,0 +1,25 @@
+name: Lalamove dispatch database guards PostgreSQL tests
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20261122010000_lalamove_dispatch_database_guards.sql'
+      - 'supabase/tests/lalamove_dispatch_guards_*'
+      - '.github/workflows/lalamove-dispatch-db-guards.yml'
+jobs:
+  postgres-17:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lalamove_guards_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lalamove_guards_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Testes PostgreSQL e concorrência real
+        run: bash supabase/tests/lalamove_dispatch_guards_test.sh
