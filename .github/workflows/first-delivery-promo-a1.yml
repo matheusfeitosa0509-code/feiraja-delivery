@@ -4,7 +4,7 @@ on:
     branches: [main]
     paths:
       - 'supabase/migrations/20261121140000_first_delivery_promo_server_a1.sql'
-      - 'supabase/migrations/20261122100000_first_delivery_promo_ui_a2.sql'
+      - 'supabase/migrations/20261122145825_first_delivery_promo_ui_a2.sql'
       - 'supabase/tests/first_delivery_promo_*'
       - 'supabase/functions/super-worker/index.ts'
       - '.github/workflows/first-delivery-promo-a1.yml'
