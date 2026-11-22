@@ -7,7 +7,8 @@ BEGIN
  THEN RAISE EXCEPTION 'FAIL: default must be disabled with six stamps'; END IF;
  INSERT INTO auth.users(id) VALUES
  ('00000000-0000-4000-8000-000000000001'),('00000000-0000-4000-8000-000000000002'),
- ('00000000-0000-4000-8000-000000000003'),('00000000-0000-4000-8000-000000000004');
+ ('00000000-0000-4000-8000-000000000003'),('00000000-0000-4000-8000-000000000004'),
+ ('00000000-0000-4000-8000-000000000005');
  UPDATE promo_private.delivery_loyalty_settings SET enabled=true,stamps_required=6,discount_cap=NULL WHERE singleton=true;
  UPDATE promo_private.promo_settings SET enabled=false,min_subtotal=50,ends_at=now()+interval '1 day',discount_cap=NULL WHERE singleton=true;
 
