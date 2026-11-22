@@ -395,7 +395,41 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
  </div>
  <button type="button" id="saveFirstDeliveryPromo">Salvar promoção</button>
  <p id="firstDeliveryPromoMessage" class="muted" role="status" aria-live="polite"></p>
+
 </section>
+<section class="card" id="storeBannersManager" aria-labelledby="storeBannersTitle">
+ <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 id="storeBannersTitle">🎨 Banners da loja</h2><button type="button" id="storeBannerNew">+ Novo banner</button></div>
+ <p class="muted">Gerencie os destaques exibidos na loja. Banners promocionais só ficam públicos quando a promoção correspondente está ligada.</p>
+ <div id="storeBannerList" class="product-list"><p class="muted">Carregando banners…</p></div>
+ <p id="storeBannerMessage" class="muted" role="status" aria-live="polite"></p>
+ <form id="storeBannerForm" class="hidden" style="border-top:1px solid var(--line);margin-top:16px;padding-top:14px">
+  <h3 id="storeBannerFormTitle">Novo banner</h3>
+  <label>Título<input id="storeBannerTitle" maxlength="120" required></label>
+  <label>Subtítulo<input id="storeBannerSubtitle" maxlength="240"></label>
+  <label>Texto do botão<input id="storeBannerButtonText" maxlength="60" required></label>
+  <label>Ação<select id="storeBannerActionType" required><option value="products">Abrir produtos</option><option value="category">Abrir categoria</option><option value="product">Abrir produto</option><option value="whatsapp">WhatsApp</option><option value="assistant">Assistente</option><option value="request_product">Pedir produto</option><option value="maps">Como chegar</option></select></label>
+  <label id="storeBannerActionValueLabel">Destino<select id="storeBannerActionValue"><option value="">Selecione</option></select></label>
+  <label>Tema<select id="storeBannerTheme"><option value="green">Verde</option><option value="yellow">Amarelo</option><option value="orange">Laranja</option><option value="red">Vermelho</option></select></label>
+  <label>Público<select id="storeBannerAudience"><option value="all">Todos</option><option value="new_customers">Novos clientes</option><option value="returning">Clientes recorrentes</option></select></label>
+  <div class="automatic-margin-grid"><label>Início<input id="storeBannerStartsAt" type="datetime-local" required></label><label>Fim (opcional)<input id="storeBannerEndsAt" type="datetime-local"></label><label>Ordem<input id="storeBannerSortOrder" type="number" step="1" value="10"></label></div>
+  <label>Texto das regras (opcional)<textarea id="storeBannerRulesText" rows="3" maxlength="1200"></textarea></label>
+  <label>Código promocional (opcional)<input id="storeBannerPromoCode" maxlength="60" placeholder="Ex.: PRIMEIRA_ENTREGA"></label>
+  <label style="display:flex;align-items:center;gap:9px"><input id="storeBannerActive" type="checkbox" checked style="width:22px;min-height:22px"> Banner ligado</label>
+  <h3>Prévia ao vivo</h3><div id="storeBannerPreview" class="store-banner-preview"><strong>Seu título aparecerá aqui</strong><p>Seu subtítulo aparecerá aqui</p><span>Texto do botão</span></div>
+  <div class="actions" style="margin-top:12px"><button type="submit" id="storeBannerSave">Salvar banner</button><button type="button" class="secondary" id="storeBannerCancel">Cancelar</button></div>
+ </form>
+</section>
+<style>
+.store-banner-preview{border-radius:16px;padding:18px;color:#fff;background:linear-gradient(120deg,#176b3a,#23854b);display:grid;gap:8px;min-height:130px}
+.store-banner-preview[data-theme="yellow"]{background:linear-gradient(120deg,#b78a13,#e2b52b);color:#2d260c}
+.store-banner-preview[data-theme="orange"]{background:linear-gradient(120deg,#bd5a13,#e68a27)}
+.store-banner-preview[data-theme="red"]{background:linear-gradient(120deg,#a52d28,#d94d43)}
+.store-banner-preview strong{font-size:21px;line-height:1.2}.store-banner-preview p{margin:0}.store-banner-preview span{justify-self:start;background:#fff;color:#176b3a;border-radius:999px;padding:8px 13px;font-weight:800}
+.store-banner-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:14px;background:#fbfdf9}
+.store-banner-row small{display:block;color:var(--muted);margin-top:4px}.store-banner-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.store-banner-actions button{min-height:36px;padding:7px 10px;font-size:12px}
+.store-banner-row .store-banner-preview{min-height:0;padding:12px;margin-top:8px}.store-banner-row .store-banner-preview strong{font-size:15px}.store-banner-row .store-banner-preview span{font-size:11px;padding:5px 9px}
+@media(max-width:600px){.store-banner-row{grid-template-columns:1fr}.store-banner-actions{justify-content:stretch}.store-banner-actions button{flex:1}}
+</style>
 
 <section class="card lalamove-settings" id="lalamoveSettingsCard" aria-label="Configurações de entrega">
  <div class="lalamove-admin-head"><h2 style="margin:0">Configurações de entrega</h2><span id="lalamoveSettingsBadge" class="lalamove-env-badge sandbox">SANDBOX</span></div>
@@ -2715,4 +2749,100 @@ if(root){
   $('tabFunnel')?.addEventListener('click',load);
 })();
 </script>
+
+<script type="module">
+(async () => {
+ const db=window.__feiraPanelDb;
+ const $=id=>document.getElementById(id);
+ const root=$('storeBannersManager'); if(!db||!root)return;
+ const types=['products','category','product','whatsapp','assistant','request_product','maps'];
+ const themes=['green','yellow','orange','red'];
+ const audiences=['all','new_customers','returning'];
+ let banners=[],products=[],editingId=null;
+ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const localInput=v=>{if(!v)return '';const d=new Date(v);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);};
+ const toIso=v=>v?new Date(v+'-04:00').toISOString():null;
+ const setMessage=(v,err=false)=>{$('storeBannerMessage').textContent=v;$('storeBannerMessage').style.color=err?'#b3261e':'';};
+ const preview=(row,host)=>{const el=document.createElement('div');el.className='store-banner-preview';el.dataset.theme=row.theme||'green';const title=document.createElement('strong');title.textContent=row.title||'Seu título aparecerá aqui';const sub=document.createElement('p');sub.textContent=row.subtitle||'Seu subtítulo aparecerá aqui';const btn=document.createElement('span');btn.textContent=row.button_text||'Texto do botão';el.append(title,sub,btn);host.replaceChildren(el);};
+ function currentDraft(){return {title:$('storeBannerTitle').value,subtitle:$('storeBannerSubtitle').value,button_text:$('storeBannerButtonText').value,action_type:$('storeBannerActionType').value,action_value:$('storeBannerActionValue').value||null,theme:$('storeBannerTheme').value,audience:$('storeBannerAudience').value,starts_at:toIso($('storeBannerStartsAt').value),ends_at:toIso($('storeBannerEndsAt').value),rules_text:$('storeBannerRulesText').value||null,is_active:$('storeBannerActive').checked,sort_order:Number($('storeBannerSortOrder').value)||0,promo_code:$('storeBannerPromoCode').value.trim()||null};}
+ function updatePreview(){preview(currentDraft(),$('storeBannerPreview'));}
+ function refreshActionValue(){
+  const type=$('storeBannerActionType').value,wrap=$('storeBannerActionValueLabel');
+  const relevant=type==='category'||type==='product'||type==='whatsapp';wrap.hidden=!relevant;
+  let field=$('storeBannerActionValue');const wantInput=type==='whatsapp';
+  if((wantInput&&field.tagName!=='INPUT')||(!wantInput&&field.tagName!=='SELECT')){const next=document.createElement(wantInput?'input':'select');next.id='storeBannerActionValue';field.replaceWith(next);field=next;}
+  if(wantInput){field.placeholder='Ex.: 5592999999999 ou https://wa.me/...';field.maxLength=200;return;}
+  field.replaceChildren(new Option(type==='category'?'Selecione uma categoria':'Selecione um produto',''));
+  if(type==='category'){[...new Set(products.map(p=>p.category).filter(Boolean))].sort().forEach(v=>field.add(new Option(v,v)));}
+  if(type==='product'){products.slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).forEach(p=>field.add(new Option(p.name+(p.available?'':' · indisponível'),p.id)));}
+ }
+ function fillForm(row){
+  editingId=row?.id||null;$('storeBannerFormTitle').textContent=editingId?'Editar banner':'Novo banner';
+  $('storeBannerTitle').value=row?.title||'';$('storeBannerSubtitle').value=row?.subtitle||'';$('storeBannerButtonText').value=row?.button_text||'';
+  $('storeBannerActionType').value=row?.action_type||'products';refreshActionValue();
+  if(row?.action_value&&$('storeBannerActionValue'))$('storeBannerActionValue').value=row.action_value;
+  $('storeBannerTheme').value=row?.theme||'green';$('storeBannerAudience').value=row?.audience||'all';
+  $('storeBannerStartsAt').value=localInput(row?.starts_at||new Date().toISOString());$('storeBannerEndsAt').value=localInput(row?.ends_at);
+  $('storeBannerRulesText').value=row?.rules_text||'';$('storeBannerActive').checked=row?.is_active!==false;
+  $('storeBannerSortOrder').value=String(row?.sort_order??(banners.length+1)*10);$('storeBannerPromoCode').value=row?.promo_code||'';
+  $('storeBannerForm').classList.remove('hidden');updatePreview();$('storeBannerForm').scrollIntoView({behavior:'smooth',block:'start'});
+ }
+ function render(){
+  const host=$('storeBannerList');host.replaceChildren();
+  if(!banners.length){host.textContent='Nenhum banner cadastrado.';return;}
+  banners.forEach((row,index)=>{
+   const item=document.createElement('article');item.className='store-banner-row';
+   const copy=document.createElement('div');const title=document.createElement('strong');title.textContent=row.title;
+   const meta=document.createElement('small');meta.textContent=(row.is_active?'Ligado':'Desligado')+' · '+row.audience+' · '+row.action_type+(row.promo_code?' · Promo: '+row.promo_code:'');
+   const previewHost=document.createElement('div');preview(row,previewHost);copy.append(title,meta,previewHost);
+   const actions=document.createElement('div');actions.className='store-banner-actions';
+   const make=(label,fn,cls='secondary')=>{const b=document.createElement('button');b.type='button';b.className=cls;b.textContent=label;b.addEventListener('click',fn);actions.append(b);};
+   make(row.is_active?'Desligar':'Ligar',()=>savePatch(row,{is_active:!row.is_active}));
+   make('Editar',()=>fillForm(row));
+   make('Duplicar',()=>{const copyRow={...row};delete copyRow.id;copyRow.title=row.title+' (cópia)';copyRow.is_active=false;copyRow.sort_order=(banners.at(-1)?.sort_order||0)+10;fillForm(copyRow);});
+   make('Apagar',async()=>{if(!await window.__storeBannerConfirm('Apagar este banner permanentemente?'))return;const {error}=await db.from('store_banners').delete().eq('id',row.id);if(error){setMessage('Não foi possível apagar o banner.',true);return;}await load();setMessage('Banner apagado.');},'danger');
+   make('⬆️',()=>move(index,-1), 'secondary');make('⬇️',()=>move(index,1),'secondary');
+   item.append(copy,actions);host.append(item);
+  });
+ }
+ async function load(){
+  const {data,error}=await db.from('store_banners').select('*').order('sort_order').order('created_at');
+  if(error){setMessage('Não foi possível carregar banners. Confira o acesso administrativo.',true);return;}
+  banners=data||[];render();
+ }
+ async function savePatch(row,patch){
+  const {error}=await db.from('store_banners').update(patch).eq('id',row.id);
+  if(error){setMessage('Não foi possível atualizar o banner.',true);return;}
+  await load();setMessage('Banner atualizado.');
+ }
+ async function move(index,delta){
+  const other=index+delta;if(other<0||other>=banners.length)return;
+  const a=banners[index],b=banners[other],aOrder=a.sort_order,bOrder=b.sort_order;
+  const first=await db.from('store_banners').update({sort_order:bOrder}).eq('id',a.id);
+  if(first.error){setMessage('Não foi possível ordenar os banners.',true);return;}
+  const second=await db.from('store_banners').update({sort_order:aOrder}).eq('id',b.id);
+  if(second.error){setMessage('A primeira posição foi salva; atualize a lista e tente novamente.',true);await load();return;}
+  await load();
+ }
+ $('storeBannerNew').addEventListener('click',()=>fillForm(null));
+ $('storeBannerCancel').addEventListener('click',()=>{$('storeBannerForm').classList.add('hidden');editingId=null;});
+ $('storeBannerActionType').addEventListener('change',()=>{const old=$('storeBannerActionValue')?.value;refreshActionValue();if(old&&$('storeBannerActionValue'))$('storeBannerActionValue').value=old;});
+ ['storeBannerTitle','storeBannerSubtitle','storeBannerButtonText','storeBannerTheme'].forEach(id=>$(id).addEventListener('input',updatePreview));
+ $('storeBannerForm').addEventListener('submit',async event=>{
+  event.preventDefault();const row=currentDraft();
+  if(!types.includes(row.action_type)||!themes.includes(row.theme)||!audiences.includes(row.audience)){setMessage('Confira ação, tema e público.',true);return;}
+  if(!row.title.trim()||!row.button_text.trim()||!row.starts_at){setMessage('Preencha título, botão e início.',true);return;}
+  if(row.ends_at&&new Date(row.ends_at)<=new Date(row.starts_at)){setMessage('A data final deve ser posterior ao início.',true);return;}
+  const button=$('storeBannerSave');button.disabled=true;
+  try{const result=editingId?await db.from('store_banners').update(row).eq('id',editingId):await db.from('store_banners').insert(row);if(result.error)throw result.error;$('storeBannerForm').classList.add('hidden');editingId=null;await load();setMessage('Banner salvo com sucesso.');}
+  catch(error){setMessage('Não foi possível salvar o banner. Verifique os campos e a permissão de administrador.',true);}
+  finally{button.disabled=false;}
+ });
+ window.__storeBannerConfirm=async message=>typeof window.appConfirm==='function'?window.appConfirm(message,{title:'Apagar banner?',confirmText:'Apagar',cancelText:'Cancelar',danger:true}):false;
+ const {data:sessionData}=await db.auth.getSession();
+ if(sessionData?.session){const {data,error}=await db.from('products').select('id,name,category,available').order('name');if(!error)products=data||[];await load();}
+ db.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){banners=[];render();}else if(session&&['SIGNED_IN','INITIAL_SESSION','TOKEN_REFRESHED'].includes(event)){void db.from('products').select('id,name,category,available').order('name').then(r=>{if(!r.error)products=r.data||[];return load();});}});
+})();
+</script>
+
 </body></html>
