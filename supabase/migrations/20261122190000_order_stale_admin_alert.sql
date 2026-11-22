@@ -183,8 +183,14 @@ begin
                 and d.lalamove_order_id is not null
                 and (
                   coalesce(d.lalamove_status,'') in ('searching','assigned','enroute_pickup','picked_up')
-                  or (d.state='created' and coalesce(d.lalamove_status,'') not in ('cancelled','canceled','failed','expired','completed','delivered'))
+                  or (d.state='created' and coalesce(d.lalamove_status,'') in ('','pending','created'))
                 )
+            )
+            and not exists (
+              select 1
+              from feira_cost_private.lalamove_dispatch_history h
+              where h.order_id=o.id
+                and h.status in ('searching','assigned','enroute_pickup','picked_up')
             )
           )
         )
