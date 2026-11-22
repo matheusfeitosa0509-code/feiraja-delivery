@@ -1,0 +1,45 @@
+name: Storefront WebP image build
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'imagens/produtos/**'
+      - 'scripts/optimize-store-images.mjs'
+      - '.github/workflows/pages.yml'
+      - 'loja.html'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  webp-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install sharp
+        run: npm install --no-save sharp
+      - name: Prepare product image output
+        run: |
+          mkdir -p _site/imagens/produtos
+          cp -a imagens/produtos/. _site/imagens/produtos/
+      - name: Generate WebP images
+        run: node scripts/optimize-store-images.mjs
+      - name: Verify generated images and dimensions
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs/promises';
+          import path from 'node:path';
+          import sharp from 'sharp';
+          const dir = '_site/imagens/produtos';
+          const files = (await fs.readdir(dir)).filter(name => name.endsWith('.webp'));
+          if (!files.length) throw new Error('Nenhuma imagem WebP foi gerada.');
+          for (const file of files) {
+            const meta = await sharp(path.join(dir, file)).metadata();
+            if (meta.format !== 'webp' || meta.width > 400) {
+              throw new Error(`Imagem inválida: ${file} (${meta.format}, ${meta.width}px)`);
+            }
+          }
+          console.log(`PASSOU | ${files.length} imagens WebP | largura máxima 400px`);
+          NODE
