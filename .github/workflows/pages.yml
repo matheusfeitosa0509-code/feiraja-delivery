@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Install image optimizer
+        run: npm install --no-save sharp
       - name: Prepare site-only artifact
         run: |
           mkdir -p _site
@@ -27,6 +29,7 @@ jobs:
           cp supabase/functions/_shared/store-schedule.js _site/supabase/functions/_shared/store-schedule.js
           cp supabase/functions/_shared/commercial-calendar.js _site/supabase/functions/_shared/commercial-calendar.js
           rm -f _site/imagens/produtos/leia.txt
+          node scripts/optimize-store-images.mjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
