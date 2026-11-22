@@ -1,5 +1,13 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { persistCreatedLalamoveDispatch } from "./dispatch-persistence.ts";
+import { persistCreatedLalamoveDispatch, shouldCallLalamovePartner } from "./dispatch-persistence.ts";
+
+Deno.test("recusa da reserva impede chamada ao parceiro", async () => {
+  let partnerCalls=0;
+  const start={started:false,state:"blocked"};
+  if (shouldCallLalamovePartner(start)) partnerCalls++;
+  assertEquals(partnerCalls,0);
+  assertEquals(shouldCallLalamovePartner({started:true,state:"creating"}),true);
+});
 
 Deno.test("corrida órfã: alerta com IDs e uma única retentativa salva o despacho", async () => {
   let saves=0, alerts:any[]=[];
