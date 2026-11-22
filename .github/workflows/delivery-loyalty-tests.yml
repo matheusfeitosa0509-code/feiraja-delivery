@@ -1,0 +1,31 @@
+name: Cartão fidelidade de entrega PostgreSQL tests
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20261122194500_cartao_fidelidade_entrega.sql'
+      - 'supabase/tests/delivery_loyalty_*'
+      - '.github/workflows/delivery-loyalty-tests.yml'
+  push:
+    branches: [feat/cartao-fidelidade-entrega]
+    paths:
+      - 'supabase/migrations/20261122194500_cartao_fidelidade_entrega.sql'
+      - 'supabase/tests/delivery_loyalty_*'
+      - '.github/workflows/delivery-loyalty-tests.yml'
+jobs:
+  postgres-17:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: delivery_loyalty_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d delivery_loyalty_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Testar regras e reservas no PostgreSQL 17
+        run: bash supabase/tests/delivery_loyalty_test.sh
