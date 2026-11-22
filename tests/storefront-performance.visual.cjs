@@ -123,16 +123,18 @@ async function measure(page,cdp,url) {
    const correctedPrice=await candidate.evaluate(id=>Number(JSON.parse(localStorage.getItem('feira_storefront_catalog_v1')).products.find(p=>p.id===id).price),first.id);
    const noMapOnOpen=!(await candidate.evaluate(()=>performance.getEntriesByType('resource').some(x=>/maplibre-gl|lalamove-map\.js|assistant-runtime\.js|assistant-speech\.js/.test(x.name))));
    const firstImages=await candidate.locator('#homeProductSections .product[data-product-id] img[fetchpriority="high"][width="160"][height="160"]').count();
+   const eagerImages=await candidate.locator('#homeProductSections .product[data-product-id] img:not([loading="lazy"])').count();
    assert.ok(staleWasPainted,'stale cached price was not painted before server refresh');
    assert.equal(correctedPrice,originalPrice,'server refresh did not correct stale cached price');
    assert.ok(candidateSecond.firstProductMs<1000,'cached second visit did not meet <1s target: '+candidateSecond.firstProductMs+'ms');
-   assert.ok(firstImages>=4,'first product row images missing high priority/dimensions');
+   assert.equal(firstImages,1,'only the first product card image should have high fetch priority');
+   assert.ok(eagerImages>=2,'the first two visible product cards must not be lazy-loaded');
    assert.ok(noMapOnOpen,'MapLibre, tracking map or assistant loaded before use');
    await candidate.locator('#assistantNavButton').click();
    await candidate.waitForFunction(()=>performance.getEntriesByType('resource').some(x=>x.name.includes('assistant-runtime.js')),null,{timeout:10000});
    assert.ok(!(await candidate.evaluate(()=>performance.getEntriesByType('resource').some(x=>x.name.includes('assistant-speech.js')))),'voice module should remain lazy until a signed-in assistant opens');
    assert.deepEqual(candidateErrors,[],'console/page errors on candidate: '+candidateErrors.join('; '));
-   report.viewports[width]={before:{first:baselineFirst,second:baselineSecond},after:{first:candidateFirst,second:candidateSecond,staleRefresh:candidateStale},stalePriceCorrected:true,noMapOnOpen,staticCacheEntries,firstImagesHighPriority:firstImages,consoleErrors:candidateErrors.length};
+   report.viewports[width]={before:{first:baselineFirst,second:baselineSecond},after:{first:candidateFirst,second:candidateSecond,staleRefresh:candidateStale},stalePriceCorrected:true,noMapOnOpen,staticCacheEntries,firstImagesHighPriority:firstImages,firstTwoEagerImages:eagerImages,consoleErrors:candidateErrors.length};
    await candidateContext.close();
   }
   console.log('STOREFRONT_PERFORMANCE_REPORT '+JSON.stringify(report));
