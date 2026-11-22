@@ -2052,6 +2052,7 @@ function bindFirstDeliveryPromoCta(){
  });
 }
 async function loadFirstDeliveryPromoOffer(){
+ $('#pageHome')?.classList.remove('promo-ready');
  try{
   const {data,error}=await supabase.rpc('get_first_delivery_promo_offer');
   if(error)throw error;
