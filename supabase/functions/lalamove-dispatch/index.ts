@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.117.1";
+import { persistCreatedLalamoveDispatch, shouldCallLalamovePartner } from "./dispatch-persistence.ts";
 import { readLalamoveCredentials, readLalamoveEnvironment, normalizeLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
 import { formatDropoff, requestSandboxQuotation, resolveDeliveryDropoffCoordinates } from "../_shared/delivery-quote.ts";
 import { geocodeManausAddress } from "../_shared/geocoding.ts";
@@ -157,7 +158,7 @@ async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "M
     if (/environment changed|environment mismatch/i.test(message)) throw new Error("QUOTE_ENVIRONMENT_MISMATCH");
     throw new Error("DISPATCH_START_FAILED");
   }
-  if (!canStartDispatch(start?.state) || start?.started !== true) return { duplicate: true, state: start?.state || "creating" };
+  if (!shouldCallLalamovePartner(start)) return { duplicate: true, state: start?.state || "creating" };
   const address = order.delivery_address || {};
   const remarks = [address.complement, address.reference].map((v) => String(v || "").trim()).filter(Boolean).join(" · ");
   const body = buildLalamoveOrderBody({
@@ -196,18 +197,12 @@ async function dispatchOrder(db: any, order: any, sessionId: string, vehicle: "M
     phone: String(data.driver.phone || "").slice(0, 40),
     plateNumber: String(data.driver.plateNumber || "").slice(0, 20),
   } : {};
-  const { error: finishError } = await db.rpc("service_finish_lalamove_dispatch", {
-    p_order_id: order.id, p_lalamove_order_id: lalamoveOrderId,
-    p_actual_cost: rawCost, p_status: mapped,
-    p_tracking_url: String(data?.shareLink || ""), p_driver: driver,
+  const persisted = await persistCreatedLalamoveDispatch(db, {
+    orderId: order.id, lalamoveOrderId, actualCost: rawCost, status: mapped,
+    trackingUrl: String(data?.shareLink || ""), driver,
   });
-  if (finishError) {
-    console.error("lalamove-dispatch failure", { stage: "persist_created_order", internal_code: "DISPATCH_FINISH_FAILED", http_status: null, provider_body: {}, environment, db_code: finishError.code || "DB_ERROR" });
-    return { pending_confirmation: true, lalamove_order_id: lalamoveOrderId, persistence_error: true };
-  }
-  const { data: persisted, error: verifyError } = await db.from("orders").select("lalamove_order_id").eq("id", order.id).maybeSingle();
-  if (verifyError || String(persisted?.lalamove_order_id || "") !== lalamoveOrderId) {
-    console.error("lalamove-dispatch failure", { stage: "verify_persisted_order_id", internal_code: "DISPATCH_ORDER_ID_NOT_VISIBLE", http_status: null, provider_body: {}, environment });
+  if (!persisted.persisted) {
+    console.error("lalamove-dispatch failure", { stage: "persist_created_order", internal_code: "DISPATCH_FINISH_FAILED_AFTER_RETRY", environment });
     return { pending_confirmation: true, lalamove_order_id: lalamoveOrderId, persistence_error: true };
   }
   return { created: true, lalamove_order_id: lalamoveOrderId, status: mapped, tracking_url: String(data?.shareLink || ""), vehicle };
