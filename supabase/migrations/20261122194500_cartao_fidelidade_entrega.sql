@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS promo_private.delivery_loyalty_redemptions (
  order_id text PRIMARY KEY REFERENCES public.orders(id) ON DELETE CASCADE,
  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
  discount numeric(12,2) NOT NULL CHECK (discount >= 0),
+ stamps_reserved integer NOT NULL DEFAULT 6 CHECK (stamps_reserved BETWEEN 1 AND 30),
  status text NOT NULL DEFAULT 'reserved' CHECK (status IN ('reserved','used','released')),
  created_at timestamptz NOT NULL DEFAULT pg_catalog.now(),
  updated_at timestamptz NOT NULL DEFAULT pg_catalog.now()
@@ -64,8 +65,8 @@ BEGIN
  WHERE user_id=NEW.user_id AND stamps>=v_settings.stamps_required;
  IF NOT FOUND THEN RETURN NEW; END IF;
  v_discount:=LEAST(COALESCE(NEW.delivery_fee,0),COALESCE(v_settings.discount_cap,COALESCE(NEW.delivery_fee,0)));
- INSERT INTO promo_private.delivery_loyalty_redemptions(order_id,user_id,discount,status)
- VALUES(NEW.id,NEW.user_id,v_discount,'reserved');
+ INSERT INTO promo_private.delivery_loyalty_redemptions(order_id,user_id,discount,stamps_reserved,status)
+ VALUES(NEW.id,NEW.user_id,v_discount,v_settings.stamps_required,'reserved');
  NEW.delivery_discount:=COALESCE(NEW.delivery_discount,0)+v_discount;
  NEW.promo_code:='FIDELIDADE';
  NEW.total:=GREATEST(0,COALESCE(NEW.subtotal,0)+COALESCE(NEW.delivery_fee,0)-COALESCE(NEW.delivery_discount,0));
@@ -123,7 +124,7 @@ BEGIN
   SELECT * INTO v_redemption FROM promo_private.delivery_loyalty_redemptions
   WHERE order_id=NEW.id AND status='reserved' FOR UPDATE;
   IF FOUND THEN
-   SELECT stamps_required INTO v_required FROM promo_private.delivery_loyalty_settings WHERE singleton=true;
+   v_required:=v_redemption.stamps_reserved;
    UPDATE promo_private.delivery_loyalty_redemptions SET status='released',updated_at=pg_catalog.now()
    WHERE order_id=NEW.id AND status='reserved';
    INSERT INTO promo_private.delivery_loyalty_balances(user_id,stamps)
