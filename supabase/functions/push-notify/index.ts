@@ -28,6 +28,9 @@ const KNOWN_STATUSES = new Set([
   "Preparando",
   "Pronto para Retirada",
   "Entregue",
+  "Pedido Concluído",
+  "Concluído",
+  "Concluido",
   "Cancelada",
   "Cancelado",
   "Pix pago em pedido cancelado — devolver",
@@ -210,7 +213,16 @@ Deno.serve(async (req: Request) => {
     if (!order) return jsonResponse(404, { error: "ORDER_NOT_FOUND" });
     if (shouldSkipOrderPush(order.is_test_order === true, kind === "customer" ? order.user_id : "admin")) return jsonResponse(200, { ok: true, skipped: "TEST_ORDER_OR_NO_OWNER" });
     const isLalamoveNoDriverNotice = /^Lalamove sem motorista@[0-9]{10}$/.test(new_status);
-    const message = getNotificationText(kind, new_status, order.pickup_code || null, order.id, order);
+    let message = getNotificationText(kind, new_status, order.pickup_code || null, order.id, order);
+    if (kind === "customer" && ["Entregue", "Pedido Concluído", "Concluído", "Concluido"].includes(new_status)) {
+      const { data: loyaltyMessage, error: loyaltyMessageError } = await supabase.rpc(
+        "get_delivery_loyalty_stamp_push_message",
+        { p_order_id: order_id },
+      );
+      if (!loyaltyMessageError && typeof loyaltyMessage === "string" && loyaltyMessage.trim()) {
+        message = loyaltyMessage;
+      }
+    }
     if (!message) return jsonResponse(400, { error: "INVALID_REQUEST" });
 
     // Eventos de devolução são códigos administrativos; exigem pedido cancelado
