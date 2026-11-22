@@ -3,7 +3,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 
 const input = path.resolve('imagens/produtos');
-const output = path.resolve('_site/imagens/produtos');
+const output = path.resolve(process.env.STOREFRONT_WEBP_OUTPUT || '_site/imagens/produtos');
 const allowed = new Set(['.jpg', '.jpeg', '.png']);
 let converted = 0;
 let originalBytes = 0;
