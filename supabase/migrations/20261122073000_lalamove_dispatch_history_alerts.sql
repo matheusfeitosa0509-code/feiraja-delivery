@@ -41,6 +41,22 @@ on feira_cost_private.lalamove_dispatches
 for each row execute function feira_cost_private.capture_lalamove_dispatch_history();
 revoke all on function feira_cost_private.capture_lalamove_dispatch_history() from public,anon,authenticated;
 
+create or replace function feira_cost_private.sync_lalamove_history_cost()
+returns trigger language plpgsql security definer set search_path=''
+as $
+begin
+ update feira_cost_private.lalamove_dispatch_history
+ set actual_cost=new.actual_cost,updated_at=now()
+ where order_id=new.order_id;
+ return new;
+end;
+$;
+drop trigger if exists trg_sync_lalamove_history_cost on feira_cost_private.order_delivery_costs;
+create trigger trg_sync_lalamove_history_cost
+after insert or update of actual_cost on feira_cost_private.order_delivery_costs
+for each row execute function feira_cost_private.sync_lalamove_history_cost();
+revoke all on function feira_cost_private.sync_lalamove_history_cost() from public,anon,authenticated;
+
 create index if not exists lalamove_dispatch_history_order_created_idx
 on feira_cost_private.lalamove_dispatch_history(order_id,created_at desc);
 
@@ -84,7 +100,7 @@ begin
  where d.lalamove_order_id is not null
  and d.state='created'
  and coalesce(d.lalamove_status,'') in ('searching','assigned','enroute_pickup','picked_up')
- and d.created_at<=p_now-interval '2 hours'
+ and coalesce(d.event_updated_at,d.updated_at,d.created_at)<=p_now-interval '2 hours'
  and (v_test_mode or o.is_test_order is false)
  on conflict(tipo,order_id) do nothing;
 end;
