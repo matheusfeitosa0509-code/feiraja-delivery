@@ -27,8 +27,14 @@ Deno.test("corrida órfã: alerta com IDs e uma única retentativa salva o despa
   assertEquals(alerts[0].mensagem.includes("PARTNER-1"),true);
 });
 
+Deno.test("vigia: alerta dispatch_stale só cobre corrida ativa com mais de duas horas", async () => {
+  const migration=await Deno.readTextFile("supabase/migrations/20261122073000_lalamove_dispatch_history_alerts.sql");
+  assertEquals(migration.includes("select 'dispatch_stale'"),true);
+  assertEquals(migration.includes("interval '2 hours'"),true);
+  assertEquals(migration.includes("in ('searching','assigned','enroute_pickup','picked_up')"),true);
+});
+
 Deno.test("corrida órfã: falha após uma retentativa não chama o parceiro novamente", async () => {
-  let saves=0;
   const db={
     rpc: async ()=>({data:null,error:{code:"XX001"}}),
     from: (_table:string)=>({
