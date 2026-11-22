@@ -7,6 +7,7 @@ Deno.test("recusa da reserva impede chamada ao parceiro", async () => {
   if (shouldCallLalamovePartner(start)) partnerCalls++;
   assertEquals(partnerCalls,0);
   assertEquals(shouldCallLalamovePartner({started:true,state:"creating"}),true);
+  assertEquals(shouldCallLalamovePartner({started:true}),true);
 });
 
 Deno.test("corrida órfã: alerta com IDs e uma única retentativa salva o despacho", async () => {
