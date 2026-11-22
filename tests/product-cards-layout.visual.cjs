@@ -59,6 +59,7 @@ const rules = [{"product_id":"p-01","sale_unit":"kg","quantity_step":0.5,"min_qu
         route => route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(products)}));
       await page.route('http://127.0.0.1/loja.html', route => route.fulfill({status:200,contentType:'text/html',body:html}));
       await page.goto('http://127.0.0.1/loja.html',{waitUntil:'domcontentloaded'});
+      await page.waitForFunction(() => document.querySelector('#pageHome')?.classList.contains('promo-ready'), null, {timeout:15000});
       await page.waitForFunction(() => document.querySelectorAll('#homeProductSections .product').length===6, null, {timeout:15000});
 
       const inspect = async (selector,label) => {

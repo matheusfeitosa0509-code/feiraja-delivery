@@ -1125,7 +1125,10 @@ try {
 <header class="app-header" aria-label="Feira On Delivery"><a class="brand" href="#" aria-label="Feira On Delivery">Feira On Delivery<small>Tudo da feira, retire ou receba em casa</small></a><div class="search home-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="homeSearch" placeholder="Buscar produtos da feira…" aria-label="Buscar produtos da feira"></div></header>
 <main class="wrap">
  <section id="pageHome" class="app-page active" aria-label="Produtos">
-  <div id="firstDeliveryPromoBanner" class="first-delivery-promo-banner" hidden role="status"></div>
+  <div id="firstDeliveryPromoBanner" class="first-delivery-promo-banner" hidden role="status" aria-label="Promoção de primeira entrega">
+   <div class="first-delivery-promo-copy"><strong id="firstDeliveryPromoTitle">🎁 Sua 1ª entrega é GRÁTIS</strong><span id="firstDeliveryPromoDetails"></span></div>
+   <button class="first-delivery-promo-cta" type="button" id="firstDeliveryPromoCta">Montar meu pedido</button>
+  </div>
   <div class="home-info-strip" aria-label="Informações da loja"><div class="home-info-item"><span class="home-info-icon" aria-hidden="true">🧺</span><span><strong id="homeDeliveryHeadline">Retire na loja ou receba em casa</strong><small id="homeDeliverySubline" hidden>ou com motorista de aplicativo</small></span></div><div class="home-info-item"><span class="home-info-icon" aria-hidden="true">🕒</span><span><strong id="homeStoreHours">Segunda a sábado, 6h às 13h. Domingo fechado.</strong></span></div></div>
   <div class="home-top" id="homeTopAddress" aria-hidden="true"><div class="home-address"><span class="sm">Retirada em</span><strong id="homeAddress">Retirada na loja</strong></div><button class="icon-button" type="button" data-go-page="Orders" aria-label="Notificações"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button></div>
    <button id="requestProductFab" class="request-product-link" type="button">Não achou? Peça um produto</button>
@@ -2023,12 +2026,14 @@ function setCardValueSale(id,amountCents){const p=products.find(x=>String(x.id)=
 
 function updateFirstDeliveryPromoUI(){
  const banner=$('#firstDeliveryPromoBanner'),hint=$('#firstDeliveryCartHint'),offer=firstDeliveryPromoOffer;
- const active=!!(offer?.enabled===true),minimum=Number(offer?.min_subtotal||50),delivery=$('#delivery')?.value||'pickup_store',t=totals();
+ const minimum=Number(offer?.min_subtotal),endsAt=new Date(offer?.ends_at||'');
+ const active=offer?.enabled===true&&Number.isFinite(minimum)&&minimum>=0&&Number.isFinite(endsAt.getTime()),delivery=$('#delivery')?.value||'pickup_store',t=totals();
  if(banner){
   banner.hidden=!active;
   if(active){
-   const date=new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',day:'2-digit',month:'2-digit'}).format(new Date(offer.ends_at));
-   banner.textContent='🎁 1ª entrega grátis em pedidos a partir de '+money(minimum)+'* · *válido até '+date;
+   const date=new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Manaus',day:'2-digit',month:'2-digit'}).format(endsAt);
+   const details=$('#firstDeliveryPromoDetails');
+   if(details)details.textContent='Em pedidos a partir de '+money(minimum)+' · válido até '+date;
   }
  }
  if(hint){
@@ -2037,13 +2042,25 @@ function updateFirstDeliveryPromoUI(){
   if(eligible)hint.textContent='Faltam '+money(minimum-t.sub)+' para ganhar a entrega grátis';
  }
 }
+function bindFirstDeliveryPromoCta(){
+ const button=$('#firstDeliveryPromoCta');
+ if(!button||button.dataset.bound==='true')return;
+ button.dataset.bound='true';
+ button.addEventListener('click',()=>{
+  const target=$('#homeProductSections')||$('#products');
+  if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
+ });
+}
 async function loadFirstDeliveryPromoOffer(){
+ $('#pageHome')?.classList.remove('promo-ready');
  try{
   const {data,error}=await supabase.rpc('get_first_delivery_promo_offer');
   if(error)throw error;
   firstDeliveryPromoOffer=data?.enabled===true?data:null;
  }catch(error){firstDeliveryPromoOffer=null;console.warn('Promoção de primeira entrega indisponível:',error?.message||error);}
  updateFirstDeliveryPromoUI();
+ bindFirstDeliveryPromoCta();
+ $('#pageHome')?.classList.add('promo-ready');
 }
 
 function updateCartSummary(){const t=totals(),minimumMessage=minimumOrderMessage(t),count=t.items.length,missingCents=Math.max(0,Math.round((MIN_ORDER_AMOUNT-t.sub)*100));setCartEmptyState(count);const set=(id,value)=>{const el=$('#'+id);if(el)el.textContent=value;};const toggle=(id,on)=>{const el=$('#'+id);if(el)el.classList.toggle('hidden',!on);};set('tabCartCount',count);toggle('tabCartCount',count>0);set('minimumOrderNotice',minimumMessage);toggle('minimumOrderNotice',false);set('minimumCheckoutNotice',minimumMessage);toggle('minimumCheckoutNotice',!!minimumMessage);const submit=$('#submitOrder');if(submit){submit.disabled=!!minimumMessage;const pix=$('#payment')?.value==='pix';submit.textContent=(pix?'Pagar com Pix · ':'Confirmar pedido · ')+money(t.total);submit.classList.toggle('pix',pix);}set('subtotal',money(t.sub));set('total',money(t.total));set('modalTotal',money(t.total));if(typeof updateCheckoutSummary==='function')updateCheckoutSummary();const checkout=$('#checkout');if(checkout){checkout.disabled=!count;checkout.classList.toggle('is-below-minimum',!!count&&!!minimumMessage);checkout.setAttribute('aria-disabled',String(!count));checkout.textContent=!count?'Continuar':minimumMessage?'Faltam '+money(missingCents/100)+' para o mínimo':'Continuar · '+money(t.total);}const progress=$('#cartMinimumProgress'),fill=$('#cartMinimumProgressFill');if(progress&&fill){progress.classList.toggle('hidden',!count||!minimumMessage);fill.style.width=Math.min(100,t.sub/MIN_ORDER_AMOUNT*100)+'%';}set('cartbarCount',count+' '+(count===1?'produto':'produtos'));set('cartbarTotal',money(t.total));const bar=$('#cartbar');if(bar)bar.classList.toggle('hide',count===0);syncCartbarVisibility();if(typeof updateFirstDeliveryPromoUI==='function')updateFirstDeliveryPromoUI();}
@@ -2546,9 +2563,8 @@ $('#authForm').addEventListener('submit',async e=>{
   if(captchaRequired)authCaptcha.reset();else btn.disabled=false;
   btn.textContent=originalButtonText;
  }
-});let profileLoadTimer=null;supabase.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_IN'&&session?.user)void syncPushSubscription(session.user);if(event==='INITIAL_SESSION')void loadFirstDeliveryPromoOffer();if(['TOKEN_REFRESHED','INITIAL_SESSION'].includes(event))return;clearTimeout(profileLoadTimer);profileLoadTimer=setTimeout(async()=>{await loadProfile();await loadFirstDeliveryPromoOffer();resumeCheckoutIfReady()},150);});
-void loadFirstDeliveryPromoOffer();
-supabase.auth.getSession().then(({data,error})=>{if(!error&&data?.session?.user)void syncPushSubscription(data.session.user);}).catch(error=>console.warn('Falha ao conferir inscrição push inicial:',error));
+});let profileLoadTimer=null;supabase.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_IN'&&session?.user)void syncPushSubscription(session.user);if(['TOKEN_REFRESHED','INITIAL_SESSION'].includes(event))return;clearTimeout(profileLoadTimer);profileLoadTimer=setTimeout(async()=>{await loadProfile();await loadFirstDeliveryPromoOffer();resumeCheckoutIfReady()},150);});
+supabase.auth.getSession().then(({data,error})=>{if(!error&&data?.session?.user)void syncPushSubscription(data.session.user);void loadFirstDeliveryPromoOffer();}).catch(error=>{console.warn('Falha ao conferir inscrição push inicial:',error);void loadFirstDeliveryPromoOffer();});
 $('#cpf').addEventListener('input',e=>{const d=e.target.value.replace(/\D/g,'').slice(0,11);e.target.value=d.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');e.target.setCustomValidity(d.length===11&&!isValidCpf(d)?'Informe um CPF válido.':'');});$('#cpf').addEventListener('blur',e=>{if($('#payment').value==='pix'&&!isValidCpf(e.target.value))e.target.setCustomValidity('Informe um CPF válido.');else e.target.setCustomValidity('');});$('#address').addEventListener('input',e=>{const address=e.target.value.trim();$('#addressChoiceText').textContent=address?'Casa · '+address:'Informe seu endereço';});let assistantRuntimePromise=null;
 async function openAssistantSheet(){
  try{
@@ -2922,7 +2938,8 @@ try{setupAppTabs();}catch(error){console.error('Falha isolada na navegação da 
  .product .resale-from{font-size:8px}
 }
 .order-push-hint{margin:10px 0 0;color:var(--mut);font-size:11px;line-height:1.4}
-.first-delivery-promo-banner{margin:10px 0;padding:12px 14px;border-radius:14px;background:#fff4d6;border:1px solid #f0d98f;color:#654b08;font-size:13px;font-weight:800;line-height:1.45}.first-delivery-promo-banner[hidden],.first-delivery-cart-hint[hidden]{display:none!important}.first-delivery-cart-hint{margin:10px 0 0;padding:10px 12px;border-radius:12px;background:#eef7e8;color:#24632f;font-size:13px;font-weight:800;line-height:1.4}
+.first-delivery-promo-banner{position:relative;isolation:isolate;display:flex;align-items:center;justify-content:space-between;gap:12px;box-sizing:border-box;width:100%;min-height:116px;max-height:140px;margin:10px 0 14px;padding:14px 16px;overflow:hidden;border:1px solid rgba(255,213,79,.72);border-radius:18px;background:linear-gradient(115deg,#245d18 0%,#347b20 58%,#286319 100%);color:#fff;box-shadow:0 5px 15px rgba(35,91,24,.16)}.first-delivery-promo-banner::before{content:"";position:absolute;z-index:-1;right:8px;top:-50px;width:148px;height:148px;border:13px solid rgba(255,211,70,.28);border-radius:50%;box-shadow:0 0 0 13px rgba(255,211,70,.10)}.first-delivery-promo-banner::after{content:"";position:absolute;z-index:-1;right:32%;bottom:-31px;width:72px;height:72px;border:2px solid rgba(255,224,130,.36);border-radius:50%}.first-delivery-promo-banner[hidden],.first-delivery-cart-hint[hidden]{display:none!important}.first-delivery-promo-copy{display:flex;min-width:0;flex:1;flex-direction:column;gap:7px}.first-delivery-promo-copy strong{font-size:clamp(16px,4.7vw,21px);font-weight:900;line-height:1.13;letter-spacing:-.35px;text-wrap:balance}.first-delivery-promo-copy span{color:#fff4c9;font-size:12px;font-weight:700;line-height:1.3}.first-delivery-promo-cta{flex:0 0 auto;min-height:42px;padding:0 13px;border:0;border-radius:12px;background:#fff;color:#286319;font:800 12px 'Plus Jakarta Sans',sans-serif;box-shadow:0 3px 8px rgba(0,0,0,.14);white-space:nowrap;touch-action:manipulation}.first-delivery-promo-cta:active{transform:scale(.97)}#homeProductSections{scroll-margin-top:14px}#pageHome:not(.promo-ready){visibility:hidden}.first-delivery-cart-hint{margin:10px 0 0;padding:10px 12px;border-radius:12px;background:#eef7e8;color:#24632f;font-size:13px;font-weight:800;line-height:1.4}
+@media(max-width:380px){.first-delivery-promo-banner{min-height:108px;padding:11px 12px;gap:8px}.first-delivery-promo-copy{gap:5px}.first-delivery-promo-copy strong{font-size:16px}.first-delivery-promo-copy span{font-size:11px}.first-delivery-promo-cta{min-height:40px;padding:0 10px;font-size:11px}}
 </style>
 <style id="storeConfirmBottomSheetFix">
 /* Bottom sheet exclusivo do aviso de pedido mínimo; não altera os demais modais. */
