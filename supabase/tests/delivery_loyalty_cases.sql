@@ -86,13 +86,17 @@ BEGIN
  -- Configured cap is respected; test orders never earn.
  UPDATE promo_private.promo_settings SET enabled=false WHERE singleton=true;
  INSERT INTO promo_private.delivery_loyalty_balances(user_id,stamps) VALUES('00000000-0000-4000-8000-000000000004',6);
- UPDATE promo_private.delivery_loyalty_settings SET discount_cap=7 WHERE singleton=true;
+ UPDATE promo_private.delivery_loyalty_settings SET stamps_required=3,discount_cap=7 WHERE singleton=true;
  INSERT INTO public.orders(id,user_id,customer_phone,delivery_type,subtotal,delivery_fee,total,status,payment_method)
  VALUES('loyalty-cap','00000000-0000-4000-8000-000000000004','92944440004','delivery',40,20,60,'Pagamento Pendente','Asaas Pix');
  SELECT * INTO v_order FROM public.orders WHERE id='loyalty-cap';
  IF v_order.promo_code<>'FIDELIDADE' OR v_order.delivery_discount<>7 OR v_order.delivery_fee<>20 OR v_order.total<>53
  THEN RAISE EXCEPTION 'FAIL: discount cap or original delivery fee'; END IF;
- UPDATE promo_private.delivery_loyalty_settings SET discount_cap=NULL WHERE singleton=true;
+ IF (SELECT stamps FROM promo_private.delivery_loyalty_balances WHERE user_id='00000000-0000-4000-8000-000000000004')<>0
+    OR (SELECT stamps_reserved FROM promo_private.delivery_loyalty_redemptions WHERE order_id='loyalty-cap')<>6
+ THEN RAISE EXCEPTION 'FAIL: redemption must zero the full balance, even after changing required stamps'; END IF;
+ UPDATE public.orders SET status='Pagamento Confirmado' WHERE id='loyalty-cap';
+ UPDATE promo_private.delivery_loyalty_settings SET stamps_required=6,discount_cap=NULL WHERE singleton=true;
  INSERT INTO public.orders(id,user_id,customer_phone,delivery_type,subtotal,delivery_fee,total,status,payment_method,is_test_order)
  VALUES('loyalty-test-order','00000000-0000-4000-8000-000000000004','92944440004','pickup_store',40,0,40,'Pagamento Confirmado','Pix de teste (admin)',true);
  UPDATE public.orders SET status='Entregue' WHERE id='loyalty-test-order';
