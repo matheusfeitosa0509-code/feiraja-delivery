@@ -45,7 +45,7 @@ const makeCard=()=>{const qty={innerHTML:''},valueRow={innerHTML:''},note={textC
 const cards=['initial','search','category','home'].map(makeCard);
 const product = {id:'watermelon',name:'Melancia',price:19,category:'Frutas'};
 const context = {
-  products:[product],cart:{},cartModes:{},cartValueCents:{},
+  products:[product],cart:{},cartModes:{},cartValueCents:{},dailyCategoryDiscounts:[],serverPricingOverrides:new Map(),
   salesRulesById:new Map([['watermelon',{sale_unit:'kg',quantity_step:0.5,min_quantity:1,max_quantity:100,value_min_kg:1,allow_value_sale:true}]]),
   salesSettingsReady:true,minValueSaleCents:0,
   cartStorageWriteWarning:false,cartStorageWriteWarningShown:false,cartRulesWarning:false,cartCatalogRemovedWarning:false,
@@ -66,7 +66,7 @@ const context = {
 };
 vm.createContext(context);
 const names=[
-  'salesRuleFor','isValidCartQuantity','quantityStepFor','formatCartQuantity','effectiveUnitPriceCents','hasVisiblePromotion','priceBlock',
+  'salesRuleFor','isValidCartQuantity','quantityStepFor','formatCartQuantity','getCurrentManausDayHour','dailyDiscountPercentForProduct','dailyDiscountedPriceCents','effectiveUnitPriceCents','hasVisiblePromotion','priceBlock',
   'valueSaleMinimumKg','valueSaleMinimumAmountCents','valueSaleCalculation',
   'unitSaleLabel','formatUnitSaleQuantity','unitValueSaleChoices','unitValueSalePreviewMarkup','unitValueSaleEditorForm','setUnitValueQuantity','convertValueSaleToKg',
   'formatCartProductLabel','valueSaleEnabled','valueSaleEditorMarkup','cartPriceMarkup','normalizeLegacyCartItem','positionCartToast','showStoreNotice','showCartUndo','undoCartAction','removeCartItem','confirmRemoveCartItem','clearCart',
