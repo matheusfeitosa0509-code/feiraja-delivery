@@ -18,7 +18,7 @@ assert.match(panel,/upsert:false/,'every photo gets a unique object and is never
 assert.match(panel,/db\.storage\.from\(PRODUCT_PHOTO_BUCKET\)\.upload/,'photos upload through Supabase Storage');
 assert.match(panel,/if\(thumbUpload\.error\)\{console\.warn\([\s\S]*?savedThumbPath=null;\}/,'thumbnail failure preserves the original upload');
 assert.match(panel,/return \{path,thumbPath:savedThumbPath,url:data\.publicUrl\}/,'saved product receives original public URL even without thumbnail');
-assert.match(webpMigration,/ARRAY\['image\/jpeg','image\/png','image\/webp'\]/,'bucket accepts JPEG, PNG, and WebP');
+assert.match(webpMigration,/ARRAY\['image\/jpeg',\s*'image\/png',\s*'image\/webp'\]/,'bucket accepts JPEG, PNG, and WebP');
 assert.match(panel,/deleteOldProductPhotoIfUnused\(product\.image,id\)/,'old photo deletion is guarded by usage check');
 assert.match(panel,/eq\('image',oldImage\)\.neq\('id',productId\)/,'old image is retained while another product references it');
 assert.match(panel,/preparePhotoInput\('sheetPhotoInput','btnPickSheetPhoto','sheet'\)/,'sheet photo picker is wired');
