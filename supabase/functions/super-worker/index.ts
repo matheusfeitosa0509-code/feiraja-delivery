@@ -9,6 +9,22 @@ import { readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lal
 import { calculateServerDelivery, orderTotals, validateCheckoutDelivery } from "./delivery-order.ts";
 import { getCommercialSchedule } from "../_shared/commercial-calendar.js";
 import { getActiveDailyCategoryDiscount, calculateDailyDiscountedPriceCents, calculateBestUnitPriceCents } from "../_shared/daily-category-discounts.js";
+import { isDailyRecipeKitAvailable, areDailyRecipeKitItemsAvailable } from "../_shared/daily-recipe-kits.js";
+
+function buildMarketChecklistItems(items: any[]) {
+  return (Array.isArray(items) ? items : []).flatMap((item: any) => {
+    if (item?.is_kit === true && Array.isArray(item.kit_items)) {
+      return item.kit_items.map((component: any) => ({
+        id: String(component.product_id),
+        name: String(component.name),
+        qty: Number(component.quantity) * Number(item.qty || 1),
+        bought: false,
+        kit_name: String(item.name || "Kit"),
+      }));
+    }
+    return [{ id: item.id, name: item.name, qty: item.qty, bought: false }];
+  });
+}
 
 function isValidCpf(value: string) { const cpf = String(value || "").replace(/\D/g, ""); if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false; const calc = (base: string, factor: number) => { let sum = 0; for (const digit of base) sum += Number(digit) * factor--; const mod = (sum * 10) % 11; return mod === 10 ? 0 : mod; }; return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10]); }
 
@@ -294,20 +310,30 @@ Deno.serve(async (req: Request) => {
 
     const requestedById = new Map<string, { saleMode: string; qtyValues: number[]; amountValues: number[] }>();
     const itemPreferencesById = new Map<string, { item_note: string; substitution_preference: 'replace' | 'remove' | 'call' }>();
+    const kitIdByCartId = new Map<string, string>();
     for (const item of requestedItems) {
       const id = String(item?.id ?? "").trim();
       const preference = normalizeItemPreference(item?.item_note, item?.substitution_preference);
       if (!preference) return json({ error: "Confira a observação e a preferência de substituição do item." }, 400);
       if (id) itemPreferencesById.set(id, preference);
       const saleMode = String(item?.sale_mode || "kg");
-      if (!id || !["kg", "value"].includes(saleMode)) {
+      if (!id || !["kg", "value", "kit"].includes(saleMode)) {
         return json({ error: "Produto ou modo de compra inválido." }, 400);
       }
       const current = requestedById.get(id) || { saleMode, qtyValues: [], amountValues: [] };
       if (current.saleMode !== saleMode) {
         return json({ error: "O mesmo produto não pode misturar compra por kg e por valor no mesmo pedido." }, 400);
       }
-      if (saleMode === "value") {
+      if (saleMode === "kit") {
+        const kitId = String(item?.kit_id || "").trim();
+        const qty = Number(item?.qty);
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(kitId) || id !== "kit:" + kitId) {
+          return json({ error: "Kit inválido. Atualize a feira e tente novamente." }, 400);
+        }
+        if (!Number.isSafeInteger(qty) || qty < 1 || qty > 10) return json({ error: "A quantidade do kit deve ser de 1 a 10 unidades." }, 400);
+        kitIdByCartId.set(id, kitId);
+        current.qtyValues.push(qty);
+      } else if (saleMode === "value") {
         const amountCents = Number(item?.amount_cents);
         if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
           return json({ error: "Informe um valor em reais válido para o produto." }, 400);
@@ -324,14 +350,77 @@ Deno.serve(async (req: Request) => {
     }
 
     const ids = [...requestedById.keys()];
+    const kitCartIds = ids.filter((id) => id.startsWith("kit:"));
+    const kitIds = [...new Set(kitCartIds.map((id) => kitIdByCartId.get(id)).filter(Boolean))];
+    const regularProductIds = ids.filter((id) => !id.startsWith("kit:"));
     const qtyById = new Map<string, number>();
     const amountCentsById = new Map<string, number>();
     const saleModeById = new Map<string, string>();
-    const { data: products, error: productsError } = await db.from("products")
-      .select("id,name,price,old_price,category,image,available,resale_enabled,delivery_unit_weight_kg,delivery_bulky").in("id", ids);
-    if (productsError) throw productsError;
-    if (!products || products.length !== ids.length) return json({ error: "Um ou mais produtos não existem mais. Atualize a feira e tente novamente." }, 409);
-    if (products.some((p: any) => p.available !== true)) return json({ error: "Um dos produtos está indisponível. Atualize a feira e tente novamente." }, 409);
+
+    let regularProducts: any[] = [];
+    if (regularProductIds.length) {
+      const { data: productRows, error: productsError } = await db.from("products")
+        .select("id,name,price,old_price,category,image,available,resale_enabled,delivery_unit_weight_kg,delivery_bulky").in("id", regularProductIds);
+      if (productsError) throw productsError;
+      if (!productRows || productRows.length !== regularProductIds.length) return json({ error: "Um ou mais produtos não existem mais. Atualize a feira e tente novamente." }, 409);
+      if (productRows.some((p: any) => p.available !== true)) return json({ error: "Um dos produtos está indisponível. Atualize a feira e tente novamente." }, 409);
+      regularProducts = productRows;
+    }
+
+    let kitProducts: any[] = [];
+    if (kitIds.length) {
+      const { data: kitRows, error: kitsError } = await db.from("daily_recipe_kits")
+        .select("id,slug,name,description,image_url,fixed_price,weekday,is_active").in("id", kitIds).eq("is_active", true);
+      if (kitsError) return json({ error: "Não foi possível confirmar a disponibilidade dos kits agora. Tente novamente." }, 503);
+      if (!kitRows || kitRows.length !== kitIds.length || kitRows.some((kit: any) => !isDailyRecipeKitAvailable(kit, new Date()))) {
+        return json({ error: "Um kit saiu do horário de compra ou está indisponível. Atualize a feira para removê-lo da sacola." }, 409);
+      }
+      const { data: kitItemRows, error: kitItemsError } = await db.from("daily_recipe_kit_items")
+        .select("kit_id,product_id,quantity,sort_order").in("kit_id", kitIds).order("sort_order", { ascending: true });
+      if (kitItemsError) return json({ error: "Não foi possível confirmar os itens dos kits agora. Tente novamente." }, 503);
+      const componentIds = [...new Set((kitItemRows || []).map((item: any) => String(item.product_id)))];
+      if (!componentIds.length || kitRows.some((kit: any) => !(kitItemRows || []).some((item: any) => String(item.kit_id) === String(kit.id)))) {
+        return json({ error: "Um kit está sem composição cadastrada. Atualize a feira e tente novamente." }, 409);
+      }
+      const { data: componentProducts, error: componentsError } = await db.from("products")
+        .select("id,name,price,category,image,available,delivery_unit_weight_kg,delivery_bulky").in("id", componentIds);
+      if (componentsError) throw componentsError;
+      if (!areDailyRecipeKitItemsAvailable(kitItemRows || [], componentProducts || []) ||
+          (componentProducts || []).length !== componentIds.length) {
+        return json({ error: "Um item de um kit está indisponível ou sem estoque. Atualize a feira para remover o kit da sacola." }, 409);
+      }
+      const { data: componentSalesRules, error: componentRulesError } = await db.from("product_sales_rules")
+        .select("product_id,sale_unit").in("product_id", componentIds);
+      if (componentRulesError) return json({ error: "Não foi possível confirmar as unidades dos itens do kit agora. Tente novamente." }, 503);
+      const componentById = new Map((componentProducts || []).map((product: any) => [String(product.id), product]));
+      const componentRuleById = new Map((componentSalesRules || []).map((rule: any) => [String(rule.product_id), rule]));
+      kitProducts = kitRows.map((kit: any) => {
+        const kitComponents = (kitItemRows || []).filter((item: any) => String(item.kit_id) === String(kit.id)).map((item: any) => {
+          const product = componentById.get(String(item.product_id));
+          const saleUnit = String(componentRuleById.get(String(item.product_id))?.sale_unit || "");
+          const quantity = Number(item.quantity);
+          const isKg = ["kg", "quilo", "quilograma"].includes(saleUnit.toLowerCase()) || /\(\s*kg\s*\)/i.test(String(product.name));
+          const unitWeight = product.delivery_unit_weight_kg == null ? 1 : Number(product.delivery_unit_weight_kg);
+          return { product_id: String(product.id), name: String(product.name), category: String(product.category || ""), image: product.image || null, quantity, sale_unit: saleUnit, unit_price: Number(product.price) };
+        });
+        const weightKg = kitComponents.reduce((sum: number, component: any) => {
+          const product = componentById.get(component.product_id);
+          const isKg = ["kg", "quilo", "quilograma"].includes(String(component.sale_unit).toLowerCase()) || /\(\s*kg\s*\)/i.test(String(product.name));
+          const unitWeight = product.delivery_unit_weight_kg == null ? 1 : Number(product.delivery_unit_weight_kg);
+          return sum + (isKg ? component.quantity : unitWeight * component.quantity);
+        }, 0);
+        const bulky = kitComponents.some((component: any) => componentById.get(component.product_id)?.delivery_bulky === true);
+        return {
+          id: "kit:" + String(kit.id), kit_id: String(kit.id), name: String(kit.name),
+          description: String(kit.description || ""), category: "Kits do dia",
+          image: kit.image_url || kitComponents.find((component: any) => component.image)?.image || null,
+          price: Number(kit.fixed_price), old_price: null, available: true, resale_enabled: false,
+          delivery_unit_weight_kg: Math.max(0.001, Math.round(weightKg * 1000) / 1000), delivery_bulky: bulky,
+          is_kit: true, kit_items: kitComponents,
+        };
+      });
+    }
+    const products: any[] = [...regularProducts, ...kitProducts];
 
     const { data: dailyDiscountRules, error: dailyDiscountRulesError } = await db.from("daily_category_discounts").select("weekday,category,percent,is_active,excluded_product_ids").eq("is_active", true);
     if (dailyDiscountRulesError) {
@@ -340,9 +429,13 @@ Deno.serve(async (req: Request) => {
     }
 
     // Revenda is priced from the private counter-price table, never from client payload or public cache.
-    const { data: resaleBalconyPrices, error: resaleBalconyError } = await db.rpc("service_get_product_resale_prices", {
-      p_product_ids: ids,
-    });
+    const resaleBalconyPrices: any[] = [];
+    let resaleBalconyError: any = null;
+    if (regularProductIds.length) {
+      const result = await db.rpc("service_get_product_resale_prices", { p_product_ids: regularProductIds });
+      resaleBalconyError = result.error;
+      if (!result.error && Array.isArray(result.data)) resaleBalconyPrices.push(...result.data);
+    }
     if (resaleBalconyError) {
       console.error("super-worker", { code: "RESALE_BALCONY_LOOKUP_FAILED", stage: "validate_resale_price" });
       return json({ error: "Não foi possível confirmar os preços de revenda agora. Tente novamente." }, 503);
@@ -352,19 +445,31 @@ Deno.serve(async (req: Request) => {
       row.preco_balcao == null ? null : Number(row.preco_balcao),
     ]));
 
-    const { data: salesRules, error: salesRulesError } = await db.from("product_sales_rules")
-      .select("product_id,sale_unit,quantity_step,min_quantity,max_quantity,allow_value_sale,value_min_kg")
-      .in("product_id", ids);
-    if (salesRulesError) {
-      console.error("super-worker", { code: "SALES_RULES_FALLBACK" });
+    let salesRules: any[] = [];
+    let salesRulesError: any = null;
+    if (regularProductIds.length) {
+      const result = await db.from("product_sales_rules")
+        .select("product_id,sale_unit,quantity_step,min_quantity,max_quantity,allow_value_sale,value_min_kg")
+        .in("product_id", regularProductIds);
+      salesRules = result.data || [];
+      salesRulesError = result.error;
+      if (salesRulesError) console.error("super-worker", { code: "SALES_RULES_FALLBACK" });
     }
-    const salesRulesById = new Map((salesRulesError ? [] : salesRules || []).map((rule: any) => [String(rule.product_id), rule]));
+    const salesRulesById = new Map((salesRulesError ? [] : salesRules).map((rule: any) => [String(rule.product_id), rule]));
 
     const hasValueSale = [...requestedById.values()].some((entry) => entry.saleMode === "value");
 
     for (const [id, entry] of requestedById) {
       saleModeById.set(id, entry.saleMode);
       const rule = salesRulesById.get(id) || null;
+      if (entry.saleMode === "kit") {
+        const accumulatedQty = sumDecimalQuantities(entry.qtyValues);
+        if (accumulatedQty === null || !Number.isSafeInteger(accumulatedQty) || accumulatedQty < 1 || accumulatedQty > 10) {
+          return json({ error: "A quantidade do kit deve ser de 1 a 10 unidades." }, 400);
+        }
+        qtyById.set(id, accumulatedQty);
+        continue;
+      }
       if (entry.saleMode === "value") {
         if (!rule || !isValueSaleEnabled(rule) || salesRulesError) {
           return json({ error: "A compra por valor está disponível somente para produtos vendidos por kg." }, 400);
@@ -401,6 +506,21 @@ Deno.serve(async (req: Request) => {
       let qty = qtyById.get(p.id) || 0;
       const amountCents = amountCentsById.get(p.id) || null;
       const normalPriceCents = Math.round(Number(p.price) * 100);
+      if (p.is_kit === true) {
+        if (saleMode !== "kit" || !Number.isSafeInteger(normalPriceCents) || normalPriceCents <= 0 || !Number.isSafeInteger(qty) || qty < 1 || qty > 10) {
+          return json({ error: "Kit inválido ou indisponível. Atualize a feira e tente novamente." }, 409);
+        }
+        const lineTotalCents = calculateLineTotalCents(normalPriceCents, qty);
+        if (lineTotalCents === null || !Number.isSafeInteger(lineTotalCents) || lineTotalCents <= 0) return json({ error: "Preço do kit inválido." }, 409);
+        subtotalCents += lineTotalCents;
+        if (!Number.isSafeInteger(subtotalCents)) return json({ error: "Valor total inválido." }, 400);
+        items.push({
+          id: p.id, kit_id: p.kit_id, name: p.name, description: p.description, category: "Kits do dia", image: p.image,
+          price: normalPriceCents / 100, qty, sale_mode: "kit", line_total_cents: lineTotalCents,
+          is_kit: true, kit_items: p.kit_items,
+        });
+        continue;
+      }
       if (!Number.isFinite(Number(p.price)) || !Number.isSafeInteger(normalPriceCents) || normalPriceCents <= 0) {
         console.error("super-worker", { code: "PRODUCT_PRICE_INVALID", stage: "validate_product_price" });
         return json({ error: "Um produto está com preço inválido. Avise a loja antes de tentar novamente." }, 409);
@@ -493,6 +613,7 @@ Deno.serve(async (req: Request) => {
             String(quoted.sale_mode || "kg") === item.sale_mode &&
             Number.isInteger(quoted.unit_price_cents) &&
             quoted.unit_price_cents === Math.round(item.price * 100) &&
+            (item.sale_mode !== "kit" || String(quoted.kit_id || "") === String(item.kit_id || "")) &&
             (item.sale_mode !== "value" ||
               (Number.isSafeInteger(quoted.line_total_cents) &&
                 quoted.line_total_cents === item.line_total_cents &&
@@ -501,7 +622,7 @@ Deno.serve(async (req: Request) => {
         Number.isInteger(quote?.subtotal_cents) &&
         quote.subtotal_cents === subtotalCents;
       if (!quoteMatches) {
-        return json({ error: "Os preços da feira mudaram. A sacola foi recalculada; confira os novos valores antes de continuar.", pricing_update: { subtotal_cents: subtotalCents, items: items.map((item: any) => ({ id: item.id, qty: item.qty, sale_mode: item.sale_mode, unit_price_cents: Math.round(item.price * 100), line_total_cents: item.line_total_cents, daily_discount_percent: item.daily_discount_percent, ...(item.sale_mode === "value" ? { amount_cents: item.amount_cents } : {}) })) } }, 409);
+        return json({ error: "Os preços da feira mudaram. A sacola foi recalculada; confira os novos valores antes de continuar.", pricing_update: { subtotal_cents: subtotalCents, items: items.map((item: any) => ({ id: item.id, qty: item.qty, sale_mode: item.sale_mode, unit_price_cents: Math.round(item.price * 100), line_total_cents: item.line_total_cents, daily_discount_percent: item.daily_discount_percent, ...(item.sale_mode === "kit" ? { kit_id: item.kit_id } : {}), ...(item.sale_mode === "value" ? { amount_cents: item.amount_cents } : {}) })) } }, 409);
       }
     }
 
@@ -658,7 +779,7 @@ Deno.serve(async (req: Request) => {
         payment_method: paymentMethod === "pix_test" ? "Pix de teste (admin)" : paymentMethod === "cash" ? "Dinheiro na retirada" : "Cartão na retirada",
         pickup_code: pickupCode,
         items, subtotal, delivery_fee: deliveryFee, total, status: paymentMethod === "pix_test" ? "Pagamento Pendente" : "Pedido Recebido",
-        market_checklist: { notes: String(body?.notes ?? "").trim().slice(0, 1000) },
+        market_checklist: { items: buildMarketChecklistItems(items), notes: String(body?.notes ?? "").trim().slice(0, 1000) },
       };
       const { data: createdOrderRows, error: insertError } = await db.rpc("create_order_with_rate_limit", { p_order: orderPayload });
       if (insertError) {
@@ -722,7 +843,7 @@ Deno.serve(async (req: Request) => {
       delivery_type: deliveryType, pickup_code: pickupCode, payment_method: "Asaas Pix", payment_provider: "asaas",
       ...(deliveryType === "delivery" ? { delivery_address: normalizedDeliveryAddress, delivery_coordinates: normalizedDeliveryCoordinates } : {}),
       items, subtotal, delivery_fee: deliveryFee, total, status: "Pagamento Pendente",
-      market_checklist: { items: items.map((item: any) => ({ id: item.id, name: item.name, qty: item.qty, bought: false })), notes: String(body?.notes ?? "").trim().slice(0, 500) },
+      market_checklist: { items: buildMarketChecklistItems(items), notes: String(body?.notes ?? "").trim().slice(0, 500) },
     };
     const { data: draftOrderRows, error: draftError } = await db.rpc("create_order_with_rate_limit", { p_order: draftOrder });
     if (draftError) {
