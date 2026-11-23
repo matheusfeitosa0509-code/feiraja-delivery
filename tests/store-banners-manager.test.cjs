@@ -48,7 +48,7 @@ for (const action of ['kit']) assert.ok(scheduleMigration.includes("'"+action+"'
 for (const field of ['weekdays','start_time','end_time']) assert.match(scheduleMigration, new RegExp('add column if not exists '+field, 'i'));
 for (const title of ['Segunda da Polpa','Terça Verde','Bateu vontade de farofa e tapioca?','Quinta dos Legumes','Sexta das Frutas','Sábado dos Frutos do Mar']) assert.ok(scheduleMigration.includes(title), 'banner semanal ausente: '+title);
 assert.match(scheduleMigration, /'06:00'::time, '13:00'::time, false/i);
-assert.match(scheduleMigration, /false, themed\\.sort_order/i);
+assert.match(scheduleMigration, /false, themed\.sort_order/i);
 assert.match(managerScript, /storeBannerScheduleEnabled/);
 assert.match(managerScript, /daily_recipe_kits/);
 console.log('PASSOU | gerenciador de banners | markup, JavaScript, schema, seeds, agenda e políticas RLS');
