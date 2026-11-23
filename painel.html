@@ -435,10 +435,19 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
   <label>Título<input id="storeBannerTitle" maxlength="120" required></label>
   <label>Subtítulo<input id="storeBannerSubtitle" maxlength="240"></label>
   <label>Texto do botão<input id="storeBannerButtonText" maxlength="60" required></label>
-  <label>Ação<select id="storeBannerActionType" required><option value="products">Abrir produtos</option><option value="category">Abrir categoria</option><option value="product">Abrir produto</option><option value="whatsapp">WhatsApp</option><option value="assistant">Assistente</option><option value="request_product">Pedir produto</option><option value="maps">Como chegar</option></select></label>
+  <label>Ação<select id="storeBannerActionType" required><option value="products">Abrir produtos</option><option value="category">Abrir categoria</option><option value="product">Abrir produto</option><option value="kit">Abrir kit do dia</option><option value="whatsapp">WhatsApp</option><option value="assistant">Assistente</option><option value="request_product">Pedir produto</option><option value="maps">Como chegar</option></select></label>
   <label id="storeBannerActionValueLabel">Destino<select id="storeBannerActionValue"><option value="">Selecione</option></select></label>
   <label>Tema<select id="storeBannerTheme"><option value="green">Verde</option><option value="yellow">Amarelo</option><option value="orange">Laranja</option><option value="red">Vermelho</option></select></label>
   <label>Público<select id="storeBannerAudience"><option value="all">Todos</option><option value="new_customers">Novos clientes</option><option value="returning">Clientes recorrentes</option></select></label>
+  <label style="display:flex;align-items:center;gap:9px"><input id="storeBannerScheduleEnabled" type="checkbox" style="width:22px;min-height:22px"> Programar por dia e horário (Manaus)</label>
+  <div id="storeBannerScheduleFields" hidden>
+   <p class="muted" style="margin:4px 0 8px">Exibir somente nos dias e horário escolhidos. Sem programação, o banner mantém o comportamento atual.</p>
+   <div class="store-banner-schedule-days">
+    <label><input type="checkbox" data-store-banner-weekday value="0"> Dom</label><label><input type="checkbox" data-store-banner-weekday value="1"> Seg</label><label><input type="checkbox" data-store-banner-weekday value="2"> Ter</label><label><input type="checkbox" data-store-banner-weekday value="3"> Qua</label><label><input type="checkbox" data-store-banner-weekday value="4"> Qui</label><label><input type="checkbox" data-store-banner-weekday value="5"> Sex</label><label><input type="checkbox" data-store-banner-weekday value="6"> Sáb</label>
+   </div>
+   <div class="automatic-margin-grid"><label>Das<input id="storeBannerStartTime" type="time" value="06:00"></label><label>Até<input id="storeBannerEndTime" type="time" value="13:00"></label></div>
+   <small class="muted">Fuso horário: America/Manaus.</small>
+  </div>
   <div class="automatic-margin-grid"><label>Início<input id="storeBannerStartsAt" type="datetime-local" required></label><label>Fim (opcional)<input id="storeBannerEndsAt" type="datetime-local"></label><label>Ordem<input id="storeBannerSortOrder" type="number" step="1" value="10"></label></div>
   <label>Imagem do banner (opcional)</label>
   <div class="store-banner-image-controls">
@@ -465,6 +474,7 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
 .store-banner-preview[data-theme="orange"]{background:linear-gradient(120deg,#bd5a13,#e68a27)}
 .store-banner-preview[data-theme="red"]{background:linear-gradient(120deg,#a52d28,#d94d43)}
 .store-banner-preview strong{font-size:21px;line-height:1.2}.store-banner-preview p{margin:0}.store-banner-preview span{justify-self:start;background:#fff;color:#176b3a;border-radius:999px;padding:8px 13px;font-weight:800}
+.store-banner-schedule-days{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}.store-banner-schedule-days label{display:flex;align-items:center;gap:5px;padding:6px 9px;border:1px solid var(--line);border-radius:9px}.store-banner-schedule-days input{width:18px;min-height:18px}
 .store-banner-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:14px;background:#fbfdf9}
 .store-banner-row small{display:block;color:var(--muted);margin-top:4px}.store-banner-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.store-banner-actions button{min-height:36px;padding:7px 10px;font-size:12px}
 .store-banner-row .store-banner-preview{min-height:0;padding:12px;margin-top:8px}.store-banner-row .store-banner-preview strong{font-size:15px}.store-banner-row .store-banner-preview span{font-size:11px;padding:5px 9px}
