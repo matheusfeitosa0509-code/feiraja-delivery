@@ -71,6 +71,7 @@ export async function geocodeManausAddress(
   address: string,
   apiKey: string,
   fetcher: typeof fetch = fetch,
+  requireExactStreetNumber = false,
 ): Promise<DeliveryCoordinates> {
   if (!apiKey.trim()) throw new Error("GEOCODER_NOT_CONFIGURED");
   const query = formatManausGeocodeQuery(address);
@@ -107,7 +108,9 @@ export async function geocodeManausAddress(
   let outsideManaus = false;
   for (const result of payload.results as GoogleGeocodeResult[]) {
     try {
-      return validateManausGeocodeResult(result);
+      const coordinates = validateManausGeocodeResult(result);
+      if (requireExactStreetNumber && (!component(result, "route") || !component(result, "street_number"))) continue;
+      return coordinates;
     } catch (error) {
       if (error instanceof Error && error.message === "ADDRESS_OUTSIDE_MANAUS") outsideManaus = true;
     }
