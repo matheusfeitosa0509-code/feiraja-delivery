@@ -1627,7 +1627,7 @@ function formatOrderItemDescription(item){
  if(['un','unidade','maco','pacote'].includes(unit))return name+' — '+formatOrderQuantity(quantity)+' '+(unit==='unidade'?'un':unit==='maco'?'maço':unit);
  return name+' × '+formatOrderQuantity(quantity)+(item.unit?' '+String(item.unit):'');
 }
-function formatOrderKitComponentsMarkup(item){if(item?.is_kit!==true||!Array.isArray(item.kit_items)||!item.kit_items.length)return '';return '<small class="order-kit-components">Inclui: '+item.kit_items.map(component=>esc(formatOrderQuantity(component.quantity)+' × '+String(component.name||'item'))).join(' · ')+'</small>';}
+function formatOrderKitComponentsMarkup(item){if(item?.is_kit!==true||!Array.isArray(item.kit_items)||!item.kit_items.length)return '';return '<small class="order-kit-components">Inclui: '+item.kit_items.map(component=>esc(formatOrderQuantity(Number(component.quantity)*Number(item.qty||1))+' × '+String(component.name||'item'))).join(' · ')+'</small>';}
 $('#refreshOrders').addEventListener('click',loadMyOrders);$('#refreshMyOrders').addEventListener('click',loadMyOrders);
 function showRequiredProfileStep(message=''){
  const section=$('#requiredProfileStep');

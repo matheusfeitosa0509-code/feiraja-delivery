@@ -733,13 +733,13 @@ let allOrders=[],seenOrderIds=new Set(),firstLoadDone=false,hasMoreOrders=true,n
   const occurrence=items.slice(0,index).filter(x=>itemFingerprint(x)===itemFingerprint(item)).length;
   return separatedKeysFor(order).includes(itemSeparationKey(item,occurrence));
  }
- function formatOrderKitComponentsMarkup(item){if(item?.is_kit!==true||!Array.isArray(item.kit_items)||!item.kit_items.length)return '';return '<small class="separation-preference">Inclui: '+item.kit_items.map(component=>esc(formatOrderQuantity(component.quantity)+' × '+String(component.name||'item'))).join(' · ')+'</small>';}
+ function formatOrderKitComponentsMarkup(item){if(item?.is_kit!==true||!Array.isArray(item.kit_items)||!item.kit_items.length)return '';return '<small class="separation-preference">Inclui: '+item.kit_items.map(component=>esc(formatOrderQuantity(Number(component.quantity)*Number(item.qty||1))+' × '+String(component.name||'item'))).join(' · ')+'</small>';}
 function buildOrderShoppingText(order){
   const items=Array.isArray(order.items)?order.items:[];
   const lines=items.map((item,index)=>{
    const mark=isOrderItemSeparated(order,index)?'✅':'⬜';
    const note=String(item?.item_note||'').trim();
-   const kitLines=item?.is_kit===true&&Array.isArray(item.kit_items)?'\n   Inclui: '+item.kit_items.map(component=>formatOrderQuantity(component.quantity)+' × '+String(component.name||'item')).join(', '):'';
+   const kitLines=item?.is_kit===true&&Array.isArray(item.kit_items)?'\n   Inclui: '+item.kit_items.map(component=>formatOrderQuantity(Number(component.quantity)*Number(item.qty||1))+' × '+String(component.name||'item')).join(', '):'';
    return mark+' '+formatOrderItemDescription(item)+kitLines+(note?'\n   Observação: '+note:'');
   });
   return 'Lista de compras — Pedido '+shortOrderNumber(order.id)+'\n'+lines.join('\n');
@@ -749,7 +749,7 @@ function buildOrderShoppingText(order){
   const eligible=orders.filter(order=>order.is_test_order!==true&&eligibleStatuses.has(normalizeOrderStatus(order.status)));
   const grouped=new Map();
   eligible.forEach(order=>{
-   const items=Array.isArray(order.items)?order.items.flatMap(item=>item?.is_kit===true&&Array.isArray(item.kit_items)?item.kit_items.map(component=>({...component,qty:Number(component.quantity||0)*Number(item.qty||1),kit_name:item.name})): [item]):[];
+   const items=Array.isArray(order.items)?order.items.flatMap(item=>item?.is_kit===true&&Array.isArray(item.kit_items)?item.kit_items.map(component=>({...component,quantity:Number(component.quantity||0)*Number(item.qty||1),qty:Number(component.quantity||0)*Number(item.qty||1),kit_name:item.name})): [item]):[];
    items.forEach((item,index)=>{
     const description=formatOrderItemDescription(item);
     const rawName=String(item?.name||item?.product_name||item?.id||'Produto');
