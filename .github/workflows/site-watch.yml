@@ -39,6 +39,10 @@ jobs:
         run: node tests/store-banners-manager.test.cjs
       - name: Test dynamic storefront banners at 360px/412px
         run: node tests/storefront-banners.visual.cjs
+      - name: Test Pix generation wait and duplicate-submit protection
+        run: node tests/pix-generation-wait.test.mjs
+      - name: Test Pix wait sheet at 360px and 412px
+        run: node tests/pix-generation-wait.visual.cjs
       - name: Test stale order alert thresholds, resolution and deduplication
         run: node --test tests/order-stale-alerts.test.mjs
       - name: Run vigia against production
