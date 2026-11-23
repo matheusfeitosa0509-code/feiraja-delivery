@@ -2,7 +2,7 @@ const WEEKDAY_BY_SHORT = Object.freeze({ Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4,
 
 function parseTimeMinutes(value) {
   if (typeof value !== "string") return null;
-  const match = /^(\\d{2}):(\\d{2})(?::\\d{2}(?:\\.\\d+)?)?$/.exec(value);
+  const match = /^(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/.exec(value);
   if (!match) return null;
   const hour = Number(match[1]), minute = Number(match[2]);
   if (hour > 23 || minute > 59) return null;
