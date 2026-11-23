@@ -44,7 +44,7 @@ if ([outOfAreaStart,outOfAreaEnd,quoteErrorStart,quoteErrorEnd,statusStart,statu
 for (const required of [
   'https://tiles.openfreemap.org/styles/positron', 'zoom:17', 'new lib.AttributionControl({compact:true})',
   'id="deliveryMapFullscreen"', 'id="deliveryMapFixedPin"', 'id="deliveryMapConfirm"',
-  'id="deliveryMapPreview"', 'Endereço confirmado no mapa', 'deliveryNeedsExplicitConfirm)return;',
+  'id="deliveryMapPreview"', 'Confira o ponto no mapa', 'deliveryNeedsExplicitConfirm)return;',
   'id="deliveryZip"', 'CEP (opcional)', '<label for="deliveryStreet">Rua</label>', 'Confira se o pino está na sua casa', 'Coloque só um endereço. Use o campo Referência para pontos próximos.', 'delivery_coordinates:deliveryMapCoordinates',
   'deliveryMapReversePromise=new Promise', 'await deliveryMapReversePromise', 'id="deliveryMapGps"',
 ]) assert.ok(storeHtml.includes(required), 'missing MapLibre delivery behavior: ' + required);
@@ -58,7 +58,7 @@ assert.ok(helperSource.includes('deliveryQuoteErrorMessage'));
 const harness = `
 const $ = selector => document.querySelector(selector);
 const testStorage=new Map();Object.defineProperty(window,'sessionStorage',{configurable:true,value:{getItem:key=>testStorage.get(key)??null,setItem:(key,value)=>testStorage.set(key,String(value)),removeItem:key=>testStorage.delete(key)}});
-let deliveryPlacesSessionToken='session-123',deliveryAutocompleteTimer=null,deliveryMap=null,deliveryMapCoordinates=null,deliveryMapReverseTimer=null,deliveryMapReverseSequence=0,deliveryMapReversePromise=Promise.resolve(),deliveryMapReverseError='',deliveryAddressManualEdits={street:false,number:false,neighborhood:false},deliveryQuoteTimeoutMs=1500,deliveryNeedsExplicitConfirm=true,deliveryStreetHome=null,deliveryNumberHome=null,deliveryNeighborhoodHome=null,deliveryMapPlaceName='',deliveryQuoteTimer=null,deliveryQuoteSequence=0,deliveryQuote=null,deliveryQuoteSlowTimer=null,deliveryQuoteDebounceStartedAt=0;
+let deliveryPlacesSessionToken='session-123',deliveryAutocompleteTimer=null,deliveryAddressGeocodeTimer=null,deliveryAddressGeocodeSequence=0,deliveryMap=null,deliveryMapCoordinates=null,deliveryMapPreviewing=false,deliveryMapReverseTimer=null,deliveryMapReverseSequence=0,deliveryMapReversePromise=Promise.resolve(),deliveryMapReverseError='',deliveryAddressManualEdits={street:false,number:false,neighborhood:false},deliveryQuoteTimeoutMs=1500,deliveryNeedsExplicitConfirm=true,deliveryStreetHome=null,deliveryNumberHome=null,deliveryNeighborhoodHome=null,deliveryMapPlaceName='',deliveryQuoteTimer=null,deliveryQuoteSequence=0,deliveryQuote=null,deliveryQuoteSlowTimer=null,deliveryQuoteDebounceStartedAt=0;
 const deliveryQuoteCache=new Map();
 const buildDeliveryQuoteCacheKey=(address,items,coordinates=null,userId='')=>JSON.stringify({user:String(userId||''),address,items,coordinates:coordinates||null});
 const isCachedDeliveryQuoteValid=(entry,now=Date.now())=>!!entry&&Number(entry.expiresAt)>Number(now)&&isValidDeliveryQuote(entry.quote,now);
@@ -80,6 +80,7 @@ let lastQuoteCoordinates=null;
 const supabase={functions:{invoke:async(name,{body})=>{
  if(name==='delivery-quote'){lastQuoteCoordinates=body.coordinates||null;quoteCalls++;if(quoteMode==='timeout')return await new Promise(()=>{});if(quoteMode==='outofarea')return {data:null,error:{status:422,context:{status:422,clone:()=>({json:async()=>({code:'LALAMOVE_OUT_OF_SERVICE_AREA'})})}}};await new Promise(resolve=>setTimeout(resolve,quoteMode==='slow'?6200:400));return {data:{vehicle:'MOTO',fee:9,valid_until:new Date(Date.now()+60000).toISOString(),schedule_at:'2026-11-18T10:00:00.000Z'},error:null};}
  if(name!=='delivery-address')throw new Error('unexpected function '+name);
+ if(body.action==='geocode')return {data:{coordinates:{lat:'-3.10',lng:'-60.02'},precision:'street_address'},error:null};
  if(body.action==='autocomplete')return {data:{suggestions:[{place_id:'place-test-123',description:'Mercado Teste, Centro, Manaus - AM'}]},error:null};
  if(body.action==='details')return {data:{address:{street:'Rua do Mercado',number:'123',neighborhood:'Centro',lat:'-3.10',lng:'-60.02',reference:'Mercado Teste'}},error:null};
  if(body.action==='reverse')return {data:{address:{street:'Rua do Mercado',number:'123',neighborhood:'Centro',lat:String(body.lat),lng:String(body.lng)}},error:null};
@@ -127,6 +128,7 @@ document.body.innerHTML=mapOverlayMarkup;
     $('#deliveryNeighborhood').addEventListener('input',()=>deliveryAddressManualEdits.neighborhood=true);
     window.startAutocomplete=async()=>{ $('#deliveryStreet').value='Mercado Teste';await requestDeliveryAutocomplete('Mercado Teste',deliveryPlacesSessionToken); };
     window.pickPlace=()=>chooseDeliveryPlace('place-test-123');
+   window.openManualMap=()=>openDeliveryMap();
     window.dragMap=()=>{window.testMap.center={lat:-3.11,lng:-60.03};window.testMap.fire('dragstart');window.testMap.fire('moveend');window.testMap.fire('dragend');};
     window.confirmMap=confirmDeliveryMapAddress;
     window.runGps=useDeliveryGps;
@@ -139,6 +141,10 @@ document.body.innerHTML=mapOverlayMarkup;
    await page.evaluate(()=>window.startAutocomplete());
    assert.equal(await page.locator('#deliveryStreetSuggestions button').count(),1,'establishment suggestion is shown');
    await page.evaluate(()=>window.pickPlace());
+   await page.waitForFunction(()=>document.querySelector('#deliveryMapPreview').hidden===false);
+   await page.waitForFunction(()=>window.quoteCount()===1);
+   assert.equal(await page.locator('#deliveryMapPreviewAddress').textContent(),'Mercado Teste · Rua do Mercado, 123 · Centro','precise geocoding creates the optional map preview without asking for confirmation');
+   await page.evaluate(()=>window.openManualMap());
    await page.waitForFunction(()=>document.querySelector('#deliveryMapFullscreen').hidden===false);
    await page.waitForTimeout(850);
    assert.ok((await page.locator('#deliveryMapAddress').textContent()).includes('Mercado Teste'),'selected establishment name is displayed');
@@ -166,21 +172,21 @@ document.body.innerHTML=mapOverlayMarkup;
    await page.evaluate(()=>window.confirmMap());
    await page.waitForFunction(()=>document.querySelector('#deliveryMapFullscreen').hidden===true);
    await page.waitForTimeout(250);
-   assert.equal(await page.evaluate(()=>window.quoteCount()),1,'map confirmation starts the quote without debounce');
+   assert.equal(await page.evaluate(()=>window.quoteCount()),2,'manual map adjustment refreshes the quote without debounce');
    assert.deepEqual(await page.evaluate(()=>window.quoteCoordinates()),{lat:-3.11,lng:-60.03},'checkout quote uses the exact coordinates of the confirmed draggable pin');
    await page.waitForTimeout(1300);
-   assert.equal(await page.evaluate(()=>window.quoteCount()),1,'quote runs only after explicit confirmation');
+   assert.equal(await page.evaluate(()=>window.quoteCount()),2,'quote remains valid after optional map confirmation');
    await page.waitForFunction(()=>document.querySelector('#submitOrder').disabled===false);
    assert.equal(await page.locator('#submitOrder').textContent(),'Pagar com Pix · R$ 39,96','Pix only unlocks after a positive live quote');
    assert.equal(await page.evaluate(()=>window.quoteSchedule()),'2026-11-18T10:00:00.000Z','checkout retains the UTC scheduleAt used for the nighttime quote');
    await page.evaluate(()=>window.reopenQuote());
    await page.waitForTimeout(100);
-   assert.equal(await page.evaluate(()=>window.quoteCount()),1,'reopening checkout reuses the five-minute cached quote');
+   assert.equal(await page.evaluate(()=>window.quoteCount()),2,'reopening checkout reuses the five-minute cached quote');
    await page.evaluate(()=>{window.clearQuoteCache();window.runDebouncedQuote();});
    await page.waitForTimeout(400);
-   assert.equal(await page.evaluate(()=>window.quoteCount()),1,'quote debounce does not fire before 800 ms');
+   assert.equal(await page.evaluate(()=>window.quoteCount()),2,'quote debounce does not fire before 800 ms');
    await page.waitForTimeout(550);
-   assert.equal(await page.evaluate(()=>window.quoteCount()),2,'quote debounce fires at 800 ms');
+   assert.equal(await page.evaluate(()=>window.quoteCount()),3,'quote debounce fires at 800 ms');
    await page.waitForFunction(()=>document.querySelector('#submitOrder').disabled===false);
    await page.evaluate(()=>{window.setQuoteMode('slow');window.setQuoteTimeout(8000);window.clearQuoteCache();window.runQuote();});
    await page.waitForTimeout(200);
@@ -195,7 +201,7 @@ document.body.innerHTML=mapOverlayMarkup;
    await page.evaluate(()=>{window.setQuoteMode('success');window.setQuoteTimeout(1500);});
    await page.locator('#retryDeliveryQuote').click();
    await page.waitForFunction(()=>document.querySelector('#submitOrder').disabled===false);
-   assert.equal(await page.evaluate(()=>window.quoteCount()),5,'retry requests a fresh quote after the timeout');
+   assert.equal(await page.evaluate(()=>window.quoteCount()),6,'retry requests a fresh quote after the timeout');
    assert.equal(await page.locator('#deliveryStreet').inputValue(),'Rua do Mercado','reverse geocoding fills street before confirmation');
    assert.equal(await page.locator('#deliveryNumber').inputValue(),'130','reverse geocoding preserves the number typed by the customer');
    assert.equal(await page.locator('#deliveryNeighborhood').inputValue(),'Centro','reverse geocoding fills neighborhood before confirmation');
@@ -211,7 +217,7 @@ document.body.innerHTML=mapOverlayMarkup;
    assert.deepEqual(gpsPoint,{lng:-60.04,lat:-3.12});
    await page.evaluate(()=>window.confirmMap());
    await page.waitForTimeout(1550);
-   assert.equal(await page.evaluate(()=>window.quoteCount()),6,'GPS point also requires confirmation and a fresh quote');
+   assert.equal(await page.evaluate(()=>window.quoteCount()),7,'GPS point still requires confirmation and a fresh quote');
    assert.equal(await page.evaluate(()=>({user:currentUser.id,isAdmin:currentUserIsAdmin,active:deliveryActive})).then(x=>x.isAdmin===false&&x.active===true),true,'cotação deve funcionar para conta comum com entrega ativa');
    await page.evaluate(()=>{window.setQuoteMode('outofarea');window.clearQuoteCache();window.runQuote();});
    await page.waitForFunction(()=>document.querySelector('#choosePickupAfterDeliveryFailure'));

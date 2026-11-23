@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
-import { geocodeManausCoordinates } from "../_shared/geocoding.ts";
+import { geocodeManausAddress, geocodeManausCoordinates } from "../_shared/geocoding.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -139,6 +139,15 @@ Deno.serve(async (req: Request) => {
         return json({ error: code === "ADDRESS_OUTSIDE_MANAUS"
           ? "Selecione um endereço dentro de Manaus - AM." : "O Google não retornou rua e bairro suficientes.", code }, 422);
       }
+    }
+
+    if (action === "geocode") {
+      const address = String(body.address || "").trim();
+      if (address.length < 12 || address.length > 400 || !/\d/.test(address)) {
+        return json({ error: "Informe rua e número para localizar o endereço.", code: "ADDRESS_NOT_FOUND" }, 400);
+      }
+      const coordinates = await geocodeManausAddress(address, Deno.env.get("GOOGLE_GEOCODING_API_KEY") || apiKey, fetch, true);
+      return json({ coordinates, precision: "street_address" });
     }
 
     if (action === "reverse") {
