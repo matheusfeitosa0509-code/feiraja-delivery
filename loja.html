@@ -2224,7 +2224,7 @@ async function loadStoreBanners(){
   });
   storeBannerScheduleRows=eligible;
   refreshScheduledStoreBanners(true);
- }catch(error){console.warn('Não foi possível carregar os banners da loja:',error?.message||error);if(carousel)carousel.hidden=true;}
+ }catch(error){console.warn('Não foi possível carregar os banners da loja:',error?.message||error);storeBannerScheduleRows=[];storeBannerScheduleSignature=null;if(carousel)carousel.hidden=true;}
 }
 startStoreBannerScheduleMonitor();
 async function loadFirstDeliveryPromoOffer(){
