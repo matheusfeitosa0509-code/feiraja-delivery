@@ -25,6 +25,9 @@ CREATE TABLE IF NOT EXISTS public.daily_recipe_kit_items (
   CONSTRAINT daily_recipe_kit_items_kit_product_key UNIQUE (kit_id, product_id)
 );
 
+CREATE INDEX IF NOT EXISTS daily_recipe_kit_items_product_id_idx
+  ON public.daily_recipe_kit_items (product_id);
+
 ALTER TABLE public.daily_recipe_kits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.daily_recipe_kit_items ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.daily_recipe_kits, public.daily_recipe_kit_items FROM PUBLIC, anon, authenticated;
