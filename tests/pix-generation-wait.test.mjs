@@ -12,6 +12,7 @@ assert.match(html, /pixGenerationDelayTimer=setTimeout[\s\S]*15000/, 'slow-respo
 assert.match(html, /Math\.min\(92,/, 'progress never reaches 100% before the Pix is ready');
 assert.match(html, /requestSubmit\(\)/, 'retry reuses the same form submission path');
 assert.match(html, /checkout_idempotency_key:checkoutIdempotencyKey/, 'the existing idempotency key is sent to the worker');
+assert.match(html, /serverMessage\.includes\('já está sendo preparado'\)[\s\S]*Tentar de novo/, 'a retry while the same Pix is being prepared keeps the same attempt');
 assert.match(html, /p_duration_ms:durationMs/, 'Pix duration is sent to the funnel');
 assert.match(migration, /duration_ms integer/, 'funnel stores elapsed milliseconds');
 assert.match(migration, /p_duration_ms integer/, 'RPC accepts the measured duration');
