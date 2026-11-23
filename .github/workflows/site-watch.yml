@@ -92,7 +92,7 @@ jobs:
         if: github.event_name == 'pull_request' && github.event.pull_request.number == 400
         run: |
           node <<'NODE'
-          const base = 'https://www.feiraondelivery.com.br/loja.html';
+          const base = 'https://matheusfeitosa0509-code.github.io/feiraja-delivery/loja.html';
           async function run(strategy) {
             const params = new URLSearchParams({url: base + '?psi_baseline=' + process.env.GITHUB_SHA, strategy, category: 'performance'});
             const response = await fetch('https://pagespeedonline.googleapis.com/pagespeedonline/v5/runPagespeed?' + params, {signal: AbortSignal.timeout(120000)});
@@ -108,7 +108,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'store banners')
         run: |
           node <<'NODE'
-          const base = 'https://www.feiraondelivery.com.br/loja.html';
+          const base = 'https://matheusfeitosa0509-code.github.io/feiraja-delivery/loja.html';
           (async()=>{
             let published = false;
             for (let attempt=0; attempt<36; attempt++) {
