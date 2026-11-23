@@ -146,7 +146,7 @@ jobs:
             const result = median(scores);
             console.log('PAGESPEED_AFTER_MOBILE=' + result + ' [mediana de 3 Lighthouse CLI]');
             console.log('PAGESPEED_AFTER_MOBILE_RUNS=' + scores.join(','));
-            if (result < 53) throw new Error('Nota mobile pós-publicação caiu mais de 3 pontos em relação ao baseline local mobile 56.');
+            if (result < 55) throw new Error('Nota mobile pós-publicação caiu mais de 3 pontos em relação ao baseline local mobile 58.');
             const output = '/tmp/lighthouse-after-desktop.json';
             const args = ['--yes','lighthouse@12.8.2',base,'--only-categories=performance','--output=json','--output-path='+output,'--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage','--preset=desktop'];
             execFileSync('npx',args,{stdio:'inherit',env:{...process.env,CHROME_PATH:chromium.executablePath()}});
