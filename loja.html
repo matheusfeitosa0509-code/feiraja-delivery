@@ -2219,7 +2219,7 @@ async function lookupDeliveryPostalCode(){
   if(data?.erro)throw new Error('CEP não encontrado');
   if(data.logradouro&&!deliveryAddressManualEdits.street)$('#deliveryStreet').value=String(data.logradouro).slice(0,160);
   if(data.bairro&&!deliveryAddressManualEdits.neighborhood)$('#deliveryNeighborhood').value=String(data.bairro).slice(0,100);
-  deliveryMapCoordinates=null;deliveryNeedsExplicitConfirm=true;deliveryQuote=null;$('#deliveryMapPreview').hidden=true;syncDeliveryAddressPresentation(false);updateCheckoutTotals();
+  deliveryNeedsExplicitConfirm=true;deliveryQuote=null;$('#deliveryMapPreview').hidden=true;syncDeliveryAddressPresentation(false);updateCheckoutTotals();
   setDeliveryQuoteStatus('CEP localizado. Localizando o número da casa…');scheduleDeliveryAddressGeocode(true);
  }catch(_){setDeliveryQuoteStatus('Não foi possível localizar esse CEP. Você pode preencher rua e bairro manualmente.',true);}
 }
@@ -2242,7 +2242,7 @@ async function geocodeDeliveryAddress(address,sequence=++deliveryAddressGeocodeS
   if(sequence!==deliveryAddressGeocodeSequence||$('#delivery')?.value!=='delivery'||JSON.stringify(getDeliveryAddress())!==JSON.stringify(address))return;
   if(error||data?.precision!=='street_address'||!data?.coordinates||!Number.isFinite(Number(data.coordinates.lat))||!Number.isFinite(Number(data.coordinates.lng)))throw new Error(data?.code||'ADDRESS_NOT_FOUND');
   deliveryMapCoordinates={lat:Number(data.coordinates.lat),lng:Number(data.coordinates.lng)};
-  deliveryMapPlaceName='';deliveryNeedsExplicitConfirm=false;deliveryQuote=null;
+  deliveryNeedsExplicitConfirm=false;deliveryQuote=null;
   persistConfirmedDeliveryCoordinates(address);
   setDeliveryQuoteStatus('Endereço localizado. Confira se o pino está na sua casa.');
   void renderAutoDeliveryMapPreview(address);
