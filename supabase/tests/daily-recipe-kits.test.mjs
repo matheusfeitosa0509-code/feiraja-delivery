@@ -58,5 +58,6 @@ test("customer order and panel separation render the kit composition",()=>{
  assert.match(store,/formatOrderKitComponentsMarkup/);
  assert.match(panel,/formatOrderKitComponentsMarkup/);
  assert.match(panel,/kit_name:item\.name/);
- assert.match(panel,/buildMarketChecklistItems/);
+ const worker=fs.readFileSync("supabase/functions/super-worker/index.ts","utf8");
+ assert.match(worker,/buildMarketChecklistItems/);
 });
