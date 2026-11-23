@@ -89,7 +89,7 @@ jobs:
             });
           '
       - name: PageSpeed Insights — baseline antes do banner com imagem
-        if: github.event_name == 'pull_request' && github.event.pull_request.number == 400
+        if: github.event_name == 'pull_request' && github.event.action == 'opened' && github.event.pull_request.number == 400
         run: |
           node <<'NODE'
           const {execFileSync} = require('node:child_process');
