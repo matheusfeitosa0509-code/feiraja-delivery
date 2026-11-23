@@ -726,12 +726,14 @@ let allOrders=[],seenOrderIds=new Set(),firstLoadDone=false,hasMoreOrders=true,n
   const occurrence=items.slice(0,index).filter(x=>itemFingerprint(x)===itemFingerprint(item)).length;
   return separatedKeysFor(order).includes(itemSeparationKey(item,occurrence));
  }
- function buildOrderShoppingText(order){
+ function formatOrderKitComponentsMarkup(item){if(item?.is_kit!==true||!Array.isArray(item.kit_items)||!item.kit_items.length)return '';return '<small class="separation-preference">Inclui: '+item.kit_items.map(component=>esc(formatOrderQuantity(component.quantity)+' × '+String(component.name||'item'))).join(' · ')+'</small>';}
+function buildOrderShoppingText(order){
   const items=Array.isArray(order.items)?order.items:[];
   const lines=items.map((item,index)=>{
    const mark=isOrderItemSeparated(order,index)?'✅':'⬜';
    const note=String(item?.item_note||'').trim();
-   return mark+' '+formatOrderItemDescription(item)+(note?'\n   Observação: '+note:'');
+   const kitLines=item?.is_kit===true&&Array.isArray(item.kit_items)?'\n   Inclui: '+item.kit_items.map(component=>formatOrderQuantity(component.quantity)+' × '+String(component.name||'item')).join(', '):'';
+   return mark+' '+formatOrderItemDescription(item)+kitLines+(note?'\n   Observação: '+note:'');
   });
   return 'Lista de compras — Pedido '+shortOrderNumber(order.id)+'\n'+lines.join('\n');
  }
@@ -740,7 +742,7 @@ let allOrders=[],seenOrderIds=new Set(),firstLoadDone=false,hasMoreOrders=true,n
   const eligible=orders.filter(order=>order.is_test_order!==true&&eligibleStatuses.has(normalizeOrderStatus(order.status)));
   const grouped=new Map();
   eligible.forEach(order=>{
-   const items=Array.isArray(order.items)?order.items:[];
+   const items=Array.isArray(order.items)?order.items.flatMap(item=>item?.is_kit===true&&Array.isArray(item.kit_items)?item.kit_items.map(component=>({...component,qty:Number(component.quantity||0)*Number(item.qty||1),kit_name:item.name})): [item]):[];
    items.forEach((item,index)=>{
     const description=formatOrderItemDescription(item);
     const rawName=String(item?.name||item?.product_name||item?.id||'Produto');
@@ -1336,6 +1338,7 @@ function formatOrderItemDescription(item){
  const stored=normalizeUnit(item.unit??item.unit_name);
  const mode=normalizeUnit(item.sale_mode);
  const modeUnit=mode==='unit'?'un':mode;
+ if(item.is_kit===true||mode==='kit')return name+' — '+formatOrderQuantity(quantity)+(Number(quantity)===1?' kit':' kits');
  // A unidade explícita no nome/catálogo prevalece sobre snapshots antigos de sale_mode.
  const packagedTapiocaUnit=rawName.trim().toLowerCase()==='farinha de tapioca (500g)'?'un':'';
  const unit=packagedTapiocaUnit||normalizeUnit(suffix?.[1])||declared||(['un','unidade'].includes(modeUnit)?'un':stored||modeUnit);
@@ -1600,7 +1603,7 @@ function render(){
    const key=itemSeparationKey(i,occurrence),marked=separatedKeys.includes(key);
    const preference=({replace:'substituir por similar',remove:'não substituir',call:'me chamar'})[i.substitution_preference]||'me chamar';
    const profitMeta=renderOrderItemProfit((profitByOrder[o.id]?.items||[]).find(row=>Number(row.item_index)===index),i,o.id,index);
-   return '<div class="separation-item '+(marked?'is-separated':'')+'"><button type="button" class="separation-check" data-separate-order="'+esc(o.id)+'" data-separate-key="'+esc(key)+'" aria-label="'+(marked?'Desmarcar item separado':'Marcar item como separado')+'" aria-pressed="'+String(marked)+'" '+(currentStatus==='Cancelada'?'disabled':'')+'><span class="separation-check-mark">'+(marked?'✓':'')+'</span></button><div class="separation-detail"><span class="separation-name">'+esc(formatOrderItemDescription(i))+'</span>'+(i.item_note?'<small class="separation-preference">'+esc(i.item_note)+'</small>':'')+ '<small class="separation-preference">Se faltar: '+esc(preference)+'</small>'+profitMeta+'</div><strong>'+orderItemTotal(i.price,i.quantity??i.qty??1,i)+'</strong></div>';
+   return '<div class="separation-item '+(marked?'is-separated':'')+'"><button type="button" class="separation-check" data-separate-order="'+esc(o.id)+'" data-separate-key="'+esc(key)+'" aria-label="'+(marked?'Desmarcar item separado':'Marcar item como separado')+'" aria-pressed="'+String(marked)+'" '+(currentStatus==='Cancelada'?'disabled':'')+'><span class="separation-check-mark">'+(marked?'✓':'')+'</span></button><div class="separation-detail"><span class="separation-name">'+esc(formatOrderItemDescription(i))+'</span>'+formatOrderKitComponentsMarkup(i)+(i.item_note?'<small class="separation-preference">'+esc(i.item_note)+'</small>':'')+ '<small class="separation-preference">Se faltar: '+esc(preference)+'</small>'+profitMeta+'</div><strong>'+orderItemTotal(i.price,i.quantity??i.qty??1,i)+'</strong></div>';
   }).join('');
   const separatedCount=items.filter((i,index)=>{
    const fingerprint=JSON.stringify([String(i?.product_id??i?.productId??i?.id??''),String(i?.name??''),String(i?.unit??i?.unit_name??''),Number(i?.price??0),Number(i?.quantity??i?.qty??1)]);
