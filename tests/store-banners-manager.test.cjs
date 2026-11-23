@@ -8,6 +8,7 @@ const panel = fs.readFileSync(path.join(root, 'painel.html'), 'utf8');
 const schema = fs.readFileSync(path.join(root, 'supabase/migrations/20261122155333_store_banners_manager.sql'), 'utf8');
 const imageMigration = fs.readFileSync(path.join(root, 'supabase/migrations/20261123130000_store_banners_image.sql'), 'utf8');
 const policies = fs.readFileSync(path.join(root, 'supabase/migrations/20261122155432_store_banners_rls_tightening.sql'), 'utf8');
+const scheduleMigration = fs.readFileSync(path.join(root, 'supabase/migrations/20261123230000_daily_banners_schedule.sql'), 'utf8');
 
 for (const id of [
   'storeBannersManager','storeBannerList','storeBannerForm','storeBannerTitle',
@@ -15,7 +16,8 @@ for (const id of [
   'storeBannerActionValue','storeBannerTheme','storeBannerAudience',
   'storeBannerStartsAt','storeBannerEndsAt','storeBannerRulesText',
   'storeBannerActive','storeBannerSortOrder','storeBannerPromoCode','storeBannerPreview',
-  'storeBannerImageFile','storeBannerImageUpload','storeBannerImageRemove','storeBannerImagePreview'
+  'storeBannerImageFile','storeBannerImageUpload','storeBannerImageRemove','storeBannerImagePreview',
+  'storeBannerScheduleEnabled','storeBannerScheduleFields','storeBannerStartTime','storeBannerEndTime'
 ]) assert.ok(panel.includes('id="'+id+'"'), 'campo ausente no painel: '+id);
 
 const managerScript = panel.split('<script type="module">')
@@ -42,4 +44,11 @@ assert.match(policies, /for select to authenticated/i);
 assert.match(policies, /for insert to authenticated[\s\S]*is_current_user_admin/i);
 assert.match(policies, /for update to authenticated[\s\S]*is_current_user_admin/i);
 assert.match(policies, /for delete to authenticated[\s\S]*is_current_user_admin/i);
-console.log('PASSOU | gerenciador de banners | markup, JavaScript, schema, seeds e políticas RLS');
+for (const action of ['kit']) assert.ok(scheduleMigration.includes("'"+action+"'"), 'ação semanal ausente no schema: '+action);
+for (const field of ['weekdays','start_time','end_time']) assert.match(scheduleMigration, new RegExp('add column if not exists '+field, 'i'));
+for (const title of ['Segunda da Polpa','Terça Verde','Bateu vontade de farofa e tapioca?','Quinta dos Legumes','Sexta das Frutas','Sábado dos Frutos do Mar']) assert.ok(scheduleMigration.includes(title), 'banner semanal ausente: '+title);
+assert.match(scheduleMigration, /'06:00'::time, '13:00'::time, false/i);
+assert.match(scheduleMigration, /false, themed\.sort_order/i);
+assert.match(managerScript, /storeBannerScheduleEnabled/);
+assert.match(managerScript, /daily_recipe_kits/);
+console.log('PASSOU | gerenciador de banners | markup, JavaScript, schema, seeds, agenda e políticas RLS');

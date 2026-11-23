@@ -8,6 +8,7 @@ const { chromium } = require("playwright");
   const helperSource = fs.readFileSync(path.join(process.cwd(), "loja-delivery-ui.js"), "utf8").replace(/\bexport\s+/g, "");
   const calendarSource = fs.readFileSync(path.join(process.cwd(), "supabase/functions/_shared/commercial-calendar.js"), "utf8").replace(/\bexport\s+/g, "");
   const scheduleSource = fs.readFileSync(path.join(process.cwd(), "supabase/functions/_shared/store-schedule.js"), "utf8").replace(/^import .*commercial-calendar\.js.*;\s*/m, "").replace(/\bexport\s+/g, "");
+  const bannerScheduleSource = fs.readFileSync(path.join(process.cwd(), "supabase/functions/_shared/store-banner-schedule.js"), "utf8").replace(/\bexport\s+/g, "");
   const bannerRows = [{"id":"b1","title":"Oferta de teste","subtitle":"Subtítulo da oferta","button_text":"Montar pedido","action_type":"products","action_value":null,"theme":"green","audience":"new_customers","starts_at":"2026-01-01T00:00:00Z","ends_at":"DYNAMIC_4_DAYS","rules_text":"Regras de teste","is_active":true,"sort_order":1,"promo_code":"PRIMEIRA_ENTREGA","image_url":"https://example.test/banner-1.webp"},{"id":"b2","title":"Assistente","subtitle":"Ajuda por voz ou texto","button_text":"Abrir assistente","action_type":"assistant","theme":"yellow","audience":"all","starts_at":"2026-01-01T00:00:00Z","ends_at":null,"is_active":true,"sort_order":2,"promo_code":null,"image_url":"https://example.test/banner-2.webp"},{"id":"b3","title":"Pedir produto","subtitle":"Envie o nome","button_text":"Pedir","action_type":"request_product","theme":"orange","audience":"all","starts_at":"2026-01-01T00:00:00Z","ends_at":null,"is_active":true,"sort_order":3,"promo_code":null},{"id":"b4","title":"Retire na feira","subtitle":"Av. Lourenço da Silva Braga, 700","button_text":"Como chegar","action_type":"maps","theme":"red","audience":"all","starts_at":"2026-01-01T00:00:00Z","ends_at":null,"is_active":true,"sort_order":4,"promo_code":null}];
   const bootstrap = "<script>" +
     "window.__testBannerRows=" + JSON.stringify(bannerRows.map(row=>({...row,ends_at:row.ends_at==="DYNAMIC_4_DAYS"?new Date(Date.now()+4*86400000).toISOString():row.ends_at}))) + ";window.__testSupabase={" +
@@ -31,10 +32,11 @@ const { chromium } = require("playwright");
     code = code.replace(/^\s*import\s*\{[^}]+\}\s*from\s*['"]\.\/loja-delivery-ui\.js[^'"]*['"];\s*/m, "");
     code = code.replace(/^\s*import\s*\{\s*getStoreSchedule\s*\}\s*from\s*['"]\.\/supabase\/functions\/_shared\/store-schedule\.js[^'"]*['"];\s*/m, "");
     code = code.replace(/^\s*import\s*\{\s*getCommercialSchedule\s*\}\s*from\s*['"]\.\/supabase\/functions\/_shared\/commercial-calendar\.js[^'"]*['"];\s*/m, "");
+    code = code.replace(/^\s*import\s*\{\s*isStoreBannerScheduleActive\s*\}\s*from\s*['"]\.\/supabase\/functions\/_shared\/store-banner-schedule\.js[^'"]*['"];\s*/m, "");
     code = code.replace(/const supabase=createClient\([\s\S]*?\);\s*/, "const supabase=window.__testSupabase;\n");
     return "<script>" + code + "</script>";
   });
-  html = html.replace("<body", bootstrap + "<script>" + calendarSource + "</script><script>" + scheduleSource + "</script><script>" + helperSource + "</script><body");
+  html = html.replace("<body", bootstrap + "<script>" + calendarSource + "</script><script>" + scheduleSource + "</script><script>" + helperSource + "</script><script>" + bannerScheduleSource + "</script><body");
   const browser = await chromium.launch({ headless: true });
   try {
     fs.mkdirSync(path.join(process.cwd(), "artifacts"), { recursive: true });

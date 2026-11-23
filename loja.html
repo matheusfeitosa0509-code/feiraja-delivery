@@ -1366,6 +1366,7 @@ try {
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.1';
 import { canShowUberPickupOption, syncUberPickupOption, buildDeliveryQuoteItems, checkoutGrandTotal, deliveryQuoteErrorMessage, deliveryQuoteLabel, formatDeliveryMapAddressSummary, isDeliveryOutOfArea, isValidDeliveryQuote, normalizeDeliveryAddress, deliveryUnavailableMessage, loadDeliveryAccessState, renderDeliveryOption, syncAdminTestPaymentOption, buildDeliveryQuoteCacheKey, isCachedDeliveryQuoteValid } from './loja-delivery-ui.js?v=20261118-delivery-map-fix';
 import { getCommercialSchedule } from './supabase/functions/_shared/commercial-calendar.js?v=holiday-calendar-2026-2027';
+import { isStoreBannerScheduleActive } from './supabase/functions/_shared/store-banner-schedule.js?v=20261123-weekly-banners';
 const initialCommercialSchedule=getCommercialSchedule();
 const storeHoursLabel=document.getElementById('homeStoreHours');
 if(storeHoursLabel)storeHoursLabel.textContent=initialCommercialSchedule.hours==='fechado'?'Fechado hoje.':initialCommercialSchedule.hours.includes('11h')?'Hoje (feriado): 6h às 11h · Seg a sáb, 6h às 13h':'Segunda a sábado, 6h às 13h. Domingo fechado.';
@@ -2110,7 +2111,7 @@ function updateFirstDeliveryPromoUI(){
  if(hint){const eligible=active&&delivery==='delivery'&&t.items.length>0&&t.sub<minimum;hint.hidden=!eligible;if(eligible)hint.textContent='Faltam '+money(minimum-t.sub)+' para ganhar a entrega grátis';}
 }
 const STORE_BANNER_PAID_STATUSES=['Pagamento Confirmado','Preparando','Pronto para Retirada','Saiu para Entrega','Entregue','Pedido Concluído'];
-let storeBannerTimer=null,storeBannerPauseTimer=null,storeBannerItems=[];
+let storeBannerTimer=null,storeBannerPauseTimer=null,storeBannerItems=[],storeBannerScheduleRows=[],storeBannerScheduleSignature=null,storeBannerScheduleMonitor=null;
 function storeBannerCountdown(endsAt){
  if(!endsAt)return '';
  const end=new Date(endsAt),now=new Date();if(!Number.isFinite(end.getTime()))return '';
@@ -2128,6 +2129,17 @@ async function getStoreBannerAudience(){
  if(ordersError)throw ordersError;
  const hasPaid=(data||[]).some(order=>{const method=String(order.payment_method||'').toLowerCase();return !method.includes('dinheiro')&&!method.includes('cart')&&method!=='cash'&&method!=='card_on_delivery';});
  return hasPaid?'returning':'new_customers';
+}
+function refreshScheduledStoreBanners(force=false){
+ const visible=storeBannerScheduleRows.filter(banner=>isStoreBannerScheduleActive(banner));
+ const signature=visible.map(banner=>String(banner.id)).join('|');
+ if(force||signature!==storeBannerScheduleSignature){storeBannerScheduleSignature=signature;renderStoreBanners(visible);}
+}
+function startStoreBannerScheduleMonitor(){
+ if(storeBannerScheduleMonitor)return;
+ storeBannerScheduleMonitor=setInterval(()=>{
+  if(storeBannerScheduleRows.some(banner=>banner.weekdays!=null||banner.start_time!=null||banner.end_time!=null))refreshScheduledStoreBanners();
+ },15000);
 }
 function renderStoreBanners(items){
  const track=$('#storeBannersTrack'),dots=$('#storeBannersDots'),carousel=$('#storeBannersCarousel');
@@ -2182,6 +2194,13 @@ function runStoreBannerAction(banner){
    const card=[...document.querySelectorAll('[data-product-id]')].find(el=>el.dataset.productId===value);
    if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.animate([{outline:'3px solid #d9a928'},{outline:'0 solid transparent'}],{duration:1600});}break;
   }
+  case 'kit':{
+   if($('#homeSearch')?.value){$('#homeSearch').value='';$('#search').value='';renderProducts();safeRenderHomeProductSections();}
+   const card=[...document.querySelectorAll('[data-product-id]')].find(el=>el.dataset.productId==='kit:'+value);
+   if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.animate([{outline:'3px solid #d9a928'},{outline:'0 solid transparent'}],{duration:1600});}
+   else {const category=[...document.querySelectorAll('[data-home-product-category]')].find(el=>el.dataset.homeProductCategory==='Kits do dia 🧺');category?.scrollIntoView({behavior:'smooth',block:'start'});}
+   break;
+  }
   case 'whatsapp':{const destination=value.replace(/\D/g,'')||WHATSAPP_NUMBER;window.open('https://wa.me/'+destination,'_blank','noopener,noreferrer');break;}
   case 'assistant':void openAssistantSheet();break;
   case 'request_product':void openProductRequestSheet($('#homeSearch')?.value||'');break;
@@ -2192,20 +2211,22 @@ async function loadStoreBanners(){
  const carousel=$('#storeBannersCarousel');
  try{
   const now=new Date().toISOString();
-  const {data,error}=await supabase.from('store_banners').select('id,title,subtitle,button_text,action_type,action_value,theme,audience,starts_at,ends_at,rules_text,sort_order,promo_code,image_url').eq('is_active',true).lte('starts_at',now).or('ends_at.is.null,ends_at.gt.'+now).order('sort_order',{ascending:true});
+  const {data,error}=await supabase.from('store_banners').select('id,title,subtitle,button_text,action_type,action_value,theme,audience,starts_at,ends_at,rules_text,sort_order,promo_code,image_url,weekdays,start_time,end_time').eq('is_active',true).lte('starts_at',now).or('ends_at.is.null,ends_at.gt.'+now).order('sort_order',{ascending:true});
   if(error)throw error;
   let audience='new_customers';
   try{audience=await getStoreBannerAudience();}catch(error){console.warn('Não foi possível confirmar o histórico do cliente; banners segmentados foram ocultados:',error?.message||error);audience='unknown';}
   const offerEnabled=firstDeliveryPromoOffer?.enabled===true;
-  const visible=(data||[]).filter(banner=>{
+  const eligible=(data||[]).filter(banner=>{
    if(banner.audience!=='all'&&banner.audience!==audience)return false;
    if(banner.promo_code==='PRIMEIRA_ENTREGA'&&!offerEnabled)return false;
    if(banner.promo_code&&banner.promo_code!=='PRIMEIRA_ENTREGA')return false;
    return true;
   });
-  renderStoreBanners(visible);
- }catch(error){console.warn('Não foi possível carregar os banners da loja:',error?.message||error);if(carousel)carousel.hidden=true;}
+  storeBannerScheduleRows=eligible;
+  refreshScheduledStoreBanners(true);
+ }catch(error){console.warn('Não foi possível carregar os banners da loja:',error?.message||error);storeBannerScheduleRows=[];storeBannerScheduleSignature=null;if(carousel)carousel.hidden=true;}
 }
+startStoreBannerScheduleMonitor();
 async function loadFirstDeliveryPromoOffer(){
  try{const {data,error}=await supabase.rpc('get_first_delivery_promo_offer');if(error)throw error;firstDeliveryPromoOffer=data?.enabled===true?data:null;}
  catch(error){firstDeliveryPromoOffer=null;console.warn('Promoção de primeira entrega indisponível:',error?.message||error);}

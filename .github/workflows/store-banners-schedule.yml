@@ -1,0 +1,35 @@
+name: Store banners weekly schedule tests
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'loja.html'
+      - 'painel.html'
+      - 'supabase/functions/_shared/store-banner-schedule.js'
+      - 'supabase/functions/_shared/store-banner-schedule.test.mjs'
+      - 'supabase/migrations/20261123230000_daily_banners_schedule.sql'
+      - 'tests/store-banners-manager.test.cjs'
+      - 'tests/storefront-banners-schedule.test.cjs'
+      - '.github/workflows/store-banners-schedule.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'loja.html'
+      - 'painel.html'
+      - 'supabase/functions/_shared/store-banner-schedule.js'
+      - 'supabase/functions/_shared/store-banner-schedule.test.mjs'
+      - 'supabase/migrations/20261123230000_daily_banners_schedule.sql'
+      - 'tests/store-banners-manager.test.cjs'
+      - 'tests/storefront-banners-schedule.test.cjs'
+      - '.github/workflows/store-banners-schedule.yml'
+jobs:
+  unit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test supabase/functions/_shared/store-banner-schedule.test.mjs
+      - run: node tests/store-banners-manager.test.cjs
+      - run: node tests/storefront-banners-schedule.test.cjs
