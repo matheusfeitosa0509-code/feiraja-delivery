@@ -17,13 +17,12 @@ BEGIN
 END;
 $constraint$;
 
-CREATE OR REPLACE FUNCTION public.record_store_funnel_event(
-  p_event text,
+CREATE OR REPLACE FUNCTION public.record_store_funnel_pix_duration(
+  p_duration_ms integer,
   p_utm_source text,
   p_utm_medium text,
   p_utm_campaign text,
-  p_device text,
-  p_duration_ms integer
+  p_device text
 ) RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -37,19 +36,11 @@ DECLARE
   v_minute bigint;
   v_source text;
 BEGIN
-  IF p_event IS NULL OR p_event NOT IN (
-    'visit','product_view','add_to_cart','checkout_open',
-    'login_screen','order_created','pix_generated','order_paid'
-  ) THEN
-    RAISE EXCEPTION 'Evento inválido.' USING ERRCODE = '22023';
+  IF p_duration_ms IS NULL OR p_duration_ms < 0 OR p_duration_ms > 3600000 THEN
+    RAISE EXCEPTION 'Duração do Pix inválida.' USING ERRCODE = '22023';
   END IF;
   IF p_device IS NULL OR p_device NOT IN ('celular','computador') THEN
     RAISE EXCEPTION 'Tipo de aparelho inválido.' USING ERRCODE = '22023';
-  END IF;
-  IF p_duration_ms IS NOT NULL AND (
-    p_event <> 'pix_generated' OR p_duration_ms < 0 OR p_duration_ms > 3600000
-  ) THEN
-    RAISE EXCEPTION 'Duração do Pix inválida.' USING ERRCODE = '22023';
   END IF;
 
   v_headers := COALESCE(NULLIF(current_setting('request.headers', true), '')::jsonb, '{}'::jsonb);
@@ -83,7 +74,7 @@ BEGIN
     event, utm_source, utm_medium, utm_campaign, device, duration_ms
   )
   VALUES (
-    p_event,
+    'pix_generated',
     v_source,
     NULLIF(left(btrim(COALESCE(p_utm_medium, '')), 100), ''),
     NULLIF(left(btrim(COALESCE(p_utm_campaign, '')), 100), ''),
@@ -94,8 +85,8 @@ BEGIN
 END;
 $function$;
 
-ALTER FUNCTION public.record_store_funnel_event(text,text,text,text,text,integer) OWNER TO postgres;
-REVOKE ALL ON FUNCTION public.record_store_funnel_event(text,text,text,text,text,integer) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.record_store_funnel_event(text,text,text,text,text,integer) TO anon, authenticated;
+ALTER FUNCTION public.record_store_funnel_pix_duration(integer,text,text,text,text) OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.record_store_funnel_pix_duration(integer,text,text,text,text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.record_store_funnel_pix_duration(integer,text,text,text,text) TO anon, authenticated;
 
 COMMIT;
