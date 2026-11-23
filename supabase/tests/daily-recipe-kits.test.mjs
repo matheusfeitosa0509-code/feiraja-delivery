@@ -32,3 +32,31 @@ test("server enforces kit window, component stock and fixed kit pricing",()=>{
  assert.match(worker,/saleMode === "kit"/);
  assert.match(worker,/is_kit: true/);
 });
+
+test("storefront hides kits outside the Manaus window, prioritizes the kit category and removes stale cart kits",()=>{
+ const store=fs.readFileSync("loja.html","utf8");
+ assert.match(store,/hour<6\|\|hour>=13/);
+ assert.match(store,/category:'Kits do dia'/);
+ assert.match(store,/getStorefrontCategories\(\)/);
+ assert.match(store,/cartKitRemovedWarning/);
+ assert.match(store,/startDailyKitWindowMonitor/);
+ assert.match(store,/kit_id:x\.p\.kit_id/);
+});
+test("admin kit editor exposes name, description, photo URL, items, fixed price, weekday and activation",()=>{
+ const panel=fs.readFileSync("painel.html","utf8");
+ assert.match(panel,/dailyRecipeKitsManager/);
+ assert.match(panel,/Foto \(URL opcional\)/);
+ assert.match(panel,/Preço fixo \(R\$\)/);
+ assert.match(panel,/Dia da semana/);
+ assert.match(panel,/Itens do kit/);
+ assert.match(panel,/Soma dos itens:/);
+ assert.match(panel,/Desconto do kit:/);
+});
+test("customer order and panel separation render the kit composition",()=>{
+ const store=fs.readFileSync("loja.html","utf8");
+ const panel=fs.readFileSync("painel.html","utf8");
+ assert.match(store,/formatOrderKitComponentsMarkup/);
+ assert.match(panel,/formatOrderKitComponentsMarkup/);
+ assert.match(panel,/kit_name:item\.name/);
+ assert.match(panel,/buildMarketChecklistItems/);
+});
