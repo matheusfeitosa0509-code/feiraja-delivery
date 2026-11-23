@@ -13,9 +13,9 @@ assert.match(html, /Math\.min\(92,/, 'progress never reaches 100% before the Pix
 assert.match(html, /requestSubmit\(\)/, 'retry reuses the same form submission path');
 assert.match(html, /checkout_idempotency_key:checkoutIdempotencyKey/, 'the existing idempotency key is sent to the worker');
 assert.match(html, /serverMessage\.includes\('já está sendo preparado'\)[\s\S]*Tentar de novo/, 'a retry while the same Pix is being prepared keeps the same attempt');
-assert.match(html, /if\(Number\.isFinite\(durationMs\)\)payload\.p_duration_ms=Math\.round\(durationMs\)/, 'Pix duration is sent only when measured; existing funnel events keep their 5-argument RPC');
+assert.match(html, /db\.rpc\('record_store_funnel_pix_duration'/, 'Pix duration uses a dedicated RPC without overloading the existing funnel function');
 assert.match(migration, /duration_ms integer/, 'funnel stores elapsed milliseconds');
-assert.match(migration, /p_duration_ms integer/, 'RPC accepts the measured duration');
+assert.match(migration, /record_store_funnel_pix_duration/, 'migration creates the dedicated duration RPC');
 
 const guard = html.match(/function lockPixSubmitButton\(button\)\{[^}]+\}/)?.[0];
 assert.ok(guard, 'the real checkout submit guard exists');
