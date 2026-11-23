@@ -146,12 +146,19 @@ jobs:
             const result = median(scores);
             console.log('PAGESPEED_AFTER_MOBILE=' + result + ' [mediana de 3 Lighthouse CLI]');
             console.log('PAGESPEED_AFTER_MOBILE_RUNS=' + scores.join(','));
-            if (result < 55) throw new Error('Nota mobile pós-publicação caiu mais de 3 pontos em relação ao baseline local mobile 58.');
-            const output = '/tmp/lighthouse-after-desktop.json';
-            const args = ['--yes','lighthouse@12.8.2',base,'--only-categories=performance','--output=json','--output-path='+output,'--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage','--preset=desktop'];
-            execFileSync('npx',args,{stdio:'inherit',env:{...process.env,CHROME_PATH:chromium.executablePath()}});
-            const desktop = JSON.parse(fs.readFileSync(output,'utf8'));
-            console.log('PAGESPEED_AFTER_DESKTOP=' + Math.round((desktop.categories?.performance?.score ?? 0) * 100));
+            if (result < 61) throw new Error('Nota mobile pós-publicação caiu mais de 3 pontos em relação ao baseline local mobile 64.');
+            const desktopScores = [];
+            for (let attempt=1; attempt<=3; attempt++) {
+              const output = '/tmp/lighthouse-after-desktop-' + attempt + '.json';
+              const args = ['--yes','lighthouse@12.8.2',base,'--only-categories=performance','--output=json','--output-path='+output,'--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage','--preset=desktop'];
+              execFileSync('npx',args,{stdio:'inherit',env:{...process.env,CHROME_PATH:chromium.executablePath()}});
+              const desktop = JSON.parse(fs.readFileSync(output,'utf8'));
+              const score = Math.round((desktop.categories?.performance?.score ?? 0) * 100);
+              if (!score) throw new Error('Lighthouse não retornou nota desktop.');
+              desktopScores.push(score);
+            }
+            console.log('PAGESPEED_AFTER_DESKTOP=' + median(desktopScores) + ' [mediana de 3 Lighthouse CLI]');
+            console.log('PAGESPEED_AFTER_DESKTOP_RUNS=' + desktopScores.join(','));
           })().catch(error=>{console.error(error);process.exit(1);});
           NODE
       - name: Upload display screenshots
