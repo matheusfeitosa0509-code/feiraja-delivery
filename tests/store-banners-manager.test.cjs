@@ -13,7 +13,8 @@ for (const id of [
   'storeBannerSubtitle','storeBannerButtonText','storeBannerActionType',
   'storeBannerActionValue','storeBannerTheme','storeBannerAudience',
   'storeBannerStartsAt','storeBannerEndsAt','storeBannerRulesText',
-  'storeBannerActive','storeBannerSortOrder','storeBannerPromoCode','storeBannerPreview'
+  'storeBannerActive','storeBannerSortOrder','storeBannerPromoCode','storeBannerPreview',
+  'storeBannerImageFile','storeBannerImageUpload','storeBannerImageRemove','storeBannerImagePreview'
 ]) assert.ok(panel.includes('id="'+id+'"'), 'campo ausente no painel: '+id);
 
 const managerScript = panel.split('<script type="module">')
@@ -29,6 +30,10 @@ for (const seed of ['Sua 1ª entrega é GRÁTIS','Fale com o Assistente','Não a
   assert.ok(schema.includes(seed), 'banner inicial ausente: '+seed);
 }
 assert.match(schema, /alter table public\.store_banners enable row level security/i);
+assert.match(schema, /add column if not exists image_url text/i);
+assert.match(managerScript, /image\/webp/);
+assert.match(managerScript, /80\*1024/);
+assert.match(managerScript, /canvas.width=1200;canvas.height=400/);
 assert.match(schema, /grant select on public\.store_banners to anon, authenticated/i);
 assert.match(schema, /grant insert, update, delete on public\.store_banners to authenticated/i);
 assert.match(policies, /for select to anon/i);
