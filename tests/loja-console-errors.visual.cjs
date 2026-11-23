@@ -34,7 +34,7 @@ const { chromium } = require("playwright");
     code = code.replace(/const supabase=createClient\([\s\S]*?\);\s*/, "const supabase=window.__testSupabase;\n");
     return "<script>" + code + "</script>";
   });
-  html = html.replace("<body", bootstrap + "<script>" + calendarSource + "</script><script>" + scheduleSource + "</script><script>" + helperSource + "</script><body");
+  html = html.replace("<body", bootstrap + "<script>" + calendarSource + "</script><script>" + scheduleSource + "</script><script>" + helperSource + "</script><script>" + bannerScheduleSource + "</script><body");
   const browser = await chromium.launch({ headless: true });
   try {
     for (const width of [360, 412]) {
