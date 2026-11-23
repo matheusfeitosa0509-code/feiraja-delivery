@@ -2856,7 +2856,7 @@ if(root){
   let field=$('storeBannerActionValue');const wantInput=type==='whatsapp';
   if((wantInput&&field.tagName!=='INPUT')||(!wantInput&&field.tagName!=='SELECT')){const next=document.createElement(wantInput?'input':'select');next.id='storeBannerActionValue';field.replaceWith(next);field=next;}
   if(wantInput){field.placeholder='Ex.: 5592999999999 ou https://wa.me/...';field.maxLength=200;return;}
-  field.replaceChildren(new Option(type==='category'?'Selecione uma categoria':'Selecione um produto',''));
+  field.replaceChildren(new Option(type==='category'?'Selecione uma categoria':type==='kit'?'Selecione um kit':'Selecione um produto',''));
   if(type==='category'){[...new Set(products.map(p=>p.category).filter(Boolean))].sort().forEach(v=>field.add(new Option(v,v)));}
   if(type==='product'){products.slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).forEach(p=>field.add(new Option(p.name+(p.available?'':' · indisponível'),p.id)));}
   if(type==='kit'){kits.slice().sort((a,b)=>Number(a.weekday)-Number(b.weekday)).forEach(kit=>field.add(new Option(kit.name+(kit.is_active?'':' · desligado'),kit.id)));}
