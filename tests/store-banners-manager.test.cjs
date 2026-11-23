@@ -34,7 +34,7 @@ assert.match(schema, /alter table public\.store_banners enable row level securit
 assert.match(imageMigration, /add column if not exists image_url text/i);
 assert.match(managerScript, /image\/webp/);
 assert.match(managerScript, /80\*1024/);
-assert.match(managerScript, /canvas.width=1200;canvas.height=400/);
+assert.match(managerScript, /dimensions=\[\[1200,400\],\[1080,360\],\[960,320\],\[900,300\]\]/);
 assert.match(schema, /grant select on public\.store_banners to anon, authenticated/i);
 assert.match(schema, /grant insert, update, delete on public\.store_banners to authenticated/i);
 assert.match(policies, /for select to anon/i);
