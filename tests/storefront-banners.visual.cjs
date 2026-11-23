@@ -36,7 +36,8 @@ const { chromium } = require("playwright");
   html = html.replace("<body", bootstrap + "<script>" + calendarSource + "</script><script>" + scheduleSource + "</script><script>" + helperSource + "</script><body");
   const browser = await chromium.launch({ headless: true });
   try {
-    for (const width of [360, 412]) {
+    fs.mkdirSync(path.join(process.cwd(), "artifacts"), { recursive: true });
+    for (const width of [360, 412, 1280]) {
       const page = await browser.newPage({ viewport: { width, height: 1000 }, deviceScaleFactor: 1 });
       const runtimeErrors = [];
       await page.addInitScript(() => { try { localStorage.setItem("feira_cookie_consent_v1","accepted"); } catch (_) {} });
@@ -54,6 +55,9 @@ const { chromium } = require("playwright");
       if (await bannerImages.count() !== 2) throw new Error("Somente banners com image_url devem renderizar imagem.");
       if (await bannerImages.nth(0).getAttribute("loading") !== "eager" || await bannerImages.nth(0).getAttribute("width") !== "1200" || await bannerImages.nth(0).getAttribute("height") !== "400") throw new Error("Primeira imagem deve carregar eager com dimensões 1200×400.");
       if (await bannerImages.nth(1).getAttribute("loading") !== "lazy") throw new Error("Imagens seguintes devem usar loading=lazy.");
+      const desktopImagePlacement = await banners.first().evaluate(el => { const img=el.querySelector(".store-banner-image").getBoundingClientRect(); const copy=el.querySelector(".store-banner-copy").getBoundingClientRect(); return {imageLeft:img.left,copyRight:copy.right}; });
+      if (width >= 700 && desktopImagePlacement.imageLeft <= desktopImagePlacement.copyRight - 12) throw new Error("No desktop a imagem deve ficar à direita do texto.");
+      await page.screenshot({ path: path.join(process.cwd(), "artifacts", "store-banners-" + width + ".png"), fullPage: false });
       if (!(await banners.nth(0).evaluate(el=>el.classList.contains("has-image"))) || await banners.nth(2).locator(".store-banner-image").count()) throw new Error("Banner com imagem e banner só texto não foram preservados.");
       for (const [index, theme] of ["green","yellow","orange","red"].entries()) { if (!(await banners.nth(index).evaluate((el, expectedTheme) => el.classList.contains("theme-"+expectedTheme), theme))) throw new Error("Tema "+theme+" não aplicado."); }
       if (await page.locator("#storeBannersDots button").count() !== 4) throw new Error("Carrossel com múltiplos banners deve exibir bolinhas.");
@@ -83,5 +87,5 @@ const { chromium } = require("playwright");
   } finally {
     await browser.close();
   }
-  console.log("Loja HTML completo: zero pageerror/console.error em 360px e 412px com Supabase mockado.");
+  console.log("Loja HTML completo: zero pageerror/console.error em 360px, 412px e 1280px com Supabase mockado; screenshots em artifacts/.");
 })().catch(error => { console.error(error); process.exit(1); });
