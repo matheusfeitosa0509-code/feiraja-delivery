@@ -370,7 +370,7 @@ Deno.serve(async (req: Request) => {
     let kitProducts: any[] = [];
     if (kitIds.length) {
       const { data: kitRows, error: kitsError } = await db.from("daily_recipe_kits")
-        .select("id,slug,name,description,image_url,fixed_price,weekday,is_active").in("id", kitIds).eq("is_active", true);
+        .select("id,slug,name,description,image_url,fixed_price,weekday,is_active,sort_order").in("id", kitIds).eq("is_active", true).order("sort_order", { ascending: true });
       if (kitsError) return json({ error: "Não foi possível confirmar a disponibilidade dos kits agora. Tente novamente." }, 503);
       if (!kitRows || kitRows.length !== kitIds.length || kitRows.some((kit: any) => !isDailyRecipeKitAvailable(kit, new Date()))) {
         return json({ error: "Um kit saiu do horário de compra ou está indisponível. Atualize a feira para removê-lo da sacola." }, 409);
