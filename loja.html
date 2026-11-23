@@ -3001,10 +3001,10 @@ try{setupAppTabs();}catch(error){console.error('Falha isolada na navegação da 
     if (Array.isArray(saved)) saved.forEach(id => { if (typeof id === 'string') productViews.add(id); });
   } catch {}
   let queue = Promise.resolve();
-  const record = (event,durationMs=null) => {
-    const payload={p_event:event,...attribution};
-    if(Number.isFinite(durationMs))payload.p_duration_ms=Math.round(durationMs);
-    queue = queue.then(() => db.rpc('record_store_funnel_event', payload)).catch(() => null);
+  const record = event => {
+    queue = queue.then(() => db.rpc('record_store_funnel_event', {
+      p_event:event, ...attribution
+    })).catch(() => null);
   };
 
   document.addEventListener('click', event => {
@@ -3040,7 +3040,7 @@ try{setupAppTabs();}catch(error){console.error('Falha isolada na navegação da 
       seen.created = true; record('order_created');
     }
     if (!seen.pixGenerated && result.includes('pix gerado')) {
-      seen.pixGenerated = true; const startedAt=Number(window.__feiraPixGenerationStartedAt||0);record('pix_generated',startedAt?Math.max(0,Date.now()-startedAt):null);window.__feiraPixGenerationStartedAt=null;
+      seen.pixGenerated = true; const startedAt=Number(window.__feiraPixGenerationStartedAt||0);const duration=startedAt?Math.min(3600000,Math.max(0,Date.now()-startedAt)):null;if(duration!==null){queue=queue.then(()=>db.rpc('record_store_funnel_pix_duration',{p_duration_ms:Math.round(duration),...attribution})).catch(()=>null);}else{record('pix_generated');}window.__feiraPixGenerationStartedAt=null;
     }
     const paymentStatus = (document.getElementById('pixStatus')?.textContent || '').toLocaleLowerCase('pt-BR');
     if (!seen.paid && (paymentStatus.includes('pagamento concluído') || paymentStatus.includes('pagamento concluido'))) {
