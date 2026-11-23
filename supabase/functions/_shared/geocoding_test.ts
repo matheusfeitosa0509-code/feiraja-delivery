@@ -38,6 +38,17 @@ Deno.test("ZERO_RESULTS vira endereço não encontrado", async () => {
   await assertRejects(() => geocodeManausAddress("Rua Inexistente, 1", "google-test", fetcher), Error, "ADDRESS_NOT_FOUND");
 });
 
+Deno.test("geocodificação estrita exige rua e número no resultado, mesmo quando Google retorna premise", async () => {
+  const fetcher = async () => new Response(JSON.stringify({ status: "OK", results: [{
+    ...validResult(), types: ["premise"],
+    address_components: [
+      ...validResult().address_components,
+      { long_name: "Rua Japiassu", short_name: "Rua Japiassu", types: ["route"] },
+    ],
+  }] }), { status: 200 });
+  await assertRejects(() => geocodeManausAddress("Rua Japiassu, 140, Centro", "google-test", fetcher, true), Error, "ADDRESS_NOT_FOUND");
+});
+
 Deno.test("erro do Google não vaza chave e vira indisponibilidade do geocodificador", async () => {
   const fetcher = async (input: RequestInfo | URL) => {
     const url = new URL(String(input));
