@@ -1943,7 +1943,7 @@ async function loadDailyRecipeKits(baseProducts){
    }
    return {
     id:'kit:'+String(kit.id),kit_id:String(kit.id),name:String(kit.name),description:String(kit.description||''),
-    category:'Kits do dia',price:Number(kit.fixed_price),old_price:null,image:kit.image_url||components.find(item=>item.image)?.image||null,
+    category:'Kits do dia 🧺',price:Number(kit.fixed_price),old_price:null,image:kit.image_url||components.find(item=>item.image)?.image||null,
     available:true,resale_enabled:false,resale_price:null,is_kit:true,kit_items:components,
     delivery_unit_weight_kg:Math.max(.001,Math.round(deliveryWeight*1000)/1000),delivery_bulky:bulky
    };
@@ -2040,7 +2040,7 @@ async function load(options={}){
 function dailyKitWindowSignature(){const {weekday,hour}=getCurrentManausDayHour();return String(weekday)+':'+(hour>=6&&hour<13?'open':'closed');}
 function startDailyKitWindowMonitor(){let signature=dailyKitWindowSignature();setInterval(()=>{const next=dailyKitWindowSignature();if(next!==signature){signature=next;void load({force:true});}},15000);}
 function normalizeLegacyCartItem(id,product){if(!product||product.is_kit||cartModes[id]==='value')return;if(isValidCartQuantity(product,Number(cart[id]),'kg'))return;const rule=salesRuleFor(product),step=quantityStepFor(product),minimum=Number(rule?.min_quantity||1),adjusted=Math.max(minimum,Math.ceil((Number(cart[id]||0)-1e-9)/step)*step);if(isValidCartQuantity(product,adjusted,'kg')){cart[id]=adjusted;cartMinimumAdjustedWarning=true;}else{delete cart[id];delete cartModes[id];delete cartValueCents[id];cartMinimumAdjustedWarning=true;cartRulesWarning=true;}}
-function alphaCompare(a,b){return String(a??'').localeCompare(String(b??''),'pt-BR',{sensitivity:'base',ignorePunctuation:false});}function getStorefrontCategories(){const cats=[...new Set(products.map(p=>String(p.category||'Outros')))];return [...(cats.includes('Kits do dia')?['Kits do dia']:[]),...cats.filter(c=>c!=='Kits do dia').sort(alphaCompare)];}
+function alphaCompare(a,b){return String(a??'').localeCompare(String(b??''),'pt-BR',{sensitivity:'base',ignorePunctuation:false});}function getStorefrontCategories(){const cats=[...new Set(products.map(p=>String(p.category||'Outros')))];return [...(cats.includes('Kits do dia 🧺')?['Kits do dia 🧺']:[]),...cats.filter(c=>c!=='Kits do dia 🧺').sort(alphaCompare)];}
 function renderCats(){const ordered=getStorefrontCategories();if(category!=='Todos'&&!ordered.includes(category))category='Todos';const cats=['Todos',...ordered];$('#categories').innerHTML=cats.map(c=>'<button type="button" class="chip '+(c===category?'active':'')+'" data-cat="'+esc(c)+'">'+esc(c)+'</button>').join('');$('#categories').querySelectorAll('button').forEach(b=>b.onclick=()=>{category=b.dataset.cat;if($('#search').value.trim())$('#search').value='';renderCats();renderProducts();});}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function shortOrderNumber(id){return String(id||'').slice(-8).toUpperCase();}
