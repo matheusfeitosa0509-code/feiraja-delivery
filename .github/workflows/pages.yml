@@ -28,6 +28,7 @@ jobs:
           mkdir -p _site/supabase/functions/_shared
           cp supabase/functions/_shared/store-schedule.js _site/supabase/functions/_shared/store-schedule.js
           cp supabase/functions/_shared/commercial-calendar.js _site/supabase/functions/_shared/commercial-calendar.js
+          cp supabase/functions/_shared/store-banner-schedule.js _site/supabase/functions/_shared/store-banner-schedule.js
           rm -f _site/imagens/produtos/leia.txt
           node scripts/optimize-store-images.mjs
       - name: Configure Pages
