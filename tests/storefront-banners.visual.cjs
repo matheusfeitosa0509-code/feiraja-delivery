@@ -4,6 +4,7 @@ const { chromium } = require("playwright");
 
 (async () => {
   const htmlSource = fs.readFileSync(path.join(process.cwd(), "loja.html"), "utf8");
+  const panelHtmlSource = fs.readFileSync(path.join(process.cwd(), "painel.html"), "utf8");
   const helperSource = fs.readFileSync(path.join(process.cwd(), "loja-delivery-ui.js"), "utf8").replace(/\bexport\s+/g, "");
   const calendarSource = fs.readFileSync(path.join(process.cwd(), "supabase/functions/_shared/commercial-calendar.js"), "utf8").replace(/\bexport\s+/g, "");
   const scheduleSource = fs.readFileSync(path.join(process.cwd(), "supabase/functions/_shared/store-schedule.js"), "utf8").replace(/^import .*commercial-calendar\.js.*;\s*/m, "").replace(/\bexport\s+/g, "");
@@ -88,6 +89,28 @@ const { chromium } = require("playwright");
       if (runtimeErrors.length) throw new Error("Erros JS/console na loja " + width + "px:\n" + runtimeErrors.join("\n"));
       await page.close();
     }
+    const panelManagerScript = panelHtmlSource.split('<script type="module">').map(part=>part.split('</script>')[0]).find(part=>part.includes('storeBannerNew')&&part.includes('storeBannerForm'));
+    const imagePreparer = panelManagerScript?.match(/async function prepareBannerImage\\(file\\)\\{[\\s\\S]*?\\n \\}/);
+    const imageUploader = panelManagerScript?.match(/async function uploadBannerImage\\(blob\\)\\{[\\s\\S]*?\\n \\}/);
+    if (!imagePreparer || !imageUploader) throw new Error("Helpers de WebP/upload não encontrados no painel.");
+    const uploadPage = await browser.newPage();
+    await uploadPage.setContent("<!doctype html><html><body></body></html>");
+    await uploadPage.addScriptTag({content:"window.prepareBannerImage = "+imagePreparer[0]+"; window.uploadBannerImage = "+imageUploader[0]+";"});
+    const imageResult = await uploadPage.evaluate(async()=>{
+      const source=document.createElement("canvas");source.width=1600;source.height=900;
+      const ctx=source.getContext("2d");const gradient=ctx.createLinearGradient(0,0,1600,900);gradient.addColorStop(0,"#1f7a36");gradient.addColorStop(1,"#f0bf36");ctx.fillStyle=gradient;ctx.fillRect(0,0,1600,900);
+      const png=await new Promise(resolve=>source.toBlob(resolve,"image/png"));
+      const webp=await window.prepareBannerImage(new File([png],"banner-test.png",{type:"image/png"}));
+      const bitmap=await createImageBitmap(webp);
+      window.__preparedBannerBlob=webp;
+      window.db={storage:{from:bucket=>({upload:async(path,blob,options)=>{window.__uploadCheck={bucket,path,size:blob.size,type:blob.type,options};return {error:null};},getPublicUrl:path=>({data:{publicUrl:"https://juhwdevvwstmyxyyagzh.supabase.co/storage/v1/object/public/product-photos/"+path}}),remove:async()=>({error:null})})}};
+      const url=await window.uploadBannerImage(webp);
+      const result={type:webp.type,size:webp.size,width:bitmap.width,height:bitmap.height,url,upload:window.__uploadCheck};
+      bitmap.close();return result;
+    });
+    if (imageResult.type!=="image/webp" || imageResult.size>80*1024 || imageResult.width!==1200 || imageResult.height!==400) throw new Error("Conversão WebP não respeitou formato, limite de 80 KB ou dimensão 1200×400: "+JSON.stringify(imageResult));
+    if (imageResult.upload.bucket!=="product-photos" || !imageResult.upload.path.startsWith("banners/") || imageResult.upload.type!=="image/webp" || imageResult.upload.options.contentType!=="image/webp") throw new Error("Upload não usou o bucket product-photos com MIME WebP.");
+    await uploadPage.close();
   } finally {
     await browser.close();
   }
