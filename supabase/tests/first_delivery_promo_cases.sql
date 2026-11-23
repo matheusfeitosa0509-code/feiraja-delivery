@@ -49,6 +49,33 @@ BEGIN
 
   UPDATE promo_private.promo_settings SET ends_at=pg_catalog.now()+interval '1 day' WHERE singleton=true;
 
+
+  -- Prévia é somente leitura e espelha a elegibilidade sem reservar.
+  PERFORM pg_catalog.set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000101',true);
+  v_count := (SELECT count(*) FROM public.promo_redemptions);
+  IF (public.preview_first_delivery_promo('delivery',60,12,'92911110001',
+      '{"postal_code":"69000-101","number":"101"}')->>'eligible')::boolean IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'FAIL preview eligible';
+  END IF;
+  IF (public.preview_first_delivery_promo('delivery',60,12,'92911110001',
+      '{"postal_code":"69000-101","number":"101"}')->>'eligible')::boolean IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'FAIL preview must not reserve';
+  END IF;
+  IF (SELECT count(*) FROM public.promo_redemptions) <> v_count THEN
+    RAISE EXCEPTION 'FAIL preview created a reservation';
+  END IF;
+  IF public.preview_first_delivery_promo('delivery',49.99,12,'92911110002',
+      '{"postal_code":"69000-102","number":"102"}')->>'reason' <> 'minimum_not_met' THEN
+    RAISE EXCEPTION 'FAIL preview below minimum';
+  END IF;
+  IF public.preview_first_delivery_promo('pickup_store',60,0,'92911110003',NULL)->>'reason' <> 'pickup' THEN
+    RAISE EXCEPTION 'FAIL preview pickup';
+  END IF;
+  IF NOT has_function_privilege('authenticated','public.preview_first_delivery_promo(text,numeric,numeric,text,jsonb)','EXECUTE')
+     OR has_function_privilege('anon','public.preview_first_delivery_promo(text,numeric,numeric,text,jsonb)','EXECUTE') THEN
+    RAISE EXCEPTION 'FAIL preview function grants';
+  END IF;
+
   -- Mesmo usuário em outra tentativa: só a primeira reserva recebe desconto.
   INSERT INTO public.orders(id,user_id,customer_phone,delivery_type,delivery_address,subtotal,delivery_fee,total,status)
   VALUES ('promo-same-user-2','00000000-0000-4000-8000-000000000001','92999990006','delivery',
@@ -110,6 +137,22 @@ BEGIN
     '{"postal_code":"69000-014","number":"24"}',60,12,72,'Pagamento Pendente');
   IF (SELECT delivery_discount FROM public.orders WHERE id='promo-paid-history-retry') <> 0 THEN
     RAISE EXCEPTION 'FAIL previous paid account must be ineligible';
+  END IF;
+
+
+  -- Conta que já pagou não recebe a oferta, mesmo em outro endereço/telefone.
+  PERFORM pg_catalog.set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000013',true);
+  IF public.preview_first_delivery_promo('delivery',60,12,'92933339999',
+      '{"postal_code":"69000-099","number":"99"}')->>'reason' <> 'already_used' THEN
+    RAISE EXCEPTION 'FAIL preview paid account';
+  END IF;
+
+  -- Telefone já usado em pedido pago bloqueia outra conta sem revelar a conta anterior.
+  UPDATE public.orders SET status='Pagamento Confirmado' WHERE id='promo-phone-1';
+  PERFORM pg_catalog.set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000008',true);
+  IF public.preview_first_delivery_promo('delivery',60,12,'92 98888-0007',
+      '{"postal_code":"69000-099","number":"98"}')->>'reason' <> 'already_used' THEN
+    RAISE EXCEPTION 'FAIL preview same phone other account';
   END IF;
 
   -- RLS e grants: nenhum acesso de anon/authenticated à tabela de resgates.
