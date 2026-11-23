@@ -412,6 +412,13 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
  <button type="button" id="saveDeliveryLoyaltySettings">Salvar cartão fidelidade</button>
  <p id="deliveryLoyaltyMessage" class="muted" role="status" aria-live="polite"></p>
 </section>
+<section class="card" id="dailyRecipeKitsManager" aria-labelledby="dailyRecipeKitsTitle">
+ <h2 id="dailyRecipeKitsTitle">🧺 Kits do dia</h2>
+ <p class="muted">Kits com preço fixo. Só aparecem e podem ser comprados no dia configurado, das 6h às 13h em Manaus. Todos começam desligados.</p>
+ <button type="button" class="primary" id="dailyRecipeKitNew">+ Novo kit</button>
+ <div id="dailyRecipeKitList"><p class="muted">Carregando kits…</p></div>
+ <p id="dailyRecipeKitMessage" class="muted" role="status" aria-live="polite"></p>
+</section>
 <section class="card" id="dailyCategoryDiscountsManager" aria-labelledby="dailyCategoryDiscountsTitle">
  <h2 id="dailyCategoryDiscountsTitle">🏷️ Desconto do dia por categoria</h2>
  <p class="muted">As regras só valem das 6h às 13h em Manaus. Todas começam desligadas. O checkout recalcula o preço no servidor.</p>
@@ -726,12 +733,14 @@ let allOrders=[],seenOrderIds=new Set(),firstLoadDone=false,hasMoreOrders=true,n
   const occurrence=items.slice(0,index).filter(x=>itemFingerprint(x)===itemFingerprint(item)).length;
   return separatedKeysFor(order).includes(itemSeparationKey(item,occurrence));
  }
- function buildOrderShoppingText(order){
+ function formatOrderKitComponentsMarkup(item){if(item?.is_kit!==true||!Array.isArray(item.kit_items)||!item.kit_items.length)return '';return '<small class="separation-preference">Inclui: '+item.kit_items.map(component=>esc(formatOrderQuantity(Number(component.quantity)*Number(item.qty||1))+' × '+String(component.name||'item'))).join(' · ')+'</small>';}
+function buildOrderShoppingText(order){
   const items=Array.isArray(order.items)?order.items:[];
   const lines=items.map((item,index)=>{
    const mark=isOrderItemSeparated(order,index)?'✅':'⬜';
    const note=String(item?.item_note||'').trim();
-   return mark+' '+formatOrderItemDescription(item)+(note?'\n   Observação: '+note:'');
+   const kitLines=item?.is_kit===true&&Array.isArray(item.kit_items)?'\n   Inclui: '+item.kit_items.map(component=>formatOrderQuantity(Number(component.quantity)*Number(item.qty||1))+' × '+String(component.name||'item')).join(', '):'';
+   return mark+' '+formatOrderItemDescription(item)+kitLines+(note?'\n   Observação: '+note:'');
   });
   return 'Lista de compras — Pedido '+shortOrderNumber(order.id)+'\n'+lines.join('\n');
  }
@@ -740,7 +749,7 @@ let allOrders=[],seenOrderIds=new Set(),firstLoadDone=false,hasMoreOrders=true,n
   const eligible=orders.filter(order=>order.is_test_order!==true&&eligibleStatuses.has(normalizeOrderStatus(order.status)));
   const grouped=new Map();
   eligible.forEach(order=>{
-   const items=Array.isArray(order.items)?order.items:[];
+   const items=Array.isArray(order.items)?order.items.flatMap(item=>item?.is_kit===true&&Array.isArray(item.kit_items)?item.kit_items.map(component=>({...component,quantity:Number(component.quantity||0)*Number(item.qty||1),qty:Number(component.quantity||0)*Number(item.qty||1),kit_name:item.name})): [item]):[];
    items.forEach((item,index)=>{
     const description=formatOrderItemDescription(item);
     const rawName=String(item?.name||item?.product_name||item?.id||'Produto');
@@ -1336,6 +1345,7 @@ function formatOrderItemDescription(item){
  const stored=normalizeUnit(item.unit??item.unit_name);
  const mode=normalizeUnit(item.sale_mode);
  const modeUnit=mode==='unit'?'un':mode;
+ if(item.is_kit===true||mode==='kit')return name+' — '+formatOrderQuantity(quantity)+(Number(quantity)===1?' kit':' kits');
  // A unidade explícita no nome/catálogo prevalece sobre snapshots antigos de sale_mode.
  const packagedTapiocaUnit=rawName.trim().toLowerCase()==='farinha de tapioca (500g)'?'un':'';
  const unit=packagedTapiocaUnit||normalizeUnit(suffix?.[1])||declared||(['un','unidade'].includes(modeUnit)?'un':stored||modeUnit);
@@ -1600,7 +1610,7 @@ function render(){
    const key=itemSeparationKey(i,occurrence),marked=separatedKeys.includes(key);
    const preference=({replace:'substituir por similar',remove:'não substituir',call:'me chamar'})[i.substitution_preference]||'me chamar';
    const profitMeta=renderOrderItemProfit((profitByOrder[o.id]?.items||[]).find(row=>Number(row.item_index)===index),i,o.id,index);
-   return '<div class="separation-item '+(marked?'is-separated':'')+'"><button type="button" class="separation-check" data-separate-order="'+esc(o.id)+'" data-separate-key="'+esc(key)+'" aria-label="'+(marked?'Desmarcar item separado':'Marcar item como separado')+'" aria-pressed="'+String(marked)+'" '+(currentStatus==='Cancelada'?'disabled':'')+'><span class="separation-check-mark">'+(marked?'✓':'')+'</span></button><div class="separation-detail"><span class="separation-name">'+esc(formatOrderItemDescription(i))+'</span>'+(i.item_note?'<small class="separation-preference">'+esc(i.item_note)+'</small>':'')+ '<small class="separation-preference">Se faltar: '+esc(preference)+'</small>'+profitMeta+'</div><strong>'+orderItemTotal(i.price,i.quantity??i.qty??1,i)+'</strong></div>';
+   return '<div class="separation-item '+(marked?'is-separated':'')+'"><button type="button" class="separation-check" data-separate-order="'+esc(o.id)+'" data-separate-key="'+esc(key)+'" aria-label="'+(marked?'Desmarcar item separado':'Marcar item como separado')+'" aria-pressed="'+String(marked)+'" '+(currentStatus==='Cancelada'?'disabled':'')+'><span class="separation-check-mark">'+(marked?'✓':'')+'</span></button><div class="separation-detail"><span class="separation-name">'+esc(formatOrderItemDescription(i))+'</span>'+formatOrderKitComponentsMarkup(i)+(i.item_note?'<small class="separation-preference">'+esc(i.item_note)+'</small>':'')+ '<small class="separation-preference">Se faltar: '+esc(preference)+'</small>'+profitMeta+'</div><strong>'+orderItemTotal(i.price,i.quantity??i.qty??1,i)+'</strong></div>';
   }).join('');
   const separatedCount=items.filter((i,index)=>{
    const fingerprint=JSON.stringify([String(i?.product_id??i?.productId??i?.id??''),String(i?.name??''),String(i?.unit??i?.unit_name??''),Number(i?.price??0),Number(i?.quantity??i?.qty??1)]);
@@ -3000,6 +3010,99 @@ if(root){
  }
  void db.auth.getSession().then(({data:sessionData})=>{if(sessionData?.session)void load();else message('Entre com uma conta administradora para gerenciar as regras.');}).catch(()=>message('Não foi possível verificar a sessão administrativa.',true));
  db.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){rules=[];render();}else if(session&&['SIGNED_IN','TOKEN_REFRESHED'].includes(event))void load();});
+})();
+</script>
+
+<script>
+(() => {
+ const db=window.__feiraPanelDb,root=document.getElementById('dailyRecipeKitsManager');
+ if(!db||!root)return;
+ const $=id=>document.getElementById(id);
+ const dayNames={1:'SEG · Segunda',2:'TER · Terça',3:'QUA · Quarta',4:'QUI · Quinta',5:'SEX · Sexta',6:'SÁB · Sábado'};
+ let kits=[],kitItems=[],products=[];
+ const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const money=cents=>'R$ '+(Number(cents||0)/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+ function message(value,error=false){const el=$('dailyRecipeKitMessage');el.textContent=value;el.style.color=error?'#a52828':'';}
+ function element(tag,attrs={},textValue){const node=document.createElement(tag);Object.entries(attrs).forEach(([key,value])=>{if(key==='class')node.className=value;else if(key==='style')node.style.cssText=value;else if(key==='checked')node.checked=!!value;else if(key==='value')node.value=value;else node.setAttribute(key,String(value));});if(textValue!==undefined)node.textContent=textValue;return node;}
+ function productOptions(selected){const frag=document.createDocumentFragment();const empty=element('option',{value:''},'Selecione um produto');frag.append(empty);for(const p of products){const label=p.name+(p.available===false?' · indisponível':'');const option=element('option',{value:p.id},label);option.selected=String(p.id)===String(selected||'');frag.append(option);}return frag;}
+ function makeItemRow(item={}){
+  const row=element('div',{class:'daily-kit-item-row',style:'display:grid;grid-template-columns:minmax(0,1fr) 92px 42px;gap:7px;align-items:center;margin:7px 0'});
+  const select=element('select',{class:'daily-kit-product',style:'min-width:0;min-height:42px'});select.append(productOptions(item.product_id));
+  const qty=element('input',{class:'daily-kit-qty',type:'number',min:'0.001',max:'100',step:'0.001',value:String(item.quantity??1),style:'min-width:0;min-height:42px'});
+  const remove=element('button',{type:'button',class:'secondary',title:'Remover item'},'×');
+  remove.addEventListener('click',()=>{row.remove();updateSummary();});
+  select.addEventListener('change',updateSummary);qty.addEventListener('input',updateSummary);
+  row.append(select,qty,remove);return row;
+ }
+ function createKitEditor(kit={},rows=[]){
+  const details=element('details',{class:'daily-kit-editor',style:'border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0'});
+  details.open=!kit.id;
+  const summary=element('summary',{},(kit.name||'Novo kit')+' · '+(dayNames[Number(kit.weekday)]||'Dia não definido')+' · '+money(Math.round(Number(kit.fixed_price||0)*100))+' · '+(kit.is_active?'ATIVO':'INATIVO'));
+  summary.style.cssText='font-weight:800;cursor:pointer;padding:4px 0';
+  const body=element('div',{style:'display:grid;gap:10px;margin-top:12px'});
+  const field=(labelText,node)=>{const wrap=element('label',{style:'display:grid;gap:5px'});wrap.append(element('span',{class:'muted'},labelText),node);return wrap;};
+  const name=element('input',{type:'text',maxlength:'100',value:kit.name||'',placeholder:'Nome do kit'});
+  const description=element('textarea',{rows:'2',maxlength:'400',placeholder:'Descrição do kit'});description.value=kit.description||'';
+  const image=element('input',{type:'url',value:kit.image_url||'',placeholder:'https://... (foto opcional)'});
+  const price=element('input',{type:'number',min:'0.01',step:'0.01',value:String(kit.fixed_price??''),placeholder:'Preço fixo'});
+  const day=element('select',{});for(let n=1;n<=6;n++){const option=element('option',{value:n},dayNames[n]);option.selected=Number(kit.weekday||1)===n;day.append(option);}
+  const activeLabel=element('label',{style:'display:flex;align-items:center;gap:8px'});const active=element('input',{type:'checkbox',checked:kit.is_active===true});activeLabel.append(active,element('span',{},'Kit ativo (somente no dia e horário configurados)'));
+  const itemsHost=element('div',{class:'daily-kit-items'});
+  (rows.length?rows:[{}]).forEach(row=>itemsHost.append(makeItemRow(row)));
+  const add=element('button',{type:'button',class:'secondary'},'+ Adicionar item');
+  add.addEventListener('click',()=>{itemsHost.append(makeItemRow({}));updateSummary();});
+  const sum=element('p',{class:'muted',style:'margin:0;font-weight:700'});
+  const save=element('button',{type:'button',class:'primary'},'Salvar kit');
+  const updateSummary=()=>{
+   let subtotal=0;
+   for(const row of itemsHost.querySelectorAll('.daily-kit-item-row')){
+    const product=products.find(p=>String(p.id)===String(row.querySelector('.daily-kit-product')?.value));
+    const quantity=Number(row.querySelector('.daily-kit-qty')?.value||0);
+    if(product&&Number.isFinite(quantity)&&quantity>0)subtotal+=Math.round(Math.round(Number(product.price)*100)*quantity);
+   }
+   const fixed=Math.round(Number(price.value||0)*100);
+   if(subtotal>0&&fixed>0){const discount=(subtotal-fixed)/subtotal*100;sum.textContent='Soma dos itens: '+money(subtotal)+' · '+(discount>0?'Desconto do kit: '+discount.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%':discount===0?'Sem desconto':'Kit acima da soma em '+money(fixed-subtotal));}
+   else sum.textContent='Preencha os itens e o preço para calcular a soma e o desconto.';
+  };
+  price.addEventListener('input',updateSummary);
+  save.addEventListener('click',async()=>{
+   const kitName=name.value.trim(),fixed=Number(price.value),weekday=Number(day.value);
+   const selected=[...itemsHost.querySelectorAll('.daily-kit-item-row')].map((row,index)=>({product_id:String(row.querySelector('.daily-kit-product')?.value||''),quantity:Number(row.querySelector('.daily-kit-qty')?.value),sort_order:index+1}));
+   if(!kitName||!Number.isFinite(fixed)||fixed<=0||weekday<1||weekday>6||!selected.length||selected.some(x=>!x.product_id||!Number.isFinite(x.quantity)||x.quantity<=0||x.quantity>100)||new Set(selected.map(x=>x.product_id)).size!==selected.length){message('Confira nome, preço, dia e itens. Não repita o mesmo produto no kit.',true);return;}
+   save.disabled=true;save.textContent='Salvando…';
+   const payload={name:kitName,description:description.value.trim(),image_url:image.value.trim()||null,fixed_price:fixed,weekday,is_active:false,updated_at:new Date().toISOString()};
+   let kitId=kit.id;
+   let result;
+   if(kitId){result=await db.from('daily_recipe_kits').update(payload).eq('id',kitId).select('id').single();}
+   else{result=await db.from('daily_recipe_kits').insert({...payload,slug:'kit-'+crypto.randomUUID(),sort_order:kits.length+1}).select('id').single();kitId=result.data?.id;}
+   if(result.error||!kitId){save.disabled=false;save.textContent='Salvar kit';message('Não foi possível salvar os dados do kit. Verifique a sessão de administrador.',true);return;}
+   const deleted=await db.from('daily_recipe_kit_items').delete().eq('kit_id',kitId);
+   if(deleted.error){save.disabled=false;save.textContent='Salvar kit';message('Kit mantido desligado: não foi possível atualizar a composição.',true);return;}
+   const inserted=await db.from('daily_recipe_kit_items').insert(selected.map(x=>({...x,kit_id:kitId})));
+   if(inserted.error){save.disabled=false;save.textContent='Salvar kit';message('Kit mantido desligado: não foi possível gravar os itens.',true);return;}
+   const activated=await db.from('daily_recipe_kits').update({is_active:active.checked,updated_at:new Date().toISOString()}).eq('id',kitId);
+   if(activated.error){save.disabled=false;save.textContent='Salvar kit';message('Composição salva, mas o estado do kit não foi alterado. Ele permanece desligado.',true);return;}
+   await load();message(kitName+' salvo. '+(active.checked?'Kit ativo somente no dia e horário definidos.':'Kit permanece inativo.'));
+  });
+  body.append(field('Nome',name),field('Descrição',description),field('Foto (URL opcional)',image),field('Preço fixo (R$)',price),field('Dia da semana',day),activeLabel,element('strong',{},'Itens do kit'),itemsHost,add,sum,save);
+  details.append(summary,body);updateSummary();return details;
+ }
+ function render(){
+  const host=$('dailyRecipeKitList');host.replaceChildren();
+  kits.forEach(kit=>host.append(createKitEditor(kit,kitItems.filter(item=>String(item.kit_id)===String(kit.id)).map(item=>({product_id:item.product_id,quantity:item.quantity})))));
+ }
+ async function load(){
+  const [kitResult,itemResult,productResult]=await Promise.all([
+   db.from('daily_recipe_kits').select('*').order('weekday').order('sort_order'),
+   db.from('daily_recipe_kit_items').select('*').order('sort_order'),
+   db.from('products').select('id,name,price,available').order('name')
+  ]);
+  if(kitResult.error||itemResult.error||productResult.error){message('Não foi possível carregar os kits ou produtos. Verifique o acesso administrativo.',true);return;}
+  kits=kitResult.data||[];kitItems=itemResult.data||[];products=productResult.data||[];render();
+ }
+ $('dailyRecipeKitNew').addEventListener('click',()=>{$('dailyRecipeKitList').prepend(createKitEditor({weekday:1,fixed_price:0,is_active:false},[]));});
+ void db.auth.getSession().then(({data})=>{if(data?.session)void load();else message('Entre com uma conta administradora para gerenciar os kits.');}).catch(()=>message('Não foi possível verificar a sessão administrativa.',true));
+ db.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){kits=[];kitItems=[];render();}else if(session&&['SIGNED_IN','TOKEN_REFRESHED'].includes(event))void load();});
 })();
 </script>
 

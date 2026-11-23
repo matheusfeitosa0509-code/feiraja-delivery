@@ -9,7 +9,7 @@ test("the first-delivery promotion threshold continues to use the post-pricing o
 test("an already-generated Pix is recovered before daily prices are recalculated",()=>{
  const worker=fs.readFileSync("supabase/functions/super-worker/index.ts","utf8");
  const recovery=worker.indexOf("if (priorOrder && paymentMethod === \"pix\")");
- const rules=worker.indexOf("const { data: dailyDiscountRules");
+ const rules=worker.indexOf("let dailyDiscountRules");
  assert.ok(recovery>=0&&rules>recovery,"Pix recovery must happen before daily-discount lookup");
  assert.ok(worker.slice(recovery,rules).includes("priorOrder.pix_qr_code"),"existing QR must be returned unchanged");
 });
