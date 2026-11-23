@@ -9,7 +9,7 @@ assert.match(loja, /closest\('\.product\[data-product-id\]'\)/, 'tapping a produ
 assert.match(loja, /productViews\.has\(productId\)/, 'a product is counted at most once per session');
 assert.match(loja, /record\('product_view'\)/, 'product_view uses the existing anonymous funnel RPC');
 assert.match(loja, /result\.includes\('pix gerado'\)/, 'Pix event waits for the generated Pix screen text');
-assert.match(loja, /record\('pix_generated'(?:,|\))/, 'pix_generated records the elapsed generation time through the anonymous funnel RPC');
+assert.match(loja, /record_store_funnel_pix_duration/, 'pix_generated records elapsed generation time through its dedicated anonymous funnel RPC');
 assert.match(painel, /\['visit','Visitas'\],\['product_view','Viu produto'\],\['add_to_cart','Carrinho'\]/, 'funnel starts with visits, product views and cart');
 assert.match(painel, /\['checkout_open','Checkout'\],\['pix_generated','Pix gerado'\],\['order_paid','Pago'\]/, 'funnel ends with checkout, generated Pix and paid');
 assert.match(migration, /'product_view'.*'add_to_cart'/s, 'database accepts product_view');
