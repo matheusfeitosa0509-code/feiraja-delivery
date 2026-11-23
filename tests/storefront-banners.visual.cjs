@@ -4,10 +4,11 @@ const { chromium } = require("playwright");
 
 (async () => {
   const htmlSource = fs.readFileSync(path.join(process.cwd(), "loja.html"), "utf8");
+  const panelHtmlSource = fs.readFileSync(path.join(process.cwd(), "painel.html"), "utf8");
   const helperSource = fs.readFileSync(path.join(process.cwd(), "loja-delivery-ui.js"), "utf8").replace(/\bexport\s+/g, "");
   const calendarSource = fs.readFileSync(path.join(process.cwd(), "supabase/functions/_shared/commercial-calendar.js"), "utf8").replace(/\bexport\s+/g, "");
   const scheduleSource = fs.readFileSync(path.join(process.cwd(), "supabase/functions/_shared/store-schedule.js"), "utf8").replace(/^import .*commercial-calendar\.js.*;\s*/m, "").replace(/\bexport\s+/g, "");
-  const bannerRows = [{"id":"b1","title":"Oferta de teste","subtitle":"Subtítulo da oferta","button_text":"Montar pedido","action_type":"products","action_value":null,"theme":"green","audience":"new_customers","starts_at":"2026-01-01T00:00:00Z","ends_at":"DYNAMIC_4_DAYS","rules_text":"Regras de teste","is_active":true,"sort_order":1,"promo_code":"PRIMEIRA_ENTREGA"},{"id":"b2","title":"Assistente","subtitle":"Ajuda por voz ou texto","button_text":"Abrir assistente","action_type":"assistant","theme":"yellow","audience":"all","starts_at":"2026-01-01T00:00:00Z","ends_at":null,"is_active":true,"sort_order":2,"promo_code":null},{"id":"b3","title":"Pedir produto","subtitle":"Envie o nome","button_text":"Pedir","action_type":"request_product","theme":"orange","audience":"all","starts_at":"2026-01-01T00:00:00Z","ends_at":null,"is_active":true,"sort_order":3,"promo_code":null},{"id":"b4","title":"Retire na feira","subtitle":"Av. Lourenço da Silva Braga, 700","button_text":"Como chegar","action_type":"maps","theme":"red","audience":"all","starts_at":"2026-01-01T00:00:00Z","ends_at":null,"is_active":true,"sort_order":4,"promo_code":null}];
+  const bannerRows = [{"id":"b1","title":"Oferta de teste","subtitle":"Subtítulo da oferta","button_text":"Montar pedido","action_type":"products","action_value":null,"theme":"green","audience":"new_customers","starts_at":"2026-01-01T00:00:00Z","ends_at":"DYNAMIC_4_DAYS","rules_text":"Regras de teste","is_active":true,"sort_order":1,"promo_code":"PRIMEIRA_ENTREGA","image_url":"https://example.test/banner-1.webp"},{"id":"b2","title":"Assistente","subtitle":"Ajuda por voz ou texto","button_text":"Abrir assistente","action_type":"assistant","theme":"yellow","audience":"all","starts_at":"2026-01-01T00:00:00Z","ends_at":null,"is_active":true,"sort_order":2,"promo_code":null,"image_url":"https://example.test/banner-2.webp"},{"id":"b3","title":"Pedir produto","subtitle":"Envie o nome","button_text":"Pedir","action_type":"request_product","theme":"orange","audience":"all","starts_at":"2026-01-01T00:00:00Z","ends_at":null,"is_active":true,"sort_order":3,"promo_code":null},{"id":"b4","title":"Retire na feira","subtitle":"Av. Lourenço da Silva Braga, 700","button_text":"Como chegar","action_type":"maps","theme":"red","audience":"all","starts_at":"2026-01-01T00:00:00Z","ends_at":null,"is_active":true,"sort_order":4,"promo_code":null}];
   const bootstrap = "<script>" +
     "window.__testBannerRows=" + JSON.stringify(bannerRows.map(row=>({...row,ends_at:row.ends_at==="DYNAMIC_4_DAYS"?new Date(Date.now()+4*86400000).toISOString():row.ends_at}))) + ";window.__testSupabase={" +
     "auth:{getSession:async()=>({data:{session:window.__testSession||null},error:null}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}}),signOut:async()=>({error:null})}," +
@@ -36,13 +37,15 @@ const { chromium } = require("playwright");
   html = html.replace("<body", bootstrap + "<script>" + calendarSource + "</script><script>" + scheduleSource + "</script><script>" + helperSource + "</script><body");
   const browser = await chromium.launch({ headless: true });
   try {
-    for (const width of [360, 412]) {
+    fs.mkdirSync(path.join(process.cwd(), "artifacts"), { recursive: true });
+    for (const width of [360, 412, 1280]) {
       const page = await browser.newPage({ viewport: { width, height: 1000 }, deviceScaleFactor: 1 });
       const runtimeErrors = [];
       await page.addInitScript(() => { try { localStorage.setItem("feira_cookie_consent_v1","accepted"); } catch (_) {} });
       page.on("pageerror", error => runtimeErrors.push("pageerror: " + error.message));
       page.on("console", message => { if (message.type() === "error") runtimeErrors.push("console.error: " + message.text()); });
       await page.route("**/*", route => route.fulfill({ status: 200, body: "" }));
+      await page.route("https://example.test/banner-*.webp", route => route.fulfill({status:200,contentType:"image/svg+xml",body:"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1200\" height=\"400\" viewBox=\"0 0 1200 400\"><defs><linearGradient id=\"g\" x2=\"0\" y2=\"1\"><stop stop-color=\"#e7f2d8\"/><stop offset=\"1\" stop-color=\"#a9ce83\"/></linearGradient></defs><rect width=\"1200\" height=\"400\" fill=\"url(#g)\"/><g transform=\"translate(700 28)\"><ellipse cx=\"250\" cy=\"300\" rx=\"245\" ry=\"58\" fill=\"#8a552e\"/><path d=\"M25 170 Q250 390 475 170 L430 300 Q250 370 70 300Z\" fill=\"#c58b4c\"/><circle cx=\"115\" cy=\"180\" r=\"75\" fill=\"#f4c43b\"/><circle cx=\"240\" cy=\"155\" r=\"88\" fill=\"#e87a31\"/><circle cx=\"360\" cy=\"175\" r=\"78\" fill=\"#d84b36\"/><path d=\"M220 75 Q190 10 260 8 Q300 25 270 85Z\" fill=\"#3f8c43\"/><path d=\"M100 105 Q65 35 130 30 Q170 50 145 110Z\" fill=\"#5b9d42\"/><path d=\"M355 100 Q380 30 425 60 Q435 105 380 130Z\" fill=\"#4e9340\"/></g></svg>"}));
       await page.route("**/rest/v1/**", route => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
       await page.route("**/functions/v1/**", route => route.fulfill({ status: 200, contentType: "application/json", body: "{}" }));
       await page.route("http://127.0.0.1/loja.html", route => route.fulfill({ status: 200, contentType: "text/html", body: html }));
@@ -50,6 +53,22 @@ const { chromium } = require("playwright");
       await page.waitForFunction(() => document.querySelectorAll("#storeBannersTrack .store-banner-slide").length === 4, null, { timeout: 10000 });
       const banners = page.locator("#storeBannersTrack .store-banner-slide");
       if (await banners.count() !== 4) throw new Error("Carrossel deve renderizar os quatro banners retornados.");
+      const bannerImages = page.locator("#storeBannersTrack .store-banner-image");
+      if (await bannerImages.count() !== 2) throw new Error("Somente banners com image_url devem renderizar imagem.");
+      if (await bannerImages.nth(0).getAttribute("loading") !== "eager" || await bannerImages.nth(0).getAttribute("width") !== "1200" || await bannerImages.nth(0).getAttribute("height") !== "400") throw new Error("Primeira imagem deve carregar eager com dimensões 1200×400.");
+      if (await bannerImages.nth(1).getAttribute("loading") !== "lazy") throw new Error("Imagens seguintes devem usar loading=lazy.");
+      await bannerImages.first().evaluate(img=>img.decode());
+      if (!(await bannerImages.first().evaluate(img=>img.complete && img.naturalWidth===1200))) throw new Error("A imagem do primeiro banner não carregou ou não preservou a largura intrínseca.");
+      const desktopImagePlacement = await banners.first().evaluate(el => { const img=el.querySelector(".store-banner-image").getBoundingClientRect(); const copy=el.querySelector(".store-banner-copy").getBoundingClientRect(); return {imageLeft:img.left,copyRight:copy.right}; });
+      if (width >= 700 && desktopImagePlacement.imageLeft <= desktopImagePlacement.copyRight - 12) throw new Error("No desktop a imagem deve ficar à direita do texto.");
+      if (!(await banners.nth(0).evaluate(el=>el.classList.contains("has-image"))) || await banners.nth(2).locator(".store-banner-image").count()) throw new Error("Banner com imagem e banner só texto não foram preservados.");
+      await page.screenshot({ path: path.join(process.cwd(), "artifacts", "store-banners-" + width + ".png"), fullPage: false });
+      await page.evaluate(async () => { window.__testBannerRows=window.__testBannerRows.map(({image_url,...row})=>row); await window.loadStoreBanners(); });
+      if (await page.locator("#storeBannersTrack .store-banner-slide").count() !== 4 || await page.locator("#storeBannersTrack .store-banner-image").count() !== 0) throw new Error("Os quatro banners sem image_url devem continuar como banners somente texto.");
+      const textOnlyMinHeight = await page.locator("#storeBannersTrack .store-banner-slide").first().evaluate(el => getComputedStyle(el).minHeight);
+      const expectedTextOnlyMinHeight = width <= 380 ? "136px" : "142px";
+      if (textOnlyMinHeight !== expectedTextOnlyMinHeight) throw new Error("Banners sem imagem devem manter a altura mínima original de " + expectedTextOnlyMinHeight + ".");
+
       for (const [index, theme] of ["green","yellow","orange","red"].entries()) { if (!(await banners.nth(index).evaluate((el, expectedTheme) => el.classList.contains("theme-"+expectedTheme), theme))) throw new Error("Tema "+theme+" não aplicado."); }
       if (await page.locator("#storeBannersDots button").count() !== 4) throw new Error("Carrossel com múltiplos banners deve exibir bolinhas.");
       if (!(await page.locator("#storeBannersTrack").innerText()).includes("Termina em 4 dias!")) throw new Error("Contagem regressiva de até sete dias ausente.");
@@ -75,8 +94,30 @@ const { chromium } = require("playwright");
       if (runtimeErrors.length) throw new Error("Erros JS/console na loja " + width + "px:\n" + runtimeErrors.join("\n"));
       await page.close();
     }
+    const panelManagerScript = panelHtmlSource.split('<script type="module">').map(part=>part.split('</script>')[0]).find(part=>part.includes('storeBannerNew')&&part.includes('storeBannerForm'));
+    const imagePreparer = panelManagerScript?.match(/async function prepareBannerImage\(file\)\{[\s\S]*?\n \}/);
+    const imageUploader = panelManagerScript?.match(/async function uploadBannerImage\(blob\)\{[\s\S]*?\n \}/);
+    if (!imagePreparer || !imageUploader) throw new Error("Helpers de WebP/upload não encontrados no painel.");
+    const uploadPage = await browser.newPage();
+    await uploadPage.setContent("<!doctype html><html><body></body></html>");
+    await uploadPage.addScriptTag({content:"window.prepareBannerImage = "+imagePreparer[0]+"; window.uploadBannerImage = "+imageUploader[0]+";"});
+    const imageResult = await uploadPage.evaluate(async()=>{
+      const source=document.createElement("canvas");source.width=1600;source.height=900;
+      const ctx=source.getContext("2d");const gradient=ctx.createLinearGradient(0,0,1600,900);gradient.addColorStop(0,"#1f7a36");gradient.addColorStop(1,"#f0bf36");ctx.fillStyle=gradient;ctx.fillRect(0,0,1600,900);
+      const png=await new Promise(resolve=>source.toBlob(resolve,"image/png"));
+      const webp=await window.prepareBannerImage(new File([png],"banner-test.png",{type:"image/png"}));
+      const bitmap=await createImageBitmap(webp);
+      window.__preparedBannerBlob=webp;
+      window.db={storage:{from:bucket=>({upload:async(path,blob,options)=>{window.__uploadCheck={bucket,path,size:blob.size,type:blob.type,options};return {error:null};},getPublicUrl:path=>({data:{publicUrl:"https://juhwdevvwstmyxyyagzh.supabase.co/storage/v1/object/public/product-photos/"+path}}),remove:async()=>({error:null})})}};
+      const url=await window.uploadBannerImage(webp);
+      const result={type:webp.type,size:webp.size,width:bitmap.width,height:bitmap.height,url,upload:window.__uploadCheck};
+      bitmap.close();return result;
+    });
+    if (imageResult.type!=="image/webp" || imageResult.size>80*1024 || imageResult.width!==1200 || imageResult.height!==400) throw new Error("Conversão WebP não respeitou formato, limite de 80 KB ou dimensão 1200×400: "+JSON.stringify(imageResult));
+    if (imageResult.upload.bucket!=="product-photos" || !imageResult.upload.path.startsWith("banners/") || imageResult.upload.type!=="image/webp" || imageResult.upload.options.contentType!=="image/webp") throw new Error("Upload não usou o bucket product-photos com MIME WebP.");
+    await uploadPage.close();
   } finally {
     await browser.close();
   }
-  console.log("Loja HTML completo: zero pageerror/console.error em 360px e 412px com Supabase mockado.");
+  console.log("Loja HTML completo: zero pageerror/console.error em 360px, 412px e 1280px com Supabase mockado; screenshots em artifacts/.");
 })().catch(error => { console.error(error); process.exit(1); });
