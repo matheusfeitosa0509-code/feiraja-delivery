@@ -2889,12 +2889,17 @@ if(root){
   if(!file||!String(file.type||'').startsWith('image/'))throw new Error('Escolha um arquivo de imagem.');
   let bitmap;try{bitmap=await createImageBitmap(file);}catch(_){throw new Error('Não foi possível abrir esta imagem. Escolha JPG, PNG ou WebP.');}
   if(!bitmap.width||!bitmap.height){bitmap.close();throw new Error('A imagem está vazia ou inválida.');}
-  const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=400;
-  const scale=Math.max(1200/bitmap.width,400/bitmap.height),sw=1200/scale,sh=400/scale,sx=(bitmap.width-sw)/2,sy=(bitmap.height-sh)/2;
-  canvas.getContext('2d').drawImage(bitmap,sx,sy,sw,sh,0,0,1200,400);bitmap.close();
+  const canvas=document.createElement('canvas'),dimensions=[[1200,400],[1080,360],[960,320],[900,300]];
   let blob=null;
-  for(const quality of [0.84,0.76,0.68,0.60,0.52,0.44,0.36,0.30]){blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',quality));if(blob&&blob.size<=80*1024)break;}
-  if(!blob||blob.size>80*1024)throw new Error('A imagem passou de 80 KB mesmo após a compressão. Use uma arte mais simples.');
+  for(const [width,height] of dimensions){
+   canvas.width=width;canvas.height=height;
+   const scale=Math.max(width/bitmap.width,height/bitmap.height),sw=width/scale,sh=height/scale,sx=(bitmap.width-sw)/2,sy=(bitmap.height-sh)/2;
+   canvas.getContext('2d').drawImage(bitmap,sx,sy,sw,sh,0,0,width,height);
+   for(const quality of [0.84,0.76,0.68,0.60,0.52,0.44,0.36,0.30]){blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',quality));if(blob&&blob.size<=80*1024)break;}
+   if(blob&&blob.size<=80*1024)break;
+  }
+  bitmap.close();
+  if(!blob||blob.size>80*1024)throw new Error('A imagem passou de 80 KB mesmo após a compressão e redução proporcional. Use uma arte mais simples.');
   return blob;
  }
  function bannerStoragePath(url){
