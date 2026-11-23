@@ -21,6 +21,12 @@ const assert = require('node:assert/strict');
   const closeAccount = async () => {
     if (await page.locator('#accountModal.open').count()) await page.locator('#accountClose').click();
   };
+  // Search every slide in the carousel; do not require the target banner to be the active/visible slide.
+  const clickBannerAction = async (title) => {
+    const target = page.locator('#storeBannersTrack .store-banner-slide').filter({ hasText: title });
+    assert.equal(await target.count(), 1, 'banner ausente ou duplicado no carrossel: ' + title);
+    await target.locator('.store-banner-cta').evaluate(button => button.click());
+  };
   try {
     const response = await page.goto(base + '/loja.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
     assert.equal(response && response.status(), 200, 'loja publicada não retornou HTTP 200');
@@ -45,14 +51,14 @@ const assert = require('node:assert/strict');
 
     await page.waitForFunction(() => document.querySelectorAll('#storeBannersTrack .store-banner-slide').length > 0, null, { timeout: 15000 }).catch(() => {});
     console.log('POST_DEPLOY_BANNER_DEBUG', JSON.stringify({ slideCount: await page.locator('#storeBannersTrack .store-banner-slide').count(), trackText: await page.locator('#storeBannersTrack').innerText().catch(() => ''), bannerResponses, errors }));
-    await page.locator('#storeBannersTrack .store-banner-slide').filter({ hasText: 'Fale com o Assistente' }).locator('.store-banner-cta').click();
+    await clickBannerAction('Fale com o Assistente');
     await expectOpen('#accountModal', 'Abrir assistente pelo banner (visitante sem login)');
     await closeAccount();
     await page.locator('#assistantNavButton').click();
     await expectOpen('#accountModal', 'Abrir assistente pela barra (visitante sem login)');
     await closeAccount();
 
-    await page.locator('#storeBannersTrack .store-banner-slide').filter({ hasText: 'Não achou o produto?' }).locator('.store-banner-cta').click();
+    await clickBannerAction('Não achou o produto?');
     await expectOpen('#accountModal', 'Pedir um produto pelo banner (visitante sem login)');
     await closeAccount();
     const categories = page.locator('#homeBubbles button');
