@@ -41,14 +41,14 @@ const assert = require('node:assert/strict');
     const speechResponse = await page.request.get(base + '/assistant-speech.js?v=post-deploy-check');
     assert.equal(speechResponse.status(), 200, 'assistant-speech.js não foi publicado no Pages');
 
-    await page.locator('[data-banner-action="assistant"]').click();
+    await page.locator('#storeBannersTrack .store-banner-slide').filter({ hasText: 'Fale com o Assistente' }).locator('.store-banner-cta').click();
     await expectOpen('#accountModal', 'Abrir assistente pelo banner (visitante sem login)');
     await closeAccount();
     await page.locator('#assistantNavButton').click();
     await expectOpen('#accountModal', 'Abrir assistente pela barra (visitante sem login)');
     await closeAccount();
 
-    await page.locator('[data-banner-action="request"]').click();
+    await page.locator('#storeBannersTrack .store-banner-slide').filter({ hasText: 'Não achou o produto?' }).locator('.store-banner-cta').click();
     await expectOpen('#accountModal', 'Pedir um produto pelo banner (visitante sem login)');
     await closeAccount();
     const categories = page.locator('#homeBubbles button');
