@@ -3002,9 +3002,9 @@ try{setupAppTabs();}catch(error){console.error('Falha isolada na navegação da 
   } catch {}
   let queue = Promise.resolve();
   const record = (event,durationMs=null) => {
-    queue = queue.then(() => db.rpc('record_store_funnel_event', {
-      p_event:event, ...attribution, p_duration_ms:durationMs
-    })).catch(() => null);
+    const payload={p_event:event,...attribution};
+    if(Number.isFinite(durationMs))payload.p_duration_ms=Math.round(durationMs);
+    queue = queue.then(() => db.rpc('record_store_funnel_event', payload)).catch(() => null);
   };
 
   document.addEventListener('click', event => {
