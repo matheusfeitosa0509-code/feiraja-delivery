@@ -12,6 +12,8 @@ assert.match(html, /pixGenerationDelayTimer=setTimeout[\s\S]*15000/, 'slow-respo
 assert.match(html, /Math\.min\(92,/, 'progress never reaches 100% before the Pix is ready');
 assert.match(html, /requestSubmit\(\)/, 'retry reuses the same form submission path');
 assert.match(html, /checkout_idempotency_key:checkoutIdempotencyKey/, 'the existing idempotency key is sent to the worker');
+assert.match(html, /retrySameAttempt\)\&\&\//, 'Tentar de novo forces reuse of the previous idempotency key even if form values changed');
+assert.match(html, /__feiraPixRetrySameAttempt=true/, 'the retry action marks the request as the same attempt');
 assert.match(html, /serverMessage\.includes\('já está sendo preparado'\)[\s\S]*Tentar de novo/, 'a retry while the same Pix is being prepared keeps the same attempt');
 assert.match(html, /db\.rpc\('record_store_funnel_pix_duration'/, 'Pix duration uses a dedicated RPC without overloading the existing funnel function');
 assert.match(migration, /duration_ms integer/, 'funnel stores elapsed milliseconds');
