@@ -205,6 +205,22 @@ Deno.serve(async (req: Request) => {
     const MIN_ORDER_SUBTOTAL_CENTS = 3000;
     const paymentMethodError = checkoutPaymentMethodError(paymentMethod);
     if (paymentMethodError) return json({ error: paymentMethodError }, 400);
+    // A mesma chave de idempotência sempre recupera a cobrança Pix já criada,
+    // sem recalcular preços ou alterar o total por mudança de horário/regra.
+    if (priorOrder && paymentMethod === "pix") {
+      if (String(priorOrder.status || "").toLowerCase() === "cancelada") {
+        return json({ error: "Este pedido desta tentativa já foi cancelado. Confira Meus pedidos antes de iniciar outro checkout." }, 409);
+      }
+      if (priorOrder.pix_qr_code) {
+        return json({
+          order: { id: priorOrder.id, status: priorOrder.status, total: priorOrder.total, delivery_fee: priorOrder.delivery_fee, delivery_fee_original: priorOrder.delivery_fee_original, delivery_discount: priorOrder.delivery_discount, promo_code: priorOrder.promo_code, pickupCode: priorOrder.pickup_code },
+          paymentId: priorOrder.payment_id,
+          qrCode: priorOrder.pix_qr_code,
+          qrCodeBase64: priorOrder.pix_qr_code_base64,
+          paymentStatus: String(priorOrder.status || "").toLowerCase() === "pagamento confirmado" ? "CONFIRMED" : "PENDING",
+        });
+      }
+    }
     if (!isAsaasPixEnabled(paymentMethod, asaasEnabled)) {
       return json({ error: "Pagamento Pix está disponível somente pelo Asaas." }, 503);
     }
@@ -590,18 +606,6 @@ Deno.serve(async (req: Request) => {
     const checkoutRequestHash = Array.from(new Uint8Array(hashBytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
     if (priorAttempt && String(priorAttempt.request_hash) !== checkoutRequestHash) {
       return json({ error: "Esta chave já foi usada com dados diferentes. Atualize a feira e inicie um novo checkout." }, 409);
-    }
-    if (priorOrder && String(priorOrder.status || "").toLowerCase() === "cancelada") {
-      return json({ error: "Este pedido desta tentativa já foi cancelado. Confira Meus pedidos antes de iniciar outro checkout." }, 409);
-    }
-    if (priorOrder && paymentMethod === "pix" && priorOrder.pix_qr_code) {
-      return json({
-        order: { id: priorOrder.id, status: priorOrder.status, total: priorOrder.total, delivery_fee: priorOrder.delivery_fee, delivery_fee_original: priorOrder.delivery_fee_original, delivery_discount: priorOrder.delivery_discount, promo_code: priorOrder.promo_code, pickupCode },
-        paymentId: priorOrder.payment_id,
-        qrCode: priorOrder.pix_qr_code,
-        qrCodeBase64: priorOrder.pix_qr_code_base64,
-        paymentStatus: String(priorOrder.status || "").toLowerCase() === "pagamento confirmado" ? "CONFIRMED" : "PENDING",
-      });
     }
     if (priorOrder && paymentMethod === "pix" && String(priorOrder.status || "").toLowerCase() !== "pagamento pendente") {
       return json({
