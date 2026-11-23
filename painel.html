@@ -427,6 +427,14 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
   <label>Tema<select id="storeBannerTheme"><option value="green">Verde</option><option value="yellow">Amarelo</option><option value="orange">Laranja</option><option value="red">Vermelho</option></select></label>
   <label>Público<select id="storeBannerAudience"><option value="all">Todos</option><option value="new_customers">Novos clientes</option><option value="returning">Clientes recorrentes</option></select></label>
   <div class="automatic-margin-grid"><label>Início<input id="storeBannerStartsAt" type="datetime-local" required></label><label>Fim (opcional)<input id="storeBannerEndsAt" type="datetime-local"></label><label>Ordem<input id="storeBannerSortOrder" type="number" step="1" value="10"></label></div>
+  <label>Imagem do banner (opcional)</label>
+  <div class="store-banner-image-controls">
+   <input id="storeBannerImageFile" type="file" accept="image/*" hidden>
+   <button type="button" class="secondary" id="storeBannerImageUpload">Enviar imagem</button>
+   <button type="button" class="danger" id="storeBannerImageRemove" hidden>Remover imagem</button>
+   <small id="storeBannerImageStatus" class="muted">WebP · até 80 KB · proporção 3:1</small>
+  </div>
+  <img id="storeBannerImagePreview" class="store-banner-image-preview" width="1200" height="400" alt="Prévia da imagem do banner" hidden>
   <label>Texto das regras (opcional)<textarea id="storeBannerRulesText" rows="3" maxlength="1200"></textarea></label>
   <label>Código promocional (opcional)<input id="storeBannerPromoCode" maxlength="60" placeholder="Ex.: PRIMEIRA_ENTREGA"></label>
   <label style="display:flex;align-items:center;gap:9px"><input id="storeBannerActive" type="checkbox" checked style="width:22px;min-height:22px"> Banner ligado</label>
@@ -435,7 +443,11 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
  </form>
 </section>
 <style>
-.store-banner-preview{border-radius:16px;padding:18px;color:#fff;background:linear-gradient(120deg,#176b3a,#23854b);display:grid;gap:8px;min-height:130px}
+.store-banner-preview{position:relative;overflow:hidden;border-radius:16px;padding:18px;color:#fff;background:linear-gradient(120deg,#176b3a,#23854b);display:grid;gap:8px;min-height:130px}
+.store-banner-preview img{display:block;width:100%;height:auto;max-height:150px;object-fit:cover;border-radius:10px;margin-bottom:4px}
+.store-banner-image-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.store-banner-image-controls button{width:auto;min-height:40px}.store-banner-image-controls small{flex:1;min-width:170px}
+.store-banner-image-preview{display:block;width:100%;height:auto;max-height:180px;object-fit:contain;margin-top:10px;border:1px solid var(--line);border-radius:12px;background:#f4f8f2}
+.store-banner-image-preview[hidden]{display:none!important}
 .store-banner-preview[data-theme="yellow"]{background:linear-gradient(120deg,#b78a13,#e2b52b);color:#2d260c}
 .store-banner-preview[data-theme="orange"]{background:linear-gradient(120deg,#bd5a13,#e68a27)}
 .store-banner-preview[data-theme="red"]{background:linear-gradient(120deg,#a52d28,#d94d43)}
@@ -2800,13 +2812,13 @@ if(root){
  const types=['products','category','product','whatsapp','assistant','request_product','maps'];
  const themes=['green','yellow','orange','red'];
  const audiences=['all','new_customers','returning'];
- let banners=[],products=[],editingId=null;
+ let banners=[],products=[],editingId=null,bannerImageUrl=null,bannerOriginalImageUrl=null,bannerImageTouched=false,bannerImagePending=null,bannerImagePreviewUrl=null;
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const localInput=v=>{if(!v)return '';const d=new Date(v);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);};
  const toIso=v=>v?new Date(v+'-04:00').toISOString():null;
  const setMessage=(v,err=false)=>{$('storeBannerMessage').textContent=v;$('storeBannerMessage').style.color=err?'#b3261e':'';};
- const preview=(row,host)=>{const el=document.createElement('div');el.className='store-banner-preview';el.dataset.theme=row.theme||'green';const title=document.createElement('strong');title.textContent=row.title||'Seu título aparecerá aqui';const sub=document.createElement('p');sub.textContent=row.subtitle||'Seu subtítulo aparecerá aqui';const btn=document.createElement('span');btn.textContent=row.button_text||'Texto do botão';el.append(title,sub,btn);host.replaceChildren(el);};
- function currentDraft(){return {title:$('storeBannerTitle').value,subtitle:$('storeBannerSubtitle').value,button_text:$('storeBannerButtonText').value,action_type:$('storeBannerActionType').value,action_value:$('storeBannerActionValue').value||null,theme:$('storeBannerTheme').value,audience:$('storeBannerAudience').value,starts_at:toIso($('storeBannerStartsAt').value),ends_at:toIso($('storeBannerEndsAt').value),rules_text:$('storeBannerRulesText').value||null,is_active:$('storeBannerActive').checked,sort_order:Number($('storeBannerSortOrder').value)||0,promo_code:$('storeBannerPromoCode').value.trim()||null};}
+ const preview=(row,host)=>{const el=document.createElement('div');el.className='store-banner-preview';el.dataset.theme=row.theme||'green';if(row.image_url||bannerImagePreviewUrl){const img=document.createElement('img');img.src=bannerImagePreviewUrl||row.image_url;img.width=1200;img.height=400;img.alt='Imagem do banner';el.append(img);}const title=document.createElement('strong');title.textContent=row.title||'Seu título aparecerá aqui';const sub=document.createElement('p');sub.textContent=row.subtitle||'Seu subtítulo aparecerá aqui';const btn=document.createElement('span');btn.textContent=row.button_text||'Texto do botão';el.append(title,sub,btn);host.replaceChildren(el);};
+ function currentDraft(){return {title:$('storeBannerTitle').value,subtitle:$('storeBannerSubtitle').value,button_text:$('storeBannerButtonText').value,action_type:$('storeBannerActionType').value,action_value:$('storeBannerActionValue').value||null,theme:$('storeBannerTheme').value,audience:$('storeBannerAudience').value,starts_at:toIso($('storeBannerStartsAt').value),ends_at:toIso($('storeBannerEndsAt').value),rules_text:$('storeBannerRulesText').value||null,is_active:$('storeBannerActive').checked,sort_order:Number($('storeBannerSortOrder').value)||0,promo_code:$('storeBannerPromoCode').value.trim()||null,image_url:bannerImageUrl};}
  function updatePreview(){preview(currentDraft(),$('storeBannerPreview'));}
  function refreshActionValue(){
   const type=$('storeBannerActionType').value,wrap=$('storeBannerActionValueLabel');
@@ -2819,6 +2831,11 @@ if(root){
   if(type==='product'){products.slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).forEach(p=>field.add(new Option(p.name+(p.available?'':' · indisponível'),p.id)));}
  }
  function fillForm(row){
+  if(bannerImagePreviewUrl){URL.revokeObjectURL(bannerImagePreviewUrl);bannerImagePreviewUrl=null;}
+  bannerImagePending=null;bannerImageTouched=false;bannerImageUrl=row?.image_url||null;bannerOriginalImageUrl=row?.image_url||null;
+  const imagePreview=$('storeBannerImagePreview');imagePreview.hidden=!bannerImageUrl;if(bannerImageUrl)imagePreview.src=bannerImageUrl;else imagePreview.removeAttribute('src');
+  $('storeBannerImageRemove').hidden=!bannerImageUrl;
+  $('storeBannerImageStatus').textContent=bannerImageUrl?'Imagem atual do banner. Você pode substituir ou remover.':'WebP · até 80 KB · proporção 3:1';
   editingId=row?.id||null;$('storeBannerFormTitle').textContent=editingId?'Editar banner':'Novo banner';
   $('storeBannerTitle').value=row?.title||'';$('storeBannerSubtitle').value=row?.subtitle||'';$('storeBannerButtonText').value=row?.button_text||'';
   $('storeBannerActionType').value=row?.action_type||'products';refreshActionValue();
@@ -2867,7 +2884,31 @@ if(root){
   await load();
  }
  $('storeBannerNew').addEventListener('click',()=>fillForm(null));
- $('storeBannerCancel').addEventListener('click',()=>{$('storeBannerForm').classList.add('hidden');editingId=null;});
+ $('storeBannerCancel').addEventListener('click',()=>{if(bannerImagePreviewUrl)URL.revokeObjectURL(bannerImagePreviewUrl);bannerImagePreviewUrl=null;bannerImagePending=null;$('storeBannerForm').classList.add('hidden');editingId=null;});
+ async function prepareBannerImage(file){
+  if(!file||!String(file.type||'').startsWith('image/'))throw new Error('Escolha um arquivo de imagem.');
+  let bitmap;try{bitmap=await createImageBitmap(file);}catch(_){throw new Error('Não foi possível abrir esta imagem. Escolha JPG, PNG ou WebP.');}
+  if(!bitmap.width||!bitmap.height){bitmap.close();throw new Error('A imagem está vazia ou inválida.');}
+  const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=400;
+  const scale=Math.max(1200/bitmap.width,400/bitmap.height),sw=1200/scale,sh=400/scale,sx=(bitmap.width-sw)/2,sy=(bitmap.height-sh)/2;
+  canvas.getContext('2d').drawImage(bitmap,sx,sy,sw,sh,0,0,1200,400);bitmap.close();
+  let blob=null;
+  for(const quality of [0.84,0.76,0.68,0.60,0.52,0.44,0.36,0.30]){blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',quality));if(blob&&blob.size<=80*1024)break;}
+  if(!blob||blob.size>80*1024)throw new Error('A imagem passou de 80 KB mesmo após a compressão. Use uma arte mais simples.');
+  return blob;
+ }
+ function bannerStoragePath(url){
+  try{const parsed=new URL(String(url||''));const marker='/storage/v1/object/public/product-photos/';const pos=parsed.pathname.indexOf(marker);return pos>=0?decodeURIComponent(parsed.pathname.slice(pos+marker.length)):null;}catch(_){return null;}
+ }
+ async function uploadBannerImage(blob){
+  const path='banners/'+(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2))+'.webp';
+  const storage=db.storage.from('product-photos');const uploaded=await storage.upload(path,blob,{contentType:'image/webp',cacheControl:'31536000',upsert:false});
+  if(uploaded.error)throw uploaded.error;const {data}=storage.getPublicUrl(path);if(!data?.publicUrl){await storage.remove([path]);throw new Error('O Storage não retornou a URL pública da imagem.');}return data.publicUrl;
+ }
+ async function removeBannerImage(url){const path=bannerStoragePath(url);if(!path)return;const {error}=await db.storage.from('product-photos').remove([path]);if(error)console.warn('Imagem antiga do banner preservada:',error);}
+ $('storeBannerImageUpload').addEventListener('click',()=>$('storeBannerImageFile').click());
+ $('storeBannerImageFile').addEventListener('change',async()=>{const file=$('storeBannerImageFile').files?.[0];$('storeBannerImageFile').value='';if(!file)return;const button=$('storeBannerImageUpload');button.disabled=true;button.textContent='Preparando…';try{const blob=await prepareBannerImage(file);if(bannerImagePreviewUrl)URL.revokeObjectURL(bannerImagePreviewUrl);bannerImagePending=blob;bannerImagePreviewUrl=URL.createObjectURL(blob);bannerImageUrl=null;bannerImageTouched=true;const img=$('storeBannerImagePreview');img.src=bannerImagePreviewUrl;img.hidden=false;$('storeBannerImageRemove').hidden=false;$('storeBannerImageStatus').textContent='WebP · '+Math.ceil(blob.size/1024)+' KB · 1200 × 400';updatePreview();}catch(error){setMessage(error?.message||'Não foi possível preparar a imagem.',true);}finally{button.disabled=false;button.textContent='Enviar imagem';}});
+ $('storeBannerImageRemove').addEventListener('click',()=>{bannerImageUrl=null;bannerImagePending=null;bannerImageTouched=true;if(bannerImagePreviewUrl)URL.revokeObjectURL(bannerImagePreviewUrl);bannerImagePreviewUrl=null;const img=$('storeBannerImagePreview');img.removeAttribute('src');img.hidden=true;$('storeBannerImageRemove').hidden=true;$('storeBannerImageStatus').textContent='Sem imagem. O banner será exibido somente com texto.';updatePreview();});
  $('storeBannerActionType').addEventListener('change',()=>{const old=$('storeBannerActionValue')?.value;refreshActionValue();if(old&&$('storeBannerActionValue'))$('storeBannerActionValue').value=old;});
  ['storeBannerTitle','storeBannerSubtitle','storeBannerButtonText','storeBannerTheme'].forEach(id=>$(id).addEventListener('input',updatePreview));
  $('storeBannerForm').addEventListener('submit',async event=>{
@@ -2875,9 +2916,14 @@ if(root){
   if(!types.includes(row.action_type)||!themes.includes(row.theme)||!audiences.includes(row.audience)){setMessage('Confira ação, tema e público.',true);return;}
   if(!row.title.trim()||!row.button_text.trim()||!row.starts_at){setMessage('Preencha título, botão e início.',true);return;}
   if(row.ends_at&&new Date(row.ends_at)<=new Date(row.starts_at)){setMessage('A data final deve ser posterior ao início.',true);return;}
-  const button=$('storeBannerSave');button.disabled=true;
-  try{const result=editingId?await db.from('store_banners').update(row).eq('id',editingId):await db.from('store_banners').insert(row);if(result.error)throw result.error;$('storeBannerForm').classList.add('hidden');editingId=null;await load();setMessage('Banner salvo com sucesso.');}
-  catch(error){setMessage('Não foi possível salvar o banner. Verifique os campos e a permissão de administrador.',true);}
+  const button=$('storeBannerSave');button.disabled=true;let uploadedUrl=null;
+  try{
+   if(bannerImagePending){uploadedUrl=await uploadBannerImage(bannerImagePending);row.image_url=uploadedUrl;}
+   const result=editingId?await db.from('store_banners').update(row).eq('id',editingId):await db.from('store_banners').insert(row);if(result.error)throw result.error;
+   if(bannerImageTouched&&bannerOriginalImageUrl&&bannerOriginalImageUrl!==row.image_url)await removeBannerImage(bannerOriginalImageUrl);
+   if(bannerImagePreviewUrl)URL.revokeObjectURL(bannerImagePreviewUrl);bannerImagePreviewUrl=null;bannerImagePending=null;bannerImageUrl=row.image_url||null;bannerOriginalImageUrl=bannerImageUrl;bannerImageTouched=false;
+   $('storeBannerForm').classList.add('hidden');editingId=null;await load();setMessage('Banner salvo com sucesso.');
+  }catch(error){if(uploadedUrl)await removeBannerImage(uploadedUrl);setMessage(error?.message||'Não foi possível salvar o banner. Verifique os campos e a permissão de administrador.',true);}
   finally{button.disabled=false;}
  });
  window.__storeBannerConfirm=async message=>typeof window.appConfirm==='function'?window.appConfirm(message,{title:'Apagar banner?',confirmText:'Apagar',cancelText:'Cancelar',danger:true}):false;
