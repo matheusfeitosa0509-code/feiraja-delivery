@@ -2998,8 +2998,7 @@ if(root){
   if(ruleResult.error||productResult.error){message('Não foi possível carregar regras ou produtos. Verifique o acesso administrativo.',true);return;}
   rules=ruleResult.data||[];products=productResult.data||[];render();
  }
- const {data:sessionData}=await db.auth.getSession();
- if(sessionData?.session)void load();else message('Entre com uma conta administradora para gerenciar as regras.');
+ void db.auth.getSession().then(({data:sessionData})=>{if(sessionData?.session)void load();else message('Entre com uma conta administradora para gerenciar as regras.');}).catch(()=>message('Não foi possível verificar a sessão administrativa.',true));
  db.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){rules=[];render();}else if(session&&['SIGNED_IN','TOKEN_REFRESHED'].includes(event))void load();});
 })();
 </script>
