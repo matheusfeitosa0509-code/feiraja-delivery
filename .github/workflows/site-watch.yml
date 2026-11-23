@@ -92,15 +92,31 @@ jobs:
         if: github.event_name == 'pull_request' && github.event.pull_request.number == 400
         run: |
           node <<'NODE'
+          const {execFileSync} = require('node:child_process');
+          const fs = require('node:fs');
+          const {chromium} = require('playwright');
           const base = 'https://matheusfeitosa0509-code.github.io/feiraja-delivery/loja.html';
           async function run(strategy) {
+            let score = 0, method = 'PageSpeed Insights';
             const params = new URLSearchParams({url: base + '?psi_baseline=' + process.env.GITHUB_SHA, strategy, category: 'performance'});
-            const response = await fetch('https://pagespeedonline.googleapis.com/pagespeedonline/v5/runPagespeed?' + params, {signal: AbortSignal.timeout(120000)});
-            if (!response.ok) throw new Error('PageSpeed API HTTP ' + response.status + ': ' + (await response.text()).slice(0,500));
-            const data = await response.json();
-            const score = Math.round((data.lighthouseResult?.categories?.performance?.score ?? 0) * 100);
-            if (!score) throw new Error('PageSpeed não retornou nota de desempenho.');
-            console.log('PAGESPEED_BASELINE_' + strategy.toUpperCase() + '=' + score);
+            try {
+              const response = await fetch('https://pagespeedonline.googleapis.com/pagespeedonline/v5/runPagespeed?' + params, {signal: AbortSignal.timeout(120000)});
+              if (!response.ok) throw new Error('PSI HTTP ' + response.status + ': ' + (await response.text()).slice(0,220));
+              const data = await response.json();
+              score = Math.round((data.lighthouseResult?.categories?.performance?.score ?? 0) * 100);
+              if (!score) throw new Error('PSI sem nota de performance');
+            } catch (error) {
+              method = 'Lighthouse CLI (fallback; cota PSI indisponível)';
+              console.warn(method + ': ' + error.message);
+              const output = '/tmp/lighthouse-baseline-' + strategy + '.json';
+              const args = ['--yes','lighthouse@13.0.1',base,'--only-categories=performance','--output=json','--output-path='+output,'--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage'];
+              if (strategy === 'desktop') args.push('--preset=desktop');
+              execFileSync('npx',args,{stdio:'inherit',env:{...process.env,CHROME_PATH:chromium.executablePath()}});
+              const data = JSON.parse(fs.readFileSync(output,'utf8'));
+              score = Math.round((data.categories?.performance?.score ?? 0) * 100);
+            }
+            if (!score) throw new Error('Não foi possível obter nota de performance.');
+            console.log('PAGESPEED_BASELINE_' + strategy.toUpperCase() + '=' + score + ' [' + method + ']');
           }
           (async()=>{await run('mobile');await run('desktop');})().catch(error=>{console.error(error);process.exit(1);});
           NODE
@@ -108,6 +124,9 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'store banners')
         run: |
           node <<'NODE'
+          const {execFileSync} = require('node:child_process');
+          const fs = require('node:fs');
+          const {chromium} = require('playwright');
           const base = 'https://matheusfeitosa0509-code.github.io/feiraja-delivery/loja.html';
           (async()=>{
             let published = false;
@@ -119,13 +138,26 @@ jobs:
             }
             if (!published) throw new Error('A publicação do GitHub Pages não apareceu em até 6 minutos; PageSpeed pós-publicação não foi medido.');
             async function run(strategy) {
+              let score = 0, method = 'PageSpeed Insights';
               const params = new URLSearchParams({url: base + '?psi_after=' + process.env.GITHUB_SHA, strategy, category: 'performance'});
-              const response = await fetch('https://pagespeedonline.googleapis.com/pagespeedonline/v5/runPagespeed?' + params, {signal: AbortSignal.timeout(120000)});
-              if (!response.ok) throw new Error('PageSpeed API HTTP ' + response.status + ': ' + (await response.text()).slice(0,500));
-              const data = await response.json();
-              const score = Math.round((data.lighthouseResult?.categories?.performance?.score ?? 0) * 100);
-              if (!score) throw new Error('PageSpeed não retornou nota de desempenho.');
-              console.log('PAGESPEED_AFTER_' + strategy.toUpperCase() + '=' + score);
+              try {
+                const response = await fetch('https://pagespeedonline.googleapis.com/pagespeedonline/v5/runPagespeed?' + params, {signal: AbortSignal.timeout(120000)});
+                if (!response.ok) throw new Error('PSI HTTP ' + response.status + ': ' + (await response.text()).slice(0,220));
+                const data = await response.json();
+                score = Math.round((data.lighthouseResult?.categories?.performance?.score ?? 0) * 100);
+                if (!score) throw new Error('PSI sem nota de performance');
+              } catch (error) {
+                method = 'Lighthouse CLI (fallback; cota PSI indisponível)';
+                console.warn(method + ': ' + error.message);
+                const output = '/tmp/lighthouse-after-' + strategy + '.json';
+                const args = ['--yes','lighthouse@13.0.1',base,'--only-categories=performance','--output=json','--output-path='+output,'--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage'];
+                if (strategy === 'desktop') args.push('--preset=desktop');
+                execFileSync('npx',args,{stdio:'inherit',env:{...process.env,CHROME_PATH:chromium.executablePath()}});
+                const data = JSON.parse(fs.readFileSync(output,'utf8'));
+                score = Math.round((data.categories?.performance?.score ?? 0) * 100);
+              }
+              if (!score) throw new Error('Não foi possível obter nota de performance.');
+              console.log('PAGESPEED_AFTER_' + strategy.toUpperCase() + '=' + score + ' [' + method + ']');
               if (strategy === 'mobile' && score < 83) throw new Error('Nota mobile caiu mais de 3 pontos em relação à referência informada de 86.');
             }
             await run('mobile'); await run('desktop');
