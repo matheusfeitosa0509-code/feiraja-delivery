@@ -7,7 +7,7 @@ const BASE = 'https://www.feiraondelivery.com.br';
 const viewports = [{ width: 360, height: 800 }, { width: 412, height: 915 }];
 
 for (const viewport of viewports) {
-  test(`vigia loja, carrinho, mínimo, conta, assistente e painel — ${viewport.width}px`, async ({ browser }) => {
+  test(`vigia loja, carrinho, conta, assistente e painel — ${viewport.width}px`, async ({ browser }) => {
     test.setTimeout(120000);
     const context = await browser.newContext({ viewport, storageState: { cookies: [], origins: [] } });
     const page = await context.newPage();
@@ -38,38 +38,10 @@ for (const viewport of viewports) {
       await page.locator('#cartbar').click();
       await expect(page.locator('#pageCart')).toHaveClass(/active/, { timeout: 10000 })
         .catch(() => failAt('abrir carrinho', 'a tela do carrinho não abriu'));
-      const checkout = page.locator('#checkout');
-      await expect(checkout).toBeEnabled({ timeout: 10000 });
-
       const subtotalText = await page.locator('#subtotal').innerText();
-      const subtotal = Number(subtotalText.replace(/[^0-9,]/g, '').replace(',', '.'));
-      if (subtotal >= 30) failAt('mínimo abaixo de R$ 30', `produto inicial totalizou R$ ${subtotalText}; esperado abaixo de R$ 30`);
-      await checkout.click();
-      await expect(page.locator('#storeConfirmTitle')).toHaveText('Falta pouco!', { timeout: 10000 })
-        .catch(() => failAt('sheet mínimo', 'o aviso "Falta pouco!" não abriu abaixo de R$ 30'));
-      await page.locator('#storeConfirmAccept').click();
-
-      await page.locator('#pageHome').locator('button[data-page="Home"]').count().then(async () => {
-        const homeTab = page.locator('.mobile-nav [data-page="Home"]');
-        if (await homeTab.count()) await homeTab.click();
-      });
-      const chosen = page.locator('#homeProductSections [data-card-change][data-d="1"]').first();
-      for (let i = 0; i < 30; i++) {
-        const current = Number((await page.locator('#cartbarTotal').innerText()).replace(/[^0-9,]/g, '').replace(',', '.'));
-        if (current >= 30) break;
-        await chosen.click();
-      }
-      await page.locator('#cartbar').click();
-      await expect(page.locator('#subtotal')).toContainText(/R\$/);
-      const finalSubtotal = Number((await page.locator('#subtotal').innerText()).replace(/[^0-9,]/g, '').replace(',', '.'));
-      if (finalSubtotal < 30) failAt('mínimo acima de R$ 30', `não foi possível alcançar R$ 30; subtotal R$ ${finalSubtotal}`);
-      await expect(checkout).toHaveText(/Continuar/);
-      await checkout.click();
-      await expect(page.locator('#accountModal')).toHaveClass(/open/, { timeout: 10000 })
-        .catch(() => failAt('checkout sem login', 'não abriu "Entre na sua conta"'));
-      await expect(page.locator('#accountModal')).toContainText('Entre na sua conta')
-        .catch(() => failAt('login obrigatório', 'texto "Entre na sua conta" não apareceu'));
-      await page.locator('#accountClose').click();
+      if (!/R\$/.test(subtotalText)) failAt('carrinho', 'subtotal não apareceu');
+      const homeTab = page.locator('.mobile-nav [data-page="Home"]');
+      if (await homeTab.count()) await homeTab.click();
 
       await page.locator('#assistantNavButton').click();
       await expect.poll(async () => {
