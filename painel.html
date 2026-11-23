@@ -2835,26 +2835,31 @@ if(root){
  const db=window.__feiraPanelDb;
  const $=id=>document.getElementById(id);
  const root=$('storeBannersManager'); if(!db||!root)return;
- const types=['products','category','product','whatsapp','assistant','request_product','maps'];
+ const types=['products','category','product','kit','whatsapp','assistant','request_product','maps'];
  const themes=['green','yellow','orange','red'];
  const audiences=['all','new_customers','returning'];
- let banners=[],products=[],editingId=null,bannerImageUrl=null,bannerOriginalImageUrl=null,bannerImageTouched=false,bannerImagePending=null,bannerImagePreviewUrl=null;
+ let banners=[],products=[],kits=[],editingId=null,bannerImageUrl=null,bannerOriginalImageUrl=null,bannerImageTouched=false,bannerImagePending=null,bannerImagePreviewUrl=null;
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const localInput=v=>{if(!v)return '';const d=new Date(v);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);};
  const toIso=v=>v?new Date(v+'-04:00').toISOString():null;
  const setMessage=(v,err=false)=>{$('storeBannerMessage').textContent=v;$('storeBannerMessage').style.color=err?'#b3261e':'';};
  const preview=(row,host)=>{const el=document.createElement('div');el.className='store-banner-preview';el.dataset.theme=row.theme||'green';if(row.image_url||bannerImagePreviewUrl){const img=document.createElement('img');img.src=bannerImagePreviewUrl||row.image_url;img.width=1200;img.height=400;img.alt='Imagem do banner';el.append(img);}const title=document.createElement('strong');title.textContent=row.title||'Seu título aparecerá aqui';const sub=document.createElement('p');sub.textContent=row.subtitle||'Seu subtítulo aparecerá aqui';const btn=document.createElement('span');btn.textContent=row.button_text||'Texto do botão';el.append(title,sub,btn);host.replaceChildren(el);};
- function currentDraft(){return {title:$('storeBannerTitle').value,subtitle:$('storeBannerSubtitle').value,button_text:$('storeBannerButtonText').value,action_type:$('storeBannerActionType').value,action_value:$('storeBannerActionValue').value||null,theme:$('storeBannerTheme').value,audience:$('storeBannerAudience').value,starts_at:toIso($('storeBannerStartsAt').value),ends_at:toIso($('storeBannerEndsAt').value),rules_text:$('storeBannerRulesText').value||null,is_active:$('storeBannerActive').checked,sort_order:Number($('storeBannerSortOrder').value)||0,promo_code:$('storeBannerPromoCode').value.trim()||null,image_url:bannerImageUrl};}
+ const WEEKDAY_LABELS={0:'DOM',1:'SEG',2:'TER',3:'QUA',4:'QUI',5:'SEX',6:'SÁB'};
+ function selectedBannerWeekdays(){return [...document.querySelectorAll('[data-store-banner-weekday]:checked')].map(input=>Number(input.value));}
+ function syncBannerScheduleFields(){$('storeBannerScheduleFields').hidden=!$('storeBannerScheduleEnabled').checked;}
+ function bannerScheduleSummary(row){if(row.weekdays==null&&row.start_time==null&&row.end_time==null)return '';const days=(Array.isArray(row.weekdays)?row.weekdays:[]).map(day=>WEEKDAY_LABELS[Number(day)]||'?').join('/');const start=String(row.start_time||'').slice(0,5),end=String(row.end_time||'').slice(0,5);return ' · '+days+' '+start+'–'+end+' Manaus';}
+ function currentDraft(){const scheduled=$('storeBannerScheduleEnabled').checked;return {title:$('storeBannerTitle').value,subtitle:$('storeBannerSubtitle').value,button_text:$('storeBannerButtonText').value,action_type:$('storeBannerActionType').value,action_value:$('storeBannerActionValue').value||null,theme:$('storeBannerTheme').value,audience:$('storeBannerAudience').value,weekdays:scheduled?selectedBannerWeekdays():null,start_time:scheduled?$('storeBannerStartTime').value:null,end_time:scheduled?$('storeBannerEndTime').value:null,starts_at:toIso($('storeBannerStartsAt').value),ends_at:toIso($('storeBannerEndsAt').value),rules_text:$('storeBannerRulesText').value||null,is_active:$('storeBannerActive').checked,sort_order:Number($('storeBannerSortOrder').value)||0,promo_code:$('storeBannerPromoCode').value.trim()||null,image_url:bannerImageUrl};}
  function updatePreview(){preview(currentDraft(),$('storeBannerPreview'));}
  function refreshActionValue(){
   const type=$('storeBannerActionType').value,wrap=$('storeBannerActionValueLabel');
-  const relevant=type==='category'||type==='product'||type==='whatsapp';wrap.hidden=!relevant;
+  const relevant=type==='category'||type==='product'||type==='kit'||type==='whatsapp';wrap.hidden=!relevant;
   let field=$('storeBannerActionValue');const wantInput=type==='whatsapp';
   if((wantInput&&field.tagName!=='INPUT')||(!wantInput&&field.tagName!=='SELECT')){const next=document.createElement(wantInput?'input':'select');next.id='storeBannerActionValue';field.replaceWith(next);field=next;}
   if(wantInput){field.placeholder='Ex.: 5592999999999 ou https://wa.me/...';field.maxLength=200;return;}
   field.replaceChildren(new Option(type==='category'?'Selecione uma categoria':'Selecione um produto',''));
   if(type==='category'){[...new Set(products.map(p=>p.category).filter(Boolean))].sort().forEach(v=>field.add(new Option(v,v)));}
   if(type==='product'){products.slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).forEach(p=>field.add(new Option(p.name+(p.available?'':' · indisponível'),p.id)));}
+  if(type==='kit'){kits.slice().sort((a,b)=>Number(a.weekday)-Number(b.weekday)).forEach(kit=>field.add(new Option(kit.name+(kit.is_active?'':' · desligado'),kit.id)));}
  }
  function fillForm(row){
   if(bannerImagePreviewUrl){URL.revokeObjectURL(bannerImagePreviewUrl);bannerImagePreviewUrl=null;}
@@ -2867,6 +2872,10 @@ if(root){
   $('storeBannerActionType').value=row?.action_type||'products';refreshActionValue();
   if(row?.action_value&&$('storeBannerActionValue'))$('storeBannerActionValue').value=row.action_value;
   $('storeBannerTheme').value=row?.theme||'green';$('storeBannerAudience').value=row?.audience||'all';
+  const scheduled=row?.weekdays!=null||row?.start_time!=null||row?.end_time!=null;
+  $('storeBannerScheduleEnabled').checked=scheduled;
+  document.querySelectorAll('[data-store-banner-weekday]').forEach(input=>{input.checked=scheduled&&Array.isArray(row?.weekdays)&&row.weekdays.some(day=>Number(day)===Number(input.value));});
+  $('storeBannerStartTime').value=String(row?.start_time||'06:00').slice(0,5);$('storeBannerEndTime').value=String(row?.end_time||'13:00').slice(0,5);syncBannerScheduleFields();
   $('storeBannerStartsAt').value=localInput(row?.starts_at||new Date().toISOString());$('storeBannerEndsAt').value=localInput(row?.ends_at);
   $('storeBannerRulesText').value=row?.rules_text||'';$('storeBannerActive').checked=row?.is_active!==false;
   $('storeBannerSortOrder').value=String(row?.sort_order??(banners.length+1)*10);$('storeBannerPromoCode').value=row?.promo_code||'';
@@ -2878,7 +2887,7 @@ if(root){
   banners.forEach((row,index)=>{
    const item=document.createElement('article');item.className='store-banner-row';
    const copy=document.createElement('div');const title=document.createElement('strong');title.textContent=row.title;
-   const meta=document.createElement('small');meta.textContent=(row.is_active?'Ligado':'Desligado')+' · '+row.audience+' · '+row.action_type+(row.promo_code?' · Promo: '+row.promo_code:'');
+   const meta=document.createElement('small');meta.textContent=(row.is_active?'Ligado':'Desligado')+' · '+row.audience+' · '+row.action_type+bannerScheduleSummary(row)+(row.promo_code?' · Promo: '+row.promo_code:'');
    const previewHost=document.createElement('div');preview(row,previewHost);copy.append(title,meta,previewHost);
    const actions=document.createElement('div');actions.className='store-banner-actions';
    const make=(label,fn,cls='secondary')=>{const b=document.createElement('button');b.type='button';b.className=cls;b.textContent=label;b.addEventListener('click',fn);actions.append(b);};
@@ -2909,6 +2918,7 @@ if(root){
   if(second.error){setMessage('A primeira posição foi salva; atualize a lista e tente novamente.',true);await load();return;}
   await load();
  }
+ $('storeBannerScheduleEnabled').addEventListener('change',syncBannerScheduleFields);
  $('storeBannerNew').addEventListener('click',()=>fillForm(null));
  $('storeBannerCancel').addEventListener('click',()=>{if(bannerImagePreviewUrl)URL.revokeObjectURL(bannerImagePreviewUrl);bannerImagePreviewUrl=null;bannerImagePending=null;$('storeBannerForm').classList.add('hidden');editingId=null;});
  async function prepareBannerImage(file){
@@ -2947,6 +2957,7 @@ if(root){
   if(!types.includes(row.action_type)||!themes.includes(row.theme)||!audiences.includes(row.audience)){setMessage('Confira ação, tema e público.',true);return;}
   if(!row.title.trim()||!row.button_text.trim()||!row.starts_at){setMessage('Preencha título, botão e início.',true);return;}
   if(row.ends_at&&new Date(row.ends_at)<=new Date(row.starts_at)){setMessage('A data final deve ser posterior ao início.',true);return;}
+  if(row.weekdays!==null&&(!row.weekdays.length||!row.start_time||!row.end_time||row.start_time>=row.end_time)){setMessage('Escolha ao menos um dia e um intervalo válido de horário em Manaus.',true);return;}
   const button=$('storeBannerSave');button.disabled=true;let uploadedUrl=null;
   try{
    if(bannerImagePending){uploadedUrl=await uploadBannerImage(bannerImagePending);row.image_url=uploadedUrl;}
@@ -2958,9 +2969,17 @@ if(root){
   finally{button.disabled=false;}
  });
  window.__storeBannerConfirm=async message=>typeof window.appConfirm==='function'?window.appConfirm(message,{title:'Apagar banner?',confirmText:'Apagar',cancelText:'Cancelar',danger:true}):false;
+ async function loadReferenceData(){
+  const [productResult,kitResult]=await Promise.all([
+   db.from('products').select('id,name,category,available').order('name'),
+   db.from('daily_recipe_kits').select('id,name,weekday,is_active').order('weekday')
+  ]);
+  if(!productResult.error)products=productResult.data||[];
+  if(!kitResult.error)kits=kitResult.data||[];
+ }
  const {data:sessionData}=await db.auth.getSession();
- if(sessionData?.session){const {data,error}=await db.from('products').select('id,name,category,available').order('name');if(!error)products=data||[];await load();}
- db.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){banners=[];render();}else if(session&&['SIGNED_IN','INITIAL_SESSION','TOKEN_REFRESHED'].includes(event)){void db.from('products').select('id,name,category,available').order('name').then(r=>{if(!r.error)products=r.data||[];return load();});}});
+ if(sessionData?.session){await loadReferenceData();await load();}
+ db.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){banners=[];render();}else if(session&&['SIGNED_IN','INITIAL_SESSION','TOKEN_REFRESHED'].includes(event)){void loadReferenceData().then(load);}});
 })();
 </script>
 
