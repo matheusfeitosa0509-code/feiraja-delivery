@@ -10,6 +10,7 @@ const normalizeText = value => String(value || '').replace(/\u00a0/g, ' ');
   const helper = fs.readFileSync(path.join(root, 'loja-delivery-ui.js'), 'utf8').replace(/\bexport\s+/g, '');
   const calendar = fs.readFileSync(path.join(root, 'supabase/functions/_shared/commercial-calendar.js'), 'utf8').replace(/\bexport\s+/g, '');
   const schedule = fs.readFileSync(path.join(root, 'supabase/functions/_shared/store-schedule.js'), 'utf8').replace(/^import .*commercial-calendar\.js.*;\s*/m, '').replace(/\bexport\s+/g, '');
+  const bannerSchedule = fs.readFileSync(path.join(root, 'supabase/functions/_shared/store-banner-schedule.js'), 'utf8').replace(/\bexport\s+/g, '');
   assert.equal(/\b(?:window\.)?(?:alert|confirm)\s*\(/.test(source), false, 'a loja não deve usar alert/confirm nativos');
   assert.equal(source.includes('Tudo da feira, retire ou receba em casa'), true);
   assert.equal(source.includes('cart-qty-control'), true);
@@ -51,10 +52,11 @@ const normalizeText = value => String(value || '').replace(/\u00a0/g, ' ');
     code = code.replace(/^\s*import\s*\{[^}]+\}\s*from\s*['"]\.\/loja-delivery-ui\.js[^'"]*['"];\s*/m, '');
     code = code.replace(/^\s*import\s*\{\s*getStoreSchedule\s*\}\s*from\s*['"]\.\/supabase\/functions\/_shared\/store-schedule\.js[^'"]*['"];\s*/m, '');
     code = code.replace(/^\s*import\s*\{\s*getCommercialSchedule\s*\}\s*from\s*['"]\.\/supabase\/functions\/_shared\/commercial-calendar\.js[^'"]*['"];\s*/m, '');
+    code = code.replace(/^\s*import\s*\{\s*isStoreBannerScheduleActive\s*\}\s*from\s*['"]\.\/supabase\/functions\/_shared\/store-banner-schedule\.js[^'"]*['"];\s*/m, '');
     code = code.replace(/const supabase=createClient\([\s\S]*?\);\s*/, 'const supabase=window.__testSupabase;\n');
     return '<script>' + code + '</script>';
   });
-  html = html.replace('<body', bootstrap + '<script>' + calendar + '</script><script>' + schedule + '</script><script>' + helper + '</script><body');
+  html = html.replace('<body', bootstrap + '<script>' + calendar + '</script><script>' + schedule + '</script><script>' + helper + '</script><script>' + bannerSchedule + '</script><body');
 
   const browser = await chromium.launch({ headless: true });
   try {
