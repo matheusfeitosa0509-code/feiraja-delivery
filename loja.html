@@ -2085,7 +2085,7 @@ function syncProductCardRowSlots(root=document){
  }
 }
 function kitComponentsMarkup(p){if(!p?.is_kit||!Array.isArray(p.kit_items))return '';const items=p.kit_items.map(item=>'<li>'+esc(Number(item.quantity).toLocaleString('pt-BR',{maximumFractionDigits:3}))+' × '+esc(item.name)+'</li>').join('');return '<p class="kit-description">'+esc(p.description||'')+'</p><details class="kit-components"><summary>Ver itens do kit ('+p.kit_items.length+')</summary><ul>'+items+'</ul></details>';}
-function productCardMarkup(p,priority=false,eager=false){return '<article class="product '+(p.is_kit?'product-kit':'')+'" data-product-id="'+esc(p.id)+'">'+productCardImageMarkup(p,priority,eager)+'<div class="pbody"><h3>'+esc(p.name)+'</h3>'+kitComponentsMarkup(p)+priceBlock(p)+productCardControlsMarkup(p)+productWeightNoteMarkup(p)+'</div></article>';}
+function productCardMarkup(p,priority=false,eager=false){return '<article class="product '+(p.is_kit?'product-kit':'')+'" data-product-id="'+esc(p.id)+'">'+productCardImageMarkup(p,priority,eager)+'<div class="pbody"><h3>'+esc(p.name)+'</h3>'+(p.is_kit?kitComponentsMarkup(p):'')+priceBlock(p)+productCardControlsMarkup(p)+productWeightNoteMarkup(p)+'</div></article>';}
 function updateProductCard(id){const p=products.find(x=>String(x.id)===String(id));if(!p)return;document.querySelectorAll('[data-product-id]').forEach(card=>{if(String(card.dataset.productId)!==String(id))return;const qty=card.querySelector('.product-qty');if(qty)qty.innerHTML=productQtyMarkup(p);const valueRow=card.querySelector('.value-sale-row');if(valueRow)valueRow.innerHTML=valueSaleEditorMarkup(p);});}
 function updateProductCardPrice(p){
  const markup=document.createElement('div');markup.innerHTML=priceBlock(p);
