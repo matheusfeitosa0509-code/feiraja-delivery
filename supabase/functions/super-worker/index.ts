@@ -414,7 +414,7 @@ Deno.serve(async (req: Request) => {
           image: kit.image_url || kitComponents.find((component: any) => component.image)?.image || null,
           price: Number(kit.fixed_price), old_price: null, available: true, resale_enabled: false,
           delivery_unit_weight_kg: Math.max(0.001, Math.round(weightKg * 1000) / 1000), delivery_bulky: bulky,
-          is_kit: true, kit_items: kitComponents,
+          is_kit: true, product_type: "combo", kit_items: kitComponents,
         };
       });
     }
@@ -519,7 +519,7 @@ Deno.serve(async (req: Request) => {
         items.push({
           id: p.id, kit_id: p.kit_id, name: p.name, description: p.description, category: "Kits do dia 🧺", image: p.image,
           price: normalPriceCents / 100, qty, sale_mode: "kit", line_total_cents: lineTotalCents,
-          is_kit: true, kit_items: p.kit_items,
+          is_kit: true, product_type: "combo", kit_items: p.kit_items,
         });
         continue;
       }

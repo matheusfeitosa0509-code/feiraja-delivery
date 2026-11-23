@@ -1944,7 +1944,7 @@ async function loadDailyRecipeKits(baseProducts){
    return {
     id:'kit:'+String(kit.id),kit_id:String(kit.id),name:String(kit.name),description:String(kit.description||''),
     category:'Kits do dia 🧺',price:Number(kit.fixed_price),old_price:null,image:kit.image_url||components.find(item=>item.image)?.image||null,
-    available:true,resale_enabled:false,resale_price:null,is_kit:true,kit_items:components,
+    available:true,resale_enabled:false,resale_price:null,is_kit:true,product_type:'combo',kit_items:components,
     delivery_unit_weight_kg:Math.max(.001,Math.round(deliveryWeight*1000)/1000),delivery_bulky:bulky
    };
   }).filter(Boolean);
