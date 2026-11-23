@@ -9,7 +9,7 @@ const migration = fs.readFileSync(path.join(root, 'supabase/migrations/202611232
 
 assert.match(store, /isStoreBannerScheduleActive/);
 assert.match(store, /weekdays,start_time,end_time/);
-assert.match(store, /if\(!isStoreBannerScheduleActive\(banner\)\)return false/);
+assert.match(store, /storeBannerScheduleRows\.filter\(banner=>isStoreBannerScheduleActive\(banner\)\)/);
 assert.match(store, /case 'kit'/);
 assert.match(store, /dataset\.productId==='kit:'\+value/);
 assert.match(helper, /timeZone: "America\/Manaus"/);
