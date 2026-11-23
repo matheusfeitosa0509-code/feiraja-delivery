@@ -36,7 +36,7 @@ test("server enforces kit window, component stock and fixed kit pricing",()=>{
 test("storefront hides kits outside the Manaus window, prioritizes the kit category and removes stale cart kits",()=>{
  const store=fs.readFileSync("loja.html","utf8");
  assert.match(store,/hour<6\|\|hour>=13/);
- assert.match(store,/category:'Kits do dia'/);
+ assert.match(store,/category:'Kits do dia 🧺'/);
  assert.match(store,/getStorefrontCategories\(\)/);
  assert.match(store,/cartKitRemovedWarning/);
  assert.match(store,/startDailyKitWindowMonitor/);
