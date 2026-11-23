@@ -7,11 +7,12 @@ const assert = require('node:assert/strict');
   const failures = [];
   const page = await browser.newPage({ viewport: { width: 412, height: 915 } });
   const errors = [];
+  const bannerResponses = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
   page.on('response', response => {
     if (response.status() >= 500) errors.push('HTTP ' + response.status() + ' ' + response.url());
-    if (response.url().includes('/rest/v1/store_banners')) errors.push('store_banners HTTP ' + response.status());
+    if (response.url().includes('/rest/v1/store_banners')) bannerResponses.push('HTTP ' + response.status());
   });
   const expectOpen = async (selector, label) => {
     try { await page.waitForFunction(s => { const el=document.querySelector(s); return !!el && (el.classList.contains('open') || el.getAttribute('aria-hidden')==='false'); }, selector, { timeout: 5000 }); }
@@ -43,7 +44,7 @@ const assert = require('node:assert/strict');
     assert.equal(speechResponse.status(), 200, 'assistant-speech.js não foi publicado no Pages');
 
     await page.waitForFunction(() => document.querySelectorAll('#storeBannersTrack .store-banner-slide').length > 0, null, { timeout: 15000 }).catch(() => {});
-    console.log('POST_DEPLOY_BANNER_DEBUG', JSON.stringify({ slideCount: await page.locator('#storeBannersTrack .store-banner-slide').count(), trackText: await page.locator('#storeBannersTrack').innerText().catch(() => ''), errors }));
+    console.log('POST_DEPLOY_BANNER_DEBUG', JSON.stringify({ slideCount: await page.locator('#storeBannersTrack .store-banner-slide').count(), trackText: await page.locator('#storeBannersTrack').innerText().catch(() => ''), bannerResponses, errors }));
     await page.locator('#storeBannersTrack .store-banner-slide').filter({ hasText: 'Fale com o Assistente' }).locator('.store-banner-cta').click();
     await expectOpen('#accountModal', 'Abrir assistente pelo banner (visitante sem login)');
     await closeAccount();
