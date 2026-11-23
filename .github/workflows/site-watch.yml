@@ -90,7 +90,6 @@ jobs:
           '
       - name: PageSpeed Insights — baseline antes do banner com imagem
         if: github.event_name == 'pull_request' && github.event.pull_request.number == 400
-        continue-on-error: true
         run: |
           node <<'NODE'
           const base = 'https://www.feiraondelivery.com.br/loja.html';
