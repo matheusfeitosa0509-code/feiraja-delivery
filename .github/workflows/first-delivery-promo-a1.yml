@@ -7,6 +7,7 @@ on:
       - 'supabase/migrations/20261122145825_first_delivery_promo_ui_a2.sql'
       - 'supabase/migrations/20261122210000_first_delivery_promo_preview_a3.sql'
       - 'supabase/tests/first_delivery_promo_*'
+      - 'supabase/tests/first-delivery-promo-preview.test.mjs'
       - 'supabase/functions/super-worker/index.ts'
       - '.github/workflows/first-delivery-promo-a1.yml'
   push:
@@ -33,3 +34,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Testes transacionais e concorrência
         run: bash supabase/tests/first_delivery_promo_test.sh
+      - name: Teste de apresentação da prévia no checkout
+        run: node supabase/tests/first-delivery-promo-preview.test.mjs
