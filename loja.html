@@ -2287,7 +2287,7 @@ async function refreshFirstDeliveryPromoPreview(){
   if(error)throw error;
   if(sequence!==firstDeliveryPromoPreviewSequence||key!==firstDeliveryPromoPreviewKey)return;
   firstDeliveryPromoPreview=data||null;
-  updateCheckoutSummary();
+  updateCheckoutTotals();
  }catch(error){
   if(sequence!==firstDeliveryPromoPreviewSequence)return;
   firstDeliveryPromoPreview=null;
@@ -2345,8 +2345,10 @@ function updateCheckoutTotals(minimumMessage=''){
  const subtotal=totals().sub,delivery=$('#delivery')?.value||'pickup_store';
  const quoteValid=delivery==='delivery'&&isValidDeliveryQuote(deliveryQuote);if(delivery==='delivery'&&deliveryQuote&&!quoteValid)deliveryQuote=null;
  let grandTotal=delivery==='delivery'&&!quoteValid?subtotal:checkoutGrandTotal(subtotal,delivery,deliveryQuote);
- const loyaltyDiscount=quoteValid?checkoutLoyaltyDiscount(Number(deliveryQuote.fee),subtotal):0;
- grandTotal=Math.max(subtotal,grandTotal-loyaltyDiscount);
+ const firstPromoDiscount=quoteValid&&firstDeliveryPromoPreview?.eligible===true?Math.max(0,Number(firstDeliveryPromoPreview.discount_amount)||0):0;
+ const loyaltyDiscount=quoteValid&&firstPromoDiscount<=0?checkoutLoyaltyDiscount(Number(deliveryQuote.fee),subtotal):0;
+ const appliedDiscount=Math.min(Number(deliveryQuote?.fee)||0,firstPromoDiscount>0?firstPromoDiscount:loyaltyDiscount);
+ grandTotal=Math.max(subtotal,grandTotal-appliedDiscount);
  $('#modalTotal').textContent=money(grandTotal);
  const payment=$('#payment')?.value||'pix';
  $('#submitOrder').textContent=delivery==='delivery'&&!quoteValid?'Aguardando cálculo da entrega':(payment==='pix'?'Pagar com Pix · ':payment==='pix_test'?'Confirmar Pix de teste · ':'Confirmar pedido · ')+money(grandTotal);
