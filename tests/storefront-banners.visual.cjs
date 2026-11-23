@@ -58,6 +58,8 @@ const { chromium } = require("playwright");
       const desktopImagePlacement = await banners.first().evaluate(el => { const img=el.querySelector(".store-banner-image").getBoundingClientRect(); const copy=el.querySelector(".store-banner-copy").getBoundingClientRect(); return {imageLeft:img.left,copyRight:copy.right}; });
       if (width >= 700 && desktopImagePlacement.imageLeft <= desktopImagePlacement.copyRight - 12) throw new Error("No desktop a imagem deve ficar à direita do texto.");
       await page.screenshot({ path: path.join(process.cwd(), "artifacts", "store-banners-" + width + ".png"), fullPage: false });
+      await page.evaluate(async () => { window.__testBannerRows=window.__testBannerRows.map(({image_url,...row})=>row); await window.loadStoreBanners(); });
+      if (await page.locator("#storeBannersTrack .store-banner-slide").count() !== 4 || await page.locator("#storeBannersTrack .store-banner-image").count() !== 0) throw new Error("Os quatro banners sem image_url devem continuar como banners somente texto.");
       if (!(await banners.nth(0).evaluate(el=>el.classList.contains("has-image"))) || await banners.nth(2).locator(".store-banner-image").count()) throw new Error("Banner com imagem e banner só texto não foram preservados.");
       for (const [index, theme] of ["green","yellow","orange","red"].entries()) { if (!(await banners.nth(index).evaluate((el, expectedTheme) => el.classList.contains("theme-"+expectedTheme), theme))) throw new Error("Tema "+theme+" não aplicado."); }
       if (await page.locator("#storeBannersDots button").count() !== 4) throw new Error("Carrossel com múltiplos banners deve exibir bolinhas.");
