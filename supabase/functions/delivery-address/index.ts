@@ -143,7 +143,7 @@ Deno.serve(async (req: Request) => {
 
     if (action === "geocode") {
       const address = String(body.address || "").trim();
-      if (address.length < 12 || address.length > 400 || !/\\d/.test(address)) {
+      if (address.length < 12 || address.length > 400 || !/\d/.test(address)) {
         return json({ error: "Informe rua e número para localizar o endereço.", code: "ADDRESS_NOT_FOUND" }, 400);
       }
       const coordinates = await geocodeManausAddress(address, Deno.env.get("GOOGLE_GEOCODING_API_KEY") || apiKey);
