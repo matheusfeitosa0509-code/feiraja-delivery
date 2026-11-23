@@ -1,0 +1,7 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+const migration=fs.readFileSync("supabase/migrations/20261123190000_daily_category_discounts.sql","utf8");
+test("RLS exposes only active rules publicly and grants admin writes",()=>{assert.match(migration,/ENABLE ROW LEVEL SECURITY/i);assert.match(migration,/daily_category_discounts_public_active_read[\s\S]*?USING \(is_active = true\)/i);assert.match(migration,/public\.is_current_user_admin\(\)/);assert.match(migration,/GRANT INSERT, UPDATE, DELETE ON TABLE public\.daily_category_discounts TO authenticated/i);});
+test("the five requested rules are seeded inactive; Thursday is absent",()=>{for(const r of [/\(1,'Polpas e Congelados',10,false/,/\(2,'Verduras e legumes',10,false/,/\(3,'Farinhas e derivados',10,false/,/\(5,'Frutas',10,false/,/\(6,'Pescados e frutos do mar',10,false/])assert.match(migration,r);assert.doesNotMatch(migration,/\(4,/);});
+test("the first-delivery promotion threshold continues to use the post-pricing order subtotal",()=>{const promo=fs.readFileSync("supabase/migrations/20261121140000_first_delivery_promo_server_a1.sql","utf8");assert.match(promo,/NEW\.subtotal\s*<\s*v_settings\.min_subtotal/);const worker=fs.readFileSync("supabase/functions/super-worker/index.ts","utf8");assert.match(worker,/const subtotal = subtotalCents \/ 100;/);assert.ok(worker.indexOf("const subtotal = subtotalCents / 100;")<worker.indexOf("const orderPayload ="));});

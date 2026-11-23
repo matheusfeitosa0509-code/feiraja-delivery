@@ -412,6 +412,12 @@ button.danger,.danger{background:#fff0ed;color:#a02d20}
  <button type="button" id="saveDeliveryLoyaltySettings">Salvar cartão fidelidade</button>
  <p id="deliveryLoyaltyMessage" class="muted" role="status" aria-live="polite"></p>
 </section>
+<section class="card" id="dailyCategoryDiscountsManager" aria-labelledby="dailyCategoryDiscountsTitle">
+ <h2 id="dailyCategoryDiscountsTitle">🏷️ Desconto do dia por categoria</h2>
+ <p class="muted">As regras só valem das 6h às 13h em Manaus. Todas começam desligadas. O checkout recalcula o preço no servidor.</p>
+ <div id="dailyCategoryDiscountList"><p class="muted">Carregando regras…</p></div>
+ <p id="dailyCategoryDiscountMessage" class="muted" role="status" aria-live="polite"></p>
+</section>
 <section class="card" id="storeBannersManager" aria-labelledby="storeBannersTitle">
  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 id="storeBannersTitle">🎨 Banners da loja</h2><button type="button" id="storeBannerNew">+ Novo banner</button></div>
  <p class="muted">Gerencie os destaques exibidos na loja. Banners promocionais só ficam públicos quando a promoção correspondente está ligada.</p>
@@ -2935,6 +2941,64 @@ if(root){
  const {data:sessionData}=await db.auth.getSession();
  if(sessionData?.session){const {data,error}=await db.from('products').select('id,name,category,available').order('name');if(!error)products=data||[];await load();}
  db.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){banners=[];render();}else if(session&&['SIGNED_IN','INITIAL_SESSION','TOKEN_REFRESHED'].includes(event)){void db.from('products').select('id,name,category,available').order('name').then(r=>{if(!r.error)products=r.data||[];return load();});}});
+})();
+</script>
+
+<script type="module">
+(() => {
+ const db=window.__feiraPanelDb,root=document.getElementById('dailyCategoryDiscountsManager');
+ if(!db||!root)return;
+ const $=id=>document.getElementById(id);
+ const definitions=[
+  {weekday:1,category:'Polpas e Congelados',label:'SEG · Polpas e Congelados'},
+  {weekday:2,category:'Verduras e legumes',label:'TER · Verduras e legumes'},
+  {weekday:3,category:'Farinhas e derivados',label:'QUA · Farinhas e derivados'},
+  {weekday:5,category:'Frutas',label:'SEX · Frutas'},
+  {weekday:6,category:'Pescados e frutos do mar',label:'SÁB · Pescados e frutos do mar'}
+ ];
+ let rules=[],products=[];
+ function message(value,error=false){const el=$('dailyCategoryDiscountMessage');el.textContent=value;el.style.color=error?'#a52828':'';}
+ function render(){
+  const host=$('dailyCategoryDiscountList');host.replaceChildren();
+  for(const def of definitions){
+   const rule=rules.find(r=>Number(r.weekday)===def.weekday&&r.category===def.category)||{...def,percent:10,is_active:false,excluded_product_ids:[]};
+   const card=document.createElement('article');card.className='product-row';card.style.display='block';card.style.marginBottom='12px';
+   const head=document.createElement('div');head.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap';
+   const title=document.createElement('strong');title.textContent=def.label;
+   const activeLabel=document.createElement('label');activeLabel.style.cssText='display:flex;align-items:center;gap:7px';
+   const active=document.createElement('input');active.type='checkbox';active.checked=rule.is_active===true;active.setAttribute('aria-label','Ativar '+def.label);
+   activeLabel.append(active,document.createTextNode('Regra ligada'));head.append(title,activeLabel);
+   const percentLabel=document.createElement('label');percentLabel.textContent='Desconto (%)';percentLabel.style.display='block';percentLabel.style.marginTop='10px';
+   const percent=document.createElement('input');percent.type='number';percent.min='0.01';percent.max='90';percent.step='0.01';percent.value=String(rule.percent??10);percent.style.maxWidth='140px';percentLabel.append(percent);
+   const details=document.createElement('details');details.style.marginTop='10px';
+   const summary=document.createElement('summary');summary.textContent='Excluir produtos ('+(Array.isArray(rule.excluded_product_ids)?rule.excluded_product_ids.length:0)+')';details.append(summary);
+   const list=document.createElement('div');list.style.cssText='display:grid;gap:6px;max-height:220px;overflow:auto;padding:10px 4px';
+   for(const product of products.filter(p=>p.category===def.category)){
+    const label=document.createElement('label');label.style.cssText='display:flex;align-items:center;gap:8px;font-weight:400';
+    const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.value=product.id;checkbox.checked=Array.isArray(rule.excluded_product_ids)&&rule.excluded_product_ids.map(String).includes(String(product.id));
+    label.append(checkbox,document.createTextNode(product.name));list.append(label);
+   }
+   details.append(list);
+   const save=document.createElement('button');save.type='button';save.textContent='Salvar regra';save.style.marginTop='10px';
+   save.addEventListener('click',async()=>{
+    const value=Number(percent.value);
+    if(!Number.isFinite(value)||value<=0||value>90){message('Informe um percentual maior que 0 e até 90.',true);return;}
+    save.disabled=true;
+    const excluded=[...list.querySelectorAll('input[type=checkbox]:checked')].map(x=>x.value);
+    const {error}=await db.from('daily_category_discounts').upsert({weekday:def.weekday,category:def.category,percent:value,is_active:active.checked,excluded_product_ids:excluded,updated_at:new Date().toISOString()},{onConflict:'weekday,category'});
+    save.disabled=false;
+    if(error){message('Não foi possível salvar a regra. Confira a conexão e o acesso de administrador.',true);return;}
+    await load();message(def.label+' salvo. '+(active.checked?'Regra ligada.':'Regra desligada.'));
+   });
+   card.append(head,percentLabel,details,save);host.append(card);
+  }
+ }
+ async function load(){
+  const [ruleResult,productResult]=await Promise.all([db.from('daily_category_discounts').select('*').order('weekday'),db.from('products').select('id,name,category').order('name')]);
+  if(ruleResult.error||productResult.error){message('Não foi possível carregar regras ou produtos. Verifique o acesso administrativo.',true);return;}
+  rules=ruleResult.data||[];products=productResult.data||[];render();
+ }
+ void load();
 })();
 </script>
 
