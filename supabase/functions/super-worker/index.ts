@@ -8,6 +8,7 @@ import { formatDropoff, normalizeConfirmedDeliveryCoordinates, hasMultipleDelive
 import { readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
 import { calculateServerDelivery, orderTotals, validateCheckoutDelivery } from "./delivery-order.ts";
 import { getCommercialSchedule } from "../_shared/commercial-calendar.js";
+import { getActiveDailyCategoryDiscount, calculateDailyDiscountedPriceCents, calculateBestUnitPriceCents } from "../_shared/daily-category-discounts.js";
 
 function isValidCpf(value: string) { const cpf = String(value || "").replace(/\D/g, ""); if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false; const calc = (base: string, factor: number) => { let sum = 0; for (const digit of base) sum += Number(digit) * factor--; const mod = (sum * 10) % 11; return mod === 10 ? 0 : mod; }; return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10]); }
 
@@ -204,6 +205,22 @@ Deno.serve(async (req: Request) => {
     const MIN_ORDER_SUBTOTAL_CENTS = 3000;
     const paymentMethodError = checkoutPaymentMethodError(paymentMethod);
     if (paymentMethodError) return json({ error: paymentMethodError }, 400);
+    // A mesma chave de idempotência sempre recupera a cobrança Pix já criada,
+    // sem recalcular preços ou alterar o total por mudança de horário/regra.
+    if (priorOrder && paymentMethod === "pix") {
+      if (String(priorOrder.status || "").toLowerCase() === "cancelada") {
+        return json({ error: "Este pedido desta tentativa já foi cancelado. Confira Meus pedidos antes de iniciar outro checkout." }, 409);
+      }
+      if (priorOrder.pix_qr_code) {
+        return json({
+          order: { id: priorOrder.id, status: priorOrder.status, total: priorOrder.total, delivery_fee: priorOrder.delivery_fee, delivery_fee_original: priorOrder.delivery_fee_original, delivery_discount: priorOrder.delivery_discount, promo_code: priorOrder.promo_code, pickupCode: priorOrder.pickup_code },
+          paymentId: priorOrder.payment_id,
+          qrCode: priorOrder.pix_qr_code,
+          qrCodeBase64: priorOrder.pix_qr_code_base64,
+          paymentStatus: String(priorOrder.status || "").toLowerCase() === "pagamento confirmado" ? "CONFIRMED" : "PENDING",
+        });
+      }
+    }
     if (!isAsaasPixEnabled(paymentMethod, asaasEnabled)) {
       return json({ error: "Pagamento Pix está disponível somente pelo Asaas." }, 503);
     }
@@ -311,10 +328,16 @@ Deno.serve(async (req: Request) => {
     const amountCentsById = new Map<string, number>();
     const saleModeById = new Map<string, string>();
     const { data: products, error: productsError } = await db.from("products")
-      .select("id,name,price,category,image,available,resale_enabled,delivery_unit_weight_kg,delivery_bulky").in("id", ids);
+      .select("id,name,price,old_price,category,image,available,resale_enabled,delivery_unit_weight_kg,delivery_bulky").in("id", ids);
     if (productsError) throw productsError;
     if (!products || products.length !== ids.length) return json({ error: "Um ou mais produtos não existem mais. Atualize a feira e tente novamente." }, 409);
     if (products.some((p: any) => p.available !== true)) return json({ error: "Um dos produtos está indisponível. Atualize a feira e tente novamente." }, 409);
+
+    const { data: dailyDiscountRules, error: dailyDiscountRulesError } = await db.from("daily_category_discounts").select("weekday,category,percent,is_active,excluded_product_ids").eq("is_active", true);
+    if (dailyDiscountRulesError) {
+      console.error("super-worker", { code: "DAILY_DISCOUNT_RULES_LOOKUP_FAILED", stage: "validate_daily_discount" });
+      return json({ error: "Não foi possível confirmar os descontos da feira agora. Tente novamente." }, 503);
+    }
 
     // Revenda is priced from the private counter-price table, never from client payload or public cache.
     const { data: resaleBalconyPrices, error: resaleBalconyError } = await db.rpc("service_get_product_resale_prices", {
@@ -392,21 +415,21 @@ Deno.serve(async (req: Request) => {
         qty = normalQuantity;
       }
 
-      let effectivePriceCents = normalPriceCents;
+      const dailyDiscountPercent = getActiveDailyCategoryDiscount(dailyDiscountRules || [], p.category, p.id, new Date());
+      const dailyDiscountedPriceCents = dailyDiscountPercent
+        ? calculateDailyDiscountedPriceCents(normalPriceCents, p.old_price == null ? null : Math.round(Number(p.old_price) * 100), dailyDiscountPercent)
+        : normalPriceCents;
       const balconyPrice = resaleBalconyById.get(String(p.id));
       const resalePriceCents = balconyPrice == null ? NaN : Math.round(Number(balconyPrice) * 100);
-      const resaleIsValid = Number.isSafeInteger(resalePriceCents) &&
-        resalePriceCents > 0 && resalePriceCents < normalPriceCents;
-      if (pricingVersion === "resale-v1" && p.resale_enabled === true && qty >= 10 && resaleIsValid) {
-        effectivePriceCents = selectEffectiveUnitPriceCents(
-          normalPriceCents,
-          resalePriceCents,
-          true,
-          10,
-          qty,
-        );
-      } else if (pricingVersion === "resale-v1" && p.resale_enabled === true && balconyPrice != null && !resaleIsValid) {
-        // Keep normal sale price if counter price is equal to or above it; never fail checkout.
+      const resaleIsValid = Number.isSafeInteger(resalePriceCents) && resalePriceCents > 0 && resalePriceCents < normalPriceCents;
+      const resaleEligible = pricingVersion === "resale-v1" && p.resale_enabled === true && qty >= 10 && resaleIsValid;
+      const effectivePriceCents = calculateBestUnitPriceCents(
+        normalPriceCents,
+        p.old_price == null ? null : Math.round(Number(p.old_price) * 100),
+        dailyDiscountPercent,
+        resaleEligible ? resalePriceCents : null,
+      );
+      if (pricingVersion === "resale-v1" && p.resale_enabled === true && balconyPrice != null && !resaleIsValid) {
         console.warn("super-worker", { code: "RESALE_SKIPPED_NOT_BELOW_NORMAL", stage: "calculate_item_price" });
       }
 
@@ -435,6 +458,7 @@ Deno.serve(async (req: Request) => {
         id: p.id, name: p.name, category: p.category, image: p.image,
         price: effectivePriceCents / 100, qty, sale_mode: saleMode,
         line_total_cents: lineTotalCents,
+        daily_discount_percent: dailyDiscountPercent && dailyDiscountedPriceCents < normalPriceCents && effectivePriceCents === dailyDiscountedPriceCents ? dailyDiscountPercent : null,
         ...(saleMode === "value" ? { amount_cents: amountCents } : {}),
         ...(itemPreferencesById.has(String(p.id)) ? itemPreferencesById.get(String(p.id))! : { item_note: '', substitution_preference: 'call' }),
       });
@@ -477,7 +501,7 @@ Deno.serve(async (req: Request) => {
         Number.isInteger(quote?.subtotal_cents) &&
         quote.subtotal_cents === subtotalCents;
       if (!quoteMatches) {
-        return json({ error: "Os preços da feira mudaram. Atualize a página e confira a sacola antes de concluir o pedido." }, 409);
+        return json({ error: "Os preços da feira mudaram. A sacola foi recalculada; confira os novos valores antes de continuar.", pricing_update: { subtotal_cents: subtotalCents, items: items.map((item: any) => ({ id: item.id, qty: item.qty, sale_mode: item.sale_mode, unit_price_cents: Math.round(item.price * 100), line_total_cents: item.line_total_cents, daily_discount_percent: item.daily_discount_percent, ...(item.sale_mode === "value" ? { amount_cents: item.amount_cents } : {}) })) } }, 409);
       }
     }
 
@@ -582,18 +606,6 @@ Deno.serve(async (req: Request) => {
     const checkoutRequestHash = Array.from(new Uint8Array(hashBytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
     if (priorAttempt && String(priorAttempt.request_hash) !== checkoutRequestHash) {
       return json({ error: "Esta chave já foi usada com dados diferentes. Atualize a feira e inicie um novo checkout." }, 409);
-    }
-    if (priorOrder && String(priorOrder.status || "").toLowerCase() === "cancelada") {
-      return json({ error: "Este pedido desta tentativa já foi cancelado. Confira Meus pedidos antes de iniciar outro checkout." }, 409);
-    }
-    if (priorOrder && paymentMethod === "pix" && priorOrder.pix_qr_code) {
-      return json({
-        order: { id: priorOrder.id, status: priorOrder.status, total: priorOrder.total, delivery_fee: priorOrder.delivery_fee, delivery_fee_original: priorOrder.delivery_fee_original, delivery_discount: priorOrder.delivery_discount, promo_code: priorOrder.promo_code, pickupCode },
-        paymentId: priorOrder.payment_id,
-        qrCode: priorOrder.pix_qr_code,
-        qrCodeBase64: priorOrder.pix_qr_code_base64,
-        paymentStatus: String(priorOrder.status || "").toLowerCase() === "pagamento confirmado" ? "CONFIRMED" : "PENDING",
-      });
     }
     if (priorOrder && paymentMethod === "pix" && String(priorOrder.status || "").toLowerCase() !== "pagamento pendente") {
       return json({

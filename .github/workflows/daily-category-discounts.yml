@@ -1,0 +1,29 @@
+name: Daily category discounts tests
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/functions/_shared/daily-category-discounts.js'
+      - 'supabase/functions/_shared/daily-category-discounts.test.mjs'
+      - 'supabase/functions/super-worker/index.ts'
+      - 'supabase/migrations/20261123190000_daily_category_discounts.sql'
+      - 'supabase/tests/daily-category-discounts.test.mjs'
+      - '.github/workflows/daily-category-discounts.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/_shared/daily-category-discounts.js'
+      - 'supabase/functions/_shared/daily-category-discounts.test.mjs'
+      - 'supabase/functions/super-worker/index.ts'
+      - 'supabase/migrations/20261123190000_daily_category_discounts.sql'
+      - 'supabase/tests/daily-category-discounts.test.mjs'
+      - '.github/workflows/daily-category-discounts.yml'
+jobs:
+  unit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test supabase/functions/_shared/daily-category-discounts.test.mjs supabase/tests/daily-category-discounts.test.mjs
