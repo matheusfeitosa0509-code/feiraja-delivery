@@ -22,6 +22,7 @@ export function calculateDailyDiscountedPriceCents(currentPriceCents, oldPriceCe
   return Math.min(current, Math.round(reference * (100 - discount) / 100));
 }
 
+/** @param {number} currentPriceCents @param {number | null} oldPriceCents @param {number | null} percent @param {number | null} resalePriceCents @returns {number} */
 export function calculateBestUnitPriceCents(currentPriceCents, oldPriceCents, percent, resalePriceCents = null) {
   const current = Number(currentPriceCents);
   const daily = percent == null ? current : calculateDailyDiscountedPriceCents(current, oldPriceCents, percent);
