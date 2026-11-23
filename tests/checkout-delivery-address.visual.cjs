@@ -44,7 +44,7 @@ if ([outOfAreaStart,outOfAreaEnd,quoteErrorStart,quoteErrorEnd,statusStart,statu
 for (const required of [
   'https://tiles.openfreemap.org/styles/positron', 'zoom:17', 'new lib.AttributionControl({compact:true})',
   'id="deliveryMapFullscreen"', 'id="deliveryMapFixedPin"', 'id="deliveryMapConfirm"',
-  'id="deliveryMapPreview"', 'Endereço confirmado no mapa', 'deliveryNeedsExplicitConfirm)return;',
+  'id="deliveryMapPreview"', 'Confira o ponto no mapa', 'deliveryNeedsExplicitConfirm)return;',
   'id="deliveryZip"', 'CEP (opcional)', '<label for="deliveryStreet">Rua</label>', 'Confira se o pino está na sua casa', 'Coloque só um endereço. Use o campo Referência para pontos próximos.', 'delivery_coordinates:deliveryMapCoordinates',
   'deliveryMapReversePromise=new Promise', 'await deliveryMapReversePromise', 'id="deliveryMapGps"',
 ]) assert.ok(storeHtml.includes(required), 'missing MapLibre delivery behavior: ' + required);
@@ -58,7 +58,7 @@ assert.ok(helperSource.includes('deliveryQuoteErrorMessage'));
 const harness = `
 const $ = selector => document.querySelector(selector);
 const testStorage=new Map();Object.defineProperty(window,'sessionStorage',{configurable:true,value:{getItem:key=>testStorage.get(key)??null,setItem:(key,value)=>testStorage.set(key,String(value)),removeItem:key=>testStorage.delete(key)}});
-let deliveryPlacesSessionToken='session-123',deliveryAutocompleteTimer=null,deliveryMap=null,deliveryMapCoordinates=null,deliveryMapReverseTimer=null,deliveryMapReverseSequence=0,deliveryMapReversePromise=Promise.resolve(),deliveryMapReverseError='',deliveryAddressManualEdits={street:false,number:false,neighborhood:false},deliveryQuoteTimeoutMs=1500,deliveryNeedsExplicitConfirm=true,deliveryStreetHome=null,deliveryNumberHome=null,deliveryNeighborhoodHome=null,deliveryMapPlaceName='',deliveryQuoteTimer=null,deliveryQuoteSequence=0,deliveryQuote=null,deliveryQuoteSlowTimer=null,deliveryQuoteDebounceStartedAt=0;
+let deliveryPlacesSessionToken='session-123',deliveryAutocompleteTimer=null,deliveryAddressGeocodeTimer=null,deliveryAddressGeocodeSequence=0,deliveryMap=null,deliveryMapCoordinates=null,deliveryMapPreviewing=false,deliveryMapReverseTimer=null,deliveryMapReverseSequence=0,deliveryMapReversePromise=Promise.resolve(),deliveryMapReverseError='',deliveryAddressManualEdits={street:false,number:false,neighborhood:false},deliveryQuoteTimeoutMs=1500,deliveryNeedsExplicitConfirm=true,deliveryStreetHome=null,deliveryNumberHome=null,deliveryNeighborhoodHome=null,deliveryMapPlaceName='',deliveryQuoteTimer=null,deliveryQuoteSequence=0,deliveryQuote=null,deliveryQuoteSlowTimer=null,deliveryQuoteDebounceStartedAt=0;
 const deliveryQuoteCache=new Map();
 const buildDeliveryQuoteCacheKey=(address,items,coordinates=null,userId='')=>JSON.stringify({user:String(userId||''),address,items,coordinates:coordinates||null});
 const isCachedDeliveryQuoteValid=(entry,now=Date.now())=>!!entry&&Number(entry.expiresAt)>Number(now)&&isValidDeliveryQuote(entry.quote,now);
