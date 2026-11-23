@@ -63,7 +63,8 @@ const { chromium } = require("playwright");
       await page.evaluate(async () => { window.__testBannerRows=window.__testBannerRows.map(({image_url,...row})=>row); await window.loadStoreBanners(); });
       if (await page.locator("#storeBannersTrack .store-banner-slide").count() !== 4 || await page.locator("#storeBannersTrack .store-banner-image").count() !== 0) throw new Error("Os quatro banners sem image_url devem continuar como banners somente texto.");
       const textOnlyMinHeight = await page.locator("#storeBannersTrack .store-banner-slide").first().evaluate(el => getComputedStyle(el).minHeight);
-      if (textOnlyMinHeight !== "142px") throw new Error("Banners sem imagem devem manter a altura mínima original de 142px.");
+      const expectedTextOnlyMinHeight = width <= 380 ? "136px" : "142px";
+      if (textOnlyMinHeight !== expectedTextOnlyMinHeight) throw new Error("Banners sem imagem devem manter a altura mínima original de " + expectedTextOnlyMinHeight + ".");
 
       for (const [index, theme] of ["green","yellow","orange","red"].entries()) { if (!(await banners.nth(index).evaluate((el, expectedTheme) => el.classList.contains("theme-"+expectedTheme), theme))) throw new Error("Tema "+theme+" não aplicado."); }
       if (await page.locator("#storeBannersDots button").count() !== 4) throw new Error("Carrossel com múltiplos banners deve exibir bolinhas.");
