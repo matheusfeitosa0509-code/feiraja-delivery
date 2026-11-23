@@ -6,6 +6,7 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 const panel = fs.readFileSync(path.join(root, 'painel.html'), 'utf8');
 const schema = fs.readFileSync(path.join(root, 'supabase/migrations/20261122155333_store_banners_manager.sql'), 'utf8');
+const imageMigration = fs.readFileSync(path.join(root, 'supabase/migrations/20261123130000_store_banners_image.sql'), 'utf8');
 const policies = fs.readFileSync(path.join(root, 'supabase/migrations/20261122155432_store_banners_rls_tightening.sql'), 'utf8');
 
 for (const id of [
@@ -30,7 +31,7 @@ for (const seed of ['Sua 1ª entrega é GRÁTIS','Fale com o Assistente','Não a
   assert.ok(schema.includes(seed), 'banner inicial ausente: '+seed);
 }
 assert.match(schema, /alter table public\.store_banners enable row level security/i);
-assert.match(schema, /add column if not exists image_url text/i);
+assert.match(imageMigration, /add column if not exists image_url text/i);
 assert.match(managerScript, /image\/webp/);
 assert.match(managerScript, /80\*1024/);
 assert.match(managerScript, /canvas.width=1200;canvas.height=400/);
