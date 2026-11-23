@@ -109,7 +109,7 @@ jobs:
               method = 'Lighthouse CLI (fallback; cota PSI indisponível)';
               console.warn(method + ': ' + error.message);
               const output = '/tmp/lighthouse-baseline-' + strategy + '.json';
-              const args = ['--yes','lighthouse@13.0.1',base,'--only-categories=performance','--output=json','--output-path='+output,'--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage'];
+              const args = ['--yes','lighthouse@12.8.2',base,'--only-categories=performance','--output=json','--output-path='+output,'--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage'];
               if (strategy === 'desktop') args.push('--preset=desktop');
               execFileSync('npx',args,{stdio:'inherit',env:{...process.env,CHROME_PATH:chromium.executablePath()}});
               const data = JSON.parse(fs.readFileSync(output,'utf8'));
@@ -150,7 +150,7 @@ jobs:
                 method = 'Lighthouse CLI (fallback; cota PSI indisponível)';
                 console.warn(method + ': ' + error.message);
                 const output = '/tmp/lighthouse-after-' + strategy + '.json';
-                const args = ['--yes','lighthouse@13.0.1',base,'--only-categories=performance','--output=json','--output-path='+output,'--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage'];
+                const args = ['--yes','lighthouse@12.8.2',base,'--only-categories=performance','--output=json','--output-path='+output,'--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage'];
                 if (strategy === 'desktop') args.push('--preset=desktop');
                 execFileSync('npx',args,{stdio:'inherit',env:{...process.env,CHROME_PATH:chromium.executablePath()}});
                 const data = JSON.parse(fs.readFileSync(output,'utf8'));
