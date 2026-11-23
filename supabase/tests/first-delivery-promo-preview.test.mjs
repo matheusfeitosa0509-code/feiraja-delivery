@@ -8,6 +8,8 @@ const cases = readFileSync('supabase/tests/first_delivery_promo_cases.sql', 'utf
 assert.match(loja, /preview_first_delivery_promo/);
 assert.match(loja, /Entrega de ['"]\+vehicle/);
 assert.match(loja, /GRÁTIS 🎁/);
+assert.match(loja, /const firstPromoDiscount=quoteValid&&firstDeliveryPromoPreview/);
+assert.match(loja, /appliedDiscount=Math\.min\(Number\(deliveryQuote\?\.fee\)/);
 assert.match(loja, /A entrega grátis vale só no 1º pedido/);
 assert.match(loja, /Faltam ['"]\+money\(Math\.max\(0,minimum-subtotal\)\)/);
 assert.match(loja, /#phone['"]\)\.addEventListener\(['"]input/);
