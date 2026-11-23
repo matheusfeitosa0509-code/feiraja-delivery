@@ -399,8 +399,6 @@ Deno.serve(async (req: Request) => {
           const product = componentById.get(String(item.product_id));
           const saleUnit = String(componentRuleById.get(String(item.product_id))?.sale_unit || "");
           const quantity = Number(item.quantity);
-          const isKg = ["kg", "quilo", "quilograma"].includes(saleUnit.toLowerCase()) || /\(\s*kg\s*\)/i.test(String(product.name));
-          const unitWeight = product.delivery_unit_weight_kg == null ? 1 : Number(product.delivery_unit_weight_kg);
           return { product_id: String(product.id), name: String(product.name), category: String(product.category || ""), image: product.image || null, quantity, sale_unit: saleUnit, unit_price: Number(product.price) };
         });
         const weightKg = kitComponents.reduce((sum: number, component: any) => {
@@ -422,10 +420,14 @@ Deno.serve(async (req: Request) => {
     }
     const products: any[] = [...regularProducts, ...kitProducts];
 
-    const { data: dailyDiscountRules, error: dailyDiscountRulesError } = await db.from("daily_category_discounts").select("weekday,category,percent,is_active,excluded_product_ids").eq("is_active", true);
-    if (dailyDiscountRulesError) {
-      console.error("super-worker", { code: "DAILY_DISCOUNT_RULES_LOOKUP_FAILED", stage: "validate_daily_discount" });
-      return json({ error: "Não foi possível confirmar os descontos da feira agora. Tente novamente." }, 503);
+    let dailyDiscountRules: any[] = [];
+    if (regularProductIds.length) {
+      const result = await db.from("daily_category_discounts").select("weekday,category,percent,is_active,excluded_product_ids").eq("is_active", true);
+      if (result.error) {
+        console.error("super-worker", { code: "DAILY_DISCOUNT_RULES_LOOKUP_FAILED", stage: "validate_daily_discount" });
+        return json({ error: "Não foi possível confirmar os descontos da feira agora. Tente novamente." }, 503);
+      }
+      dailyDiscountRules = result.data || [];
     }
 
     // Revenda is priced from the private counter-price table, never from client payload or public cache.
