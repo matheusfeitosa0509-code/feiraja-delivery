@@ -8,7 +8,7 @@ import { formatDropoff, normalizeConfirmedDeliveryCoordinates, hasMultipleDelive
 import { readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
 import { calculateServerDelivery, orderTotals, validateCheckoutDelivery } from "./delivery-order.ts";
 import { getCommercialSchedule } from "../_shared/commercial-calendar.js";
-import { getActiveDailyCategoryDiscount, calculateDailyDiscountedPriceCents } from "../_shared/daily-category-discounts.js";
+import { getActiveDailyCategoryDiscount, calculateDailyDiscountedPriceCents, calculateBestUnitPriceCents } from "../_shared/daily-category-discounts.js";
 
 function isValidCpf(value: string) { const cpf = String(value || "").replace(/\D/g, ""); if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false; const calc = (base: string, factor: number) => { let sum = 0; for (const digit of base) sum += Number(digit) * factor--; const mod = (sum * 10) % 11; return mod === 10 ? 0 : mod; }; return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10]); }
 
@@ -403,13 +403,17 @@ Deno.serve(async (req: Request) => {
       const dailyDiscountedPriceCents = dailyDiscountPercent
         ? calculateDailyDiscountedPriceCents(normalPriceCents, p.old_price == null ? null : Math.round(Number(p.old_price) * 100), dailyDiscountPercent)
         : normalPriceCents;
-      let effectivePriceCents = Math.min(normalPriceCents, dailyDiscountedPriceCents);
       const balconyPrice = resaleBalconyById.get(String(p.id));
       const resalePriceCents = balconyPrice == null ? NaN : Math.round(Number(balconyPrice) * 100);
       const resaleIsValid = Number.isSafeInteger(resalePriceCents) && resalePriceCents > 0 && resalePriceCents < normalPriceCents;
-      if (pricingVersion === "resale-v1" && p.resale_enabled === true && qty >= 10 && resaleIsValid) {
-        effectivePriceCents = Math.min(effectivePriceCents, resalePriceCents);
-      } else if (pricingVersion === "resale-v1" && p.resale_enabled === true && balconyPrice != null && !resaleIsValid) {
+      const resaleEligible = pricingVersion === "resale-v1" && p.resale_enabled === true && qty >= 10 && resaleIsValid;
+      const effectivePriceCents = calculateBestUnitPriceCents(
+        normalPriceCents,
+        p.old_price == null ? null : Math.round(Number(p.old_price) * 100),
+        dailyDiscountPercent,
+        resaleEligible ? resalePriceCents : null,
+      );
+      if (pricingVersion === "resale-v1" && p.resale_enabled === true && balconyPrice != null && !resaleIsValid) {
         console.warn("super-worker", { code: "RESALE_SKIPPED_NOT_BELOW_NORMAL", stage: "calculate_item_price" });
       }
 

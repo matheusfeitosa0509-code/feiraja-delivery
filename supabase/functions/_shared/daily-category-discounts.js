@@ -21,3 +21,12 @@ export function calculateDailyDiscountedPriceCents(currentPriceCents, oldPriceCe
   const reference = Number.isSafeInteger(old) && old > current ? old : current;
   return Math.min(current, Math.round(reference * (100 - discount) / 100));
 }
+
+export function calculateBestUnitPriceCents(currentPriceCents, oldPriceCents, percent, resalePriceCents = null) {
+  const current = Number(currentPriceCents);
+  const daily = percent == null ? current : calculateDailyDiscountedPriceCents(current, oldPriceCents, percent);
+  const resale = Number(resalePriceCents);
+  return Number.isSafeInteger(resale) && resale > 0 && resale < current
+    ? Math.min(current, daily, resale)
+    : Math.min(current, daily);
+}
