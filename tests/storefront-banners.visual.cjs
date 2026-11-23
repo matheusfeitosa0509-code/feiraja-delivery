@@ -60,6 +60,8 @@ const { chromium } = require("playwright");
       await page.screenshot({ path: path.join(process.cwd(), "artifacts", "store-banners-" + width + ".png"), fullPage: false });
       await page.evaluate(async () => { window.__testBannerRows=window.__testBannerRows.map(({image_url,...row})=>row); await window.loadStoreBanners(); });
       if (await page.locator("#storeBannersTrack .store-banner-slide").count() !== 4 || await page.locator("#storeBannersTrack .store-banner-image").count() !== 0) throw new Error("Os quatro banners sem image_url devem continuar como banners somente texto.");
+      const textOnlyMinHeight = await page.locator("#storeBannersTrack .store-banner-slide").first().evaluate(el => getComputedStyle(el).minHeight);
+      if (textOnlyMinHeight !== "142px") throw new Error("Banners sem imagem devem manter a altura mínima original de 142px.");
       if (!(await banners.nth(0).evaluate(el=>el.classList.contains("has-image"))) || await banners.nth(2).locator(".store-banner-image").count()) throw new Error("Banner com imagem e banner só texto não foram preservados.");
       for (const [index, theme] of ["green","yellow","orange","red"].entries()) { if (!(await banners.nth(index).evaluate((el, expectedTheme) => el.classList.contains("theme-"+expectedTheme), theme))) throw new Error("Tema "+theme+" não aplicado."); }
       if (await page.locator("#storeBannersDots button").count() !== 4) throw new Error("Carrossel com múltiplos banners deve exibir bolinhas.");
