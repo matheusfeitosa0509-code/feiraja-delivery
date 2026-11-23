@@ -90,8 +90,8 @@ const { chromium } = require("playwright");
       await page.close();
     }
     const panelManagerScript = panelHtmlSource.split('<script type="module">').map(part=>part.split('</script>')[0]).find(part=>part.includes('storeBannerNew')&&part.includes('storeBannerForm'));
-    const imagePreparer = panelManagerScript?.match(/async function prepareBannerImage\\(file\\)\\{[\\s\\S]*?\\n \\}/);
-    const imageUploader = panelManagerScript?.match(/async function uploadBannerImage\\(blob\\)\\{[\\s\\S]*?\\n \\}/);
+    const imagePreparer = panelManagerScript?.match(/async function prepareBannerImage\(file\)\{[\s\S]*?\n \}/);
+    const imageUploader = panelManagerScript?.match(/async function uploadBannerImage\(blob\)\{[\s\S]*?\n \}/);
     if (!imagePreparer || !imageUploader) throw new Error("Helpers de WebP/upload não encontrados no painel.");
     const uploadPage = await browser.newPage();
     await uploadPage.setContent("<!doctype html><html><body></body></html>");
