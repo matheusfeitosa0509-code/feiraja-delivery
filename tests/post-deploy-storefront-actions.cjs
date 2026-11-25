@@ -8,14 +8,11 @@ const assert = require('node:assert/strict');
   const page = await browser.newPage({ viewport: { width: 412, height: 915 } });
   const errors = [];
   const bannerResponses = [];
-  const salesRuleResponses = [];
-  const salesRuleWarnings = [];
   page.on('pageerror', error => errors.push(error.message));
-  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); if (message.type() === 'warning' && /Regras de venda|Compra por valor/.test(message.text())) salesRuleWarnings.push(message.text()); });
+  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
   page.on('response', response => {
     if (response.status() >= 500) errors.push('HTTP ' + response.status() + ' ' + response.url());
     if (response.url().includes('/rest/v1/store_banners')) bannerResponses.push('HTTP ' + response.status());
-    if (response.url().includes('/rest/v1/product_sales_rules')) response.json().then(rows => salesRuleResponses.push({ status: response.status(), rows: Array.isArray(rows) ? rows.length : null, sample: Array.isArray(rows) ? rows.slice(0, 2) : rows })).catch(error => salesRuleResponses.push({ status: response.status(), bodyError: error.message }));
   });
   const expectOpen = async (selector, label) => {
     try { await page.waitForFunction(s => { const el=document.querySelector(s); return !!el && (el.classList.contains('open') || el.getAttribute('aria-hidden')==='false'); }, selector, { timeout: 5000 }); }
@@ -69,31 +66,27 @@ const assert = require('node:assert/strict');
     assert.ok(categoryCount > 0, 'nenhuma categoria foi carregada');
     for (let i = 0; i < categoryCount; i++) await categories.nth(i).click();
 
-    const verTodos = page.getByRole('button', { name: /ver tudo|ver todos/i }).first();
-    if (await verTodos.isVisible().catch(() => false)) {
-      await verTodos.click();
-      assert.ok(await page.locator('#pageHome.active').count() && await page.locator('#homeProductSections .product:not(.skeleton-card)').count() > 0, 'Ver todos não manteve a vitrine completa aberta');
-    } else {
-      // The legacy link is hidden by the current storefront layout; still exercise its registered navigation handler.
-      await verTodos.evaluate(button => button.click());
-      assert.ok(await page.locator('#pageHome.active').count() && await page.locator('#homeProductSections .product:not(.skeleton-card)').count() > 0, 'Ver tudo não manteve a vitrine completa aberta');
+    const categoryBack = page.locator('#homeProductSections [data-view-category]:visible').filter({ hasText: 'Voltar' }).first();
+    if (await categoryBack.count()) await categoryBack.click();
+    const valueCategory = page.locator('#homeProductSections .home-catalog-category').filter({ has: page.locator('button[data-value-open]') }).first();
+    assert.ok(await valueCategory.count(), 'nenhuma categoria com compra por valor disponível no catálogo');
+    const valueCategoryToggle = valueCategory.locator('[data-view-category]');
+    if (await valueCategoryToggle.isVisible().catch(() => false)) {
+      await valueCategoryToggle.click();
+      assert.ok(await page.locator('#pageHome.active').count() && await valueCategory.locator('.product:not(.skeleton-card)').count() > 0, 'Ver todos não abriu a categoria com compra por valor');
     }
 
     const plus = page.locator('#homeProductSections .product:not(.skeleton-card) [data-card-change][data-d="1"]').first();
     await plus.click();
     assert.ok(Number((await page.locator('#tabCartCount').textContent()).trim()) > 0, '+ do produto não adicionou ao carrinho');
-    // Product cards can render before the asynchronous sales rules finish loading.
-    await page.waitForFunction(() => [...document.querySelectorAll('button[data-value-open]')].some(button => button.getClientRects().length > 0 && getComputedStyle(button).visibility !== 'hidden'), null, { timeout: 20000 }).catch(() => {});
-    const valueSaleDom = await page.evaluate(() => { const read = expression => { try { return eval(expression); } catch (error) { return 'unavailable: ' + error.message; } }; return { products: document.querySelectorAll('#homeProductSections .product').length, allValueButtons: document.querySelectorAll('#homeProductSections button[data-value-open]').length, visibleValueButtons: [...document.querySelectorAll('#homeProductSections button[data-value-open]')].filter(button => button.getClientRects().length && getComputedStyle(button).visibility !== 'hidden').length, salesSettingsReady: read('salesSettingsReady'), salesRulesCount: read('salesRulesById.size'), productCount: read('products.length') }; });
-    console.log('POST_DEPLOY_VALUE_SALE_DEBUG', JSON.stringify({ valueButtons: await page.locator('button[data-value-open]:visible').count(), salesRuleResponses, salesRuleWarnings, valueSaleDom }));
-    const valueButton = page.locator('button[data-value-open]:visible').first();
-    if (await valueButton.count()) {
-      await expect(valueButton).toContainText('Pedir por valor');
-      await valueButton.click();
-      await expectOpen('#valueSaleSheet', 'Pedir por valor');
-      assert.ok(await page.locator('#valueSaleSheet').isVisible(), 'Pedir por valor: modal não ficou visível');
-      await page.locator('#valueSaleClose').click();
-    } else failures.push('Pedir por valor: nenhum botão visível data-value-open disponível no catálogo para teste');
+    // Aguarda as regras assíncronas e testa dentro de uma categoria expandida, não no kit (primeira categoria).
+    await page.waitForFunction(() => document.querySelectorAll('#homeProductSections button[data-value-open]').length > 0, null, { timeout: 20000 });
+    const valueButton = valueCategory.locator('button[data-value-open]:visible').first();
+    await expect(valueButton).toContainText('Pedir por valor');
+    await valueButton.click();
+    await expectOpen('#valueSaleSheet', 'Pedir por valor');
+    assert.ok(await page.locator('#valueSaleSheet').isVisible(), 'Pedir por valor: modal não ficou visível');
+    await page.locator('#valueSaleClose').click();
 
     await page.locator('.mobile-nav [data-page="Cart"]').click();
     assert.ok(await page.locator('#pageCart.active').count(), 'Carrinho não abriu');
