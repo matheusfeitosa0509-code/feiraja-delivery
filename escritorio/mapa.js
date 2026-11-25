@@ -41,8 +41,8 @@ function escapeXml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'
 function isRecentRules(agent,now){if(!agent.rules_updated_at)return false;const age=now-new Date(agent.rules_updated_at).getTime();return age>=0&&age<=86400000;}
 function destination(agent,approvals,sleeping,now){
  if(sleeping)return 'bedroom';
- if(isRecentRules(agent,now))return 'gym';
  if(agent.status==='esperando_dono'||approvals.some(a=>a.requested_by===agent.id))return 'meeting';
+ if(isRecentRules(agent,now))return 'gym';
  if(agent.status==='livre')return 'lounge';
  if(agent.slug==='ceo')return 'ceo';
  if(agent.slug==='executora')return 'tech';
