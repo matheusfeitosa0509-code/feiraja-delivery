@@ -11,7 +11,7 @@ export function createClient(){
   {id:'a-ceo',slug:'ceo',name:'CEO',role:'Estratégia e decisões',color:'#d9a441',status:'livre'},
   {id:'a-exec',slug:'executora',name:'Executora',role:'Tecnologia e operação',color:'#3478c8',status:'trabalhando'},
   {id:'a-mark',slug:'marketing',name:'Marketing',role:'Campanhas e comunicação',color:'#e66b43',status:'livre'},
-  {id:'a-art',slug:'artes',name:'Artes',role:'Identidade visual e fotografia',color:'#9a68c9',status:'livre'},
+  {id:'a-art',slug:'artes',name:'Artes',role:'Identidade visual e fotografia',color:'#9a68c9',status:'livre',rules_updated_at:new Date().toISOString()},
   {id:'a-sac',slug:'sac',name:'SAC',role:'Atendimento',color:'#269c91',status:'livre'}
  ];
  const tasks=[{id:'t-1',agent_id:'a-exec',title:'Revisar o funil Pago',details:'Validar contagem e transições.',priority:'urgente',status:'fazendo',created_at:new Date().toISOString()}];
@@ -54,8 +54,20 @@ const server=http.createServer((req,res)=>{
   await page.locator('#approvals .approval').waitFor();
   await page.locator('#officeMapSvg').waitFor();
   await page.locator('#officeMapSvg [data-agent]').first().waitFor();
+  if(await page.locator('#officeMapSvg [data-agent]').count()!==5)throw new Error('Mapa precisa mostrar os cinco agentes.');
+  if(await page.locator('#officeMapSvg [data-agent="a-exec"]').getAttribute('data-room')!=='meeting')throw new Error('Agente com aprovação pendente deve estar na reunião.');
+  if(await page.locator('#officeMapSvg [data-agent="a-art"]').getAttribute('data-room')!=='gym')throw new Error('Agente com regras recentes deve estar na academia.');
+  await page.locator('[data-zoom="in"]').click();
+  if(!(await page.locator('#officeMapSvg').getAttribute('style')||'').includes('120%'))throw new Error('Zoom do mapa não funcionou.');
+  await page.locator('[data-zoom="reset"]').click();
   await page.screenshot({path:'artifacts/escritorio-mapa-360.png',fullPage:true});
   await page.screenshot({path:'artifacts/escritorio-esperando-dono-360.png',fullPage:true});
+  const afterHours=await context.newPage();
+  await afterHours.addInitScript(()=>{window.__officeMockSession={user:{id:'owner',email:'owner@example.test'}};const NativeDate=Date;const fixed=new NativeDate('2026-11-25T14:30:00-04:00').getTime();window.Date=class extends NativeDate{constructor(...args){super(...(args.length?args:[fixed]));}static now(){return fixed;}};});
+  await afterHours.goto('http://127.0.0.1:4173/');
+  await afterHours.locator('#officeMapSvg [data-agent]').first().waitFor();
+  if(await afterHours.locator('#officeMapSvg [data-agent][data-room="bedroom"]').count()!==5)throw new Error('Fora do expediente todos os agentes devem dormir.');
+  await afterHours.screenshot({path:'artifacts/escritorio-dormitorio-360.png',fullPage:true});
   await page.locator('#officeMapSvg [data-agent="a-exec"]').click();
   await page.locator('#agentDetail').waitFor({state:'visible'});
   await page.screenshot({path:'artifacts/escritorio-agente-360.png',fullPage:true});
