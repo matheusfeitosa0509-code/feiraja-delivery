@@ -6,6 +6,7 @@ self.addEventListener('fetch',function(event){
  const request=event.request;
  if(request.method!=='GET'||request.mode==='navigate')return;
  const url=new URL(request.url);
+ if(url.origin===self.location.origin&&url.pathname.startsWith('/escritorio/'))return;
  const isGoogleFontCss=url.origin==='https://fonts.googleapis.com'&&url.pathname.startsWith('/css');
  if(!STATIC_ORIGINS.has(url.origin)||(!STATIC_ASSET.test(url.pathname+url.search)&&!isGoogleFontCss))return;
  const cachePromise=caches.open(STATIC_CACHE);

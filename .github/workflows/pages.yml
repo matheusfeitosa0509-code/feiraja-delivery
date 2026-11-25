@@ -24,7 +24,7 @@ jobs:
       - name: Prepare site-only artifact
         run: |
           mkdir -p _site
-          cp -a ./index.html ./admin.html ./cadastro-produto.html ./painel.html ./clientes-vendas.html ./loja.html ./loja-delivery-ui.js ./lalamove-map.js ./assistant-runtime.js ./assistant-speech.js ./politica-privacidade.html ./recuperar-senha.html ./termos.html ./turnstile.js ./icons ./imagens ./manifest.json ./manifest-painel.json ./sw.js ./ig ./stories ./zap _site/
+          cp -a ./index.html ./admin.html ./cadastro-produto.html ./painel.html ./clientes-vendas.html ./loja.html ./loja-delivery-ui.js ./lalamove-map.js ./assistant-runtime.js ./assistant-speech.js ./politica-privacidade.html ./recuperar-senha.html ./termos.html ./turnstile.js ./icons ./imagens ./manifest.json ./manifest-painel.json ./sw.js ./ig ./stories ./zap ./escritorio _site/
           mkdir -p _site/supabase/functions/_shared
           cp supabase/functions/_shared/store-schedule.js _site/supabase/functions/_shared/store-schedule.js
           cp supabase/functions/_shared/commercial-calendar.js _site/supabase/functions/_shared/commercial-calendar.js
