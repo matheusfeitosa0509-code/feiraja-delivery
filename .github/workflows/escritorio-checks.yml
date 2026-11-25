@@ -1,0 +1,35 @@
+name: Escritório Feira On checks
+on:
+  pull_request:
+    paths:
+      - "escritorio/**"
+      - "tests/escritorio-preview.cjs"
+      - "supabase/migrations/*escritorio*"
+      - "supabase/rollback/*escritorio*"
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Parse browser module
+        run: node --input-type=module --check < escritorio/app.js
+      - name: Parse isometric map module
+        run: node --input-type=module --check < escritorio/mapa.js
+      - name: Validate standalone manifest and isolation
+        run: |
+          node -e "const fs=require('fs');const m=JSON.parse(fs.readFileSync('escritorio/manifest.webmanifest','utf8'));if(m.name!=='Escritório Feira On'||m.start_url!=='/escritorio/'||m.scope!=='/escritorio/'||m.display!=='standalone')process.exit(1);const h=fs.readFileSync('escritorio/index.html','utf8');if(!h.includes('noindex,nofollow,noarchive')||!h.includes('./app.js'))process.exit(1);"
+      - name: Install Playwright
+        run: npm install --no-save playwright@1.58.2
+      - name: Install Chromium
+        run: npx playwright install chromium
+      - name: Capture 360px preview with mock data
+        run: mkdir -p artifacts && node tests/escritorio-preview.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: escritorio-feira-on-preview-360
+          path: artifacts/*.png
+          if-no-files-found: error
+          retention-days: 7
