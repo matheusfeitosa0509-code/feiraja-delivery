@@ -26,7 +26,7 @@ const svgIcon = {
 };
 function roomMarkup(r,stats){
  const bubble = r.id==='support' ? '<g><rect x="29" y="-121" width="43" height="25" rx="8" fill="#fff" stroke="#4b8c63" stroke-width="3"/><text x="50" y="-103" text-anchor="middle" font-size="17" font-weight="900" fill="#245a38">'+escapeXml(stats.alerts||'0')+'</text></g>' : '';
- const detail = r.id==='meeting' ? (stats.approvals||0)+' pendente(s)' : r.id==='reception' ? (stats.paid||0)+' pagos · '+escapeXml(stats.kit||'sem kit') : r.sub;
+ const detail = r.id==='meeting' ? (stats.approvals||0)+' pendente(s)' : r.id==='reception' ? (stats.paid||0)+' pagos · '+escapeXml(stats.kit||'sem kit') : r.id==='tech' ? escapeXml(stats.currentTask||'Sem tarefa ativa') : r.id==='ceo' ? (stats.tasks||0)+' tarefas no roadmap' : r.id==='creation' ? (stats.creationTasks||0)+' tarefas criativas' : r.id==='lounge' ? (stats.free||0)+' agente(s) livre(s)' : r.id==='gym' ? (stats.recentRules||0)+' regra(s) atualizada(s)' : r.id==='bedroom' ? 'Equipe descansando' : r.sub;
  return '<g class="office-room" data-room="'+r.id+'" transform="translate('+r.x+' '+r.y+')">'
  + '<polygon points="-102,-50 0,2 0,-58 -102,-110" fill="#dbe8d4" stroke="#6f9974" stroke-width="3"/>'
  + '<polygon points="0,2 102,-50 102,-110 0,-58" fill="#c5d9c2" stroke="#6f9974" stroke-width="3"/>'
@@ -88,6 +88,6 @@ export function renderOfficeMap(host,agents,tasks,approvals,stats,onAgentClick){
  const grouped={};for(const a of agents){const room=destination(a,approvals,sleeping,now);(grouped[room]||(grouped[room]=[])).push(a);}
  const layer=$(host,'#avatarLayer'),existing=new Map([...layer.querySelectorAll('[data-agent]')].map(el=>[el.dataset.agent,el]));
  const live=new Set();
- for(const room of ROOMS){const list=grouped[room.id]||[];list.forEach((a,i)=>{live.add(a.id);const offset=(i-(list.length-1)/2)*22,x=room.x+offset,y=room.y-35+Math.floor(i/3)*8;let el=existing.get(a.id);if(!el){const temp=document.createElementNS('http://www.w3.org/2000/svg','g');temp.outerHTML=avatarMarkup(a,x,y);el=[...layer.querySelectorAll('[data-agent]')].find(n=>n.dataset.agent===a.id);if(!el){layer.insertAdjacentHTML('beforeend',avatarMarkup(a,x,y));el=[...layer.querySelectorAll('[data-agent]')].find(n=>n.dataset.agent===a.id);}}if(el){el.setAttribute('transform','translate('+x+' '+y+')');el.querySelector('.agent-name').textContent=a.name;el.querySelector('.agent-name-bg').setAttribute('fill','#fffdf3');const dot=el.querySelector('circle');if(dot)dot.setAttribute('fill',STATUS[a.status]||STATUS.livre);}});}
+ for(const room of ROOMS){const list=grouped[room.id]||[];list.forEach((a,i)=>{live.add(a.id);const offset=(i-(list.length-1)/2)*22,x=room.x+offset,y=room.y-35+Math.floor(i/3)*8;let el=existing.get(a.id);if(!el){el=[...layer.querySelectorAll('[data-agent]')].find(n=>n.dataset.agent===a.id);if(!el){layer.insertAdjacentHTML('beforeend',avatarMarkup(a,x,y));el=[...layer.querySelectorAll('[data-agent]')].find(n=>n.dataset.agent===a.id);}}if(el){el.setAttribute('transform','translate('+x+' '+y+')');el.querySelector('.agent-name').textContent=a.name;el.querySelector('.agent-name-bg').setAttribute('fill','#fffdf3');const dot=el.querySelector('circle');if(dot)dot.setAttribute('fill',STATUS[a.status]||STATUS.livre);}});}
  for(const [id,el] of existing){if(!live.has(id))el.remove();}
 }
