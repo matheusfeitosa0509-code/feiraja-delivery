@@ -71,8 +71,7 @@ function ensureMarkup(host){
  const stats={alerts:0,approvals:0,paid:0,kit:'—'};
  layer.innerHTML=ROOMS.map(r=>roomMarkup(r,stats)).join('');
  host.dataset.ready='1';host.dataset.zoom='1';
- host.addEventListener('click',e=>{const zoom=e.target.closest('[data-zoom]');if(zoom){changeZoom(host,zoom.dataset.zoom);return;}const person=e.target.closest('[data-agent]');if(person&&host._onAgentClick)host._onAgentClick(person.dataset.agent);});
- host.addEventListener('keydown',e=>{const person=e.target.closest('[data-agent]');if(person&&(e.key==='Enter'||e.key===' ')){e.preventDefault();if(host._onAgentClick)host._onAgentClick(person.dataset.agent);}});
+ host.addEventListener('click',e=>{const zoom=e.target.closest('[data-zoom]');if(zoom)changeZoom(host,zoom.dataset.zoom);});
  const stage=$(host,'#mapStage');let drag=null;
  stage.addEventListener('pointerdown',e=>{if(e.target.closest('[data-agent]'))return;drag={x:e.clientX,y:e.clientY,left:stage.scrollLeft,top:stage.scrollTop};stage.setPointerCapture(e.pointerId);});
  stage.addEventListener('pointermove',e=>{if(!drag)return;stage.scrollLeft=drag.left-(e.clientX-drag.x);stage.scrollTop=drag.top-(e.clientY-drag.y);});
