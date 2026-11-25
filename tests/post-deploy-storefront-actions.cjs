@@ -15,7 +15,7 @@ const assert = require('node:assert/strict');
   page.on('response', response => {
     if (response.status() >= 500) errors.push('HTTP ' + response.status() + ' ' + response.url());
     if (response.url().includes('/rest/v1/store_banners')) bannerResponses.push('HTTP ' + response.status());
-    if (response.url().includes('/rest/v1/product_sales_rules')) salesRuleResponses.push('HTTP ' + response.status());
+    if (response.url().includes('/rest/v1/product_sales_rules')) response.json().then(rows => salesRuleResponses.push({ status: response.status(), rows: Array.isArray(rows) ? rows.length : null, sample: Array.isArray(rows) ? rows.slice(0, 2) : rows })).catch(error => salesRuleResponses.push({ status: response.status(), bodyError: error.message }));
   });
   const expectOpen = async (selector, label) => {
     try { await page.waitForFunction(s => { const el=document.querySelector(s); return !!el && (el.classList.contains('open') || el.getAttribute('aria-hidden')==='false'); }, selector, { timeout: 5000 }); }
@@ -84,7 +84,8 @@ const assert = require('node:assert/strict');
     assert.ok(Number((await page.locator('#tabCartCount').textContent()).trim()) > 0, '+ do produto não adicionou ao carrinho');
     // Product cards can render before the asynchronous sales rules finish loading.
     await page.waitForFunction(() => [...document.querySelectorAll('button[data-value-open]')].some(button => button.getClientRects().length > 0 && getComputedStyle(button).visibility !== 'hidden'), null, { timeout: 20000 }).catch(() => {});
-    console.log('POST_DEPLOY_VALUE_SALE_DEBUG', JSON.stringify({ valueButtons: await page.locator('button[data-value-open]:visible').count(), salesRuleResponses, salesRuleWarnings }));
+    const valueSaleDom = await page.evaluate(() => { const read = expression => { try { return eval(expression); } catch (error) { return 'unavailable: ' + error.message; } }; return { products: document.querySelectorAll('#homeProductSections .product').length, allValueButtons: document.querySelectorAll('#homeProductSections button[data-value-open]').length, visibleValueButtons: [...document.querySelectorAll('#homeProductSections button[data-value-open]')].filter(button => button.getClientRects().length && getComputedStyle(button).visibility !== 'hidden').length, salesSettingsReady: read('salesSettingsReady'), salesRulesCount: read('salesRulesById.size'), productCount: read('products.length') }; });
+    console.log('POST_DEPLOY_VALUE_SALE_DEBUG', JSON.stringify({ valueButtons: await page.locator('button[data-value-open]:visible').count(), salesRuleResponses, salesRuleWarnings, valueSaleDom }));
     const valueButton = page.locator('button[data-value-open]:visible').first();
     if (await valueButton.count()) {
       await expect(valueButton).toContainText('Pedir por valor');
