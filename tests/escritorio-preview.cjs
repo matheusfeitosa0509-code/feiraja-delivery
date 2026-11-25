@@ -33,7 +33,7 @@ export function createClient(){
 `;
 const server=http.createServer((req,res)=>{
  const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
- const file=pathname.startsWith('/supabase/')?path.join(repoRoot,pathname.replace(/^\\//,'')):path.join(root,pathname==='/'?'index.html':pathname.replace(/^\\//,''));
+ const file=pathname.startsWith('/supabase/')?path.join(repoRoot,pathname.slice(1)):path.join(root,pathname==='/'?'index.html':pathname.slice(1));
  if(!file.startsWith(root)&&!file.startsWith(path.join(repoRoot,'supabase'))){res.writeHead(403);return res.end();}
  fs.readFile(file,(err,buf)=>{if(err){res.writeHead(404);return res.end('not found');}const ext=path.extname(file);const types={'.html':'text/html','.js':'text/javascript','.svg':'image/svg+xml','.webmanifest':'application/manifest+json'};res.writeHead(200,{'content-type':types[ext]||'application/octet-stream'});res.end(buf);});
 });
