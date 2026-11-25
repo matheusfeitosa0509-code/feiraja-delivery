@@ -5,6 +5,20 @@ const { chromium } = require('playwright');
   const base = process.env.PAGES_BASE_URL || 'https://www.feiraondelivery.com.br';
   const failures = [];
   try {
+    // O Escritório precisa existir no mesmo deploy do site público.
+    const officePage = await browser.newPage({ viewport: { width: 412, height: 915 } });
+    try {
+      const officeResponse = await officePage.goto(base + '/escritorio/', { waitUntil: 'domcontentloaded', timeout: 60000 });
+      if (!officeResponse || officeResponse.status() !== 200) failures.push('/escritorio/: HTTP ' + (officeResponse && officeResponse.status()));
+      else {
+        if (await officePage.title() !== 'Escritório Feira On') failures.push('/escritorio/: título inesperado');
+        if (!(await officePage.getByRole('heading', { name: 'Escritório Feira On' }).count())) failures.push('/escritorio/: conteúdo principal ausente');
+      }
+    } catch (error) {
+      failures.push('/escritorio/: rota não publicada (' + error.message + ')');
+    } finally {
+      await officePage.close();
+    }
     // Links curtos precisam existir no site publicado e preservar os UTMs.
     const shortLinks = [
       ['/ig/', 'instagram', 'bio'],
