@@ -5,6 +5,7 @@ const panel=fs.readFileSync(new URL('../../painel.html',import.meta.url),'utf8')
 const uva=fs.readFileSync(new URL('../migrations/20261114184851_uva_kg_sale_rule.sql',import.meta.url),'utf8');
 const storage=fs.readFileSync(new URL('../migrations/20261114185150_product_photos_storage.sql',import.meta.url),'utf8');
 const rollback=fs.readFileSync(new URL('../rollbacks/20261114185150_product_photos_storage_rollback.sql',import.meta.url),'utf8');
+const webpMigration=fs.readFileSync(new URL('../migrations/20261123113000_product_photos_allow_webp_png.sql',import.meta.url),'utf8');
 
 for(const id of ['btnPickSheetPhoto','sheetPhotoInput','sheetImagePreview','btnPickNewProductPhoto','newProductPhotoInput','newProductPhotoPreview']) {
  assert.match(panel,new RegExp('id="'+id+'"'),'photo upload UI includes '+id);
@@ -15,6 +16,9 @@ assert.match(panel,/PRODUCT_PHOTO_MAX_BYTES=300\*1024/,'compressed image size is
 assert.match(panel,/canvas\.toBlob\(resolve,'image\/jpeg',quality\)/,'uploads are converted to JPEG');
 assert.match(panel,/upsert:false/,'every photo gets a unique object and is never overwritten');
 assert.match(panel,/db\.storage\.from\(PRODUCT_PHOTO_BUCKET\)\.upload/,'photos upload through Supabase Storage');
+assert.match(panel,/if\(thumbUpload\.error\)\{console\.warn\([\s\S]*?savedThumbPath=null;\}/,'thumbnail failure preserves the original upload');
+assert.match(panel,/return \{path,thumbPath:savedThumbPath,url:data\.publicUrl\}/,'saved product receives original public URL even without thumbnail');
+assert.match(webpMigration,/ARRAY\['image\/jpeg',\s*'image\/png',\s*'image\/webp'\]/,'bucket accepts JPEG, PNG, and WebP');
 assert.match(panel,/deleteOldProductPhotoIfUnused\(product\.image,id\)/,'old photo deletion is guarded by usage check');
 assert.match(panel,/eq\('image',oldImage\)\.neq\('id',productId\)/,'old image is retained while another product references it');
 assert.match(panel,/preparePhotoInput\('sheetPhotoInput','btnPickSheetPhoto','sheet'\)/,'sheet photo picker is wired');
@@ -28,7 +32,7 @@ assert.match(uva,/\('feiraja_uva_500g', 'kg', 0\.5, 0\.5, 100, true, 0\.5\)/,'Uv
 assert.doesNotMatch(uva,/SET price\s*=/i,'Uva price is not modified');
 assert.doesNotMatch(uva,/INSERT INTO public\.products|DELETE FROM public\.products/i,'Uva row is not created or deleted');
 
-assert.match(storage,/VALUES \('product-photos', 'product-photos', true, 307200, ARRAY\['image\/jpeg'\]\)/,'dedicated public bucket is limited to JPEG and 300 KB');
+assert.match(storage,/VALUES \('product-photos', 'product-photos', true, 307200, ARRAY\['image\/jpeg'\]\)/,'original bucket migration remains unchanged and limited to JPEG');
 assert.match(storage,/FOR INSERT\s+TO authenticated\s+WITH CHECK \([\s\S]*public\.is_current_user_admin\(\)/,'only admins can upload');
 assert.match(storage,/FOR DELETE\s+TO authenticated\s+USING \([\s\S]*public\.is_current_user_admin\(\)/,'only admins can delete');
 const selectPolicy=storage.split('CREATE POLICY "product_photos_admin_select"')[1]?.split(';')[0]||'';

@@ -982,10 +982,11 @@ async function uploadProductPhoto(productId,photo){
  const originalUpload=await db.storage.from(PRODUCT_PHOTO_BUCKET).upload(path,photo.blob,{contentType:'image/jpeg',cacheControl:'31536000',upsert:false});
  if(originalUpload.error)throw originalUpload.error;
  const thumbUpload=await db.storage.from(PRODUCT_PHOTO_BUCKET).upload(thumbPath,photo.thumbBlob,{contentType:'image/webp',cacheControl:'31536000',upsert:false});
- if(thumbUpload.error){await storage.remove([path]);throw thumbUpload.error;}
+ let savedThumbPath=thumbPath;
+ if(thumbUpload.error){console.warn('Miniatura WebP não enviada; mantendo a foto original:',thumbUpload.error);savedThumbPath=null;}
  const {data}=storage.getPublicUrl(path);
  if(!data?.publicUrl){await storage.remove([path,thumbPath]);throw new Error('O Storage não retornou a URL pública da foto.');}
- return {path,thumbPath,url:data.publicUrl};
+ return {path,thumbPath:savedThumbPath,url:data.publicUrl};
 }
 async function removeUploadedProductPhoto(photo){
  if(!photo)return;
