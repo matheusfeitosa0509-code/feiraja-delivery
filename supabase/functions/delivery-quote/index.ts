@@ -62,18 +62,57 @@ Deno.serve(async (req: Request) => {
     if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Requisição inválida." }, 400);
     const dropoff = formatDropoff(body.address);
     if (!Array.isArray(body.items) || body.items.length < 1 || body.items.length > 100) return json({ error: "Carrinho inválido." }, 400);
-    const ids: string[] = [...new Set<string>(body.items.map((i: any) => String(i?.product_id || "")))];
-    if (ids.some((id) => !id || id.length > 100)) return json({ error: "Carrinho inválido." }, 400);
+    const normalizedCart = body.items.map((item: any) => {
+      const rawId = String(item?.product_id || item?.id || "");
+      const prefixedKitId = rawId.match(/^kit:([0-9a-f-]{36})$/i)?.[1] || "";
+      const kitId = String(item?.kit_id || prefixedKitId ||
+        ((item?.is_kit === true || String(item?.type || "").toLowerCase() === "kit" ||
+          String(item?.sale_mode || "").toLowerCase() === "kit") ? rawId : ""));
+      const quantity = Number(item?.quantity ?? item?.qty ?? 1);
+      return { productId: rawId, kitId, quantity };
+    });
+    if (normalizedCart.some((item: any) => !item.productId || item.productId.length > 100 ||
+      !Number.isFinite(item.quantity) || item.quantity <= 0 || item.quantity > 1000)) {
+      return json({ error: "Carrinho inválido." }, 400);
+    }
+    const kitCart = normalizedCart.filter((item: any) => !!item.kitId);
+    const regularCart = normalizedCart.filter((item: any) => !item.kitId);
+    const kitIds = [...new Set<string>(kitCart.map((item: any) => item.kitId))];
+    if (kitIds.some((id) => !/^[0-9a-f-]{36}$/i.test(id))) return json({ error: "Kit inválido no carrinho." }, 400);
+
     const productsStarted = performance.now();
+    let expandedItems: Array<{ product_id: string; quantity: number }> = regularCart.map((item: any) => ({
+      product_id: item.productId, quantity: item.quantity,
+    }));
+    if (kitIds.length) {
+      const { data: kitRows, error: kitItemsError } = await db.from("daily_recipe_kit_items")
+        .select("kit_id,product_id,quantity").in("kit_id", kitIds);
+      if (kitItemsError || !kitRows?.length || kitIds.some((id) =>
+        !kitRows.some((component: any) => String(component.kit_id) === id))) {
+        return json({ error: "Não foi possível validar a composição do kit para calcular a entrega." }, 400);
+      }
+      for (const kit of kitCart) {
+        const components = kitRows.filter((component: any) => String(component.kit_id) === kit.kitId);
+        for (const component of components) {
+          const componentQuantity = Number(component.quantity) * kit.quantity;
+          if (!String(component.product_id || "") || !Number.isFinite(componentQuantity) || componentQuantity <= 0) {
+            return json({ error: "Composição de kit inválida para calcular a entrega." }, 400);
+          }
+          expandedItems.push({ product_id: String(component.product_id), quantity: componentQuantity });
+        }
+      }
+    }
+    const ids: string[] = [...new Set<string>(expandedItems.map((item) => item.product_id))];
+    if (!ids.length || ids.some((id) => !id || id.length > 100)) return json({ error: "Carrinho inválido." }, 400);
     const [{ data: products, error: productsError }, { data: rules, error: rulesError }] = await Promise.all([
       db.from("products").select("id,delivery_unit_weight_kg,delivery_bulky").in("id", ids),
       db.from("product_sales_rules").select("product_id,sale_unit").in("product_id", ids),
     ]);
     if (productsError || rulesError || !products || products.length !== ids.length) return json({ error: "Não foi possível validar os produtos do carrinho." }, 400);
-    const saleUnits = new Map((rules || []).map((r: any) => [r.product_id, r.sale_unit]));
-    const load = estimateLoad(body.items, products.map((p: any) => ({
-      id: p.id, delivery_unit_weight_kg: p.delivery_unit_weight_kg == null ? null : Number(p.delivery_unit_weight_kg),
-      delivery_bulky: p.delivery_bulky === true, sale_unit: saleUnits.get(p.id) || null,
+    const saleUnits = new Map((rules || []).map((r: any) => [String(r.product_id), r.sale_unit]));
+    const load = estimateLoad(expandedItems, products.map((p: any) => ({
+      id: String(p.id), delivery_unit_weight_kg: p.delivery_unit_weight_kg == null ? null : Number(p.delivery_unit_weight_kg),
+      delivery_bulky: p.delivery_bulky === true, sale_unit: saleUnits.get(String(p.id)) || null,
     })));
     const vehicle = chooseVehicle(load.weightKg, load.bulky, Number(settings?.moto_limite_kg || 12));
     timings.products_weight_ms = Math.round(performance.now() - productsStarted);
