@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { readLalamoveCredentials, readLalamoveEnvironment } from "../_shared/lalamove-environment.ts";
-import { chooseVehicle, classifyLalamoveQuoteError, estimateLoad, formatDropoff, isQuoteAllowed, parseQuotation, requestSandboxQuotation, retryLalamove429, startParallelVehicleQuotes } from "../_shared/delivery-quote.ts";
+import { chooseVehicle, classifyLalamoveQuoteError, estimateLoad, expandKitQuoteItems, formatDropoff, isQuoteAllowed, parseQuotation, requestSandboxQuotation, retryLalamove429, startParallelVehicleQuotes } from "../_shared/delivery-quote.ts";
 import { geocodeManausAddress, resolveDeliveryCoordinates } from "../_shared/geocoding.ts";
 import { getCommercialSchedule } from "../_shared/commercial-calendar.js";
 
@@ -91,15 +91,12 @@ Deno.serve(async (req: Request) => {
         !kitRows.some((component: any) => String(component.kit_id) === id))) {
         return json({ error: "Não foi possível validar a composição do kit para calcular a entrega." }, 400);
       }
-      for (const kit of kitCart) {
-        const components = kitRows.filter((component: any) => String(component.kit_id) === kit.kitId);
-        for (const component of components) {
-          const componentQuantity = Number(component.quantity) * kit.quantity;
-          if (!String(component.product_id || "") || !Number.isFinite(componentQuantity) || componentQuantity <= 0) {
-            return json({ error: "Composição de kit inválida para calcular a entrega." }, 400);
-          }
-          expandedItems.push({ product_id: String(component.product_id), quantity: componentQuantity });
-        }
+      try {
+        expandedItems = expandKitQuoteItems(normalizedCart.map((item: any) => ({
+          product_id: item.productId, kit_id: item.kitId || null, quantity: item.quantity,
+        })), kitRows);
+      } catch {
+        return json({ error: "Composição de kit inválida para calcular a entrega." }, 400);
       }
     }
     const ids: string[] = [...new Set<string>(expandedItems.map((item) => item.product_id))];
