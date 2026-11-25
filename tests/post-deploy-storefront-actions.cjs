@@ -79,12 +79,14 @@ const assert = require('node:assert/strict');
     const plus = page.locator('#homeProductSections .product:not(.skeleton-card) [data-card-change][data-d="1"]').first();
     await plus.click();
     assert.ok(Number((await page.locator('#tabCartCount').textContent()).trim()) > 0, '+ do produto não adicionou ao carrinho');
-    const valueButton = page.locator('#homeProductSections .value-sale-open').first();
+    const valueButton = page.locator('button[data-value-open]:visible').first();
     if (await valueButton.count()) {
+      await expect(valueButton).toContainText('Pedir por valor');
       await valueButton.click();
       await expectOpen('#valueSaleSheet', 'Pedir por valor');
+      assert.ok(await page.locator('#valueSaleSheet').isVisible(), 'Pedir por valor: modal não ficou visível');
       await page.locator('#valueSaleClose').click();
-    } else failures.push('Pedir por valor: nenhum botão disponível no catálogo para teste');
+    } else failures.push('Pedir por valor: nenhum botão visível data-value-open disponível no catálogo para teste');
 
     await page.locator('.mobile-nav [data-page="Cart"]').click();
     assert.ok(await page.locator('#pageCart.active').count(), 'Carrinho não abriu');
