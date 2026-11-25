@@ -12,7 +12,7 @@ async function guard(session){if(!session?.user){show(false);return;}if(!(await 
 function rangeToday(){const d=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Manaus',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());const s=new Date(d+'T00:00:00-04:00');return {start:s.toISOString(),end:new Date(s.getTime()+86400000).toISOString(),label:d};}
 function weekday(){const x=new Intl.DateTimeFormat('en-US',{timeZone:'America/Manaus',weekday:'short'}).format(new Date());return ({Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6})[x];}
 async function today(){const r=rangeToday();$('today').textContent=r.label+' · Manaus';const q=await Promise.all([
- db.from('orders').select('total,payment_id,created_at,is_test_order').not('payment_id','is',null).gte('created_at',r.start).lt('created_at',r.end).or('is_test_order.is.null,is_test_order.eq.false'),
+ db.from('orders').select('total,status,created_at,is_test_order').in('status',['Pago','Pagamento Confirmado','Pedido Recebido','Preparando','Pronto para Retirada','Saiu para Entrega','Entregue','Preparando pedido','Saiu para entrega','Concluído','Concluido']).gte('created_at',r.start).lt('created_at',r.end).or('is_test_order.is.null,is_test_order.eq.false'),
  db.from('admin_alerts').select('id',{count:'exact',head:true}).eq('lido',false),
  db.from('daily_recipe_kits').select('name,fixed_price').eq('weekday',weekday()).eq('is_active',true).limit(1)
 ]);for(const x of q)if(x.error)throw x.error;const rows=q[0].data||[];$('paid').textContent=rows.length;$('revenue').textContent=money(rows.reduce((a,x)=>a+Number(x.total||0),0));$('alerts').textContent=q[1].count??0;const kit=q[2].data?.[0];$('kit').textContent=kit?.name||'Nenhum ativo';$('kitPrice').textContent=kit?money(kit.fixed_price):'—';}
