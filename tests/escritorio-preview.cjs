@@ -4,6 +4,7 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 
 const root = path.resolve(__dirname, '../escritorio');
+const repoRoot = path.resolve(__dirname, '..');
 const mockModule = `
 export function createClient(){
  const agents=[
@@ -32,8 +33,8 @@ export function createClient(){
 `;
 const server=http.createServer((req,res)=>{
  const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
- const file=path.join(root,pathname==='/'?'index.html':pathname.replace(/^\//,''));
- if(!file.startsWith(root)){res.writeHead(403);return res.end();}
+ const file=pathname.startsWith('/supabase/')?path.join(repoRoot,pathname.replace(/^\\//,'')):path.join(root,pathname==='/'?'index.html':pathname.replace(/^\\//,''));
+ if(!file.startsWith(root)&&!file.startsWith(path.join(repoRoot,'supabase'))){res.writeHead(403);return res.end();}
  fs.readFile(file,(err,buf)=>{if(err){res.writeHead(404);return res.end('not found');}const ext=path.extname(file);const types={'.html':'text/html','.js':'text/javascript','.svg':'image/svg+xml','.webmanifest':'application/manifest+json'};res.writeHead(200,{'content-type':types[ext]||'application/octet-stream'});res.end(buf);});
 });
 (async()=>{
@@ -51,8 +52,11 @@ const server=http.createServer((req,res)=>{
   await page.goto('http://127.0.0.1:4173/');
   await page.locator('#app:not(.hidden)').waitFor();
   await page.locator('#approvals .approval').waitFor();
+  await page.locator('#officeMapSvg').waitFor();
+  await page.locator('#officeMapSvg [data-agent]').first().waitFor();
+  await page.screenshot({path:'artifacts/escritorio-mapa-360.png',fullPage:true});
   await page.screenshot({path:'artifacts/escritorio-esperando-dono-360.png',fullPage:true});
-  await page.locator('[data-open="a-exec"]').click();
+  await page.locator('#officeMapSvg [data-agent="a-exec"]').click();
   await page.locator('#agentDetail').waitFor({state:'visible'});
   await page.screenshot({path:'artifacts/escritorio-agente-360.png',fullPage:true});
   await page.locator('#closeAgent').click();
