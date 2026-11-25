@@ -1,6 +1,6 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
-  buildQuotationBody, chooseVehicle, classifyLalamoveQuoteError, estimateLoad, formatDropoff, isQuoteAllowed,
+  buildQuotationBody, chooseVehicle, classifyLalamoveQuoteError, estimateLoad, expandKitQuoteItems, formatDropoff, isQuoteAllowed,
   parseQuotation, requestSandboxQuotation, retryLalamove429, startParallelVehicleQuotes,
 } from "../_shared/delivery-quote.ts";
 import { getStoreSchedule } from "../_shared/store-schedule.js";
@@ -263,4 +263,38 @@ Deno.test("Lalamove HTTP 4xx não repete", async () => {
   assertEquals(response.status, 422);
   assertEquals(calls, 1);
   assertEquals(waits, []);
+});
+
+Deno.test("kit sozinho e kit com produto normal expandem componentes e somam pesos", () => {
+  const kitId = "2f5c62b3-4ace-4038-bf66-6e60d01f5021";
+  const kitComponents = [
+    { kit_id: kitId, product_id: "ovinha", quantity: 2 },
+    { kit_id: kitId, product_id: "ova-caroco", quantity: 1 },
+    { kit_id: kitId, product_id: "branca", quantity: 1 },
+    { kit_id: kitId, product_id: "farinha-dagua", quantity: 1 },
+    { kit_id: kitId, product_id: "tapioca-500g", quantity: 2 },
+    { kit_id: kitId, product_id: "goma-1kg", quantity: 2 },
+    { kit_id: kitId, product_id: "castanha-280g", quantity: 2 },
+  ];
+  const kitProducts = [
+    { id: "ovinha", delivery_unit_weight_kg: 1.05, delivery_bulky: false, sale_unit: "pacote" },
+    { id: "ova-caroco", delivery_unit_weight_kg: 1.05, delivery_bulky: false, sale_unit: "pacote" },
+    { id: "branca", delivery_unit_weight_kg: 1.05, delivery_bulky: false, sale_unit: "pacote" },
+    { id: "farinha-dagua", delivery_unit_weight_kg: null, delivery_bulky: false, sale_unit: "kg" },
+    { id: "tapioca-500g", delivery_unit_weight_kg: 0.55, delivery_bulky: false, sale_unit: "un" },
+    { id: "goma-1kg", delivery_unit_weight_kg: 1.05, delivery_bulky: false, sale_unit: "pacote" },
+    { id: "castanha-280g", delivery_unit_weight_kg: 0.32, delivery_bulky: false, sale_unit: "un" },
+    { id: "banana", delivery_unit_weight_kg: 0.5, delivery_bulky: false, sale_unit: "un" },
+  ];
+  const kitOnly = expandKitQuoteItems([{ product_id: "kit:" + kitId, kit_id: kitId, quantity: 1 }], kitComponents);
+  assertEquals(kitOnly.length, 7);
+  assertEquals(estimateLoad(kitOnly, kitProducts).weightKg, 9.04);
+  const mixed = expandKitQuoteItems([
+    { product_id: "kit:" + kitId, kit_id: kitId, quantity: 1 },
+    { product_id: "banana", quantity: 1 },
+  ], kitComponents);
+  assertEquals(mixed.length, 8);
+  assertEquals(estimateLoad(mixed, kitProducts).weightKg, 9.54);
+  const twoKits = expandKitQuoteItems([{ product_id: "kit:" + kitId, kit_id: kitId, quantity: 2 }], kitComponents);
+  assertEquals(estimateLoad(twoKits, kitProducts).weightKg, 18.08);
 });
