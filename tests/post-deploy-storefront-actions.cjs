@@ -8,11 +8,14 @@ const assert = require('node:assert/strict');
   const page = await browser.newPage({ viewport: { width: 412, height: 915 } });
   const errors = [];
   const bannerResponses = [];
+  const salesRuleResponses = [];
+  const salesRuleWarnings = [];
   page.on('pageerror', error => errors.push(error.message));
-  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); if (message.type() === 'warning' && /Regras de venda|Compra por valor/.test(message.text())) salesRuleWarnings.push(message.text()); });
   page.on('response', response => {
     if (response.status() >= 500) errors.push('HTTP ' + response.status() + ' ' + response.url());
     if (response.url().includes('/rest/v1/store_banners')) bannerResponses.push('HTTP ' + response.status());
+    if (response.url().includes('/rest/v1/product_sales_rules')) salesRuleResponses.push('HTTP ' + response.status());
   });
   const expectOpen = async (selector, label) => {
     try { await page.waitForFunction(s => { const el=document.querySelector(s); return !!el && (el.classList.contains('open') || el.getAttribute('aria-hidden')==='false'); }, selector, { timeout: 5000 }); }
@@ -79,6 +82,9 @@ const assert = require('node:assert/strict');
     const plus = page.locator('#homeProductSections .product:not(.skeleton-card) [data-card-change][data-d="1"]').first();
     await plus.click();
     assert.ok(Number((await page.locator('#tabCartCount').textContent()).trim()) > 0, '+ do produto não adicionou ao carrinho');
+    // Product cards can render before the asynchronous sales rules finish loading.
+    await page.waitForFunction(() => [...document.querySelectorAll('button[data-value-open]')].some(button => button.getClientRects().length > 0 && getComputedStyle(button).visibility !== 'hidden'), null, { timeout: 20000 }).catch(() => {});
+    console.log('POST_DEPLOY_VALUE_SALE_DEBUG', JSON.stringify({ valueButtons: await page.locator('button[data-value-open]:visible').count(), salesRuleResponses, salesRuleWarnings }));
     const valueButton = page.locator('button[data-value-open]:visible').first();
     if (await valueButton.count()) {
       await expect(valueButton).toContainText('Pedir por valor');
