@@ -35,6 +35,29 @@ export async function resolveDeliveryDropoffCoordinates(
   return { coordinates: await fallback(), source: "geocoded_fallback" };
 }
 
+export type KitQuoteComponent = { kit_id: string; product_id: string; quantity: number };
+
+export function expandKitQuoteItems(
+  items: Array<{ product_id: string; quantity: number; kit_id?: string | null }>,
+  components: KitQuoteComponent[],
+): QuoteItem[] {
+  const expanded: QuoteItem[] = [];
+  for (const item of items) {
+    if (!item.kit_id) {
+      expanded.push({ product_id: item.product_id, quantity: item.quantity });
+      continue;
+    }
+    const kitComponents = components.filter((component) => String(component.kit_id) === String(item.kit_id));
+    if (!kitComponents.length) throw new Error("INVALID_ITEMS");
+    for (const component of kitComponents) {
+      const quantity = Number(component.quantity) * item.quantity;
+      if (!component.product_id || !Number.isFinite(quantity) || quantity <= 0) throw new Error("INVALID_ITEMS");
+      expanded.push({ product_id: String(component.product_id), quantity });
+    }
+  }
+  return expanded;
+}
+
 export function estimateLoad(items: QuoteItem[], products: ProductWeight[]) {
   if (!Array.isArray(items) || items.length < 1 || items.length > 100) throw new Error("INVALID_ITEMS");
   const byId = new Map(products.map((p) => [p.id, p]));
