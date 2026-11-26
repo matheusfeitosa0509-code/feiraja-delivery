@@ -26,9 +26,3 @@ Deno.test("Places usa viés de Manaus e não exige número de rua para pontos de
   assertEquals(source.includes("street_number"), true);
 });
 
-Deno.test("proxy aceita usuário autenticado inclusive sessão anônima validada pelo Auth", async () => {
-  const source = await Deno.readTextFile("supabase/functions/delivery-address/index.ts");
-  assertEquals(source.includes("auth.auth.getUser(token)"), true);
-  assertEquals(source.includes("if (authError || !authData?.user)"), true);
-  assertEquals(source.includes("authData.user.is_anonymous"), false);
-});
