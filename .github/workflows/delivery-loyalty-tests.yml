@@ -26,6 +26,6 @@ jobs:
           --health-cmd "pg_isready -U postgres -d delivery_loyalty_test"
           --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Testar regras e reservas no PostgreSQL 17
         run: bash supabase/tests/delivery_loyalty_test.sh
