@@ -1786,7 +1786,7 @@ async function loadProfile(knownUser){
  if(data){
   if(data.full_name&&!$('#name').value.trim())$('#name').value=data.full_name;
   if(data.phone&&!$('#phone').value.trim())$('#phone').value=data.phone;
-  if(data.cpf&&!$('#cpf').value.trim())$('#cpf').value=data.cpf;
+  if(data.cpf&&!$('#cpf').value.trim())$('#cpf').value=formatCpfInput(data.cpf);
   if(data.address_street&&!$('#deliveryStreet').value.trim())$('#deliveryStreet').value=data.address_street;
   if(data.address_number&&!$('#deliveryNumber').value.trim())$('#deliveryNumber').value=data.address_number;
   if(data.address_neighborhood&&!$('#deliveryNeighborhood').value.trim())$('#deliveryNeighborhood').value=data.address_neighborhood;
