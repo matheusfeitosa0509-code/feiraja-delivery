@@ -48,6 +48,9 @@ const assert = require('node:assert/strict');
     assert.equal(runtimeResponse.status(), 200, 'assistant-runtime.js não foi publicado no Pages');
     const speechResponse = await page.request.get(base + '/assistant-speech.js?v=post-deploy-check');
     assert.equal(speechResponse.status(), 200, 'assistant-speech.js não foi publicado no Pages');
+    const turnstileResponse = await page.request.get(base + '/turnstile.js?v=20261126-anon-captcha');
+    assert.equal(turnstileResponse.status(), 200, 'turnstile.js versionado não foi publicado no Pages');
+    assert.equal(await page.locator('script[src*="turnstile.js?v=20261126-anon-captcha"]').count(), 1, 'loja não referencia a versão nova do Turnstile');
 
     await page.waitForFunction(() => document.querySelectorAll('#storeBannersTrack .store-banner-slide').length > 0, null, { timeout: 15000 }).catch(() => {});
     console.log('POST_DEPLOY_BANNER_DEBUG', JSON.stringify({ slideCount: await page.locator('#storeBannersTrack .store-banner-slide').count(), trackText: await page.locator('#storeBannersTrack').innerText().catch(() => ''), bannerResponses, errors }));
@@ -82,7 +85,7 @@ const assert = require('node:assert/strict');
     // Aguarda as regras assíncronas e testa dentro de uma categoria expandida, não no kit (primeira categoria).
     await page.waitForFunction(() => document.querySelectorAll('#homeProductSections button[data-value-open]').length > 0, null, { timeout: 20000 });
     const valueButton = valueCategory.locator('button[data-value-open]:visible').first();
-    await expect(valueButton).toContainText('Pedir por valor');
+    assert.match(await valueButton.innerText(), /Pedir por valor/, 'botão de compra por valor não exibe o texto esperado');
     await valueButton.click();
     await expectOpen('#valueSaleSheet', 'Pedir por valor');
     assert.ok(await page.locator('#valueSaleSheet').isVisible(), 'Pedir por valor: modal não ficou visível');
