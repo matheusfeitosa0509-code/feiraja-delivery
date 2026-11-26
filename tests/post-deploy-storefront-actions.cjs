@@ -69,6 +69,16 @@ const assert = require('node:assert/strict');
     assert.ok(categoryCount > 0, 'nenhuma categoria foi carregada');
     for (let i = 0; i < categoryCount; i++) await categories.nth(i).click();
 
+    const kitBannerCount = await page.locator('#storeBannersTrack .store-banner-slide').filter({ hasText: /Kit/ }).count();
+    if (kitBannerCount) {
+      const kitCard = page.locator('#homeProductSections .product-kit').first();
+      assert.equal(await kitCard.count(), 1, 'banner de kit ativo sem card do kit na vitrine');
+      assert.equal(await kitCard.isVisible(), true, 'card do kit ativo não está visível');
+      await kitCard.locator('[data-card-change][data-d="1"]').click();
+      assert.ok(Number((await page.locator('#tabCartCount').textContent()).trim()) > 0, 'kit ativo não pôde ser adicionado ao carrinho');
+      await kitCard.locator('[data-card-change][data-d="-1"]').click();
+    }
+
     const categoryBack = page.locator('#homeProductSections [data-view-category]:visible').filter({ hasText: 'Voltar' }).first();
     if (await categoryBack.count()) await categoryBack.click();
     const valueCategory = page.locator('#homeProductSections .home-catalog-category').filter({ has: page.locator('button[data-value-open]') }).first();
@@ -79,7 +89,7 @@ const assert = require('node:assert/strict');
       assert.ok(await page.locator('#pageHome.active').count() && await valueCategory.locator('.product:not(.skeleton-card)').count() > 0, 'Ver todos não abriu a categoria com compra por valor');
     }
 
-    const plus = page.locator('#homeProductSections .product:not(.skeleton-card) [data-card-change][data-d="1"]').first();
+    const plus = valueCategory.locator('.product:not(.skeleton-card) [data-card-change][data-d="1"]:visible').first();
     await plus.click();
     assert.ok(Number((await page.locator('#tabCartCount').textContent()).trim()) > 0, '+ do produto não adicionou ao carrinho');
     // Aguarda as regras assíncronas e testa dentro de uma categoria expandida, não no kit (primeira categoria).
