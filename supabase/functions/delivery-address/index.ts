@@ -69,7 +69,7 @@ Deno.serve(async (req: Request) => {
     if (!token) return json({ error: "Sessão necessária." }, 401);
     const auth = createClient(supabaseUrl, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: authData, error: authError } = await auth.auth.getUser(token);
-    if (authError || !authData?.user || authData.user.is_anonymous) return json({ error: "Sessão válida necessária." }, 401);
+    if (authError || !authData?.user) return json({ error: "Sessão válida necessária." }, 401);
 
     if (!allowAddressRequest(authData.user.id)) return json({ error: "Muitas consultas de endereço. Aguarde um minuto." }, 429);
 
