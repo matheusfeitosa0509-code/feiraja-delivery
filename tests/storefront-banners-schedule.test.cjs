@@ -13,7 +13,7 @@ assert.match(store, /storeBannerScheduleRows\.filter\(banner=>isStoreBannerSched
 assert.match(store, /case 'kit'/);
 assert.match(store, /dataset\.productId==='kit:'\+value/);
 assert.match(helper, /timeZone: "America\/Manaus"/);
-assert.match(helper, /current >= start && current < end/);
+assert.match(helper, /minutes >= start && minutes < end/);
 
 const slugs = [
   'kit-suco-semana',

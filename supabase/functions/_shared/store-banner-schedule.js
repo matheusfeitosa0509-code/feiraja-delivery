@@ -9,35 +9,45 @@ function parseTimeMinutes(value) {
   return hour * 60 + minute;
 }
 
-/** Optional schedule for a store banner. Null schedule fields preserve legacy visibility. */
+function getManausClock(now) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Manaus", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(now);
+  return {
+    weekday: WEEKDAY_BY_SHORT[parts.find((part) => part.type === "weekday")?.value || ""],
+    minutes: Number(parts.find((part) => part.type === "hour")?.value) * 60 +
+      Number(parts.find((part) => part.type === "minute")?.value),
+  };
+}
+
+function isDailyKitBannerWindowActive(target, weekday, minutes) {
+  if (!Number.isInteger(target) || target < 1 || target > 6) return false;
+  if (weekday === target) return minutes < 13 * 60;
+  if (target === 1) return (weekday === 6 && minutes >= 13 * 60) || weekday === 0;
+  return weekday === target - 1 && minutes >= 13 * 60;
+}
+
+/** Optional schedule for a store banner. Kit banners use the kit's advance-sale window. */
 export function isStoreBannerScheduleActive(banner, now = new Date()) {
   if (!banner || !(now instanceof Date) || !Number.isFinite(now.getTime())) return false;
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Manaus",
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(now);
-  const weekdayName = parts.find((part) => part.type === "weekday")?.value || "";
-  const weekday = WEEKDAY_BY_SHORT[weekdayName];
-  const hour = Number(parts.find((part) => part.type === "hour")?.value);
-  const minute = Number(parts.find((part) => part.type === "minute")?.value);
-  if (weekday == null || !Number.isInteger(hour) || !Number.isInteger(minute)) return false;
+  const { weekday, minutes } = getManausClock(now);
+  if (!Number.isInteger(weekday) || !Number.isFinite(minutes)) return false;
+
+  if (banner.action_type === "kit") {
+    if (!Array.isArray(banner.weekdays) || banner.weekdays.length !== 1) return false;
+    return isDailyKitBannerWindowActive(Number(banner.weekdays[0]), weekday, minutes);
+  }
 
   if (banner.weekdays != null) {
     if (!Array.isArray(banner.weekdays) || banner.weekdays.length === 0) return false;
     if (!banner.weekdays.some((value) => Number(value) === weekday)) return false;
   }
-
   const hasStart = banner.start_time != null && banner.start_time !== "";
   const hasEnd = banner.end_time != null && banner.end_time !== "";
   if (hasStart !== hasEnd) return false;
   if (!hasStart) return true;
-
   const start = parseTimeMinutes(String(banner.start_time));
   const end = parseTimeMinutes(String(banner.end_time));
   if (start == null || end == null || end <= start) return false;
-  const current = hour * 60 + minute;
-  return current >= start && current < end;
+  return minutes >= start && minutes < end;
 }
