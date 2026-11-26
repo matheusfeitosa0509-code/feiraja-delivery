@@ -1771,9 +1771,16 @@ async function loadProfile(knownUser){
  const {data,error}=await supabase.from('customer_profiles').select('full_name,phone,cpf,address,address_street,address_number,address_neighborhood,address_complement,address_reference').eq('user_id',profileUser.id).maybeSingle();
  if(currentUser?.id!==profileUser.id)return;
  if(error){
+  console.warn('Falha ao consultar customer_profiles:',error);
+  if(profileUser.is_anonymous){
+   restoreCheckoutCustomerDraft(profileUser.id);
+   customerPhoneReady=true;
+   $('#optionalAccountCreate').hidden=false;
+   await loadMyOrders(profileUser);
+   return;
+  }
   customerPhoneReady=false;
   showRequiredProfileStep('Não foi possível verificar seu telefone agora. Tente novamente antes de concluir o pedido.');
-  console.warn('Falha ao consultar customer_profiles:',error);
   return;
  }
  if(data){
