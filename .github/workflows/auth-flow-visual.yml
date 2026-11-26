@@ -17,6 +17,9 @@ on:
       - "recuperar-senha.html"
       - "turnstile.js"
       - "tests/auth-flow.visual.cjs"
+      - "tests/auth-flows.visual.cjs"
+      - "tests/anonymous-checkout.test.mjs"
+      - "tests/scheduled-delivery.visual.cjs"
       - ".github/workflows/auth-flow-visual.yml"
 permissions:
   contents: read
