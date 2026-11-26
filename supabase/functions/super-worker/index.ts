@@ -256,7 +256,8 @@ Deno.serve(async (req: Request) => {
     const phone = String(customer.phone ?? "").trim().slice(0, 40);
     const cpf = paymentMethod === "pix" ? String(customer.cpf ?? "").replace(/\D/g, "").slice(0, 11) : "";
     const validPixDocument = paymentMethod === "pix" && isValidCpf(cpf);
-    const email = String(customer.email ?? "").trim().toLowerCase().slice(0, 254);
+    // Asaas does not require email for customer creation; never collect or substitute one.
+    const email = "";
     const requestedDeliveryType = String(customer.deliveryType ?? body?.delivery_type ?? "");
     const deliveryAddressInput = customer.deliveryAddress || customer.delivery_address || body?.delivery_address || null;
     const deliveryCoordinatesInput = customer.deliveryCoordinates || customer.delivery_coordinates || body?.delivery_coordinates || null;
