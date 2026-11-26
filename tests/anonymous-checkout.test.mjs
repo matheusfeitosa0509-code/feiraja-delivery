@@ -8,6 +8,8 @@ const baselineCommit = 'e05ef5e4790621d3b1664e234535063e3431a3c2';
 const baseline = execFileSync('git', ['show', baselineCommit + ':loja.html'], { cwd: root, encoding: 'utf8' });
 const store = fs.readFileSync(path.join(root, 'loja.html'), 'utf8');
 const worker = fs.readFileSync(path.join(root, 'supabase/functions/super-worker/index.ts'), 'utf8');
+const deliveryAddress = fs.readFileSync(path.join(root, 'supabase/functions/delivery-address/index.ts'), 'utf8');
+const deliveryQuote = fs.readFileSync(path.join(root, 'supabase/functions/delivery-quote/index.ts'), 'utf8');
 const dispatch = fs.readFileSync(path.join(root, 'supabase/functions/lalamove-dispatch/index.ts'), 'utf8');
 const profileWrite = fs.readFileSync(path.join(root, 'supabase/migrations/20261105000200_restrict_customer_profile_writes.sql'), 'utf8');
 const profileRead = fs.readFileSync(path.join(root, 'supabase/migrations/20261106005138_harden_public_defaults_and_profile_constraints.sql'), 'utf8');
@@ -61,5 +63,15 @@ assert.doesNotMatch(profileRead, /GRANT SELECT ON TABLE public\.customer_profile
 assert.match(dispatch, /data\.user\.is_anonymous/, 'dispatch rejects anonymous sessions');
 assert.match(dispatch, /if \(!member\) return \{ error: json\(\{ error: "Ação permitida somente a administradores\."/);
 assert.match(dispatch, /assertTestProductionDispatchConfirmation\(order\.is_test_order === true/);
+
+
+assert.match(deliveryAddress, /auth\.auth\.getUser\(token\)/, 'delivery-address verifies the supplied JWT');
+assert.match(deliveryAddress, /if \(authError \|\| !authData\?\.user\)/, 'delivery-address requires a verified Auth user');
+assert.doesNotMatch(deliveryAddress, /authData\.user\.is_anonymous/, 'delivery-address accepts verified anonymous checkout sessions');
+assert.match(deliveryQuote, /auth\.auth\.getUser\(accessToken\)/, 'delivery-quote verifies the supplied JWT');
+assert.match(deliveryQuote, /if \(authError \|\| !authData\?\.user\)/, 'delivery-quote requires a verified Auth user');
+assert.doesNotMatch(deliveryQuote, /authData\.user\.is_anonymous/, 'delivery-quote accepts verified anonymous checkout sessions');
+assert.match(turnstile, /language:'pt-br'/, 'Turnstile is rendered in Brazilian Portuguese');
+assert.match(turnstile, /Toque na caixinha acima para continuar\. Se não aparecer, toque em Tentar de novo\./, 'CAPTCHA fallback copy is actionable and in Portuguese');
 
 console.log('Anonymous checkout regression checks passed: baseline vs updated flow, CPF, Asaas email, owner RLS, admin test orders and dispatch safeguards.');
