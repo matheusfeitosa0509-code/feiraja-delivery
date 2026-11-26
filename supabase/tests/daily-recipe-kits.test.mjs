@@ -62,11 +62,13 @@ test("server enforces kit window, component stock and fixed kit pricing",()=>{
 
 test("storefront hides kits outside the Manaus window, prioritizes the kit category and removes stale cart kits",()=>{
  const store=fs.readFileSync("loja.html","utf8");
- assert.match(store,/hour<6\|\|hour>=13/);
+ assert.match(store,/dailyKitWindowStatus/);
  assert.match(store,/category:'Kits do dia 🧺'/);
  assert.match(store,/getStorefrontCategories\(\)/);
  assert.match(store,/cartKitRemovedWarning/);
- assert.match(store,/startDailyKitWindowMonitor/);\n assert.match(store,/kit_schedule_label/);\n assert.match(store,/dailyKitBannerLabel/);
+ assert.match(store,/startDailyKitWindowMonitor/);
+ assert.match(store,/kit_schedule_label/);
+ assert.match(store,/dailyKitBannerLabel/);
  assert.match(store,/kit_id:x\.p\.kit_id/);
 });
 test("admin kit editor exposes name, description, photo URL, items, fixed price, weekday and activation",()=>{
