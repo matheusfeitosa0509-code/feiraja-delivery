@@ -23,9 +23,13 @@ const { chromium } = require('playwright');
     const shortLinks = [
       ['/ig/', 'instagram', 'bio'],
       ['/stories/', 'instagram', 'stories'],
-      ['/zap/', 'whatsapp', 'zap']
+      ['/zap/', 'whatsapp', 'zap'],
+      ['/panfleto/', 'panfleto', 'impresso'],
+      ['/panfleto1/', 'panfleto', 'impresso', 'lote1'],
+      ['/panfleto2/', 'panfleto', 'impresso', 'lote2'],
+      ['/panfleto3/', 'panfleto', 'impresso', 'lote3']
     ];
-    for (const [path, source, medium] of shortLinks) {
+    for (const [path, source, medium, campaign] of shortLinks) {
       const shortPage = await browser.newPage();
       try {
         await shortPage.goto(base + path, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -34,6 +38,7 @@ const { chromium } = require('playwright');
         if (finalUrl.pathname !== '/loja.html') failures.push(path + ': destino final inesperado ' + finalUrl.pathname);
         if (finalUrl.searchParams.get('utm_source') !== source) failures.push(path + ': utm_source incorreto (' + finalUrl.searchParams.get('utm_source') + ')');
         if (finalUrl.searchParams.get('utm_medium') !== medium) failures.push(path + ': utm_medium incorreto (' + finalUrl.searchParams.get('utm_medium') + ')');
+        if (finalUrl.searchParams.get('utm_campaign') !== (campaign || null)) failures.push(path + ': utm_campaign incorreto (' + finalUrl.searchParams.get('utm_campaign') + ')');
         if (finalUrl.searchParams.get('utm_source') === 'chatgpt.com') failures.push(path + ': UTM de teste indevido');
       } catch (error) {
         failures.push(path + ': link ausente/404 ou redirecionamento inválido (' + error.message + ')');
