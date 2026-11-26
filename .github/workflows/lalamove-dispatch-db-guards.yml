@@ -20,6 +20,6 @@ jobs:
           --health-cmd "pg_isready -U postgres -d lalamove_guards_test"
           --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Testes PostgreSQL e concorrência real
         run: bash supabase/tests/lalamove_dispatch_guards_test.sh
