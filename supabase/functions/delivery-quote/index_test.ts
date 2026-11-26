@@ -298,3 +298,4 @@ Deno.test("kit sozinho e kit com produto normal expandem componentes e somam pes
   const twoKits = expandKitQuoteItems([{ product_id: "kit:" + kitId, kit_id: kitId, quantity: 2 }], kitComponents);
   assertEquals(estimateLoad(twoKits, kitProducts).weightKg, 18.08);
 });
+
