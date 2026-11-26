@@ -73,7 +73,7 @@
    if(token)return Promise.resolve(token);
    if(failed)return Promise.reject(new Error(message?.textContent||'A verificação falhou. Tente novamente.'));
    if(!required)return Promise.reject(new Error('A verificação de segurança não está ativa.'));
-   return new Promise((resolve,reject)=>{const waiter={resolve,reject,timer:setTimeout(()=>{tokenWaiters.delete(waiter);const error=new Error('A verificação demorou para responder. Toque em “Tentar de novo”.');setFailure(error.message);},timeoutMs)};tokenWaiters.add(waiter);});
+   return new Promise((resolve,reject)=>{const waiter={resolve,reject,timer:setTimeout(()=>{const error=new Error('A verificação demorou para responder. Toque em “Tentar de novo”.');setFailure(error.message);},timeoutMs)};tokenWaiters.add(waiter);});
   }
   retryButton.addEventListener('click',retry);
   setRequired(true);
