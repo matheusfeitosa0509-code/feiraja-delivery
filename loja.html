@@ -1393,16 +1393,21 @@ if(storeHoursLabel)storeHoursLabel.textContent=initialCommercialSchedule.hours==
 const SUPABASE_URL=document.querySelector('meta[name="supabase-url"]').content;
 const SUPABASE_ANON_KEY=document.querySelector('meta[name="supabase-publishable-key"]').content;
 const supabase=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+let anonymousSessionPromise=null;
 async function ensureAnonymousCustomerSession(){
- const {data,error}=await supabase.auth.getSession();if(error)throw error;
- if(data?.session?.user){checkoutCaptcha.setRequired(false);return data.session.user;}
- checkoutCaptcha.setRequired(true);await checkoutCaptcha.init();
- const captchaToken=await checkoutCaptcha.waitForToken();
- if(!captchaToken)throw new Error('A verificação de segurança não retornou um token. Tente novamente.');
- const result=await supabase.auth.signInAnonymously({options:{captchaToken}});
- if(result.error){checkoutCaptcha.fail('Não foi possível validar a verificação de segurança. Toque em “Tentar de novo”.');throw result.error;}
- checkoutCaptcha.setRequired(false);
- const user=result.data?.user||result.data?.session?.user;if(!user?.id)throw new Error('Não foi possível iniciar uma sessão de compra.');return user;
+ if(anonymousSessionPromise)return anonymousSessionPromise;
+ anonymousSessionPromise=(async()=>{
+  const {data,error}=await supabase.auth.getSession();if(error)throw error;
+  if(data?.session?.user){checkoutCaptcha.setRequired(false);return data.session.user;}
+  checkoutCaptcha.setRequired(true);await checkoutCaptcha.init();
+  const captchaToken=await checkoutCaptcha.waitForToken();
+  if(!captchaToken)throw new Error('A verificação de segurança não retornou um token. Tente novamente.');
+  const result=await supabase.auth.signInAnonymously({options:{captchaToken}});
+  if(result.error){checkoutCaptcha.fail('Não foi possível validar a verificação de segurança. Toque em “Tentar de novo”.');throw result.error;}
+  checkoutCaptcha.setRequired(false);
+  const user=result.data?.user||result.data?.session?.user;if(!user?.id)throw new Error('Não foi possível iniciar uma sessão de compra.');return user;
+ })();
+ try{return await anonymousSessionPromise;}finally{anonymousSessionPromise=null;}
 }
 const CHECKOUT_CUSTOMER_DRAFT_PREFIX='feiraja_checkout_customer_v1:';
 function checkoutCustomerDraftKey(userId){return CHECKOUT_CUSTOMER_DRAFT_PREFIX+String(userId||'');}
