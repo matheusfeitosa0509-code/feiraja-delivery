@@ -224,6 +224,9 @@ Deno.serve(async (req: Request) => {
     if (isAnonymousCheckout && paymentMethod !== "pix") {
       return json({ error: "Sessões de compra sem conta podem concluir somente pedidos Pix." }, 403);
     }
+    if (paymentMethod === "pix_test" && !isAdmin) {
+      return json({ error: "Pagamento de teste disponível somente para administradores." }, 403);
+    }
     const MIN_ORDER_SUBTOTAL_CENTS = 3000;
     const paymentMethodError = checkoutPaymentMethodError(paymentMethod);
     if (paymentMethodError) return json({ error: paymentMethodError }, 400);
