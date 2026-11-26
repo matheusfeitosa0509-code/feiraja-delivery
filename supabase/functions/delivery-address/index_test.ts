@@ -7,7 +7,7 @@ Deno.test("proxy usa Places API New, restrição geográfica e token de sessão"
     "https://places.googleapis.com/v1/places/",
     "sessionToken", "includedRegionCodes: [\"br\"]", "locationBias", "radius: 30000",
     "GOOGLE_PLACES_API_KEY", "GOOGLE_GEOCODING_API_KEY",
-    "authData.user.is_anonymous", "allowAddressRequest", "current.count <= 30", "displayName", "place.displayName?.text",
+    "allowAddressRequest", "current.count <= 30", "displayName", "place.displayName?.text",
   ]) assertEquals(source.includes(required), true, "missing proxy guard: " + required);
 });
 
@@ -24,4 +24,11 @@ Deno.test("Places usa viés de Manaus e não exige número de rua para pontos de
   assertEquals(source.includes("locationRestriction"), false);
   assertEquals(source.includes("place.displayName?.text"), true);
   assertEquals(source.includes("street_number"), true);
+});
+
+Deno.test("proxy aceita usuário autenticado inclusive sessão anônima validada pelo Auth", async () => {
+  const source = await Deno.readTextFile("supabase/functions/delivery-address/index.ts");
+  assertEquals(source.includes("auth.auth.getUser(token)"), true);
+  assertEquals(source.includes("if (authError || !authData?.user)"), true);
+  assertEquals(source.includes("authData.user.is_anonymous"), false);
 });
