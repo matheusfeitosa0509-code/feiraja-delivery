@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { getDailyRecipeKitWindowStatus, isDailyRecipeKitAvailable } from "../functions/_shared/daily-recipe-kits.js";
+import { isStoreBannerScheduleActive } from "../functions/_shared/store-banner-schedule.js";
 const migration=fs.readFileSync("supabase/migrations/20261123193000_daily_recipe_kits.sql","utf8");
 test("all six kits are seeded inactive on their requested weekdays and fixed prices",()=>{
  for(const row of [
@@ -11,6 +13,31 @@ test("all six kits are seeded inactive on their requested weekdays and fixed pri
   /\('kit-salada-frutas','Kit Salada de Frutas',[\s\S]*?61\.99,5,false/,
   /\('kit-camarao-alho-oleo','Kit Camarão Alho e Óleo',[\s\S]*?64\.99,6,false/
  ])assert.match(migration,row);
+});
+test("advance-sale window uses Manaus time, includes Monday from Saturday 13h and ends at 13h",()=>{
+ const friday={weekday:5,is_active:true,name:"Kit de Sexta"};
+ const monday={weekday:1,is_active:true,name:"Kit de Segunda"};
+ const at=(iso)=>new Date(iso);
+ assert.equal(isDailyRecipeKitAvailable(friday,at("2026-11-26T16:59:00Z")),false); // Thu 12:59
+ assert.equal(isDailyRecipeKitAvailable(friday,at("2026-11-26T17:01:00Z")),true);  // Thu 13:01
+ assert.match(getDailyRecipeKitWindowStatus(friday,at("2026-11-26T17:01:00Z")).label,/^Amanhã: Kit de Sexta/);
+ assert.equal(isDailyRecipeKitAvailable(friday,at("2026-11-27T11:00:00Z")),true);  // Fri 07:00
+ assert.match(getDailyRecipeKitWindowStatus(friday,at("2026-11-27T11:00:00Z")).label,/^Hoje: Kit de Sexta/);
+ assert.equal(isDailyRecipeKitAvailable(friday,at("2026-11-27T17:01:00Z")),false); // Fri 13:01
+ assert.equal(isDailyRecipeKitAvailable(monday,at("2026-11-28T18:00:00Z")),true); // Sat 14:00
+ assert.match(getDailyRecipeKitWindowStatus(monday,at("2026-11-28T18:00:00Z")).label,/segunda cedo/i);
+ assert.equal(isDailyRecipeKitAvailable(monday,at("2026-11-29T16:00:00Z")),true); // Sunday
+ assert.equal(isDailyRecipeKitAvailable(monday,at("2026-11-30T16:59:00Z")),true); // Mon 12:59
+ assert.equal(isDailyRecipeKitAvailable(monday,at("2026-11-30T17:01:00Z")),false); // Mon 13:01
+});
+test("kit banners share the same advance-sale window and keep other banner schedules unchanged",()=>{
+ const banner={action_type:"kit",weekdays:[5],start_time:"06:00:00",end_time:"13:00:00"};
+ assert.equal(isStoreBannerScheduleActive(banner,new Date("2026-11-26T16:59:00Z")),false);
+ assert.equal(isStoreBannerScheduleActive(banner,new Date("2026-11-26T17:01:00Z")),true);
+ assert.equal(isStoreBannerScheduleActive(banner,new Date("2026-11-27T17:01:00Z")),false);
+ const ordinary={action_type:"products",weekdays:[4],start_time:"06:00:00",end_time:"13:00:00"};
+ assert.equal(isStoreBannerScheduleActive(ordinary,new Date("2026-11-26T16:59:00Z")),true);
+ assert.equal(isStoreBannerScheduleActive(ordinary,new Date("2026-11-26T17:01:00Z")),false);
 });
 test("kit items are relational, ordered and reference real products",()=>{
  assert.match(migration,/product_id text NOT NULL REFERENCES public\.products\(id\)/);
@@ -39,7 +66,7 @@ test("storefront hides kits outside the Manaus window, prioritizes the kit categ
  assert.match(store,/category:'Kits do dia 🧺'/);
  assert.match(store,/getStorefrontCategories\(\)/);
  assert.match(store,/cartKitRemovedWarning/);
- assert.match(store,/startDailyKitWindowMonitor/);
+ assert.match(store,/startDailyKitWindowMonitor/);\n assert.match(store,/kit_schedule_label/);\n assert.match(store,/dailyKitBannerLabel/);
  assert.match(store,/kit_id:x\.p\.kit_id/);
 });
 test("admin kit editor exposes name, description, photo URL, items, fixed price, weekday and activation",()=>{
