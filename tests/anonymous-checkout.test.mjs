@@ -71,7 +71,7 @@ assert.doesNotMatch(deliveryAddress, /authData\.user\.is_anonymous/, 'delivery-a
 assert.match(deliveryQuote, /auth\.auth\.getUser\(accessToken\)/, 'delivery-quote verifies the supplied JWT');
 assert.match(deliveryQuote, /if \(authError \|\| !authData\?\.user\)/, 'delivery-quote requires a verified Auth user');
 assert.doesNotMatch(deliveryQuote, /authData\.user\.is_anonymous/, 'delivery-quote accepts verified anonymous checkout sessions');
-assert.match(turnstile, /language:'pt-br'/, 'Turnstile is rendered in Brazilian Portuguese');
+assert.match(turnstile, /language:\s*'pt-br'/, 'Turnstile is rendered in Brazilian Portuguese');
 assert.match(turnstile, /Toque na caixinha acima para continuar\. Se não aparecer, toque em Tentar de novo\./, 'CAPTCHA fallback copy is actionable and in Portuguese');
 
 console.log('Anonymous checkout regression checks passed: baseline vs updated flow, CPF, Asaas email, owner RLS, admin test orders and dispatch safeguards.');
