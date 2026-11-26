@@ -298,3 +298,10 @@ Deno.test("kit sozinho e kit com produto normal expandem componentes e somam pes
   const twoKits = expandKitQuoteItems([{ product_id: "kit:" + kitId, kit_id: kitId, quantity: 2 }], kitComponents);
   assertEquals(estimateLoad(twoKits, kitProducts).weightKg, 18.08);
 });
+
+Deno.test("cotação valida o JWT e permite sessão anônima do checkout", async () => {
+  const source = await Deno.readTextFile("supabase/functions/delivery-quote/index.ts");
+  assertEquals(source.includes("auth.auth.getUser(accessToken)"), true);
+  assertEquals(source.includes("if (authError || !authData?.user)"), true);
+  assertEquals(source.includes("authData.user.is_anonymous"), false);
+});
