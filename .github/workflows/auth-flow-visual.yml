@@ -7,6 +7,8 @@ on:
       - "turnstile.js"
       - "tests/auth-flow.visual.cjs"
       - "tests/auth-flows.visual.cjs"
+      - "tests/anonymous-checkout.test.mjs"
+      - "tests/scheduled-delivery.visual.cjs"
       - ".github/workflows/auth-flow-visual.yml"
   push:
     branches: [main]
@@ -23,10 +25,21 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: npm install --prefix /tmp/playwright playwright@1.58.2
       - run: /tmp/playwright/node_modules/.bin/playwright install --with-deps chromium
+      - run: node tests/anonymous-checkout.test.mjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/auth-flow.visual.cjs
       - run: NODE_PATH=/tmp/playwright/node_modules node tests/auth-flows.visual.cjs
+      - run: NODE_PATH=/tmp/playwright/node_modules node tests/scheduled-delivery.visual.cjs
+      - name: Upload anonymous checkout mobile viewport screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anonymous-checkout-mobile-360-412
+          path: artifacts/anonymous-checkout-*.png
+          if-no-files-found: warn
