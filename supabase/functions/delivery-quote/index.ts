@@ -44,7 +44,7 @@ Deno.serve(async (req: Request) => {
     if (!accessToken) return json({ error: "Sessão necessária." }, 401);
     const auth = createClient(supabaseUrl, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: authData, error: authError } = await auth.auth.getUser(accessToken);
-    if (authError || !authData?.user || authData.user.is_anonymous) return json({ error: "Sessão válida necessária." }, 401);
+    if (authError || !authData?.user) return json({ error: "Sessão válida necessária." }, 401);
     timings.auth_ms = Math.round(performance.now() - authStarted);
 
     const accessStarted = performance.now();
