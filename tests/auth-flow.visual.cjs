@@ -27,7 +27,7 @@ assert.match(vm.runInContext('authErrorMessage({status:429})', context), /Muitas
 assert.match(store, /Evite senhas comuns como 123456 ou sua data de nascimento\./);
 assert.match(store, /Entrar com Google · mais rápido, sem senha/);
 assert.match(store, /Tudo da feira, retire ou receba em casa\./);
-assert.match(store, /customerPhoneReady=!!profileName&&!!profilePhone/);
+assert.match(store, /customerPhoneReady=profileUser\.is_anonymous===true\|\|!!profileName&&!!profilePhone/);
 assert.doesNotMatch(store, /Tudo da feira, pronto para retirada\./);
 assert.match(recovery, /Use pelo menos 8 caracteres, com letras e números/);
 assert.match(recovery, /!\/\\d\/\.test\(p\)/);
