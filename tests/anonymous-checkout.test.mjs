@@ -33,6 +33,7 @@ assert.match(worker, /const orderUserId = authData\.user\.id;/, 'order owner com
 assert.match(worker, /if \(isAnonymousCheckout && paymentMethod !== "pix"\)/, 'anonymous sessions can create only real Pix orders');
 assert.match(worker, /if \(paymentMethod === "pix_test" && !isAdmin\)/, 'test checkout is restricted to admins');
 assert.match(worker, /const validPixDocument = paymentMethod === "pix" && isValidCpf\(cpf\);/, 'server validates CPF digits before Asaas');
+assert.match(worker, /const email = ""/, 'checkout never collects or substitutes an email');
 assert.match(worker, /customer_email: email \|\| null/, 'order email is nullable');
 assert.match(worker, /\.\.\.\(email \? \{ email \} : \{\}\)/, 'empty email is omitted from Asaas customer payload');
 assert.match(worker, /if \(paymentMethod === "pix_test"\) Object\.assign\(orderUpdate, \{\s*is_test_order: true,\s*status: "Pagamento Confirmado"/, 'test order is explicitly marked is_test_order');
