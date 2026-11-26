@@ -42,7 +42,7 @@
    try{
     api=await loadScript();
     if(!required)return;
-    widgetId=api.render(container,{sitekey:SITE_KEY,language:'pt-br',
+    widgetId=api.render(container,{sitekey:SITE_KEY,language: 'pt-br',
      callback:function(value){token=value;failed=false;retryButton.hidden=true;setMessage('Verificação concluída.');settleTokenWaiters(null,value);updateButton();},
      'expired-callback':function(){if(config.strict===true){setFailure('A verificação expirou. Toque em “Tentar de novo” para continuar.');return;}token='';setMessage('A verificação expirou. Faça-a novamente.');retryButton.hidden=false;updateButton();},
      'error-callback':function(){setFailure();}
