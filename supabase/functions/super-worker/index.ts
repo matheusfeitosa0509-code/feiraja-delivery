@@ -188,7 +188,10 @@ Deno.serve(async (req: Request) => {
     const authClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") || "", { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: authData, error: authError } = await authClient.auth.getUser(accessToken);
     if (authError || !authData?.user) return json({ error: "Sessão expirada. Entre novamente e tente o pedido." }, 401);
-    if (authData.user.is_anonymous) return json({ error: 'Crie uma conta ou entre na sua conta antes de concluir o pedido, para manter seu histórico salvo.' }, 403);
+    // Anonymous Auth sessions are allowed only on this POST checkout endpoint.
+    // GET order-status access remains bound to auth.uid(); dispatch/management functions
+    // continue enforcing non-anonymous sessions independently.
+    const isAnonymousCheckout = authData.user.is_anonymous === true;
     const orderUserId = authData.user.id;
     const { data: adminMembership, error: adminMembershipError } = await db.from("admin_users")
       .select("user_id").eq("user_id", orderUserId).maybeSingle();
@@ -218,6 +221,9 @@ Deno.serve(async (req: Request) => {
     const customer = body?.customer;
     const requestedItems = body?.items;
     const paymentMethod = String(body?.paymentMethod || "pix").toLowerCase();
+    if (isAnonymousCheckout && paymentMethod !== "pix") {
+      return json({ error: "Sessões de compra sem conta podem concluir somente pedidos Pix." }, 403);
+    }
     const MIN_ORDER_SUBTOTAL_CENTS = 3000;
     const paymentMethodError = checkoutPaymentMethodError(paymentMethod);
     if (paymentMethodError) return json({ error: paymentMethodError }, 400);
@@ -245,8 +251,8 @@ Deno.serve(async (req: Request) => {
     }
     const name = String(customer.name ?? "").trim().slice(0, 120);
     const phone = String(customer.phone ?? "").trim().slice(0, 40);
-    const cpf = paymentMethod === "pix" ? String(customer.cpf ?? "").replace(/\D/g, "").slice(0, asaasEnabled ? 14 : 11) : "";
-    const validPixDocument = asaasEnabled ? isValidCpfOrCnpj(cpf) : isValidCpf(cpf);
+    const cpf = paymentMethod === "pix" ? String(customer.cpf ?? "").replace(/\D/g, "").slice(0, 11) : "";
+    const validPixDocument = paymentMethod === "pix" && isValidCpf(cpf);
     const email = String(customer.email ?? "").trim().toLowerCase().slice(0, 254);
     const requestedDeliveryType = String(customer.deliveryType ?? body?.delivery_type ?? "");
     const deliveryAddressInput = customer.deliveryAddress || customer.delivery_address || body?.delivery_address || null;
@@ -298,15 +304,12 @@ Deno.serve(async (req: Request) => {
     let pickupCode = priorOrder?.pickup_code || (deliveryType === "pickup_uber" || (deliveryType === "pickup_store" && paymentMethod === "pix_test")
       ? generatePickupCode()
       : null);
-    if (!name || phone.replace(/\D/g, "").length < 8 || (paymentMethod === "pix" && (!validPixDocument || !/^\S+@\S+\.\S+$/.test(email))) || (email && !/^\S+@\S+\.\S+$/.test(email))) {
-      return json({ error: "Confira nome, telefone, CPF e e-mail." }, 400);
+    if (!name || phone.replace(/\D/g, "").length < 8 || (email && !/^\S+@\S+\.\S+$/.test(email))) {
+      return json({ error: "Confira seu nome e WhatsApp." }, 400);
     }
-    const accountEmail = String(authData.user.email || "").trim().toLowerCase();
-    if (paymentMethod === "pix" && accountEmail && email !== accountEmail) {
-      return json({ error: "Use o mesmo e-mail da sua conta para gerar o Pix." }, 400);
+    if (paymentMethod === "pix" && !validPixDocument) {
+      return json({ error: "Informe um CPF válido para gerar o Pix." }, 400);
     }
-
-    if (paymentMethod === "pix" && !validPixDocument) return json({ error: asaasEnabled ? "Informe um CPF ou CNPJ válido para gerar o Pix." : "Informe um CPF válido para gerar o Pix." }, 400);
 
     const requestedById = new Map<string, { saleMode: string; qtyValues: number[]; amountValues: number[] }>();
     const itemPreferencesById = new Map<string, { item_note: string; substitution_preference: 'replace' | 'remove' | 'call' }>();
@@ -841,7 +844,7 @@ Deno.serve(async (req: Request) => {
     const draftOrder = {
       id: orderId, user_id: orderUserId, checkout_idempotency_key: checkoutIdempotencyKey, checkout_request_hash: checkoutRequestHash,
       customer_name: name, customer_phone: phone,
-      customer_cpf: cpf, customer_email: email, customer_address: address,
+      customer_cpf: cpf, customer_email: email || null, customer_address: address,
       delivery_type: deliveryType, pickup_code: pickupCode, payment_method: "Asaas Pix", payment_provider: "asaas",
       ...(deliveryType === "delivery" ? { delivery_address: normalizedDeliveryAddress, delivery_coordinates: normalizedDeliveryCoordinates } : {}),
       items, subtotal, delivery_fee: deliveryFee, total, status: "Pagamento Pendente",
@@ -1024,7 +1027,7 @@ Deno.serve(async (req: Request) => {
               body: JSON.stringify({
                 name,
                 cpfCnpj: cpf,
-                email,
+                ...(email ? { email } : {}),
                 mobilePhone,
                 externalReference: orderUserId,
                 notificationDisabled: true,
