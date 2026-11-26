@@ -1977,10 +1977,9 @@ function normalizeCartForLoadedCatalog(){
 }
 async function loadDailyRecipeKits(baseProducts){
  try{
-  const {weekday,hour}=getCurrentManausDayHour();
-  if(weekday<1||weekday>6||hour<6||hour>=13)return [];
-  const {data:kits,error:kitsError}=await supabase.from('daily_recipe_kits').select('id,name,description,image_url,fixed_price,weekday,is_active,sort_order').eq('is_active',true).eq('weekday',weekday).order('sort_order',{ascending:true});
+  const {data:allKits,error:kitsError}=await supabase.from('daily_recipe_kits').select('id,name,description,image_url,fixed_price,weekday,is_active,sort_order').eq('is_active',true).order('sort_order',{ascending:true});
   if(kitsError)throw kitsError;
+  const kits=(allKits||[]).filter(kit=>dailyKitWindowStatus(kit).available);
   if(!Array.isArray(kits)||!kits.length)return [];
   const kitIds=kits.map(kit=>kit.id);
   const {data:rows,error:itemsError}=await supabase.from('daily_recipe_kit_items').select('kit_id,product_id,quantity,sort_order').in('kit_id',kitIds).order('sort_order',{ascending:true});
@@ -2003,7 +2002,7 @@ async function loadDailyRecipeKits(baseProducts){
     bulky=bulky||product.delivery_bulky===true;
    }
    return {
-    id:'kit:'+String(kit.id),kit_id:String(kit.id),name:String(kit.name),description:String(kit.description||''),
+    id:'kit:'+String(kit.id),kit_id:String(kit.id),name:String(kit.name),description:String(kit.description||''),kit_schedule_label:dailyKitWindowStatus(kit).label,
     category:'Kits do dia 🧺',price:Number(kit.fixed_price),old_price:null,image:kit.image_url||components.find(item=>item.image)?.image||null,
     available:true,resale_enabled:false,resale_price:null,is_kit:true,product_type:'combo',kit_items:components,
     delivery_unit_weight_kg:Math.max(.001,Math.round(deliveryWeight*1000)/1000),delivery_bulky:bulky
@@ -2105,7 +2104,9 @@ function alphaCompare(a,b){return String(a??'').localeCompare(String(b??''),'pt-
 function renderCats(){const ordered=getStorefrontCategories();if(category!=='Todos'&&!ordered.includes(category))category='Todos';const cats=['Todos',...ordered];$('#categories').innerHTML=cats.map(c=>'<button type="button" class="chip '+(c===category?'active':'')+'" data-cat="'+esc(c)+'">'+esc(c)+'</button>').join('');$('#categories').querySelectorAll('button').forEach(b=>b.onclick=()=>{category=b.dataset.cat;if($('#search').value.trim())$('#search').value='';renderCats();renderProducts();});}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function shortOrderNumber(id){return String(id||'').slice(-8).toUpperCase();}
-function getCurrentManausDayHour(){const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Manaus',weekday:'short',hour:'2-digit',hourCycle:'h23'}).formatToParts(new Date());const weekday=({Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6,Sun:0})[parts.find(x=>x.type==='weekday')?.value]??0;return {weekday,hour:Number(parts.find(x=>x.type==='hour')?.value)};}
+function getCurrentManausDayHour(){const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Manaus',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date());const weekday=({Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6,Sun:0})[parts.find(x=>x.type==='weekday')?.value]??0;return {weekday,hour:Number(parts.find(x=>x.type==='hour')?.value),minute:Number(parts.find(x=>x.type==='minute')?.value)};}
+function dailyKitWindowStatus(kit){if(!kit||kit.is_active!==true)return {available:false,label:''};const target=Number(kit.weekday),{weekday,hour,minute}=getCurrentManausDayHour(),minutes=hour*60+minute;if(!Number.isInteger(target)||target<1||target>6)return {available:false,label:''};const today=weekday===target&&minutes<780,previous=target===1?((weekday===6&&minutes>=780)||weekday===0):(weekday===target-1&&minutes>=780);const available=today||previous;if(!available)return {available:false,label:''};const dayName=({1:'segunda',2:'terça',3:'quarta',4:'quinta',5:'sexta',6:'sábado'})[target];const name=String(kit.name||'Kit do dia');return {available:true,label:today?'Hoje: '+name:(target===1&&weekday===6?'Segunda cedo: '+name+' — peça hoje e receba segunda cedo':'Amanhã: '+name+' — peça hoje e receba '+dayName+' cedo')};}
+function dailyKitBannerLabel(weekday,name){return dailyKitWindowStatus({weekday:Number(weekday),is_active:true,name}).label;}
 function dailyDiscountPercentForProduct(p){if(p?.is_kit)return null;const {weekday,hour}=getCurrentManausDayHour();if(weekday<1||weekday>6||hour<6||hour>=13)return null;const rule=dailyCategoryDiscounts.find(row=>Number(row.weekday)===weekday&&String(row.category||'')===String(p.category||''));if(!rule)return null;const excluded=Array.isArray(rule.excluded_product_ids)?rule.excluded_product_ids.map(String):[];if(excluded.includes(String(p.id)))return null;const percent=Number(rule.percent);return Number.isFinite(percent)&&percent>0&&percent<=90?percent:null;}
 function dailyDiscountedPriceCents(p){const current=Math.round(Number(p.price)*100),old=Math.round(Number(p.old_price)*100),percent=dailyDiscountPercentForProduct(p);if(!percent)return current;const reference=Number.isSafeInteger(old)&&old>current?old:current;return Math.min(current,Math.round(reference*(100-percent)/100));}
 function effectiveUnitPriceCents(p,q){const current=Math.round(Number(p.price)*100),override=serverPricingOverrides.get(String(p.id)),mode=p?.is_kit?'kit':(cartModes[p.id]==='value'?'value':'kg');if(override&&Number(override.qty)===Number(q)&&override.sale_mode===mode)return Number(override.unit_price_cents);const daily=dailyDiscountedPriceCents(p),resale=Math.round(Number(p.resale_price)*100);return p.resale_enabled===true&&q>=10&&Number.isSafeInteger(resale)&&resale>0&&resale<current?Math.min(daily,resale):daily;}
@@ -2145,7 +2146,7 @@ function syncProductCardRowSlots(root=document){
   window.addEventListener('resize',()=>syncProductCardRowSlots(document));
  }
 }
-function kitComponentsMarkup(p){if(!p?.is_kit||!Array.isArray(p.kit_items))return '';const items=p.kit_items.map(item=>'<li>'+esc(Number(item.quantity).toLocaleString('pt-BR',{maximumFractionDigits:3}))+' × '+esc(item.name)+'</li>').join('');return '<p class="kit-description">'+esc(p.description||'')+'</p><details class="kit-components"><summary>Ver itens do kit ('+p.kit_items.length+')</summary><ul>'+items+'</ul></details>';}
+function kitComponentsMarkup(p){if(!p?.is_kit||!Array.isArray(p.kit_items))return '';const items=p.kit_items.map(item=>'<li>'+esc(Number(item.quantity).toLocaleString('pt-BR',{maximumFractionDigits:3}))+' × '+esc(item.name)+'</li>').join('');return (p.kit_schedule_label?'<p class="kit-schedule-label">'+esc(p.kit_schedule_label)+'</p>':'')+'<p class="kit-description">'+esc(p.description||'')+'</p><details class="kit-components"><summary>Ver itens do kit ('+p.kit_items.length+')</summary><ul>'+items+'</ul></details>';}
 function productCardMarkup(p,priority=false,eager=false){return '<article class="product '+(p.is_kit?'product-kit':'')+'" data-product-id="'+esc(p.id)+'">'+productCardImageMarkup(p,priority,eager)+'<div class="pbody"><h3>'+esc(p.name)+'</h3>'+(p.is_kit?kitComponentsMarkup(p):'')+priceBlock(p)+productCardControlsMarkup(p)+productWeightNoteMarkup(p)+'</div></article>';}
 function updateProductCard(id){const p=products.find(x=>String(x.id)===String(id));if(!p)return;document.querySelectorAll('[data-product-id]').forEach(card=>{if(String(card.dataset.productId)!==String(id))return;const qty=card.querySelector('.product-qty');if(qty)qty.innerHTML=productQtyMarkup(p);const valueRow=card.querySelector('.value-sale-row');if(valueRow)valueRow.innerHTML=valueSaleEditorMarkup(p);});}
 function updateProductCardPrice(p){
@@ -2213,8 +2214,8 @@ function renderStoreBanners(items){
   const slide=document.createElement('article');slide.className='store-banner-slide theme-'+(['green','yellow','orange','red'].includes(banner.theme)?banner.theme:'green');slide.dataset.bannerIndex=String(index);
   const copy=document.createElement('div');copy.className='store-banner-copy';
   if(banner.image_url){slide.classList.add('has-image');const image=document.createElement('img');image.className='store-banner-image';image.src=banner.image_url;image.width=1200;image.height=400;image.alt='';image.decoding='async';if(index===0){image.loading='eager';image.fetchPriority='high';}else{image.loading='lazy';}slide.append(image);}
-  const title=document.createElement('strong');title.textContent=banner.title||'';
-  const subtitle=document.createElement('p');subtitle.textContent=banner.subtitle||'';
+  const title=document.createElement('strong');title.textContent=banner.action_type==='kit'?dailyKitBannerLabel(banner.weekdays?.[0],banner.kit_name||banner.title):(banner.title||'');
+  const subtitle=document.createElement('p');subtitle.textContent=banner.action_type==='kit'?(dailyKitWindowStatus({weekday:Number(banner.weekdays?.[0]),is_active:true,name:banner.kit_name||banner.title}).label.includes('Hoje:')?'Kit disponível para comprar até 13h.':('Peça hoje e receba '+(({1:'segunda',2:'terça',3:'quarta',4:'quinta',5:'sexta',6:'sábado'})[Number(banner.weekdays?.[0])]||'no próximo dia')+' cedo.')):(banner.subtitle||'');
   copy.append(title,subtitle);
   const countdown=storeBannerCountdown(banner.ends_at);
   if(countdown){const timer=document.createElement('span');timer.className='store-banner-countdown';timer.textContent=countdown;copy.append(timer);}
@@ -2271,17 +2272,20 @@ async function loadStoreBanners(){
  const carousel=$('#storeBannersCarousel');
  try{
   const now=new Date().toISOString();
-  const {data,error}=await supabase.from('store_banners').select('id,title,subtitle,button_text,action_type,action_value,theme,audience,starts_at,ends_at,rules_text,sort_order,promo_code,image_url,weekdays,start_time,end_time').eq('is_active',true).lte('starts_at',now).or('ends_at.is.null,ends_at.gt.'+now).order('sort_order',{ascending:true});
+  const {data,error}=await supabase.from('store_banners').select('id,title,subtitle,button_text,action_type,action_value,theme,audience,starts_at,ends_at,rules_text,sort_order,promo_code,image_url,weekdays,start_time,end_time').eq('is_active',true).or('ends_at.is.null,ends_at.gt.'+now).order('sort_order',{ascending:true});
   if(error)throw error;
   let audience='new_customers';
   try{audience=await getStoreBannerAudience();}catch(error){console.warn('Não foi possível confirmar o histórico do cliente; banners segmentados foram ocultados:',error?.message||error);audience='unknown';}
   const offerEnabled=firstDeliveryPromoOffer?.enabled===true;
   const eligible=(data||[]).filter(banner=>{
    if(banner.audience!=='all'&&banner.audience!==audience)return false;
+   if(banner.action_type!=='kit'&&Date.parse(banner.starts_at)>Date.now())return false;
    if(banner.promo_code==='PRIMEIRA_ENTREGA'&&!offerEnabled)return false;
    if(banner.promo_code&&banner.promo_code!=='PRIMEIRA_ENTREGA')return false;
    return true;
   });
+  const kitBannerIds=eligible.filter(b=>b.action_type==='kit').map(b=>String(b.action_value||'')).filter(Boolean);
+  if(kitBannerIds.length){const {data:kitNames,error:kitNamesError}=await supabase.from('daily_recipe_kits').select('id,name').in('id',kitBannerIds);if(kitNamesError)throw kitNamesError;const names=new Map((kitNames||[]).map(k=>[String(k.id),String(k.name)]));eligible.forEach(b=>{if(b.action_type==='kit')b.kit_name=names.get(String(b.action_value))||b.title;});}
   storeBannerScheduleRows=eligible;
   refreshScheduledStoreBanners(true);
  }catch(error){console.warn('Não foi possível carregar os banners da loja:',error?.message||error);storeBannerScheduleRows=[];storeBannerScheduleSignature=null;if(carousel)carousel.hidden=true;}
