@@ -17,7 +17,7 @@ const orderPolicy = fs.readFileSync(path.join(root, 'supabase/migrations/2026102
 
 assert.match(baseline, /if\(!currentUser\|\|currentUser\.is_anonymous\)/, 'baseline required login for anonymous checkout');
 assert.match(baseline, /<label for="email">E-mail \*<\/label>/, 'baseline required customer email');
-assert.match(store, /signInAnonymously\(\)/, 'new customers receive an anonymous session automatically');
+assert.match(store, /signInAnonymously\(\{options:\{captchaToken\}\}\)/, 'new customers receive an anonymous session with a CAPTCHA token');
 assert.match(store, /checkoutCaptcha\.waitForToken\(\)/, 'anonymous signup waits for a valid CAPTCHA token');
 assert.match(store, /signInAnonymously\(\{options:\{captchaToken\}\}\)/, 'anonymous signup sends the Turnstile token to Supabase Auth');
 assert.match(store, /id="checkoutCaptchaRetry"/, 'checkout exposes a visible retry action when CAPTCHA fails');
