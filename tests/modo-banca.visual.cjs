@@ -74,6 +74,8 @@ const rules = [];
     await page.waitForSelector('#bancaHome .banca-crate');
     assert.equal(await page.locator('#homeProductSections').isVisible(), false, 'lista antiga escondida');
     assert.equal(await page.locator('.mobile-nav').isVisible(), true, 'menu de baixo continua');
+    assert.match(await page.locator('.mobile-nav .tab-button[data-page="Home"]').textContent(), /Feira/);
+    assert.match(await page.locator('.mobile-nav .tab-button[data-page="Cart"]').textContent(), /Cesta/);
     assert.deepEqual(await page.locator('.banca-tabs button').allTextContents(), ['Frutas','Verduras','Pescados']);
     assert.match(await page.locator('.banca-sign').textContent(), /Setor das Frutas/);
     assert.equal(await page.locator('#bancaBasket').isVisible(), true, 'balcão visível');
@@ -116,6 +118,8 @@ const rules = [];
     await page.waitForFunction(() => document.querySelector('#pageCart')?.classList.contains('active'), null, {timeout:5000});
     assert.equal(await page.locator('#bancaBasket').isVisible(), false, 'balcão some fora da loja');
     assert.equal(await page.locator('#cartItems .cart-item').count(), 2, 'sacola com os 2 itens');
+    assert.equal((await page.locator('#pageCart .products-top h1').textContent()).trim(), 'Sua cesta');
+    await page.screenshot({path:'/tmp/banca-4.png'});
     assert.deepEqual(errors, [], errors.join('\n'));
     console.log('modo-feira ok');
   } finally { await browser.close(); }
