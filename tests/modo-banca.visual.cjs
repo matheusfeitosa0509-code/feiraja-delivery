@@ -79,7 +79,7 @@ const rules = [];
     assert.equal(await page.locator('#bancaBasket').isVisible(), true, 'balcão visível');
     assert.equal(await page.locator('[data-banca-note]').isDisabled(), true, 'nota desabilitada com cesta vazia');
     // pedir por valor
-    const vbtn = page.locator('[data-banca-id="f-02"] [data-value-open]');
+    const vbtn = page.locator('[data-banca-id="f-02"] .banca-rs[data-value-open]');
     assert.equal(await vbtn.count(), 1, 'botão pedir por valor no caixote');
     await vbtn.click();
     await page.waitForSelector('#valueSaleSheet.open');
@@ -93,6 +93,7 @@ const rules = [];
     assert.equal((await page.locator('[data-banca-count]').textContent()).trim(), '2 itens');
     assert.match((await page.locator('[data-banca-total]').textContent()).replace(/\u00a0/g,' '), /R\$ 21,98/);
     assert.equal(await page.locator('[data-banca-id="f-01"] .banca-badge').isVisible(), true);
+    assert.equal(await page.locator('.legal-footer').isVisible(), false, 'rodapé escondido na feira');
     await page.screenshot({path:'/tmp/banca-1.png'});
     await page.locator('[data-banca-minus="f-01"]').click();
     assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('feiraja_cart_v1'))['f-01']), 1);
