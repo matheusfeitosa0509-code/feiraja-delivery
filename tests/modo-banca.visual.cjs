@@ -80,10 +80,19 @@ const rules = [];
     assert.match(await page.locator('.banca-sign').textContent(), /Setor das Frutas/);
     assert.equal(await page.locator('#bancaBasket').isVisible(), true, 'balcão visível');
     assert.equal(await page.locator('[data-banca-note]').isDisabled(), true, 'nota desabilitada com cesta vazia');
-    // pedir por valor
-    const vbtn = page.locator('[data-banca-id="f-02"] .banca-rs[data-value-open]');
-    assert.equal(await vbtn.count(), 1, 'botão pedir por valor no caixote');
-    await vbtn.click();
+    // detalhes (i): descrição, como quer e pedir por valor
+    assert.equal(await page.locator('.banca-rs').count(), 0, 'sem R$ no caixote');
+    await page.locator('[data-banca-info="f-02"]').click();
+    await page.waitForSelector('#bancaInfo:not([hidden])');
+    assert.equal(await page.locator('#bancaInfo [data-value-open]').count(), 1, 'pedir por valor no i');
+    await page.locator('#bancaInfo [data-banca-pref-chip]').first().click();
+    const chipVal = await page.locator('#bancaInfo [data-banca-pref-chip]').first().getAttribute('data-value');
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('feiraja_cart_preferences_v1')||'{}')['f-02']?.note), chipVal, 'resposta rápida salva');
+    await page.locator('#bancaInfo [data-banca-pref-note]').fill('sem manchas');
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('feiraja_cart_preferences_v1')||'{}')['f-02']?.note), 'sem manchas', 'texto livre salvo');
+    await page.locator('#bancaInfo [data-banca-pref-sub][data-value="remove"]').click();
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('feiraja_cart_preferences_v1')||'{}')['f-02']?.substitution), 'remove');
+    await page.locator('#bancaInfo [data-value-open]').click();
     await page.waitForSelector('#valueSaleSheet.open');
     await page.locator('#valueSaleClose').click();
     await page.locator('[data-banca-add="f-01"]').click();
@@ -114,25 +123,14 @@ const rules = [];
     assert.equal(await page.locator('#bancaPanel .banca-crate').count(), 1);
     await page.locator('#bancaSearch').fill('');
     await page.screenshot({path:'/tmp/banca-2.png'});
-    // nota e sacola
+    // ver nota = a cesta
     await page.locator('[data-banca-note]').click();
-    await page.waitForSelector('#bancaNote:not([hidden])');
-    assert.equal(await page.locator('.banca-note-lines > div').count(), 2);
-    await page.locator('[data-banca-note-plus="f-01"]').click();
-    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('feiraja_cart_v1'))['f-01']), 2);
-    await page.locator('[data-banca-note-minus="f-01"]').click();
-    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('feiraja_cart_v1'))['f-01']), 1);
-    assert.match((await page.locator('[data-banca-note-total]').textContent()).replace(/\u00a0/g,' '), /R\$ 13,99/);
-    await page.screenshot({path:'/tmp/banca-3.png'});
-    await page.locator('[data-banca-note-remove="f-02"]').click();
-    await page.waitForTimeout(300);
-    assert.equal(await page.locator('.banca-note-lines > div').count(), 1, 'remover tira da nota');
-    await page.locator('[data-banca-checkout]').click();
     await page.waitForFunction(() => document.querySelector('#pageCart')?.classList.contains('active'), null, {timeout:5000});
-    assert.equal(await page.locator('#bancaBasket').isVisible(), false, 'balcão some fora da loja');
-    assert.equal(await page.locator('#cartItems .cart-item').count(), 1, 'sacola com o item que ficou');
-    assert.equal((await page.locator('#pageCart .products-top h1').textContent()).trim(), 'Sua cesta');
-    await page.screenshot({path:'/tmp/banca-4.png'});
+    assert.equal((await page.locator('#pageCart .products-top h1').textContent()).trim(), 'Sua nota da feira');
+    assert.equal(await page.locator('#cartItems .cart-item').count(), 2, 'nota com os 2 itens');
+    assert.equal(await page.locator('#cartItems .cart-item-preference').first().isVisible(), false, 'como quer saiu da cesta');
+    assert.equal(await page.locator('#bancaBasket').isVisible(), false, 'balcão some fora da feira');
+    await page.screenshot({path:'/tmp/banca-3.png'});
     assert.deepEqual(errors, [], errors.join('\n'));
     console.log('modo-feira ok');
   } finally { await browser.close(); }
