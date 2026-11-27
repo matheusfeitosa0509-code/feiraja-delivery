@@ -123,14 +123,24 @@ const rules = [];
     assert.equal(await page.locator('#bancaPanel .banca-crate').count(), 1);
     await page.locator('#bancaSearch').fill('');
     await page.screenshot({path:'/tmp/banca-2.png'});
-    // ver nota = a cesta
+    // nota da feira (janelinha) com − / + / remover
     await page.locator('[data-banca-note]').click();
-    await page.waitForFunction(() => document.querySelector('#pageCart')?.classList.contains('active'), null, {timeout:5000});
-    assert.equal((await page.locator('#pageCart .products-top h1').textContent()).trim(), 'Sua nota da feira');
-    assert.equal(await page.locator('#cartItems .cart-item').count(), 2, 'nota com os 2 itens');
-    assert.equal(await page.locator('#cartItems .cart-item-preference').first().isVisible(), false, 'como quer saiu da cesta');
-    assert.equal(await page.locator('#bancaBasket').isVisible(), false, 'balcão some fora da feira');
+    await page.waitForSelector('#bancaNote:not([hidden])');
+    assert.equal(await page.locator('.banca-note-lines > div').count(), 2);
+    assert.match(await page.locator('.banca-note-msg').textContent(), /Produtos de qualidade/);
+    await page.locator('[data-banca-note-plus="f-01"]').click();
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('feiraja_cart_v1'))['f-01']), 2);
+    await page.locator('[data-banca-note-minus="f-01"]').click();
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('feiraja_cart_v1'))['f-01']), 1);
     await page.screenshot({path:'/tmp/banca-3.png'});
+    await page.locator('[data-banca-note-remove="f-02"]').click();
+    await page.waitForTimeout(300);
+    assert.equal(await page.locator('.banca-note-lines > div').count(), 1, 'remover tira da nota');
+    await page.locator('[data-banca-checkout]').click();
+    await page.waitForFunction(() => document.querySelector('#pageCart')?.classList.contains('active'), null, {timeout:5000});
+    assert.equal((await page.locator('#pageCart .products-top h1').textContent()).trim(), 'Sua cesta');
+    assert.equal(await page.locator('#cartItems .cart-item').count(), 1, 'cesta com o item que ficou');
+    assert.equal(await page.locator('#bancaBasket').isVisible(), false, 'balcão some fora da feira');
     assert.deepEqual(errors, [], errors.join('\n'));
     console.log('modo-feira ok');
   } finally { await browser.close(); }
