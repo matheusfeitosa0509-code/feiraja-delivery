@@ -27,7 +27,7 @@ const rules = [];
     'rpc:async()=>({data:false,error:null}),functions:{invoke:async()=>({data:{},error:null})},' +
     'storage:{from:()=>({upload:async()=>({data:{},error:null}),remove:async()=>({data:[],error:null}),getPublicUrl:()=>({data:{publicUrl:""}})})},' +
     'channel:()=>({on(){return this},subscribe(){return this}}),removeChannel:async()=>({})' +
-    '};window.FeiraTurnstile={create:()=>({init(){},getToken:()=>"",reset(){},setRequired(){},isRequired:()=>false})};' +
+    '};window.FeiraTurnstile={create:()=>({init(){},getToken:()=>"",reset(){},setRequired(){},isRequired:()=>false,fail(){},ready:async()=>true})};' +
     'window.FeiraLalamoveMap={mountAll(){}};' +
     '</script>';
   let html = source
@@ -136,11 +136,20 @@ const rules = [];
     await page.locator('[data-banca-note-remove="f-02"]').click();
     await page.waitForTimeout(300);
     assert.equal(await page.locator('.banca-note-lines > div').count(), 1, 'remover tira da nota');
+    // abaixo do mínimo: botão avisa e fica travado
+    assert.equal(await page.locator('[data-banca-checkout]').isDisabled(), true, 'abaixo do mínimo trava');
+    assert.match(await page.locator('[data-banca-checkout]').textContent(), /Faltam/);
+    await page.locator('[data-banca-note-close]').click();
+    // aba Cesta abre a nota
+    await page.locator('.mobile-nav .tab-button[data-page="Cart"]').click();
+    await page.waitForSelector('#bancaNote:not([hidden])');
+    assert.equal(await page.locator('#pageHome').evaluate(e=>e.classList.contains('active')), true, 'continua na feira');
+    // acima do mínimo: Continuar abre o checkout
+    for (let i=0;i<3;i++) await page.locator('[data-banca-note-plus="f-01"]').click();
+    assert.equal(await page.locator('[data-banca-checkout]').isDisabled(), false);
+    assert.match(await page.locator('[data-banca-checkout]').textContent(), /Continuar/);
     await page.locator('[data-banca-checkout]').click();
-    await page.waitForFunction(() => document.querySelector('#pageCart')?.classList.contains('active'), null, {timeout:5000});
-    assert.equal((await page.locator('#pageCart .products-top h1').textContent()).trim(), 'Sua cesta');
-    assert.equal(await page.locator('#cartItems .cart-item').count(), 1, 'cesta com o item que ficou');
-    assert.equal(await page.locator('#bancaBasket').isVisible(), false, 'balcão some fora da feira');
+    await page.waitForFunction(() => document.querySelector('#modal.open,#accountModal.open'), null, {timeout:5000});
     assert.deepEqual(errors, [], errors.join('\n'));
     console.log('modo-feira ok');
   } finally { await browser.close(); }
