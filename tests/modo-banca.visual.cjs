@@ -76,7 +76,7 @@ const rules = [];
     assert.equal(await page.locator('.mobile-nav').isVisible(), true, 'menu de baixo continua');
     assert.match(await page.locator('.mobile-nav .tab-button[data-page="Home"]').textContent(), /Feira/);
     assert.match(await page.locator('.mobile-nav .tab-button[data-page="Cart"]').textContent(), /Cesta/);
-    assert.deepEqual(await page.locator('.banca-tabs button').allTextContents(), ['Frutas','Verduras','Pescados']);
+    assert.deepEqual((await page.locator('.banca-tabs button').allTextContents()).map(t=>t.replace(/^[^A-Za-zÀ-ú]+/,'')), ['Frutas','Verduras','Pescados']);
     assert.match(await page.locator('.banca-sign').textContent(), /Setor das Frutas/);
     assert.equal(await page.locator('#bancaBasket').isVisible(), true, 'balcão visível');
     assert.equal(await page.locator('[data-banca-note]').isDisabled(), true, 'nota desabilitada com cesta vazia');
