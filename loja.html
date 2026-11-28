@@ -3469,7 +3469,7 @@ try{setupBanca();}catch(error){console.error('Loja modo feira indisponível:',er
 // Regras fixas, sem IA. Máx. 1 balão a cada 90s, some sozinho, para após 2 fechadas na visita, nunca na nota/pagamento.
 const TIP_NORM=s=>String(s||'').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 const TIP_RULES=[
- {m:/camar|caranguej|piracu/,want:['limao','cheiro-verde','alho','coentro','cebola','tomate'],pra:p=>'pro '+TIP_NORM(bancaShort(p.name)).split(' ')[0].replace('camarao','camarão').replace('piracui','piracuí')},
+ {m:/camar|caranguej|piracu/,want:['limao','cheiro-verde','alho','coentro','cebola','tomate'],pra:p=>{const n=TIP_NORM(p.name);return /caranguej/.test(n)?'pro caranguejo':/piracu/.test(n)?'pro piracuí':'pro camarão';}},
  {m:/goma|tapioca/,want:['queijo coalho','coco'],pra:()=>'pra tapioca'},
  {m:/queijo/,want:['goma de tapioca','banana'],pra:()=>'pra acompanhar o queijo'},
  {m:/acai/,want:['farinha de tapioca','banana'],pra:()=>'pro açaí'},
