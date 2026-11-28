@@ -151,6 +151,25 @@ const rules = [];
     await page.locator('[data-banca-checkout]').click();
     await page.waitForFunction(() => document.querySelector('#modal.open,#accountModal.open'), null, {timeout:5000});
     assert.deepEqual(errors, [], errors.join('\n'));
+    // balãozinho do robô: sugere o que combina, + põe na cesta, ✕ fecha
+    { const {page:tp,errors:te} = await open('http://127.0.0.1/loja.html?banca=1&balao=1');
+      await tp.waitForSelector('#bancaHome .banca-crate');
+      await tp.locator('[data-banca-tab="2"]').click();
+      await tp.locator('[data-banca-add="p-01"]').click();
+      await tp.waitForSelector('#bancaTip.show', {timeout:5000});
+      const msg = await tp.locator('#bancaTip .tip-msg b').textContent();
+      assert.match(msg, /cheiro-verde/i, 'sugere cheiro-verde: '+msg);
+      assert.match(msg, /camarão/i, 'fala do camarão: '+msg);
+      assert.doesNotMatch(await tp.locator('#bancaTip').textContent(), /frete|entrega|prazo|taxa/i, 'sem frete/prazo/taxa no balão');
+      const tip = await tp.locator('#bancaTip .tip-card').boundingBox(), basket = await tp.locator('#bancaBasket').boundingBox();
+      assert.ok(tip.y + tip.height <= basket.y, 'balão acima do balcão');
+      await tp.screenshot({path:'/tmp/banca-tip.png'});
+      await tp.locator('#bancaTip [data-tip-add="v-02"]').click();
+      assert.ok(await tp.evaluate(() => JSON.parse(localStorage.getItem('feiraja_cart_v1'))['v-02'] > 0), '+ do balão põe na cesta');
+      await tp.locator('#bancaTip [data-tip-close]').click();
+      await tp.waitForTimeout(300);
+      assert.equal(await tp.locator('#bancaTip').isVisible(), false, '✕ fecha o balão');
+      assert.deepEqual(te, [], te.join('\n')); await tp.close(); }
     console.log('modo-feira ok');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exit(1); });
