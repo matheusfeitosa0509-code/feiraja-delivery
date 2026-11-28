@@ -66,7 +66,7 @@ async function measure(page,cdp,url) {
  assert.ok(html.indexOf('id="storefrontProductsPrefetch"')<html.indexOf('<script type="module">'),'product request must start before app module imports');
  assert.ok(html.includes('feira_storefront_catalog_v1'),'persistent catalog cache missing');
  assert.ok(html.includes('updateProductCardPrice(product)'),'changed prices must patch only their cards');
- assert.ok(html.includes("import('./assistant-runtime.js?v=20261118-lazy-assistant-runtime')"),'assistant runtime must be imported on demand');
+ assert.ok(html.includes("import('./assistant-runtime.js?v=20261128-robo')"),'assistant runtime must be imported on demand');
  assert.ok(assistantRuntime.includes("import('./assistant-speech.js?v=20261118-lazy-assistant')"),'assistant speech module must be imported on demand');
  assert.ok(html.includes('select=id,name,price,old_price,category,image,available,resale_enabled,resale_price,resale_min_qty,resale_unit'),'catalog select list missing');
  assert.ok(!/select=[^'"]*(?:cost|cost_price)/i.test(html),'cost fields must never be selected for storefront');

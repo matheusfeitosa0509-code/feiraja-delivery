@@ -106,7 +106,7 @@ async function openAssistantSheet(){
   if(error)throw error;
   if(!session?.user){api.openAccountScreen();return;}
   void ensureAssistantSpeechRecognition();
-  if(!assistantHistory.length)appendAssistantBubble('assistant','Olá! Fale, digite ou mande uma foto da sua lista ou de um produto. Vou montar uma sugestão para você conferir.');
+  if(!assistantHistory.length&&!$('#assistantMessages').children.length)appendAssistantBubble('assistant','Olá! Fale, digite ou mande uma foto da sua lista ou de um produto. Vou montar uma sugestão para você conferir.');
   document.querySelector('.assistant-examples').hidden=assistantHistory.some(item=>item.role==='user');
   $('#assistantSheet').setAttribute('aria-hidden','false');
   api.openPreviewModal('assistantSheet');

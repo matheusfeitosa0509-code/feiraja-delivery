@@ -1564,6 +1564,11 @@ body.banca-home .wrap:has(#pageHome.active){padding-top:0}
 body.banca-home .assistant-nav-button .assistant-nav-icon{background:#B8D5B2;border:3px solid #fff;box-shadow:0 4px 12px rgba(14,58,34,.25)}
 .assistant-nav-button svg.robo{width:38px;height:38px;stroke:none;fill:none}
 @media(max-width:360px){.banca-name{font-size:17px}.banca-tag{font-size:11px}.banca-price{font-size:11.5px}}
+
+/* robozinho no assistente (28/11) */
+.assistant-heading:before{content:""!important;background:#B8D5B2 url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Cline%20x1%3D%2220%22%20y1%3D%225%22%20x2%3D%2220%22%20y2%3D%2210%22%20stroke%3D%22%230E3A22%22%20stroke-width%3D%222.2%22/%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%224.5%22%20r%3D%223%22%20fill%3D%22%23FDC828%22%20stroke%3D%22%230E3A22%22%20stroke-width%3D%221.5%22/%3E%3Crect%20x%3D%224%22%20y%3D%2216%22%20width%3D%224%22%20height%3D%2210%22%20rx%3D%221.5%22%20fill%3D%22%230E3A22%22/%3E%3Crect%20x%3D%2232%22%20y%3D%2216%22%20width%3D%224%22%20height%3D%2210%22%20rx%3D%221.5%22%20fill%3D%22%230E3A22%22/%3E%3Crect%20x%3D%227.5%22%20y%3D%2210%22%20width%3D%2225%22%20height%3D%2222%22%20rx%3D%226%22%20fill%3D%22%23FFF5E6%22%20stroke%3D%22%230E3A22%22%20stroke-width%3D%222.2%22/%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%2219%22%20r%3D%222.8%22%20fill%3D%22%230E3A22%22/%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2219%22%20r%3D%222.8%22%20fill%3D%22%230E3A22%22/%3E%3Cpath%20d%3D%22M15%2024.5q5%204%2010%200%22%20stroke%3D%22%230E3A22%22%20stroke-width%3D%222.2%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22/%3E%3C/svg%3E") center/30px no-repeat!important;border:2px solid #9fc49a}
+.assistant-bubble.assistant:before{content:""!important;background:#B8D5B2 url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Cline%20x1%3D%2220%22%20y1%3D%225%22%20x2%3D%2220%22%20y2%3D%2210%22%20stroke%3D%22%230E3A22%22%20stroke-width%3D%222.2%22/%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%224.5%22%20r%3D%223%22%20fill%3D%22%23FDC828%22%20stroke%3D%22%230E3A22%22%20stroke-width%3D%221.5%22/%3E%3Crect%20x%3D%224%22%20y%3D%2216%22%20width%3D%224%22%20height%3D%2210%22%20rx%3D%221.5%22%20fill%3D%22%230E3A22%22/%3E%3Crect%20x%3D%2232%22%20y%3D%2216%22%20width%3D%224%22%20height%3D%2210%22%20rx%3D%221.5%22%20fill%3D%22%230E3A22%22/%3E%3Crect%20x%3D%227.5%22%20y%3D%2210%22%20width%3D%2225%22%20height%3D%2222%22%20rx%3D%226%22%20fill%3D%22%23FFF5E6%22%20stroke%3D%22%230E3A22%22%20stroke-width%3D%222.2%22/%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%2219%22%20r%3D%222.8%22%20fill%3D%22%230E3A22%22/%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2219%22%20r%3D%222.8%22%20fill%3D%22%230E3A22%22/%3E%3Cpath%20d%3D%22M15%2024.5q5%204%2010%200%22%20stroke%3D%22%230E3A22%22%20stroke-width%3D%222.2%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22/%3E%3C/svg%3E") center/19px no-repeat!important}
+body.banca-home #assistantSend{background:#B8D5B2;color:#0E3A22;border:1.5px solid #9fc49a;box-shadow:none;font-weight:800}
 </style>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.1';
@@ -3112,7 +3117,7 @@ $('#phone').addEventListener('input',()=>{firstDeliveryPromoPreviewKey='';update
 async function openAssistantSheet(){
  try{
   if(!assistantRuntimePromise){
-   assistantRuntimePromise=import('./assistant-runtime.js?v=20261118-lazy-assistant-runtime').then(({mountAssistantRuntime})=>mountAssistantRuntime({
+   assistantRuntimePromise=import('./assistant-runtime.js?v=20261128-robo').then(({mountAssistantRuntime})=>mountAssistantRuntime({
     $:selector=>$(selector),supabase,
     get products(){return products;},get cart(){return cart;},get cartPreferences(){return cartPreferences;},
     persistCart,renderCart,renderProducts,safeRenderHomeProductSections,isValidCartQuantity,formatCartQuantity,
