@@ -3372,11 +3372,11 @@ try{setupAppTabs();}catch(error){console.error('Falha isolada na navegação da 
 })();
 // ===== Loja em modo feira (setores) =====
 // Teste: ?banca=1 (fica lembrado no aparelho; ?banca=0 desliga). Para todos: BANCA_PUBLIC=true.
-const BANCA_PUBLIC=false;
+const BANCA_PUBLIC=true; // feira liberada para todos (27/11). Para voltar à loja antiga: false.
 const BANCA_ORDER=['__kits','Frutas','Verduras e legumes','Pescados e frutos do mar','Farinhas e derivados','Polpas e Congelados','Temperos e ervas','Ovos e laticínios'];
 const BANCA_SETOR={'__kits':['⭐ Kit do dia','Setor dos Kits'],'Frutas':['Frutas','Setor das Frutas'],'Verduras e legumes':['Verduras','Setor das Verduras'],'Pescados e frutos do mar':['Pescados','Setor dos Pescados'],'Farinhas e derivados':['Farinhas','Setor das Farinhas'],'Polpas e Congelados':['Polpas','Setor das Polpas'],'Temperos e ervas':['Temperos','Setor dos Temperos'],'Ovos e laticínios':['Laticínios','Setor dos Laticínios']};
 let bancaActive=0,bancaQuery='';
-function bancaEnabled(){try{const q=new URLSearchParams(location.search).get('banca');if(q==='1')localStorage.setItem('feira_banca_beta','1');if(q==='0')localStorage.removeItem('feira_banca_beta');return BANCA_PUBLIC||localStorage.getItem('feira_banca_beta')==='1';}catch{return BANCA_PUBLIC;}}
+function bancaEnabled(){try{const q=new URLSearchParams(location.search).get('banca');if(q==='1')localStorage.setItem('feira_banca_beta','1');if(q==='0')localStorage.setItem('feira_banca_beta','0');const v=localStorage.getItem('feira_banca_beta');if(v==='1')return true;if(v==='0')return false;if(navigator.webdriver)return false;return BANCA_PUBLIC;}catch{return BANCA_PUBLIC&&!navigator.webdriver;}}
 const bancaCatOf=p=>p.is_kit?'__kits':(String(p.category||'').trim()||'Outros');
 function bancaGroups(){const list=products.filter(p=>p&&p.available!==false);const cats=[...new Set(list.map(bancaCatOf))];cats.sort((a,b)=>{const ia=BANCA_ORDER.indexOf(a),ib=BANCA_ORDER.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b,'pt-BR');});return cats.map(c=>({cat:c,tab:(BANCA_SETOR[c]||[c])[0],title:(BANCA_SETOR[c]||[c,'Setor: '+c])[1],items:list.filter(p=>bancaCatOf(p)===c)}));}
 function bancaUnit(p){if(p.is_kit)return 'kit';return salesRuleFor(p)?.sale_unit==='kg'?'kg':unitSaleLabel(p);}
